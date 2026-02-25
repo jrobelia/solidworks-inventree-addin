@@ -1,0 +1,25 @@
+﻿# ===========================================
+# SolidWorks InvenTree Add-In  .gitignore
+# ===========================================
+
+# --- SECURITY: Server config contains API keys  NEVER commit this ---
+inventree_servers.json
+
+# --- .NET / Visual Studio build outputs ---
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.DotSettings.user
+
+# --- NuGet packages ---
+packages/
+*.nupkg
+
+# --- Windows ---
+Thumbs.db
+Desktop.ini
+
+# --- VS Code ---
+.vscode/

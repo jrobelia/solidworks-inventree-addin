@@ -1,0 +1,55 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<CPTemplate>
+  <AppVersion>30</AppVersion>
+  <CPSheet>
+    <MessageBox>This is a custom properties template to be used for all OA parts.</MessageBox>
+    <GroupBox Label="Part Details" PropName="Groupbox2" DefaultState="Expanded">
+      <Control Label="OA Part Number" PropName="PartNo" ApplyTo="Global" Type="TextBox" ReadOnly="False" DefaultValue="" Mode="Text" />
+      <Control Label="Name" PropName="Description" ApplyTo="Global" Type="TextBox" ReadOnly="False" DefaultValue="" Mode="Text" />
+      <Control Label="Created By" PropName="Author" ApplyTo="Global" Type="ComboBox" ReadOnly="False" UserDefineable="False">
+        <Data Path="G:\Shared drives\OA Templates\OA SW Custom Property Templates\authors.txt" SourceType="Text" />
+      </Control>
+      <Control Label="Creation Date" PropName="Creation Date" ApplyTo="Global" Type="TextBox" ReadOnly="False" DefaultValue="" Mode="Date" />
+      <Control Label="Part Type" PropName="MakeOrBuy" ApplyTo="Global" Type="RadioButton" ReadOnly="False">
+        <Data>
+          <Item Label="Fabricated" PropValue="Fab">
+            <ChildControl PropName="Groupbox8" Visibility="IsChecked=true" />
+            <ChildControl PropName="Finish" Visibility="IsChecked=true" />
+          </Item>
+          <Item Label="Commercial" PropValue="Coml">
+            <ChildControl PropName="Groupbox16" Visibility="IsChecked=true" />
+          </Item>
+          <Item Label="Made from Commerical" PropValue="Madefrom">
+            <ChildControl PropName="Groupbox19" Visibility="IsChecked=true" />
+            <ChildControl PropName="Groupbox8" Visibility="IsChecked=true" />
+            <ChildControl PropName="Finish" Visibility="IsChecked=true" />
+          </Item>
+        </Data>
+      </Control>
+    </GroupBox>
+    <GroupBox Label="Revision" PropName="Groupbox8" DefaultState="Expanded">
+      <Control Label="Revision" PropName="Revision" ApplyTo="Global" Type="TextBox" ReadOnly="False" DefaultValue="" Mode="Text" />
+      <Control Label="Revised By" PropName="Revision Author" ApplyTo="Global" Type="ComboBox" ReadOnly="False" UserDefineable="False">
+        <Data Path="G:\Shared drives\OA Templates\OA SW Custom Property Templates\authors.txt" SourceType="Text" />
+      </Control>
+      <Control Label="Latest Revision Date" PropName="Revision Date" ApplyTo="Global" Type="TextBox" ReadOnly="False" DefaultValue="" Mode="Date" />
+    </GroupBox>
+    <GroupBox Label="Material" PropName="Groupbox13" DefaultState="Expanded">
+      <Control Label="Material" PropName="Material" ApplyTo="Global" Type="TextBox" ReadOnly="False" DefaultValue="SW-Material" Mode="SWProperty" />
+      <Control Label="Finish" PropName="Finish" ApplyTo="Global" Type="TextBox" ReadOnly="False" DefaultValue="" Mode="Text" />
+      <Control Label="Weight" PropName="Weight" ApplyTo="Config" Type="TextBox" ReadOnly="False" DefaultValue="SW-Mass" Mode="SWProperty" />
+    </GroupBox>
+    <GroupBox Label="Commercial Part" PropName="Groupbox16" DefaultState="Expanded">
+      <Control Label="Supplier" PropName="Vendor" ApplyTo="Global" Type="TextBox" ReadOnly="False" DefaultValue="" Mode="Text" />
+      <Control Label="Supplier Part No." PropName="VendorNo" ApplyTo="Global" Type="TextBox" ReadOnly="False" DefaultValue="" Mode="Text" />
+    </GroupBox>
+    <GroupBox Label="Made From" PropName="Groupbox19" DefaultState="Expanded">
+      <Control Label="Made from OA Part Number" PropName="Made from OA Part Number" ApplyTo="Global" Type="TextBox" ReadOnly="False" DefaultValue="" Mode="Text" />
+      <Control Label="Made from Supplier" PropName="Made From Supplier" ApplyTo="Global" Type="TextBox" ReadOnly="False" DefaultValue="" Mode="Text" />
+      <Control Label="Made from Supplier Part Number" PropName="Made From Supplier Part No" ApplyTo="Global" Type="TextBox" ReadOnly="False" DefaultValue="" Mode="Text" />
+    </GroupBox>
+    <GroupBox Label="Misc" PropName="Groupbox23" DefaultState="Expanded">
+      <Control Label="Notes" PropName="Notes" ApplyTo="Global" Type="TextBox" ReadOnly="False" DefaultValue="" Mode="Text" />
+    </GroupBox>
+  </CPSheet>
+</CPTemplate>
