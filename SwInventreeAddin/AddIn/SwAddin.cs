@@ -194,9 +194,9 @@ namespace SwInventreeAddin.AddIn
 
         private int OnFileClose(string fileName, int reason)
         {
-            // After a document closes the active doc may be null; LoadPartNumber
-            // detects this and calls ClearAll() automatically.
-            _taskPaneControl?.LoadPartNumber();
+            // Call ClearAll directly — at this point ActiveDoc still returns the
+            // closing document, so LoadPartNumber() would incorrectly populate fields.
+            _taskPaneControl?.ClearAll();
             return 0;
         }
 
