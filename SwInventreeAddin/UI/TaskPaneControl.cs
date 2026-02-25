@@ -35,6 +35,7 @@ namespace SwInventreeAddin.UI
         private Panel _propertiesSection = null!;   // whole properties block; hidden when no doc open
 
         private bool _suppressNextLoad = false;  // set by OnFileClose to prevent re-populate on ActiveDocChange
+        private System.Windows.Forms.Timer? _closeTimer;  // fires after close to guarantee a clean reload
 
         private readonly IInventreeClient         _client;
         private readonly IDocumentPropertyService _propertyService;
@@ -45,7 +46,7 @@ namespace SwInventreeAddin.UI
         private static readonly Font  UiFont      = new Font("Segoe UI", 11f);
         private static readonly Font  UiFontBold  = new Font("Segoe UI", 11f,   FontStyle.Bold);
         private static readonly Font  LabelFont   = new Font("Segoe UI", 10.5f, FontStyle.Bold);  // field label — bold like SW
-        private static readonly Font  TagFont     = new Font("Segoe UI",  9f,   FontStyle.Italic);
+        private static readonly Font  TagFont     = new Font("Segoe UI", 10f,  FontStyle.Italic);
         private static readonly Font  SectionFont = new Font("Segoe UI", 10.5f, FontStyle.Bold);
         // Colours — white inputs match SW; cream distinguishes InvenTree data
         private static readonly Color LabelFg        = Color.FromArgb(30,  30,  30);   // dark, same as SW labels
@@ -413,6 +414,28 @@ namespace SwInventreeAddin.UI
         /// </summary>
         public void SuppressNextLoad() => _suppressNextLoad = true;
 
+        /// <summary>
+        /// Clears the form immediately, then fires a delayed LoadPartNumber after SolidWorks has
+        /// finished releasing the closing document. This is the reliable close path: by the time
+        /// the timer fires, ActiveDoc is genuinely null so LoadPartNumber calls ClearAll on its own.
+        /// </summary>
+        public void ScheduleClearAfterClose()
+        {
+            ClearAll();
+
+            _closeTimer?.Stop();
+            _closeTimer?.Dispose();
+            _closeTimer = new System.Windows.Forms.Timer { Interval = 500 };
+            _closeTimer.Tick += (s, e) =>
+            {
+                _closeTimer.Stop();
+                _closeTimer.Dispose();
+                _closeTimer = null;
+                LoadPartNumber();
+            };
+            _closeTimer.Start();
+        }
+
         public async Task FetchPartAsync()
         {
             // Refresh the Current column from the live document (Name/Notes/Revision only —
@@ -482,8 +505,10 @@ namespace SwInventreeAddin.UI
             if (_lastFetchedPart == null)
                 return;
 
-            _propertyService.SetCustomProperty("Description", _lastFetchedPart.Name);
-            _currentDescriptionBox.Text = _lastFetchedPart.Name;
+            // Write from the TextBox so user edits in the preview field are honoured.
+            var value = NamePreviewTextBox.Text;
+            _propertyService.SetCustomProperty("Description", value);
+            _currentDescriptionBox.Text = value;
             StatusLabel.Text = "\u2713  Name applied.";
         }
 
@@ -492,8 +517,10 @@ namespace SwInventreeAddin.UI
             if (_lastFetchedPart == null)
                 return;
 
-            _propertyService.SetCustomProperty("Notes", _lastFetchedPart.Notes);
-            _currentNotesBox.Text = _lastFetchedPart.Notes;
+            // Write from the TextBox so user edits in the preview field are honoured.
+            var value = NotesPreviewTextBox.Text;
+            _propertyService.SetCustomProperty("Notes", value);
+            _currentNotesBox.Text = value;
             StatusLabel.Text = "\u2713  Notes applied.";
         }
     }

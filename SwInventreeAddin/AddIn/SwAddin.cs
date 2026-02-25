@@ -197,10 +197,10 @@ namespace SwInventreeAddin.AddIn
 
         private int OnFileClose(string fileName, int reason)
         {
-            // Clear now, and mark the control so that the ActiveDocChange event
-            // that immediately follows will also clear rather than re-load.
-            _taskPaneControl?.ClearAll();
-            _taskPaneControl?.SuppressNextLoad();
+            // ScheduleClearAfterClose clears the form immediately, then rechecks
+            // after a short delay when SolidWorks has fully released the document.
+            // This beats any ordering of ActiveDocChange / FileCloseNotify events.
+            _taskPaneControl?.ScheduleClearAfterClose();
             return 0;
         }
 
