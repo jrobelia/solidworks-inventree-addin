@@ -44,14 +44,18 @@ namespace SwInventreeAddin.Config
             }
 
             var root = document.RootElement;
-            if (!root.TryGetProperty(_serverName, out var serverElement))
+            if (!root.TryGetProperty("servers", out var serversElement))
                 throw new InvalidOperationException(
-                    $"Server '{_serverName}' not found in configuration file.");
+                    "inventree_servers.json is missing the 'servers' section.");
+
+            if (!serversElement.TryGetProperty(_serverName, out var serverElement))
+                throw new InvalidOperationException(
+                    $"Server '{_serverName}' not found in inventree_servers.json.");
 
             return new ServerConfig
             {
-                Url    = serverElement.GetProperty("Url").GetString()    ?? string.Empty,
-                ApiKey = serverElement.GetProperty("ApiKey").GetString() ?? string.Empty
+                Url    = serverElement.GetProperty("url").GetString()     ?? string.Empty,
+                ApiKey = serverElement.GetProperty("api_key").GetString() ?? string.Empty
             };
         }
     }

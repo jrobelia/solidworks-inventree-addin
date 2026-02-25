@@ -17,7 +17,7 @@ namespace SwInventreeAddin.InvenTree
             _apiKey     = apiKey;
         }
 
-        public async Task<InventreePart> GetPartByIpnAsync(string ipn)
+        public async Task<InventreePart?> GetPartByIpnAsync(string ipn)
         {
             _httpClient.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Token", _apiKey);

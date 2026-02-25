@@ -30,7 +30,7 @@ namespace SwInventreeAddin.Tests
         public void GetServerConfig_ValidJson_ReadsUrlCorrectly()
         {
             File.WriteAllText(_tempFilePath,
-                @"{ ""staging"": { ""Url"": ""http://staging.example.com"", ""ApiKey"": ""abc123"" } }");
+                @"{ ""servers"": { ""staging"": { ""url"": ""http://staging.example.com"", ""api_key"": ""abc123"" } } }");
 
             var config = CreateProvider("staging").GetServerConfig();
 
@@ -41,7 +41,7 @@ namespace SwInventreeAddin.Tests
         public void GetServerConfig_ValidJson_ReadsApiKeyCorrectly()
         {
             File.WriteAllText(_tempFilePath,
-                @"{ ""staging"": { ""Url"": ""http://staging.example.com"", ""ApiKey"": ""abc123"" } }");
+                @"{ ""servers"": { ""staging"": { ""url"": ""http://staging.example.com"", ""api_key"": ""abc123"" } } }");
 
             var config = CreateProvider("staging").GetServerConfig();
 
@@ -71,8 +71,10 @@ namespace SwInventreeAddin.Tests
         public void GetServerConfig_ReturnsStagingEntry_NotProductionEntry()
         {
             File.WriteAllText(_tempFilePath, @"{
-                ""production"": { ""Url"": ""http://production.example.com"", ""ApiKey"": ""prod-key"" },
-                ""staging"":    { ""Url"": ""http://staging.example.com"",    ""ApiKey"": ""staging-key"" }
+                ""servers"": {
+                    ""production"": { ""url"": ""http://production.example.com"", ""api_key"": ""prod-key"" },
+                    ""staging"":    { ""url"": ""http://staging.example.com"",    ""api_key"": ""staging-key"" }
+                }
             }");
 
             var config = CreateProvider("staging").GetServerConfig();

@@ -4,6 +4,6 @@ namespace SwInventreeAddin.InvenTree
 {
     public interface IInventreeClient
     {
-        Task<InventreePart> GetPartByIpnAsync(string ipn);
+        Task<InventreePart?> GetPartByIpnAsync(string ipn);
     }
 }

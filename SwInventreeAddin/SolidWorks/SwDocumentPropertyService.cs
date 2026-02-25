@@ -35,8 +35,8 @@
                 return;
 
             var mgr = modelDoc.Extension.CustomPropertyManager[""];
-            // swCustomInfoText = 30, swCustomPropertyReplaceValue = 0
-            mgr.Add3(name, 30, value, 0);
+            // swCustomInfoText = 30, swCustomPropertyReplaceValue = 2
+            mgr.Add3(name, 30, value, 2);
         }
     }
 }
