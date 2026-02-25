@@ -34,25 +34,25 @@ namespace SwInventreeAddin.UI
         private InventreePart?                    _lastFetchedPart;
 
         // ── Style constants ────────────────────────────────────────────────────
-        // Font sizes matched to SolidWorks Custom Properties panel (Segoe UI)
-        private static readonly Font  UiFont         = new Font("Segoe UI", 10.5f);
-        private static readonly Font  UiFontBold     = new Font("Segoe UI", 10.5f, FontStyle.Bold);
-        private static readonly Font  LabelFont      = new Font("Segoe UI",  9.5f);
-        private static readonly Font  TagFont        = new Font("Segoe UI",  8.5f, FontStyle.Italic);
-        private static readonly Font  SectionFont    = new Font("Segoe UI", 10f,   FontStyle.Bold);
-        // Colours
-        private static readonly Color FieldBlue      = Color.FromArgb(0,  112, 192);
-        private static readonly Color SectionHeaderBg = Color.FromArgb(207, 207, 207); // SW grey band
+        // Fonts — matched to SolidWorks Custom Properties panel
+        private static readonly Font  UiFont      = new Font("Segoe UI", 11f);
+        private static readonly Font  UiFontBold  = new Font("Segoe UI", 11f,   FontStyle.Bold);
+        private static readonly Font  LabelFont   = new Font("Segoe UI", 10.5f, FontStyle.Bold);  // field label — bold like SW
+        private static readonly Font  TagFont     = new Font("Segoe UI",  9f,   FontStyle.Italic);
+        private static readonly Font  SectionFont = new Font("Segoe UI", 10.5f, FontStyle.Bold);
+        // Colours — white inputs match SW; cream distinguishes InvenTree data
+        private static readonly Color LabelFg        = Color.FromArgb(30,  30,  30);   // dark, same as SW labels
+        private static readonly Color SectionHeaderBg = Color.FromArgb(215, 215, 215); // subtle SW grey band
         private static readonly Color SectionHeaderFg = Color.FromArgb(30,  30,  30);
-        private static readonly Color DividerGrey    = Color.FromArgb(185, 185, 185);
-        private static readonly Color CurrentBg      = Color.FromArgb(240, 240, 240);
-        private static readonly Color IncomingBg     = Color.FromArgb(255, 252, 210);
-        private static readonly Color TagCurrentFg   = Color.FromArgb(110, 110, 110);
-        private static readonly Color TagNewFg       = Color.FromArgb(0,  130,  60);
-        private static readonly Color ImportBtnBg    = Color.FromArgb(0,  112, 192);
-        private static readonly Color ApplyBtnBg     = Color.FromArgb(0,  130,  60);
-        private const int BoxHeight   = 24;
-        private const int NotesHeight = 72;
+        private static readonly Color DividerGrey     = Color.FromArgb(185, 185, 185);
+        private static readonly Color CurrentBg       = Color.White;                   // white — matches SW input boxes
+        private static readonly Color IncomingBg      = Color.FromArgb(255, 252, 210); // cream — InvenTree data
+        private static readonly Color TagCurrentFg    = Color.FromArgb(110, 110, 110);
+        private static readonly Color TagNewFg        = Color.FromArgb(0,  130,  60);
+        private static readonly Color ImportBtnBg     = Color.FromArgb(0,  112, 192);  // SW blue
+        private static readonly Color ApplyBtnBg      = Color.FromArgb(0,  130,  60);  // green
+        private const int BoxHeight   = 26;
+        private const int NotesHeight = 80;
 
         public TaskPaneControl(IInventreeClient client, IDocumentPropertyService propertyService)
         {
@@ -114,7 +114,7 @@ namespace SwInventreeAddin.UI
             };
 
             var lblPn = MakeFieldLabel("OA Part Number");
-            lblPn.Padding = new Padding(10, 10, 10, 3);
+            lblPn.Padding = new Padding(10, 14, 10, 2);
 
             // Stack: bottom-to-top
             Controls.Add(StatusLabel);
@@ -179,7 +179,7 @@ namespace SwInventreeAddin.UI
         {
             int h = multiline ? NotesHeight : BoxHeight;
 
-            var group = new Panel { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(0, 0, 0, 10) };
+            var group = new Panel { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(0, 0, 0, 18) }; // generous gap between fields
 
             // InvenTree row (cream) — add first so it docks below the current row
             incomingBox = new TextBox
@@ -227,7 +227,7 @@ namespace SwInventreeAddin.UI
             };
 
             var fieldLabel = MakeFieldLabel(label);
-            fieldLabel.Padding = new Padding(10, 8, 10, 0);
+            fieldLabel.Padding = new Padding(10, 14, 10, 2);
 
             // Add bottom-to-top: incomingRow last so it appears below currentBox
             group.Controls.Add(incomingRow);
@@ -272,11 +272,11 @@ namespace SwInventreeAddin.UI
             {
                 Text      = text,
                 Dock      = DockStyle.Top,
-                ForeColor = FieldBlue,
+                ForeColor = LabelFg,
                 Font      = LabelFont,
                 AutoSize  = false,
-                Height    = 22,
-                Padding   = new Padding(10, 2, 0, 0),
+                Height    = 24,
+                Padding   = new Padding(10, 4, 0, 0),
             };
 
         private static Button MakeButton(string text, Color backColor, DockStyle dock)
