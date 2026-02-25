@@ -14,7 +14,12 @@ namespace SwInventreeAddin.UI
         public TextBox NamePreviewTextBox     { get; private set; } = null!;
         public TextBox NotesPreviewTextBox    { get; private set; } = null!;
         public TextBox RevisionPreviewTextBox { get; private set; } = null!;
+        // ApplyButton is a hidden sentinel — not shown in the UI, only used by tests
+        // to check that the apply action becomes available after a successful fetch.
         public Button  ApplyButton            { get; private set; } = null!;
+        // Per-field apply buttons shown in the UI.
+        public Button  ApplyNameButton        { get; private set; } = null!;
+        public Button  ApplyNotesButton       { get; private set; } = null!;
         public Label   StatusLabel            { get; private set; } = null!;
 
         // Current-document value boxes (shown immediately when a part opens)
@@ -28,6 +33,8 @@ namespace SwInventreeAddin.UI
         private Panel _revisionInvenTreeRow = null!;
 
         private Panel _propertiesSection = null!;   // whole properties block; hidden when no doc open
+
+        private bool _suppressNextLoad = false;  // set by OnFileClose to prevent re-populate on ActiveDocChange
 
         private readonly IInventreeClient         _client;
         private readonly IDocumentPropertyService _propertyService;
@@ -87,10 +94,8 @@ namespace SwInventreeAddin.UI
                 Font      = UiFont,
             };
 
-            // Apply button — DockStyle.Top; side padding from UserControl.
-            ApplyButton = MakeButton("Apply to Document", ApplyBtnBg, DockStyle.Top);
-            ApplyButton.Enabled = false;
-            ApplyButton.Click  += (s, e) => ApplyToDocument();
+            // ApplyButton is a hidden sentinel for tests — not added to Controls.
+            ApplyButton = new Button { Enabled = false };
 
             // Properties comparison section
             _propertiesSection = BuildPropertiesSection();
@@ -114,9 +119,8 @@ namespace SwInventreeAddin.UI
             // "OA Part Number" label — 8 px top gap before first label, inside label.
             var lblPn = MakeFieldLabel("OA Part Number");
 
-            // Stack: bottom-to-top
+            // Stack: bottom-to-top (StatusLabel at bottom, lblPn at top)
             Controls.Add(StatusLabel);
-            Controls.Add(ApplyButton);
             Controls.Add(_propertiesSection);
             Controls.Add(divLine);
             Controls.Add(btnImport);
@@ -129,27 +133,30 @@ namespace SwInventreeAddin.UI
         {
             var section = new Panel { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(0) };
 
-            // Use locals for out params because C# properties can't be passed as out arguments.
-            TextBox curRev, inRev; Panel rowRev;
-            var revField = BuildComparisonField("Revision",
-                out curRev, out inRev, out rowRev, multiline: false, incomingReadOnly: true);
-            _currentRevisionBox   = curRev;
-            RevisionPreviewTextBox = inRev;
-            _revisionInvenTreeRow  = rowRev;
-
-            TextBox curNotes, inNotes; Panel rowNotes;
+            TextBox curNotes, inNotes; Panel rowNotes; Button? notesApply;
             var notesField = BuildComparisonField("Notes",
-                out curNotes, out inNotes, out rowNotes, multiline: true, incomingReadOnly: false);
+                out curNotes, out inNotes, out rowNotes, out notesApply, multiline: true, incomingReadOnly: false);
             _currentNotesBox   = curNotes;
             NotesPreviewTextBox = inNotes;
             _notesInvenTreeRow  = rowNotes;
+            ApplyNotesButton = notesApply!;
+            ApplyNotesButton.Click += (s, e) => ApplyNotesToDocument();
 
-            TextBox curName, inName; Panel rowName;
-            var nameField = BuildComparisonField("Name  \u2192  Description",
-                out curName, out inName, out rowName, multiline: false, incomingReadOnly: false);
+            TextBox curName, inName; Panel rowName; Button? nameApply;
+            var nameField = BuildComparisonField("Name",
+                out curName, out inName, out rowName, out nameApply, multiline: false, incomingReadOnly: false);
             _currentDescriptionBox = curName;
             NamePreviewTextBox     = inName;
             _nameInvenTreeRow      = rowName;
+            ApplyNameButton = nameApply!;
+            ApplyNameButton.Click += (s, e) => ApplyNameToDocument();
+
+            TextBox curRev, inRev; Panel rowRev; Button? _;
+            var revField = BuildComparisonField("Revision",
+                out curRev, out inRev, out rowRev, out _, multiline: false, incomingReadOnly: true);
+            _currentRevisionBox   = curRev;
+            RevisionPreviewTextBox = inRev;
+            _revisionInvenTreeRow  = rowRev;
 
             var sectionHeader = BuildSectionHeader("Properties");
 
@@ -172,16 +179,38 @@ namespace SwInventreeAddin.UI
             out TextBox currentBox,
             out TextBox incomingBox,
             out Panel   incomingRow,
+            out Button? applyButton,
             bool multiline,
             bool incomingReadOnly)
         {
             int h = multiline ? NotesHeight : BoxHeight;
 
-            // 14 px top padding creates breathing room between fields without relying
-            // on label internal padding (which would clip tall text).
+            // 14 px top padding creates breathing room between fields.
             var group = new Panel { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(0, 14, 0, 0) };
 
-            // InvenTree row (cream) — add first so it docks below the current row
+            // Build the apply button wrapper (only for writable fields)
+            applyButton = null;
+            Panel? applyWrapper = null;
+            if (!incomingReadOnly)
+            {
+                applyButton = new Button
+                {
+                    Text      = "Apply to Document",
+                    Dock      = DockStyle.Right,
+                    Width     = 155,
+                    Height    = 28,
+                    BackColor = ApplyBtnBg,
+                    ForeColor = Color.White,
+                    FlatStyle = FlatStyle.Flat,
+                    Font      = UiFont,
+                    Enabled   = false,
+                };
+                applyButton.FlatAppearance.BorderSize = 0;
+                applyWrapper = new Panel { Dock = DockStyle.Top, Height = 34, Padding = new Padding(0, 3, 0, 3) };
+                applyWrapper.Controls.Add(applyButton);
+            }
+
+            // InvenTree row (cream) — controls added bottom-to-top
             incomingBox = new TextBox
             {
                 ReadOnly  = incomingReadOnly,
@@ -201,6 +230,8 @@ namespace SwInventreeAddin.UI
                 Padding   = new Padding(2, 3, 0, 0),
             };
             incomingRow = new Panel { Dock = DockStyle.Top, AutoSize = true, Visible = false };
+            // Add bottom-to-top: applyWrapper (if any) → incomingBox → tagNew
+            if (applyWrapper != null) incomingRow.Controls.Add(applyWrapper);
             incomingRow.Controls.Add(incomingBox);
             incomingRow.Controls.Add(tagNew);
 
@@ -303,6 +334,13 @@ namespace SwInventreeAddin.UI
         /// </summary>
         public void LoadPartNumber()
         {
+            if (_suppressNextLoad)
+            {
+                _suppressNextLoad = false;
+                ClearAll();
+                return;
+            }
+
             var partNo = _propertyService.GetCustomProperty("PartNo");
 
             if (string.IsNullOrEmpty(partNo))
@@ -324,7 +362,9 @@ namespace SwInventreeAddin.UI
             NamePreviewTextBox.Text         = string.Empty;
             NotesPreviewTextBox.Text        = string.Empty;
             RevisionPreviewTextBox.Text     = string.Empty;
-            ApplyButton.Enabled             = false;
+            ApplyButton.Enabled      = false;
+            ApplyNameButton.Enabled  = false;
+            ApplyNotesButton.Enabled = false;
             _lastFetchedPart                = null;
             StatusLabel.Text               = string.Empty;
         }
@@ -345,10 +385,18 @@ namespace SwInventreeAddin.UI
             _notesInvenTreeRow.Visible      = false;
             _revisionInvenTreeRow.Visible   = false;
 
-            ApplyButton.Enabled             = false;
+            ApplyButton.Enabled      = false;
+            ApplyNameButton.Enabled  = false;
+            ApplyNotesButton.Enabled = false;
             StatusLabel.Text               = string.Empty;
             _lastFetchedPart               = null;
         }
+
+        /// <summary>
+        /// Tells LoadPartNumber to call ClearAll on its next invocation instead of loading.
+        /// Used by SwAddin.OnFileClose so the ActiveDocChange that follows close never re-populates.
+        /// </summary>
+        public void SuppressNextLoad() => _suppressNextLoad = true;
 
         public async Task FetchPartAsync()
         {
@@ -362,8 +410,10 @@ namespace SwInventreeAddin.UI
                 return;
             }
 
-            StatusLabel.Text   = "Fetching from InvenTree\u2026";
-            ApplyButton.Enabled = false;
+            StatusLabel.Text    = "Fetching from InvenTree\u2026";
+            ApplyButton.Enabled      = false;
+            ApplyNameButton.Enabled  = false;
+            ApplyNotesButton.Enabled = false;
 
             try
             {
@@ -384,7 +434,9 @@ namespace SwInventreeAddin.UI
                 _nameInvenTreeRow.Visible       = true;
                 _notesInvenTreeRow.Visible      = true;
                 _revisionInvenTreeRow.Visible   = true;
-                ApplyButton.Enabled             = true;
+                ApplyButton.Enabled      = true;
+                ApplyNameButton.Enabled  = true;
+                ApplyNotesButton.Enabled = true;
                 _lastFetchedPart               = part;
                 StatusLabel.Text               = string.Empty;
             }
@@ -407,6 +459,26 @@ namespace SwInventreeAddin.UI
             _currentNotesBox.Text       = _lastFetchedPart.Notes;
 
             StatusLabel.Text = "\u2713  Applied to document.";
+        }
+
+        public void ApplyNameToDocument()
+        {
+            if (_lastFetchedPart == null)
+                return;
+
+            _propertyService.SetCustomProperty("Description", _lastFetchedPart.Name);
+            _currentDescriptionBox.Text = _lastFetchedPart.Name;
+            StatusLabel.Text = "\u2713  Name applied.";
+        }
+
+        public void ApplyNotesToDocument()
+        {
+            if (_lastFetchedPart == null)
+                return;
+
+            _propertyService.SetCustomProperty("Notes", _lastFetchedPart.Notes);
+            _currentNotesBox.Text = _lastFetchedPart.Notes;
+            StatusLabel.Text = "\u2713  Notes applied.";
         }
     }
 }
