@@ -105,7 +105,7 @@ namespace SwInventreeAddin.UI
             var divLine = MakeDivider();
 
             // Import button
-            var btnImport = MakeButton("Import from InvenTree", ImportBtnBg, DockStyle.Top);
+            var btnImport = MakeButton("Load Properties from InvenTree", ImportBtnBg, DockStyle.Top);
             btnImport.Click  += async (s, e) => await FetchPartAsync();
 
             // OA Part Number entry
@@ -400,8 +400,9 @@ namespace SwInventreeAddin.UI
 
         public async Task FetchPartAsync()
         {
-            if (string.IsNullOrEmpty(PartNumberTextBox.Text))
-                LoadPartNumber();
+            // Always refresh the Current column from the live document first,
+            // so any changes made in SW since the panel opened are picked up.
+            LoadPartNumber();
 
             var ipn = PartNumberTextBox.Text;
             if (string.IsNullOrEmpty(ipn))
