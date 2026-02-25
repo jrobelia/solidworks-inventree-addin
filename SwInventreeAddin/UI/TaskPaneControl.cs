@@ -326,23 +326,15 @@ namespace SwInventreeAddin.UI
         // ── Behaviour ─────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Reads the active document's custom properties and fills the "Current" column.
-        /// Clears everything when no document is open.
-        /// Called on startup and on every document open/switch/close event.
-        /// </summary>
-        /// <summary>
         /// Re-reads Description, Notes, and Revision from the live document into the
-        /// "Current" column. Does NOT touch the OA Part Number box — the user may
-        /// have typed a different IPN there to search InvenTree with.
+        /// "Current" column. The OA Part Number box is intentionally not touched so
+        /// the user can type a different IPN to search InvenTree with.
         /// </summary>
         private void RefreshCurrentProperties()
         {
-            if (_propertiesSection.Visible)
-            {
-                _currentDescriptionBox.Text = _propertyService.GetCustomProperty("Description");
-                _currentNotesBox.Text       = _propertyService.GetCustomProperty("Notes");
-                _currentRevisionBox.Text    = _propertyService.GetCustomProperty("Revision");
-            }
+            _currentDescriptionBox.Text = _propertyService.GetCustomProperty("Description");
+            _currentNotesBox.Text       = _propertyService.GetCustomProperty("Notes");
+            _currentRevisionBox.Text    = _propertyService.GetCustomProperty("Revision");
         }
 
         public void LoadPartNumber()
@@ -355,11 +347,9 @@ namespace SwInventreeAddin.UI
                 return;
             }
 
-            PartNumberTextBox.Text          = partNo;
-            _currentDescriptionBox.Text     = _propertyService.GetCustomProperty("Description");
-            _currentNotesBox.Text           = _propertyService.GetCustomProperty("Notes");
-            _currentRevisionBox.Text        = _propertyService.GetCustomProperty("Revision");
-            _propertiesSection.Visible      = true;
+            PartNumberTextBox.Text     = partNo;
+            _propertiesSection.Visible = true;
+            RefreshCurrentProperties();
 
             // Clear any stale InvenTree preview from a previous document
             _nameInvenTreeRow.Visible       = false;

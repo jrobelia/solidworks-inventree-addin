@@ -1,0 +1,25 @@
+﻿# OA InvenTree Add-In Uninstaller
+
+if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
+          ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))
+{
+    Write-Host "ERROR: Run as Administrator." -ForegroundColor Red
+    Read-Host "Press Enter to exit"; exit 1
+}
+
+$installDir = "C:\Program Files\OA InvenTree Addin"
+$regasm     = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\RegAsm.exe"
+$addinDll   = Join-Path $installDir "SwInventreeAddin.dll"
+
+Write-Host "OA InvenTree Add-In Uninstaller" -ForegroundColor Cyan
+Write-Host ""
+
+if (Test-Path $addinDll) {
+    Write-Host "Unregistering from SolidWorks..."
+    & $regasm $addinDll /u /s 2>&1 | Write-Host
+}
+
+Write-Host "Deleting add-in files..."
+Remove-Item $installDir -Recurse -Force -ErrorAction SilentlyContinue
+Write-Host "Done. Restart SolidWorks to complete removal." -ForegroundColor Green
+Read-Host "Press Enter to exit"

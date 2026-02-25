@@ -54,10 +54,15 @@ namespace SwInventreeAddin.Config
                     throw new InvalidOperationException(
                         $"Server '{_serverName}' not found in inventree_servers.json.");
 
+                if (!serverElement.TryGetProperty("url", out var urlElement) ||
+                    !serverElement.TryGetProperty("api_key", out var apiKeyElement))
+                    throw new InvalidOperationException(
+                        $"Server '{_serverName}' in inventree_servers.json is missing 'url' or 'api_key'.");
+
                 return new ServerConfig
                 {
-                    Url    = serverElement.GetProperty("url").GetString()     ?? string.Empty,
-                    ApiKey = serverElement.GetProperty("api_key").GetString() ?? string.Empty
+                    Url    = urlElement.GetString()    ?? string.Empty,
+                    ApiKey = apiKeyElement.GetString() ?? string.Empty
                 };
             }
         }
