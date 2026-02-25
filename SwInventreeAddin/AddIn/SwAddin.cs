@@ -91,6 +91,8 @@ namespace SwInventreeAddin.AddIn
 
         private ISldWorks?        _swApp;
         private SldWorks?          _swEvents;   // concrete class needed to subscribe to COM events
+        private string?            _currentDisplayedPath; // path of the file currently shown in the panel
+        private string?            _closingDocPath;       // path of the file currently being closed
         private TaskPaneControl?  _taskPaneControl;
         private ITaskpaneView?    _taskPaneView;
         private System.Net.Http.HttpClient? _httpClient;
@@ -182,25 +184,40 @@ namespace SwInventreeAddin.AddIn
 
         private int OnActiveDocChange()
         {
-            // Direct call — SuppressNextLoad (set by OnFileClose) ensures that if
-            // ActiveDoc is still the closing document at this point, LoadPartNumber
-            // will call ClearAll instead of re-populating the form.
+            var doc = _swApp?.ActiveDoc as IModelDoc2;
+            var activePath = doc?.GetPathName();
+
+            // If ActiveDoc is still pointing at the file currently being closed,
+            // SolidWorks has not finished the transition yet — ignore this event.
+            if (activePath != null &&
+                string.Equals(activePath, _closingDocPath, StringComparison.OrdinalIgnoreCase))
+                return 0;
+
+            _closingDocPath = null;
+            _currentDisplayedPath = activePath;
             _taskPaneControl?.LoadPartNumber();
             return 0;
         }
 
         private int OnDocumentLoad(string title, string path)
         {
+            _closingDocPath = null;
+            _currentDisplayedPath = path;
             _taskPaneControl?.LoadPartNumber();
             return 0;
         }
 
         private int OnFileClose(string fileName, int reason)
         {
-            // ScheduleClearAfterClose clears the form immediately, then rechecks
-            // after a short delay when SolidWorks has fully released the document.
-            // This beats any ordering of ActiveDocChange / FileCloseNotify events.
-            _taskPaneControl?.ScheduleClearAfterClose();
+            _closingDocPath = fileName;
+
+            // Only clear the form if the file being closed is the one we are displaying.
+            // If a background document (not the active one) closes, leave the form alone.
+            if (string.Equals(fileName, _currentDisplayedPath, StringComparison.OrdinalIgnoreCase))
+            {
+                _currentDisplayedPath = null;
+                _taskPaneControl?.ClearAll();
+            }
             return 0;
         }
 
