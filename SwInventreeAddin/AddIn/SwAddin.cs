@@ -121,12 +121,18 @@ namespace SwInventreeAddin.AddIn
 
                 _taskPaneControl = new TaskPaneControl(inventreeClient, propertyService);
 
-                // Refresh the PartNo field whenever the user opens or switches documents
+                // Refresh the PartNo field whenever the user opens, switches, or closes documents
                 _swEvents = (SldWorks)thisSW;
-                _swEvents.ActiveDocChangeNotify    += OnActiveDocChange;
-                _swEvents.DocumentLoadNotify2      += OnDocumentLoad;
+                _swEvents.ActiveDocChangeNotify += OnActiveDocChange;
+                _swEvents.DocumentLoadNotify2   += OnDocumentLoad;
+                _swEvents.FileCloseNotify       += OnFileClose;
 
-                _taskPaneView = (ITaskpaneView)_swApp.CreateTaskpaneView2("", AddinTitle);
+                var iconPath = System.IO.Path.Combine(
+                    System.IO.Path.GetDirectoryName(
+                        System.Reflection.Assembly.GetExecutingAssembly().Location) ?? string.Empty,
+                    "Resources", "inventree_logo.png");
+
+                _taskPaneView = (ITaskpaneView)_swApp.CreateTaskpaneView2(iconPath, AddinTitle);
                 _taskPaneView.DisplayWindowFromHandle(_taskPaneControl.Handle.ToInt32());
 
                 return true;
@@ -148,6 +154,7 @@ namespace SwInventreeAddin.AddIn
             {
                 _swEvents.ActiveDocChangeNotify -= OnActiveDocChange;
                 _swEvents.DocumentLoadNotify2   -= OnDocumentLoad;
+                _swEvents.FileCloseNotify       -= OnFileClose;
                 _swEvents = null;
             }
 
@@ -176,11 +183,19 @@ namespace SwInventreeAddin.AddIn
         private int OnActiveDocChange()
         {
             _taskPaneControl?.LoadPartNumber();
-            return 0;   // 0 = success (required by SolidWorks event contract)
+            return 0;
         }
 
         private int OnDocumentLoad(string title, string path)
         {
+            _taskPaneControl?.LoadPartNumber();
+            return 0;
+        }
+
+        private int OnFileClose(string fileName, int reason)
+        {
+            // After a document closes the active doc may be null; LoadPartNumber
+            // detects this and calls ClearAll() automatically.
             _taskPaneControl?.LoadPartNumber();
             return 0;
         }
