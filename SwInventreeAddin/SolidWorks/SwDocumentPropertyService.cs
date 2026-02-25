@@ -1,4 +1,7 @@
-﻿namespace SwInventreeAddin.SolidWorks
+﻿using SolidWorks.Interop.sldworks;
+using SolidWorks.Interop.swconst;
+
+namespace SwInventreeAddin.SolidWorks
 {
     /// <summary>
     /// Reads and writes SolidWorks custom document properties.
@@ -6,37 +9,37 @@
     /// </summary>
     public class SwDocumentPropertyService : IDocumentPropertyService
     {
-        // SolidWorks application object is injected at runtime by SwAddin.
-        // Stored as dynamic so the project compiles without a SolidWorks SDK reference.
-        private readonly dynamic _swApp;
+        private readonly ISldWorks _swApp;
 
-        public SwDocumentPropertyService(dynamic swApp)
+        public SwDocumentPropertyService(ISldWorks swApp)
         {
             _swApp = swApp;
         }
 
         public string GetCustomProperty(string name)
         {
-            var modelDoc = _swApp.ActiveDoc;
+            var modelDoc = (IModelDoc2)_swApp.ActiveDoc;
             if (modelDoc == null)
                 return string.Empty;
 
-            var mgr        = modelDoc.Extension.CustomPropertyManager[""];
-            string valOut  = string.Empty;
-            string resolved = string.Empty;
-            mgr.Get4(name, false, out valOut, out resolved);
+            var mgr = modelDoc.Extension.CustomPropertyManager[""];
+            mgr.Get4(name, false, out _, out string resolved);
             return resolved ?? string.Empty;
         }
 
         public void SetCustomProperty(string name, string value)
         {
-            var modelDoc = _swApp.ActiveDoc;
+            var modelDoc = (IModelDoc2)_swApp.ActiveDoc;
             if (modelDoc == null)
                 return;
 
             var mgr = modelDoc.Extension.CustomPropertyManager[""];
-            // swCustomInfoText = 30, swCustomPropertyReplaceValue = 2
-            mgr.Add3(name, 30, value, 2);
+            mgr.Add3(
+                name,
+                (int)swCustomInfoType_e.swCustomInfoText,
+                value,
+                (int)swCustomPropertyAddOption_e.swCustomPropertyReplaceValue);
         }
     }
 }
+

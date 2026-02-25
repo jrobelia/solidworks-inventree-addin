@@ -1,5 +1,8 @@
-﻿using System.Runtime.InteropServices;
+﻿using System;
+using System.Runtime.InteropServices;
 using Microsoft.Win32;
+using SolidWorks.Interop.sldworks;
+using SolidWorks.Interop.swpublished;
 using SwInventreeAddin.Config;
 using SwInventreeAddin.InvenTree;
 using SwInventreeAddin.SolidWorks;
@@ -17,7 +20,7 @@ namespace SwInventreeAddin.AddIn
     /// </summary>
     [ComVisible(true)]
     [Guid("A1B2C3D4-E5F6-7890-ABCD-EF1234567890")]
-    public class SwAddin
+    public class SwAddin : ISwAddin
     {
         private const string AddinGuid        = "A1B2C3D4-E5F6-7890-ABCD-EF1234567890";
         private const string AddinTitle       = "InvenTree";
@@ -60,36 +63,60 @@ namespace SwInventreeAddin.AddIn
                 $@"Software\SolidWorks\Addins\{{{AddinGuid}}}", throwOnMissingSubKey: false);
         }
 
-        private dynamic?           _swApp;
-        private TaskPaneControl?   _taskPaneControl;
-        private dynamic?           _taskPaneView;
+        private ISldWorks?        _swApp;
+        private TaskPaneControl?  _taskPaneControl;
+        private ITaskpaneView?    _taskPaneView;
         private System.Net.Http.HttpClient? _httpClient;
+        private int               _addinCookie;
 
         public bool ConnectToSW(object thisSW, int cookie)
         {
-            _swApp = thisSW;
+            try
+            {
+                _swApp       = (ISldWorks)thisSW;
+                _addinCookie = cookie;
 
-            var configProvider  = new JsonFileConfigProvider(ResolveConfigPath());
-            var config          = configProvider.GetServerConfig();
-            _httpClient            = new System.Net.Http.HttpClient();
-            _httpClient.BaseAddress = new System.Uri(config.Url);
-            var inventreeClient = new InventreeHttpClient(_httpClient, config.ApiKey);
-            var propertyService = new SwDocumentPropertyService(_swApp);
+                // Tell SolidWorks our cookie so it can track us
+                _swApp.SetAddinCallbackInfo2(0, this, cookie);
 
-            _taskPaneControl = new TaskPaneControl(inventreeClient, propertyService);
+                var configProvider  = new JsonFileConfigProvider(ResolveConfigPath());
+                var config          = configProvider.GetServerConfig();
 
-            _taskPaneView = _swApp.CreateTaskpaneView2("", "InvenTree");
-            _taskPaneView.DisplayWindowFromHandle(_taskPaneControl.Handle.ToInt32());
+                _httpClient             = new System.Net.Http.HttpClient();
+                _httpClient.BaseAddress = new System.Uri(config.Url);
 
-            return true;
+                var inventreeClient = new InventreeHttpClient(_httpClient, config.ApiKey);
+                var propertyService = new SwDocumentPropertyService(_swApp);
+
+                _taskPaneControl = new TaskPaneControl(inventreeClient, propertyService);
+
+                _taskPaneView = (ITaskpaneView)_swApp.CreateTaskpaneView2("", AddinTitle);
+                _taskPaneView.DisplayWindowFromHandle(_taskPaneControl.Handle.ToInt32());
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Windows.Forms.MessageBox.Show(
+                    $"InvenTree add-in failed to load:{System.Environment.NewLine}{ex.Message}",
+                    "InvenTree Add-In Error",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Error);
+                return false;
+            }
         }
 
         public bool DisconnectFromSW()
         {
             _taskPaneView?.DeleteView();
+            if (_taskPaneView != null)
+            {
+                Marshal.ReleaseComObject(_taskPaneView);
+                _taskPaneView = null;
+            }
+
             _taskPaneControl?.Dispose();
             _taskPaneControl = null;
-            _taskPaneView    = null;
 
             _httpClient?.Dispose();
             _httpClient = null;
