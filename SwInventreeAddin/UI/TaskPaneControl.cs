@@ -34,19 +34,25 @@ namespace SwInventreeAddin.UI
         private InventreePart?                    _lastFetchedPart;
 
         // ── Style constants ────────────────────────────────────────────────────
-        private static readonly Font  UiFont       = new Font("Segoe UI", 9.5f);
-        private static readonly Font  UiFontBold   = new Font("Segoe UI", 9.5f, FontStyle.Bold);
-        private static readonly Font  TagFont      = new Font("Segoe UI", 8.5f, FontStyle.Italic);
-        private static readonly Color FieldBlue    = Color.FromArgb(0,  112, 192);
-        private static readonly Color DividerGrey  = Color.FromArgb(185, 185, 185);
-        private static readonly Color CurrentBg    = Color.FromArgb(240, 240, 240);
-        private static readonly Color IncomingBg   = Color.FromArgb(255, 252, 210);
-        private static readonly Color TagCurrentFg = Color.FromArgb(110, 110, 110);
-        private static readonly Color TagNewFg     = Color.FromArgb(0,  130,  60);
-        private static readonly Color ImportBtnBg  = Color.FromArgb(0,  112, 192);
-        private static readonly Color ApplyBtnBg   = Color.FromArgb(0,  130,  60);
+        // Font sizes matched to SolidWorks Custom Properties panel (Segoe UI)
+        private static readonly Font  UiFont         = new Font("Segoe UI", 10.5f);
+        private static readonly Font  UiFontBold     = new Font("Segoe UI", 10.5f, FontStyle.Bold);
+        private static readonly Font  LabelFont      = new Font("Segoe UI",  9.5f);
+        private static readonly Font  TagFont        = new Font("Segoe UI",  8.5f, FontStyle.Italic);
+        private static readonly Font  SectionFont    = new Font("Segoe UI", 10f,   FontStyle.Bold);
+        // Colours
+        private static readonly Color FieldBlue      = Color.FromArgb(0,  112, 192);
+        private static readonly Color SectionHeaderBg = Color.FromArgb(207, 207, 207); // SW grey band
+        private static readonly Color SectionHeaderFg = Color.FromArgb(30,  30,  30);
+        private static readonly Color DividerGrey    = Color.FromArgb(185, 185, 185);
+        private static readonly Color CurrentBg      = Color.FromArgb(240, 240, 240);
+        private static readonly Color IncomingBg     = Color.FromArgb(255, 252, 210);
+        private static readonly Color TagCurrentFg   = Color.FromArgb(110, 110, 110);
+        private static readonly Color TagNewFg       = Color.FromArgb(0,  130,  60);
+        private static readonly Color ImportBtnBg    = Color.FromArgb(0,  112, 192);
+        private static readonly Color ApplyBtnBg     = Color.FromArgb(0,  130,  60);
         private const int BoxHeight   = 24;
-        private const int NotesHeight = 66;
+        private const int NotesHeight = 72;
 
         public TaskPaneControl(IInventreeClient client, IDocumentPropertyService propertyService)
         {
@@ -101,7 +107,7 @@ namespace SwInventreeAddin.UI
             PartNumberTextBox = new TextBox
             {
                 Dock    = DockStyle.Top,
-                Margin  = new Padding(10, 0, 10, 4),
+                Margin  = new Padding(10, 2, 10, 4),
                 Height  = 24,
                 Font    = UiFont,
             };
@@ -235,19 +241,25 @@ namespace SwInventreeAddin.UI
         {
             var p = new Panel { Dock = DockStyle.Top, AutoSize = true };
 
+            // Solid grey band matching SolidWorks section headers ("Part Details", "Revision" etc.)
+            var band = new Panel
+            {
+                Dock      = DockStyle.Top,
+                Height    = 26,
+                BackColor = SectionHeaderBg,
+            };
             var lbl = new Label
             {
                 Text      = title,
-                Dock      = DockStyle.Top,
-                Font      = UiFontBold,
-                ForeColor = Color.FromArgb(50, 50, 50),
-                Height    = 24,
-                Padding   = new Padding(10, 5, 0, 0),
+                Dock      = DockStyle.Fill,
+                Font      = SectionFont,
+                ForeColor = SectionHeaderFg,
+                Padding   = new Padding(10, 4, 0, 0),
+                AutoSize  = false,
             };
-            var line = MakeDivider();
+            band.Controls.Add(lbl);
 
-            p.Controls.Add(lbl);
-            p.Controls.Add(line);
+            p.Controls.Add(band);
             return p;
         }
 
@@ -260,7 +272,7 @@ namespace SwInventreeAddin.UI
                 Text      = text,
                 Dock      = DockStyle.Top,
                 ForeColor = FieldBlue,
-                Font      = UiFont,
+                Font      = LabelFont,
                 AutoSize  = false,
                 Height    = 22,
                 Padding   = new Padding(10, 2, 0, 0),
