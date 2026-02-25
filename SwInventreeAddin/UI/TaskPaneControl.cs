@@ -332,6 +332,21 @@ namespace SwInventreeAddin.UI
         /// Clears everything when no document is open.
         /// Called on startup and on every document open/switch/close event.
         /// </summary>
+        /// <summary>
+        /// Re-reads Description, Notes, and Revision from the live document into the
+        /// "Current" column. Does NOT touch the OA Part Number box — the user may
+        /// have typed a different IPN there to search InvenTree with.
+        /// </summary>
+        private void RefreshCurrentProperties()
+        {
+            if (_propertiesSection.Visible)
+            {
+                _currentDescriptionBox.Text = _propertyService.GetCustomProperty("Description");
+                _currentNotesBox.Text       = _propertyService.GetCustomProperty("Notes");
+                _currentRevisionBox.Text    = _propertyService.GetCustomProperty("Revision");
+            }
+        }
+
         public void LoadPartNumber()
         {
             if (_suppressNextLoad)
@@ -400,9 +415,9 @@ namespace SwInventreeAddin.UI
 
         public async Task FetchPartAsync()
         {
-            // Always refresh the Current column from the live document first,
-            // so any changes made in SW since the panel opened are picked up.
-            LoadPartNumber();
+            // Refresh the Current column from the live document (Name/Notes/Revision only —
+            // the IPN box is left alone so the user can type a different part number to search).
+            RefreshCurrentProperties();
 
             var ipn = PartNumberTextBox.Text;
             if (string.IsNullOrEmpty(ipn))
