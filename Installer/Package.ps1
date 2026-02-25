@@ -1,10 +1,10 @@
 ﻿# Package.ps1  Run this (no admin needed) to build and zip the installer.
-# Output: Installer\OA-InvenTree-Addin.zip
+# Output: Installer\OA-SWInvenTree-Addin.zip
 
 $repoRoot   = Split-Path $PSScriptRoot -Parent
 $buildOut   = "$repoRoot\SwInventreeAddin\bin\Release\net48"
 $distDir    = "$repoRoot\Installer\dist"
-$zipPath    = "$repoRoot\Installer\OA-InvenTree-Addin.zip"
+$zipPath    = "$repoRoot\Installer\OA-SWInvenTree-Addin.zip"
 
 Write-Host "Building add-in..." -ForegroundColor Cyan
 Push-Location $repoRoot
