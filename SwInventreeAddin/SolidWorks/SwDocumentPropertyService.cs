@@ -18,7 +18,9 @@ namespace SwInventreeAddin.SolidWorks
 
         public string GetCustomProperty(string name)
         {
-            var modelDoc = (IModelDoc2)_swApp.ActiveDoc;
+            // Use 'as' rather than a direct cast: when no document is open,
+            // the COM property returns null and a hard cast throws InvalidCastException.
+            var modelDoc = _swApp.ActiveDoc as IModelDoc2;
             if (modelDoc == null)
                 return string.Empty;
 
@@ -29,7 +31,7 @@ namespace SwInventreeAddin.SolidWorks
 
         public void SetCustomProperty(string name, string value)
         {
-            var modelDoc = (IModelDoc2)_swApp.ActiveDoc;
+            var modelDoc = _swApp.ActiveDoc as IModelDoc2;
             if (modelDoc == null)
                 return;
 
