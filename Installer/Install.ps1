@@ -51,6 +51,9 @@ if (Test-Path $resourcesSrc) {
     Write-Host "  Copied: Resources\"
 }
 
+# Unblock all copied files (Windows blocks DLLs extracted from a downloaded zip)
+Get-ChildItem -Path $installDir -File -Recurse | Unblock-File
+
 # 3. Register with SolidWorks via RegAsm
 Write-Host ""
 Write-Host "Registering with SolidWorks..."
