@@ -32,7 +32,7 @@ New-Item -ItemType Directory -Path $installDir -Force | Out-Null
 
 # 2. Copy all DLLs and resource files
 Write-Host "Copying add-in files..."
-Get-ChildItem -Path $scriptDir -Include "*.dll","*.png","*.json" -File | ForEach-Object {
+Get-ChildItem -Path "$scriptDir\*" -Include "*.dll","*.png","*.json" -File | ForEach-Object {
     # Don't overwrite an existing inventree_servers.json (preserve user's API key on upgrade)
     if ($_.Name -eq "inventree_servers.json" -and (Test-Path $configDest)) {
         Write-Host "  Keeping existing inventree_servers.json (preserving your API key)"
