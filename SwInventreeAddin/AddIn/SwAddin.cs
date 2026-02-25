@@ -14,19 +14,20 @@ namespace SwInventreeAddin.AddIn
     [Guid("A1B2C3D4-E5F6-7890-ABCD-EF1234567890")]
     public class SwAddin
     {
-        private dynamic?        _swApp;
-        private TaskPaneControl? _taskPaneControl;
-        private dynamic?        _taskPaneView;
+        private dynamic?           _swApp;
+        private TaskPaneControl?   _taskPaneControl;
+        private dynamic?           _taskPaneView;
+        private System.Net.Http.HttpClient? _httpClient;
 
         public bool ConnectToSW(object thisSW, int cookie)
         {
             _swApp = thisSW;
 
             var configProvider  = new JsonFileConfigProvider(ResolveConfigPath());
-            var httpClient      = new System.Net.Http.HttpClient();
             var config          = configProvider.GetServerConfig();
-            httpClient.BaseAddress = new System.Uri(config.Url);
-            var inventreeClient = new InventreeHttpClient(httpClient, config.ApiKey);
+            _httpClient            = new System.Net.Http.HttpClient();
+            _httpClient.BaseAddress = new System.Uri(config.Url);
+            var inventreeClient = new InventreeHttpClient(_httpClient, config.ApiKey);
             var propertyService = new SwDocumentPropertyService(_swApp);
 
             _taskPaneControl = new TaskPaneControl(inventreeClient, propertyService);
@@ -43,6 +44,9 @@ namespace SwInventreeAddin.AddIn
             _taskPaneControl?.Dispose();
             _taskPaneControl = null;
             _taskPaneView    = null;
+
+            _httpClient?.Dispose();
+            _httpClient = null;
 
             if (_swApp != null)
             {

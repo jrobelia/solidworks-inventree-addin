@@ -19,21 +19,22 @@ namespace SwInventreeAddin.InvenTree
 
         public async Task<InventreePart?> GetPartByIpnAsync(string ipn)
         {
-            _httpClient.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Token", _apiKey);
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/part/?IPN={ipn}");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Token", _apiKey);
 
-            var response = await _httpClient.GetAsync($"/api/part/?IPN={ipn}");
+            var response = await _httpClient.SendAsync(request);
 
             if (!response.IsSuccessStatusCode)
                 throw new HttpRequestException(
                     $"InvenTree API returned {(int)response.StatusCode} {response.StatusCode}");
 
-            var json     = await response.Content.ReadAsStringAsync();
-            var document = JsonDocument.Parse(json);
-            var array    = document.RootElement;
+            var json = await response.Content.ReadAsStringAsync();
+
+            using var document = JsonDocument.Parse(json);
+            var array = document.RootElement;
 
             if (array.GetArrayLength() == 0)
-                return null!;
+                return null;
 
             var first = array[0];
             return new InventreePart
