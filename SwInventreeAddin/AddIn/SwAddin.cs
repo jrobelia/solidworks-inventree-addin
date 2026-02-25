@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Net;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
@@ -89,6 +90,7 @@ namespace SwInventreeAddin.AddIn
         }
 
         private ISldWorks?        _swApp;
+        private SldWorks?          _swEvents;   // concrete class needed to subscribe to COM events
         private TaskPaneControl?  _taskPaneControl;
         private ITaskpaneView?    _taskPaneView;
         private System.Net.Http.HttpClient? _httpClient;
@@ -104,6 +106,10 @@ namespace SwInventreeAddin.AddIn
                 // Tell SolidWorks our cookie so it can track us
                 _swApp.SetAddinCallbackInfo2(0, this, cookie);
 
+                // .NET Framework 4.8 defaults to TLS 1.0; InvenTree requires TLS 1.2+
+                ServicePointManager.SecurityProtocol =
+                    SecurityProtocolType.Tls12 | SecurityProtocolType.Tls13;
+
                 var configProvider  = new JsonFileConfigProvider(ResolveConfigPath());
                 var config          = configProvider.GetServerConfig();
 
@@ -114,6 +120,11 @@ namespace SwInventreeAddin.AddIn
                 var propertyService = new SwDocumentPropertyService(_swApp);
 
                 _taskPaneControl = new TaskPaneControl(inventreeClient, propertyService);
+
+                // Refresh the PartNo field whenever the user opens or switches documents
+                _swEvents = (SldWorks)thisSW;
+                _swEvents.ActiveDocChangeNotify    += OnActiveDocChange;
+                _swEvents.DocumentLoadNotify2      += OnDocumentLoad;
 
                 _taskPaneView = (ITaskpaneView)_swApp.CreateTaskpaneView2("", AddinTitle);
                 _taskPaneView.DisplayWindowFromHandle(_taskPaneControl.Handle.ToInt32());
@@ -133,6 +144,13 @@ namespace SwInventreeAddin.AddIn
 
         public bool DisconnectFromSW()
         {
+            if (_swEvents != null)
+            {
+                _swEvents.ActiveDocChangeNotify -= OnActiveDocChange;
+                _swEvents.DocumentLoadNotify2   -= OnDocumentLoad;
+                _swEvents = null;
+            }
+
             _taskPaneView?.DeleteView();
             if (_taskPaneView != null)
             {
@@ -153,6 +171,18 @@ namespace SwInventreeAddin.AddIn
             }
 
             return true;
+        }
+
+        private int OnActiveDocChange()
+        {
+            _taskPaneControl?.LoadPartNumber();
+            return 0;   // 0 = success (required by SolidWorks event contract)
+        }
+
+        private int OnDocumentLoad(string title, string path)
+        {
+            _taskPaneControl?.LoadPartNumber();
+            return 0;
         }
 
         private static string ResolveConfigPath()

@@ -67,20 +67,28 @@ namespace SwInventreeAddin.UI
             Controls.Add(lblPartNumber);
         }
 
-        private void LoadPartNumber()
+        /// <summary>
+        /// Reads PartNo from the active document and populates the text box.
+        /// Called on construction and whenever SolidWorks fires a document-change event.
+        /// </summary>
+        public void LoadPartNumber()
         {
             var partNo = _propertyService.GetCustomProperty("PartNo");
-            PartNumberTextBox.Text = partNo;
-            if (string.IsNullOrEmpty(partNo))
-                StatusLabel.Text = "No PartNo property found on open document.";
+            if (!string.IsNullOrEmpty(partNo))
+                PartNumberTextBox.Text = partNo;
         }
 
         public async Task FetchPartAsync()
         {
+            // If the box is still empty (e.g. add-in loaded before a document was active),
+            // try to read PartNo from whichever document is now active.
+            if (string.IsNullOrEmpty(PartNumberTextBox.Text))
+                LoadPartNumber();
+
             var ipn = PartNumberTextBox.Text;
             if (string.IsNullOrEmpty(ipn))
             {
-                StatusLabel.Text = "Enter an OA Part Number first.";
+                StatusLabel.Text = "Enter an OA Part Number, or open a part and click Import again.";
                 return;
             }
 
