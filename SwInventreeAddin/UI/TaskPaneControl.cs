@@ -34,19 +34,19 @@ namespace SwInventreeAddin.UI
         private InventreePart?                    _lastFetchedPart;
 
         // ── Style constants ────────────────────────────────────────────────────
-        private static readonly Font  UiFont       = new Font("Segoe UI", 9f);
-        private static readonly Font  UiFontBold   = new Font("Segoe UI", 9f, FontStyle.Bold);
-        private static readonly Font  TagFont      = new Font("Segoe UI", 7.5f, FontStyle.Italic);
+        private static readonly Font  UiFont       = new Font("Segoe UI", 9.5f);
+        private static readonly Font  UiFontBold   = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+        private static readonly Font  TagFont      = new Font("Segoe UI", 8.5f, FontStyle.Italic);
         private static readonly Color FieldBlue    = Color.FromArgb(0,  112, 192);
         private static readonly Color DividerGrey  = Color.FromArgb(185, 185, 185);
         private static readonly Color CurrentBg    = Color.FromArgb(240, 240, 240);
         private static readonly Color IncomingBg   = Color.FromArgb(255, 252, 210);
-        private static readonly Color TagCurrentFg = Color.FromArgb(130, 130, 130);
+        private static readonly Color TagCurrentFg = Color.FromArgb(110, 110, 110);
         private static readonly Color TagNewFg     = Color.FromArgb(0,  130,  60);
         private static readonly Color ImportBtnBg  = Color.FromArgb(0,  112, 192);
         private static readonly Color ApplyBtnBg   = Color.FromArgb(0,  130,  60);
-        private const int BoxHeight   = 22;
-        private const int NotesHeight = 52;
+        private const int BoxHeight   = 24;
+        private const int NotesHeight = 66;
 
         public TaskPaneControl(IInventreeClient client, IDocumentPropertyService propertyService)
         {
@@ -73,15 +73,16 @@ namespace SwInventreeAddin.UI
                 Text      = string.Empty,
                 Dock      = DockStyle.Top,
                 AutoSize  = false,
-                Height    = 32,
+                Height    = 36,
                 ForeColor = Color.FromArgb(100, 100, 100),
-                Padding   = new Padding(10, 4, 10, 0),
+                Padding   = new Padding(10, 6, 10, 0),
+                Font      = UiFont,
             };
 
             // Apply button
             ApplyButton = MakeButton("Apply to Document", ApplyBtnBg, DockStyle.Top);
             ApplyButton.Enabled = false;
-            ApplyButton.Margin  = new Padding(10, 0, 10, 6);
+            ApplyButton.Margin  = new Padding(10, 4, 10, 8);
             ApplyButton.Click  += (s, e) => ApplyToDocument();
 
             // Properties comparison section
@@ -93,7 +94,7 @@ namespace SwInventreeAddin.UI
 
             // Import button
             var btnImport = MakeButton("Import from InvenTree", ImportBtnBg, DockStyle.Top);
-            btnImport.Margin  = new Padding(10, 4, 10, 8);
+            btnImport.Margin  = new Padding(10, 6, 10, 10);
             btnImport.Click  += async (s, e) => await FetchPartAsync();
 
             // OA Part Number entry
@@ -101,11 +102,12 @@ namespace SwInventreeAddin.UI
             {
                 Dock    = DockStyle.Top,
                 Margin  = new Padding(10, 0, 10, 4),
-                Height  = BoxHeight,
+                Height  = 24,
+                Font    = UiFont,
             };
 
             var lblPn = MakeFieldLabel("OA Part Number");
-            lblPn.Padding = new Padding(10, 8, 10, 2);
+            lblPn.Padding = new Padding(10, 10, 10, 3);
 
             // Stack: bottom-to-top
             Controls.Add(StatusLabel);
@@ -170,7 +172,7 @@ namespace SwInventreeAddin.UI
         {
             int h = multiline ? NotesHeight : BoxHeight;
 
-            var group = new Panel { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(0, 0, 0, 6) };
+            var group = new Panel { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(0, 0, 0, 10) };
 
             // InvenTree row (cream) — add first so it docks below the current row
             incomingBox = new TextBox
@@ -180,7 +182,8 @@ namespace SwInventreeAddin.UI
                 Dock      = DockStyle.Top,
                 Multiline = multiline,
                 Height    = h,
-                Margin    = new Padding(10, 0, 10, 0),
+                Margin    = new Padding(10, 2, 10, 0),
+                Font      = UiFont,
             };
             var tagNew = new Label
             {
@@ -188,8 +191,8 @@ namespace SwInventreeAddin.UI
                 Dock      = DockStyle.Top,
                 Font      = TagFont,
                 ForeColor = incomingReadOnly ? TagCurrentFg : TagNewFg,
-                Height    = 16,
-                Padding   = new Padding(10, 0, 0, 0),
+                Height    = 20,
+                Padding   = new Padding(10, 2, 0, 0),
             };
             incomingRow = new Panel { Dock = DockStyle.Top, AutoSize = true, Visible = false };
             incomingRow.Controls.Add(incomingBox);
@@ -203,7 +206,8 @@ namespace SwInventreeAddin.UI
                 Dock      = DockStyle.Top,
                 Multiline = multiline,
                 Height    = h,
-                Margin    = new Padding(10, 0, 10, 0),
+                Margin    = new Padding(10, 2, 10, 0),
+                Font      = UiFont,
             };
             var tagCurrent = new Label
             {
@@ -211,12 +215,12 @@ namespace SwInventreeAddin.UI
                 Dock      = DockStyle.Top,
                 Font      = TagFont,
                 ForeColor = TagCurrentFg,
-                Height    = 16,
-                Padding   = new Padding(10, 0, 0, 0),
+                Height    = 20,
+                Padding   = new Padding(10, 2, 0, 0),
             };
 
             var fieldLabel = MakeFieldLabel(label);
-            fieldLabel.Padding = new Padding(10, 4, 10, 0);
+            fieldLabel.Padding = new Padding(10, 8, 10, 0);
 
             // Add bottom-to-top: incomingRow last so it appears below currentBox
             group.Controls.Add(incomingRow);
@@ -237,8 +241,8 @@ namespace SwInventreeAddin.UI
                 Dock      = DockStyle.Top,
                 Font      = UiFontBold,
                 ForeColor = Color.FromArgb(50, 50, 50),
-                Height    = 20,
-                Padding   = new Padding(10, 4, 0, 0),
+                Height    = 24,
+                Padding   = new Padding(10, 5, 0, 0),
             };
             var line = MakeDivider();
 
@@ -258,7 +262,7 @@ namespace SwInventreeAddin.UI
                 ForeColor = FieldBlue,
                 Font      = UiFont,
                 AutoSize  = false,
-                Height    = 20,
+                Height    = 22,
                 Padding   = new Padding(10, 2, 0, 0),
             };
 
@@ -268,7 +272,7 @@ namespace SwInventreeAddin.UI
             {
                 Text      = text,
                 Dock      = dock,
-                Height    = 27,
+                Height    = 30,
                 BackColor = backColor,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
