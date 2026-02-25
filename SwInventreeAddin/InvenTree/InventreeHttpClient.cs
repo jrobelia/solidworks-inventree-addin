@@ -37,7 +37,15 @@ namespace SwInventreeAddin.InvenTree
             var json = await response.Content.ReadAsStringAsync();
 
             using var document = JsonDocument.Parse(json);
-            var array = document.RootElement;
+            var root = document.RootElement;
+
+            // InvenTree list endpoints return a paginated envelope:
+            // { "count": N, "results": [ {...}, ... ] }
+            // Fall back to treating the root itself as an array for future-proofing.
+            var array = root.ValueKind == JsonValueKind.Object &&
+                        root.TryGetProperty("results", out var resultsElement)
+                ? resultsElement
+                : root;
 
             if (array.GetArrayLength() == 0)
                 return null;
@@ -45,11 +53,15 @@ namespace SwInventreeAddin.InvenTree
             var first = array[0];
             return new InventreePart
             {
-                Name     = first.GetProperty("name").GetString()     ?? string.Empty,
-                Notes    = first.GetProperty("notes").GetString()    ?? string.Empty,
-                Revision = first.GetProperty("revision").GetString() ?? string.Empty,
-                Ipn      = first.GetProperty("IPN").GetString()      ?? string.Empty
+                Name     = GetString(first, "name"),
+                Notes    = GetString(first, "notes"),
+                Revision = GetString(first, "revision"),
+                Ipn      = GetString(first, "IPN"),
             };
         }
+        private static string GetString(JsonElement element, string propertyName) =>
+            element.TryGetProperty(propertyName, out var prop)
+                ? prop.GetString() ?? string.Empty
+                : string.Empty;
     }
 }
