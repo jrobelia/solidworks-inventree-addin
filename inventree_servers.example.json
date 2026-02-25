@@ -1,0 +1,8 @@
+﻿{
+  "servers": {
+    "staging": {
+      "url": "https://your-inventree-server.example.com",
+      "api_key": "YOUR-API-KEY-HERE"
+    }
+  }
+}
