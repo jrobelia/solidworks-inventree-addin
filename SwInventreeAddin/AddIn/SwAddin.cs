@@ -1,4 +1,6 @@
 ﻿using System;
+using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
 using SolidWorks.Interop.sldworks;
@@ -25,6 +27,29 @@ namespace SwInventreeAddin.AddIn
         private const string AddinGuid        = "A1B2C3D4-E5F6-7890-ABCD-EF1234567890";
         private const string AddinTitle       = "InvenTree";
         private const string AddinDescription = "Imports part data from InvenTree into SolidWorks custom properties";
+
+        /// <summary>
+        /// Static constructor — runs once when SolidWorks first loads this class.
+        /// Registers an assembly resolver so .NET can find our dependency DLLs
+        /// in the add-in's own folder, not just the SolidWorks installation folder.
+        /// </summary>
+        static SwAddin()
+        {
+            AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>
+            {
+                var addinDir = Path.GetDirectoryName(
+                    Assembly.GetExecutingAssembly().Location) ?? string.Empty;
+
+                // Strip the version/culture info to get just the DLL name
+                var assemblyName = new AssemblyName(args.Name).Name + ".dll";
+                var fullPath     = Path.Combine(addinDir, assemblyName);
+
+                return File.Exists(fullPath)
+                    ? Assembly.LoadFrom(fullPath)
+                    : null;  // return null = let .NET try its normal search
+            };
+        }
+
 
         /// <summary>
         /// Called automatically by RegAsm /codebase — writes the registry keys
