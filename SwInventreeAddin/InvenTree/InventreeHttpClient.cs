@@ -9,18 +9,18 @@ namespace SwInventreeAddin.InvenTree
     public class InventreeHttpClient : IInventreeClient
     {
         private readonly HttpClient _httpClient;
-        private readonly string _apiKey;
 
         public InventreeHttpClient(HttpClient httpClient, string apiKey)
         {
             _httpClient = httpClient;
-            _apiKey     = apiKey;
+            // Set the auth header once — the API key never changes during the session.
+            _httpClient.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Token", apiKey);
         }
 
         public async Task<InventreePart?> GetPartByIpnAsync(string ipn)
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/part/?IPN={ipn}");
-            request.Headers.Authorization = new AuthenticationHeaderValue("Token", _apiKey);
 
             var response = await _httpClient.SendAsync(request);
 
