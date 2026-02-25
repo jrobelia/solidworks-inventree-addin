@@ -182,25 +182,25 @@ namespace SwInventreeAddin.AddIn
 
         private int OnActiveDocChange()
         {
-            // Defer until SolidWorks finishes the document transition.
-            // If we call LoadPartNumber() immediately, ActiveDoc may still return
-            // the document that is in the process of closing, which re-populates
-            // the form instead of clearing it.
-            _taskPaneControl?.BeginInvoke((Action)(() => _taskPaneControl?.LoadPartNumber()));
+            // Direct call — SuppressNextLoad (set by OnFileClose) ensures that if
+            // ActiveDoc is still the closing document at this point, LoadPartNumber
+            // will call ClearAll instead of re-populating the form.
+            _taskPaneControl?.LoadPartNumber();
             return 0;
         }
 
         private int OnDocumentLoad(string title, string path)
         {
-            _taskPaneControl?.BeginInvoke((Action)(() => _taskPaneControl?.LoadPartNumber()));
+            _taskPaneControl?.LoadPartNumber();
             return 0;
         }
 
         private int OnFileClose(string fileName, int reason)
         {
-            // Call ClearAll directly — at this point ActiveDoc still returns the
-            // closing document, so LoadPartNumber() would incorrectly populate fields.
+            // Clear now, and mark the control so that the ActiveDocChange event
+            // that immediately follows will also clear rather than re-load.
             _taskPaneControl?.ClearAll();
+            _taskPaneControl?.SuppressNextLoad();
             return 0;
         }
 
