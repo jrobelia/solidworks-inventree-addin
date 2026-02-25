@@ -34,9 +34,6 @@ namespace SwInventreeAddin.UI
 
         private Panel _propertiesSection = null!;   // whole properties block; hidden when no doc open
 
-        private bool _suppressNextLoad = false;  // set by OnFileClose to prevent re-populate on ActiveDocChange
-        private System.Windows.Forms.Timer? _closeTimer;  // fires after close to guarantee a clean reload
-
         private readonly IInventreeClient         _client;
         private readonly IDocumentPropertyService _propertyService;
         private InventreePart?                    _lastFetchedPart;
@@ -350,13 +347,6 @@ namespace SwInventreeAddin.UI
 
         public void LoadPartNumber()
         {
-            if (_suppressNextLoad)
-            {
-                _suppressNextLoad = false;
-                ClearAll();
-                return;
-            }
-
             var partNo = _propertyService.GetCustomProperty("PartNo");
 
             if (string.IsNullOrEmpty(partNo))
@@ -404,36 +394,8 @@ namespace SwInventreeAddin.UI
             ApplyButton.Enabled      = false;
             ApplyNameButton.Enabled  = false;
             ApplyNotesButton.Enabled = false;
-            StatusLabel.Text               = string.Empty;
-            _lastFetchedPart               = null;
-        }
-
-        /// <summary>
-        /// Tells LoadPartNumber to call ClearAll on its next invocation instead of loading.
-        /// Used by SwAddin.OnFileClose so the ActiveDocChange that follows close never re-populates.
-        /// </summary>
-        public void SuppressNextLoad() => _suppressNextLoad = true;
-
-        /// <summary>
-        /// Clears the form immediately, then fires a delayed LoadPartNumber after SolidWorks has
-        /// finished releasing the closing document. This is the reliable close path: by the time
-        /// the timer fires, ActiveDoc is genuinely null so LoadPartNumber calls ClearAll on its own.
-        /// </summary>
-        public void ScheduleClearAfterClose()
-        {
-            ClearAll();
-
-            _closeTimer?.Stop();
-            _closeTimer?.Dispose();
-            _closeTimer = new System.Windows.Forms.Timer { Interval = 500 };
-            _closeTimer.Tick += (s, e) =>
-            {
-                _closeTimer.Stop();
-                _closeTimer.Dispose();
-                _closeTimer = null;
-                LoadPartNumber();
-            };
-            _closeTimer.Start();
+            StatusLabel.Text         = string.Empty;
+            _lastFetchedPart         = null;
         }
 
         public async Task FetchPartAsync()
