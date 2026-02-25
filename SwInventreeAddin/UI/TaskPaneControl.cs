@@ -69,7 +69,8 @@ namespace SwInventreeAddin.UI
             Font       = UiFont;
             BackColor  = SystemColors.Window;
             AutoScroll = true;
-            Padding    = new Padding(0);
+            // Top padding prevents the task pane view from clipping the first label
+            Padding    = new Padding(0, 8, 0, 0);
 
             // Controls use DockStyle.Top; add in BOTTOM-TO-TOP order.
 
