@@ -130,7 +130,7 @@ namespace SwInventreeAddin.AddIn
                 var iconPath = System.IO.Path.Combine(
                     System.IO.Path.GetDirectoryName(
                         System.Reflection.Assembly.GetExecutingAssembly().Location) ?? string.Empty,
-                    "Resources", "inventree_logo.png");
+                    "Resources", "inventree_icon.png");
 
                 _taskPaneView = (ITaskpaneView)_swApp.CreateTaskpaneView2(iconPath, AddinTitle);
                 _taskPaneView.DisplayWindowFromHandle(_taskPaneControl.Handle.ToInt32());
