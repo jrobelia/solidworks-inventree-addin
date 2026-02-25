@@ -91,8 +91,7 @@ namespace SwInventreeAddin.AddIn
 
         private ISldWorks?        _swApp;
         private SldWorks?          _swEvents;   // concrete class needed to subscribe to COM events
-        private string?            _currentDisplayedPath; // path of the file currently shown in the panel
-        private string?            _closingDocPath;       // path of the file currently being closed
+        private bool               _hasActiveDoc;  // tracks whether a document was open on last check
         private TaskPaneControl?  _taskPaneControl;
         private ITaskpaneView?    _taskPaneView;
         private System.Net.Http.HttpClient? _httpClient;
@@ -123,11 +122,12 @@ namespace SwInventreeAddin.AddIn
 
                 _taskPaneControl = new TaskPaneControl(inventreeClient, propertyService);
 
-                // Refresh the PartNo field whenever the user opens, switches, or closes documents
+                // Refresh the PartNo field whenever the user opens or switches documents.
+                // OnIdleNotify detects when the last document is closed (ActiveDoc becomes null).
                 _swEvents = (SldWorks)thisSW;
                 _swEvents.ActiveDocChangeNotify += OnActiveDocChange;
                 _swEvents.DocumentLoadNotify2   += OnDocumentLoad;
-                _swEvents.FileCloseNotify       += OnFileClose;
+                _swEvents.OnIdleNotify          += OnIdle;
 
                 var iconPath = System.IO.Path.Combine(
                     System.IO.Path.GetDirectoryName(
@@ -156,7 +156,7 @@ namespace SwInventreeAddin.AddIn
             {
                 _swEvents.ActiveDocChangeNotify -= OnActiveDocChange;
                 _swEvents.DocumentLoadNotify2   -= OnDocumentLoad;
-                _swEvents.FileCloseNotify       -= OnFileClose;
+                _swEvents.OnIdleNotify          -= OnIdle;
                 _swEvents = null;
             }
 
@@ -184,40 +184,30 @@ namespace SwInventreeAddin.AddIn
 
         private int OnActiveDocChange()
         {
-            var doc = _swApp?.ActiveDoc as IModelDoc2;
-            var activePath = doc?.GetPathName();
-
-            // If ActiveDoc is still pointing at the file currently being closed,
-            // SolidWorks has not finished the transition yet — ignore this event.
-            if (activePath != null &&
-                string.Equals(activePath, _closingDocPath, StringComparison.OrdinalIgnoreCase))
-                return 0;
-
-            _closingDocPath = null;
-            _currentDisplayedPath = activePath;
+            _hasActiveDoc = (_swApp?.ActiveDoc != null);
             _taskPaneControl?.LoadPartNumber();
             return 0;
         }
 
         private int OnDocumentLoad(string title, string path)
         {
-            _closingDocPath = null;
-            _currentDisplayedPath = path;
+            _hasActiveDoc = true;
             _taskPaneControl?.LoadPartNumber();
             return 0;
         }
 
-        private int OnFileClose(string fileName, int reason)
+        /// <summary>
+        /// Fires repeatedly when SolidWorks is idle. Checks whether the last document
+        /// has been closed — ActiveDoc transitions from non-null to null.
+        /// This is the only reliable way to detect "last document closed" because
+        /// FileCloseNotify and ActiveDocChangeNotify do NOT fire in that scenario.
+        /// </summary>
+        private int OnIdle()
         {
-            _closingDocPath = fileName;
-
-            // Only clear the form if the file being closed is the one we are displaying.
-            // If a background document (not the active one) closes, leave the form alone.
-            if (string.Equals(fileName, _currentDisplayedPath, StringComparison.OrdinalIgnoreCase))
-            {
-                _currentDisplayedPath = null;
+            bool hasDoc = (_swApp?.ActiveDoc != null);
+            if (_hasActiveDoc && !hasDoc)
                 _taskPaneControl?.ClearAll();
-            }
+            _hasActiveDoc = hasDoc;
             return 0;
         }
 
