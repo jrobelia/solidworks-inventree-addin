@@ -69,12 +69,13 @@ namespace SwInventreeAddin.UI
             Font       = UiFont;
             BackColor  = SystemColors.Window;
             AutoScroll = true;
-            // Top padding prevents the task pane view from clipping the first label
-            Padding    = new Padding(0, 8, 0, 0);
+            // 10 px left/right gives all DockStyle.Top children a consistent side margin.
+            // 8 px top prevents the task pane host from clipping the first label.
+            Padding    = new Padding(10, 8, 10, 0);
 
             // Controls use DockStyle.Top; add in BOTTOM-TO-TOP order.
 
-            // Status label
+            // Status label — side padding comes from UserControl, so only top padding here.
             StatusLabel = new Label
             {
                 Text      = string.Empty,
@@ -82,14 +83,13 @@ namespace SwInventreeAddin.UI
                 AutoSize  = false,
                 Height    = 36,
                 ForeColor = Color.FromArgb(100, 100, 100),
-                Padding   = new Padding(10, 6, 10, 0),
+                Padding   = new Padding(0, 6, 0, 0),
                 Font      = UiFont,
             };
 
-            // Apply button
+            // Apply button — DockStyle.Top; side padding from UserControl.
             ApplyButton = MakeButton("Apply to Document", ApplyBtnBg, DockStyle.Top);
             ApplyButton.Enabled = false;
-            ApplyButton.Margin  = new Padding(10, 4, 10, 8);
             ApplyButton.Click  += (s, e) => ApplyToDocument();
 
             // Properties comparison section
@@ -101,20 +101,18 @@ namespace SwInventreeAddin.UI
 
             // Import button
             var btnImport = MakeButton("Import from InvenTree", ImportBtnBg, DockStyle.Top);
-            btnImport.Margin  = new Padding(10, 6, 10, 10);
             btnImport.Click  += async (s, e) => await FetchPartAsync();
 
             // OA Part Number entry
             PartNumberTextBox = new TextBox
             {
                 Dock    = DockStyle.Top,
-                Margin  = new Padding(10, 2, 10, 4),
-                Height  = 24,
+                Height  = 26,
                 Font    = UiFont,
             };
 
+            // "OA Part Number" label — 8 px top gap before first label, inside label.
             var lblPn = MakeFieldLabel("OA Part Number");
-            lblPn.Padding = new Padding(10, 14, 10, 2);
 
             // Stack: bottom-to-top
             Controls.Add(StatusLabel);
@@ -179,7 +177,9 @@ namespace SwInventreeAddin.UI
         {
             int h = multiline ? NotesHeight : BoxHeight;
 
-            var group = new Panel { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(0, 0, 0, 18) }; // generous gap between fields
+            // 14 px top padding creates breathing room between fields without relying
+            // on label internal padding (which would clip tall text).
+            var group = new Panel { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(0, 14, 0, 0) };
 
             // InvenTree row (cream) — add first so it docks below the current row
             incomingBox = new TextBox
@@ -189,7 +189,6 @@ namespace SwInventreeAddin.UI
                 Dock      = DockStyle.Top,
                 Multiline = multiline,
                 Height    = h,
-                Margin    = new Padding(10, 2, 10, 0),
                 Font      = UiFont,
             };
             var tagNew = new Label
@@ -198,14 +197,14 @@ namespace SwInventreeAddin.UI
                 Dock      = DockStyle.Top,
                 Font      = TagFont,
                 ForeColor = incomingReadOnly ? TagCurrentFg : TagNewFg,
-                Height    = 20,
-                Padding   = new Padding(10, 2, 0, 0),
+                Height    = 22,
+                Padding   = new Padding(2, 3, 0, 0),
             };
             incomingRow = new Panel { Dock = DockStyle.Top, AutoSize = true, Visible = false };
             incomingRow.Controls.Add(incomingBox);
             incomingRow.Controls.Add(tagNew);
 
-            // Current row (grey)
+            // Current row (white — matches SW input boxes)
             currentBox = new TextBox
             {
                 ReadOnly  = true,
@@ -213,7 +212,6 @@ namespace SwInventreeAddin.UI
                 Dock      = DockStyle.Top,
                 Multiline = multiline,
                 Height    = h,
-                Margin    = new Padding(10, 2, 10, 0),
                 Font      = UiFont,
             };
             var tagCurrent = new Label
@@ -222,12 +220,11 @@ namespace SwInventreeAddin.UI
                 Dock      = DockStyle.Top,
                 Font      = TagFont,
                 ForeColor = TagCurrentFg,
-                Height    = 20,
-                Padding   = new Padding(10, 2, 0, 0),
+                Height    = 22,
+                Padding   = new Padding(2, 3, 0, 0),
             };
 
             var fieldLabel = MakeFieldLabel(label);
-            fieldLabel.Padding = new Padding(10, 14, 10, 2);
 
             // Add bottom-to-top: incomingRow last so it appears below currentBox
             group.Controls.Add(incomingRow);
@@ -275,8 +272,10 @@ namespace SwInventreeAddin.UI
                 ForeColor = LabelFg,
                 Font      = LabelFont,
                 AutoSize  = false,
-                Height    = 24,
-                Padding   = new Padding(10, 4, 0, 0),
+                // Height generously sized so bold text is never clipped vertically.
+                // No left/right padding — the UserControl's Padding handles that.
+                Height    = 28,
+                Padding   = new Padding(0, 4, 0, 0),
             };
 
         private static Button MakeButton(string text, Color backColor, DockStyle dock)
