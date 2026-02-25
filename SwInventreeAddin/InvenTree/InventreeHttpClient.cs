@@ -24,6 +24,12 @@ namespace SwInventreeAddin.InvenTree
 
             var response = await _httpClient.SendAsync(request);
 
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                throw new HttpRequestException(
+                    "InvenTree rejected the API key (401 Unauthorized). " +
+                    "Please generate a new token in InvenTree → Account Settings → API Tokens " +
+                    "and update inventree_servers.json next to the add-in DLL.");
+
             if (!response.IsSuccessStatusCode)
                 throw new HttpRequestException(
                     $"InvenTree API returned {(int)response.StatusCode} {response.StatusCode}");
