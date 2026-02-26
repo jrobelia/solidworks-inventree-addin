@@ -63,10 +63,8 @@ namespace SwInventreeAddin.InvenTree
 
         public async Task UpdatePartRevisionAsync(int pk, string revision)
         {
-            var body = new StringContent(
-                $"{{\"revision\":\"{revision}\"}}",
-                System.Text.Encoding.UTF8,
-                "application/json");
+            var json = JsonSerializer.Serialize(new { revision });
+            var body = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 
             using var request = new HttpRequestMessage(new HttpMethod("PATCH"), $"/api/part/{pk}/")
             {

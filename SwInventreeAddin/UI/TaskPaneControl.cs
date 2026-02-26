@@ -360,18 +360,7 @@ namespace SwInventreeAddin.UI
             RefreshCurrentProperties();
 
             // Clear any stale InvenTree preview from a previous document
-            _nameInvenTreeRow.Visible       = false;
-            _notesInvenTreeRow.Visible      = false;
-            _revisionInvenTreeRow.Visible   = false;
-            NamePreviewTextBox.Text         = string.Empty;
-            NotesPreviewTextBox.Text        = string.Empty;
-            RevisionPreviewTextBox.Text     = string.Empty;
-            ApplyButton.Enabled      = false;
-            ApplyNameButton.Enabled  = false;
-            ApplyNotesButton.Enabled = false;
-            PushRevisionButton.Enabled = false;
-            _lastFetchedPart                = null;
-            StatusLabel.Text               = string.Empty;
+            ResetInvenTreeState();
         }
 
         /// <summary>Resets the entire panel. Called when no document is active.</summary>
@@ -383,19 +372,27 @@ namespace SwInventreeAddin.UI
             _currentRevisionBox.Text        = string.Empty;
             _propertiesSection.Visible      = false;
 
-            NamePreviewTextBox.Text         = string.Empty;
-            NotesPreviewTextBox.Text        = string.Empty;
-            RevisionPreviewTextBox.Text     = string.Empty;
+            ResetInvenTreeState();
+        }
+
+        /// <summary>
+        /// Clears all InvenTree-fetched data from the UI and disables action buttons.
+        /// Called by both LoadPartNumber (document switch) and ClearAll (no document).
+        /// </summary>
+        private void ResetInvenTreeState()
+        {
             _nameInvenTreeRow.Visible       = false;
             _notesInvenTreeRow.Visible      = false;
             _revisionInvenTreeRow.Visible   = false;
-
-            ApplyButton.Enabled      = false;
-            ApplyNameButton.Enabled  = false;
-            ApplyNotesButton.Enabled = false;
-            PushRevisionButton.Enabled = false;
-            StatusLabel.Text         = string.Empty;
-            _lastFetchedPart         = null;
+            NamePreviewTextBox.Text         = string.Empty;
+            NotesPreviewTextBox.Text        = string.Empty;
+            RevisionPreviewTextBox.Text     = string.Empty;
+            ApplyButton.Enabled             = false;
+            ApplyNameButton.Enabled         = false;
+            ApplyNotesButton.Enabled        = false;
+            PushRevisionButton.Enabled      = false;
+            StatusLabel.Text                = string.Empty;
+            _lastFetchedPart                = null;
         }
 
         public async Task FetchPartAsync()
