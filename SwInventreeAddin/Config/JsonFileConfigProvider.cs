@@ -15,6 +15,12 @@ namespace SwInventreeAddin.Config
             _serverName = serverName;
         }
 
+        /// <summary>
+        /// JSON provider is read-only — saving is handled by EncryptedConfigProvider.
+        /// This no-op satisfies the interface contract.
+        /// </summary>
+        public void SaveServerConfig(ServerConfig config) { }
+
         public ServerConfig GetServerConfig()
         {
             if (!File.Exists(_filePath))

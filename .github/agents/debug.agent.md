@@ -29,14 +29,21 @@ on demand. An intermittent or unconfirmed bug cannot be fixed safely.
    - What actually happened? (error message, wrong output, crash, etc.)
    - Does it happen every time, or only sometimes?
 
-2. Try to reproduce the failure yourself:
+2. Determine where the bug lives:
+   - Can it be reproduced by running `dotnet test`? → standard debugging applies.
+   - Does it only happen inside an external application (SolidWorks, InvenTree,
+     etc.)? → the external app is an opaque host. Read the relevant app-specific
+     debug prompt from `.github/prompts/` before attempting anything else:
+     - SolidWorks: [debug-solidworks.prompt.md](.github/prompts/debug-solidworks.prompt.md)
+     - Add a new file to that folder when a new app needs its own technique.
+
+3. Try to reproduce the failure yourself (if test-reproducible):
    - Run the program with the input or action that causes the problem.
    - Confirm you see the same failure.
 
-3. If you cannot reproduce it:
+4. If you cannot reproduce it:
    - Tell the user exactly what you tried and what you observed.
-   - Ask for more information (the exact input, the exact error text, the
-     operating system, the Python/language version, etc.).
+   - Ask for more information (the exact input, the exact error text, etc.).
    - Do not proceed to phase 2 until reproduction is confirmed.
 
 **Output of this phase:** a single sentence — "Confirmed: running [X]
@@ -50,20 +57,20 @@ Work backwards from the symptom to its origin. Think of it like tracing a
 stress fracture in a component back to the point of initiation.
 
 Use a binary search approach:
-- Which half of the system is responsible? Eliminate the half that
-  isn't.
-- Within the responsible half, which module? Eliminate the ones that
-  work.
+- Which half of the system is responsible? Eliminate the half that isn't.
+- Within the responsible half, which module? Eliminate the ones that work.
 - Within that module, which function or line?
 
 Techniques:
-- Add temporary diagnostic output (print statements or logging) to
-  confirm where data goes wrong.
-- Check inputs at each stage: is the data arriving correct, or is it
-  already wrong by the time it gets here?
+- **In tests:** add temporary `Console.WriteLine` or `Assert` calls to confirm
+  where data goes wrong.
+- **In an external app:** use the file logging technique described in the
+  relevant app-specific prompt (see Phase 1). Read the log after triggering
+  the bug; work inward from the last line that wrote successfully.
+- Check inputs at each stage: is the data arriving correct, or is it already
+  wrong by the time it gets here?
 - Use #tool:problems to check for static analysis errors.
-- Read error tracebacks from the bottom up — the last line is usually
-  where the failure actually occurred; the lines above show how it got there.
+- Read exception messages carefully — they usually name the file and line.
 
 Do not touch any production code during this phase.
 
@@ -84,7 +91,8 @@ Rules:
   anything beyond the specific fix.
 - If the fix requires touching more than one place, that is a sign the
   root cause is deeper — go back to phase 2.
-- Remove any diagnostic output added in phase 2 before finishing.
+- **Remove all temporary diagnostic code before writing the fix** — logging
+  helpers, print statements, extra assertions. Never commit diagnostic code.
 
 ---
 
@@ -114,6 +122,27 @@ Prove the fix works and has not introduced new problems.
 - ✓ All [N] tests still pass
 - ✓ Integration check passed with [inputs tested]
 ---
+
+---
+
+## Terminal Output Truncation (VS Code known bug)
+
+`run_in_terminal` output is silently truncated at ~60 KB. `terminal_last_command`
+currently returns nothing due to a VS Code bug.
+
+**Workaround:** redirect all output to `_scratch/`, then read it:
+
+```powershell
+dotnet test --no-build *> _scratch/test_output.txt; Write-Host "DONE"
+dotnet build *> _scratch/build_output.txt; Write-Host "DONE"
+```
+
+Then use `read_file` on the `_scratch/` file to see the full result.
+The entire `_scratch/` folder is gitignored and safe to wipe at any time.
+
+> **Re-check this section periodically** — once the VS Code bug is resolved,
+> `terminal_last_command` is the preferred approach and this workaround can
+> be removed.
 
 ---
 
