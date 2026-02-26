@@ -1,0 +1,4 @@
+@echo off
+echo Re-registering dev build with SolidWorks...
+powershell -ExecutionPolicy Bypass -File "%~dp0DevRegister.ps1"
+pause
