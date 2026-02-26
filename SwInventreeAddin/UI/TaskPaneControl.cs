@@ -203,7 +203,7 @@ namespace SwInventreeAddin.UI
                 {
                     Text      = "Apply to SW Prop",
                     Dock      = DockStyle.Right,
-                    Width     = 155,
+                    Width     = 185,
                     Height    = 28,
                     BackColor = ApplyBtnBg,
                     ForeColor = Color.White,
