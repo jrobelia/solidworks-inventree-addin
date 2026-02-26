@@ -159,7 +159,7 @@ namespace SwInventreeAddin.UI
             _revisionInvenTreeRow  = rowRev;
 
             // Push Revision button — sends the SW revision up to InvenTree (opposite direction).
-            PushRevisionButton = MakeButton("Push Revision to InvenTree", ImportBtnBg, DockStyle.Top);
+            PushRevisionButton = MakeButton("Push SW Rev to InvenTree", ImportBtnBg, DockStyle.Top);
             PushRevisionButton.Enabled = false;
             PushRevisionButton.Click  += async (s, e) => await PushRevisionToInventreeAsync();
 
@@ -201,7 +201,7 @@ namespace SwInventreeAddin.UI
             {
                 applyButton = new Button
                 {
-                    Text      = "Apply to Document",
+                    Text      = "Apply to SW Prop",
                     Dock      = DockStyle.Right,
                     Width     = 155,
                     Height    = 28,
