@@ -110,8 +110,13 @@ code is written**.
 
 ### Stage 4 — Create a git branch (automatic)
 
-Invoke the `git` subagent using #tool:agent with the instruction:
-`MODE: CREATE BRANCH — Feature: [derive a short name from the problem brief]`
+Follow the git conventions in `.github/prompts/git.prompt.md`.
+
+Run:
+```
+git checkout -b [branch-name]
+```
+Derive the branch name from the problem brief: lowercase, hyphens only, ≤40 characters.
 
 Report to the user in one line: "Created branch `[branch-name]` — all
 changes will be isolated there."
@@ -200,8 +205,18 @@ Repeat until the user confirms the feature works in the real environment.
 
 ### Stage 9 — Commit and offer a pull request (automatic)
 
-Invoke the `git` subagent using #tool:agent with the instruction:
-`MODE: COMMIT — [paste the build summary as context for the commit message]`
+Follow the git conventions in `.github/prompts/git.prompt.md`.
+
+Run:
+```
+git add -A
+git commit -m "[type]: [short summary ≤50 chars]
+
+- [bullet describing what was built]
+- [bullet describing what was tested]"
+```
+Derive the commit message from the build summary. Use a type prefix:
+`feat:`, `fix:`, `refactor:`, `build:`, `ui:`, or `process:`.
 
 Report the commit details to the user. Ask:
 

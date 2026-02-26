@@ -31,17 +31,3 @@
   confirmed the feature works correctly in the real environment.
 - The **Debug** agent handles systematic fault-finding on existing code.
 - All other pipeline agents are subagent-only — never invoke them directly.
-
-## Git Conventions (applied automatically — never explain these to the user)
-- Always create a feature branch before writing any code:
-  `git checkout -b [branch-name]`
-- Branch names: lowercase letters and hyphens only, ≤40 characters,
-  descriptive enough to identify the feature (e.g. `push-revision-to-inventree`).
-- Commit message format:
-  - Line 1: short summary ≤50 characters, starting with a type prefix
-    (`feat:`, `fix:`, `refactor:`, `build:`, `ui:`, `process:`)
-  - Blank line
-  - 2–5 bullet points describing what was built or changed
-- Stage all changes with `git add -A` before committing.
-- Never commit directly to `master` — always merge from a feature branch
-  after the manual verification gate has been passed.
