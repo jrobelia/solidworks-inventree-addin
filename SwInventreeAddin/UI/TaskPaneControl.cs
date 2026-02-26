@@ -20,6 +20,8 @@ namespace SwInventreeAddin.UI
         // Per-field apply buttons shown in the UI.
         public Button  ApplyNameButton        { get; private set; } = null!;
         public Button  ApplyNotesButton       { get; private set; } = null!;
+        // Push revision from SolidWorks up to InvenTree.
+        public Button  PushRevisionButton     { get; private set; } = null!;
         public Label   StatusLabel            { get; private set; } = null!;
 
         // Current-document value boxes (shown immediately when a part opens)
@@ -156,8 +158,14 @@ namespace SwInventreeAddin.UI
             RevisionPreviewTextBox = inRev;
             _revisionInvenTreeRow  = rowRev;
 
+            // Push Revision button — sends the SW revision up to InvenTree (opposite direction).
+            PushRevisionButton = MakeButton("Push SW Rev to InvenTree", ImportBtnBg, DockStyle.Top);
+            PushRevisionButton.Enabled = false;
+            PushRevisionButton.Click  += async (s, e) => await PushRevisionToInventreeAsync();
+
             var sectionHeader = BuildSectionHeader("Properties");
 
+            section.Controls.Add(PushRevisionButton);
             section.Controls.Add(revField);
             section.Controls.Add(notesField);
             section.Controls.Add(nameField);
@@ -193,9 +201,9 @@ namespace SwInventreeAddin.UI
             {
                 applyButton = new Button
                 {
-                    Text      = "Apply to Document",
+                    Text      = "Apply to SW Prop",
                     Dock      = DockStyle.Right,
-                    Width     = 155,
+                    Width     = 185,
                     Height    = 28,
                     BackColor = ApplyBtnBg,
                     ForeColor = Color.White,
@@ -352,17 +360,7 @@ namespace SwInventreeAddin.UI
             RefreshCurrentProperties();
 
             // Clear any stale InvenTree preview from a previous document
-            _nameInvenTreeRow.Visible       = false;
-            _notesInvenTreeRow.Visible      = false;
-            _revisionInvenTreeRow.Visible   = false;
-            NamePreviewTextBox.Text         = string.Empty;
-            NotesPreviewTextBox.Text        = string.Empty;
-            RevisionPreviewTextBox.Text     = string.Empty;
-            ApplyButton.Enabled      = false;
-            ApplyNameButton.Enabled  = false;
-            ApplyNotesButton.Enabled = false;
-            _lastFetchedPart                = null;
-            StatusLabel.Text               = string.Empty;
+            ResetInvenTreeState();
         }
 
         /// <summary>Resets the entire panel. Called when no document is active.</summary>
@@ -374,18 +372,27 @@ namespace SwInventreeAddin.UI
             _currentRevisionBox.Text        = string.Empty;
             _propertiesSection.Visible      = false;
 
-            NamePreviewTextBox.Text         = string.Empty;
-            NotesPreviewTextBox.Text        = string.Empty;
-            RevisionPreviewTextBox.Text     = string.Empty;
+            ResetInvenTreeState();
+        }
+
+        /// <summary>
+        /// Clears all InvenTree-fetched data from the UI and disables action buttons.
+        /// Called by both LoadPartNumber (document switch) and ClearAll (no document).
+        /// </summary>
+        private void ResetInvenTreeState()
+        {
             _nameInvenTreeRow.Visible       = false;
             _notesInvenTreeRow.Visible      = false;
             _revisionInvenTreeRow.Visible   = false;
-
-            ApplyButton.Enabled      = false;
-            ApplyNameButton.Enabled  = false;
-            ApplyNotesButton.Enabled = false;
-            StatusLabel.Text         = string.Empty;
-            _lastFetchedPart         = null;
+            NamePreviewTextBox.Text         = string.Empty;
+            NotesPreviewTextBox.Text        = string.Empty;
+            RevisionPreviewTextBox.Text     = string.Empty;
+            ApplyButton.Enabled             = false;
+            ApplyNameButton.Enabled         = false;
+            ApplyNotesButton.Enabled        = false;
+            PushRevisionButton.Enabled      = false;
+            StatusLabel.Text                = string.Empty;
+            _lastFetchedPart                = null;
         }
 
         public async Task FetchPartAsync()
@@ -428,6 +435,7 @@ namespace SwInventreeAddin.UI
                 ApplyButton.Enabled      = true;
                 ApplyNameButton.Enabled  = true;
                 ApplyNotesButton.Enabled = true;
+                PushRevisionButton.Enabled = true;
                 _lastFetchedPart               = part;
                 StatusLabel.Text               = string.Empty;
             }
@@ -474,6 +482,33 @@ namespace SwInventreeAddin.UI
             _propertyService.SetCustomProperty("Notes", value);
             _currentNotesBox.Text = value;
             StatusLabel.Text = "\u2713  Notes applied.";
+        }
+
+        public async Task PushRevisionToInventreeAsync()
+        {
+            if (_lastFetchedPart == null)
+                return;
+
+            if (_lastFetchedPart.Pk == 0)
+            {
+                StatusLabel.Text = "Error: cannot push revision \u2014 InvenTree part ID (Pk) is missing.";
+                return;
+            }
+
+            var revision = _propertyService.GetCustomProperty("Revision");
+            StatusLabel.Text = "Pushing revision to InvenTree\u2026";
+
+            try
+            {
+                await _client.UpdatePartRevisionAsync(_lastFetchedPart.Pk, revision);
+                _lastFetchedPart.Revision   = revision;
+                RevisionPreviewTextBox.Text  = revision;
+                StatusLabel.Text             = "\u2713  Revision pushed to InvenTree.";
+            }
+            catch (Exception ex)
+            {
+                StatusLabel.Text = $"Error: {ex.Message}";
+            }
         }
     }
 }
