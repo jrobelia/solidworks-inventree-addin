@@ -53,12 +53,37 @@ namespace SwInventreeAddin.InvenTree
             var first = array[0];
             return new InventreePart
             {
+                Pk       = first.TryGetProperty("pk", out var pkProp) ? pkProp.GetInt32() : 0,
                 Name     = GetString(first, "name"),
                 Notes    = GetString(first, "notes"),
                 Revision = GetString(first, "revision"),
                 Ipn      = GetString(first, "IPN"),
             };
         }
+
+        public async Task UpdatePartRevisionAsync(int pk, string revision)
+        {
+            var body = new StringContent(
+                $"{{\"revision\":\"{revision}\"}}",
+                System.Text.Encoding.UTF8,
+                "application/json");
+
+            using var request = new HttpRequestMessage(new HttpMethod("PATCH"), $"/api/part/{pk}/")
+            {
+                Content = body
+            };
+
+            var response = await _httpClient.SendAsync(request);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                throw new HttpRequestException(
+                    "InvenTree rejected the API key (401 Unauthorized).");
+
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException(
+                    $"InvenTree returned {(int)response.StatusCode} {response.StatusCode}");
+        }
+
         private static string GetString(JsonElement element, string propertyName) =>
             element.TryGetProperty(propertyName, out var prop)
                 ? prop.GetString() ?? string.Empty
