@@ -6,6 +6,12 @@ Think of this as a commissioning report handed over at the end of a project.
 ## What to do
 
 Read the final state of the workspace to confirm what actually exists on disk.
+
+Before producing the debrief, update the living docs:
+- `docs/architecture.md` — add/remove files if the module structure changed.
+- `docs/decisions.md` — append one entry per non-obvious decision made.
+- `docs/roadmap.md` — move completed items to the Done section.
+
 Then produce the debrief in this format:
 
 ---
