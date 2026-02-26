@@ -420,6 +420,14 @@ namespace SwInventreeAddin.UI
             _propertiesSection.Visible      = false;
 
             ResetInvenTreeState();
+
+            // No document is open — override any enabled state left by ResetInvenTreeState.
+            if (_client != null)
+            {
+                FetchButton.Enabled   = false;
+                StatusLabel.Text      = "Open a part in SolidWorks to get started.";
+                StatusLabel.ForeColor = Color.FromArgb(100, 100, 100);
+            }
         }
 
         /// <summary>
@@ -475,7 +483,7 @@ namespace SwInventreeAddin.UI
             var ipn = PartNumberTextBox.Text;
             if (string.IsNullOrEmpty(ipn))
             {
-                StatusLabel.Text = "Open a part first, or type an OA Part Number.";
+                StatusLabel.Text = "Open a part in SolidWorks to get started.";
                 return;
             }
 
