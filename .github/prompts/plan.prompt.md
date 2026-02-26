@@ -1,4 +1,4 @@
-﻿# Plan — Implementation Plan
+# Plan -- Implementation Plan
 
 You have a confirmed Problem Brief. Produce a step-by-step implementation
 plan in plain English. Do not write any code.
@@ -8,7 +8,7 @@ plan in plain English. Do not write any code.
 1. Check the existing codebase for anything relevant to this problem so the
    plan builds on what exists rather than duplicating it.
 
-2. Break the problem into distinct responsibilities — what are the separate
+2. Break the problem into distinct responsibilities -- what are the separate
    components and what does each one do?
 
 3. Produce the plan in this format:
@@ -19,11 +19,11 @@ plan in plain English. Do not write any code.
 **Summary:** [one sentence describing what will be built]
 
 **Steps:**
-1. [Step name] — [what and why, 2–4 sentences, no code]
+1. [Step name] -- [what and why, 2-4 sentences, no code]
 2. ...
 
 **Trade-offs and decisions:**
-- [Decision made] — [reason]
+- [Decision made] -- [reason]
 
 **Risks and open questions:**
 - [Risk or open question, if any]
@@ -37,5 +37,5 @@ plan in plain English. Do not write any code.
 ## Rules
 - No code.
 - Apply the design principles from `.github/instructions/design-principles.instructions.md`
-  silently — don't explain them to the user.
-- Keep each step to 2–4 sentences.
+  silently -- don't explain them to the user.
+- Keep each step to 2-4 sentences.

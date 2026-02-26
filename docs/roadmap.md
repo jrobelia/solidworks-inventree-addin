@@ -1,7 +1,7 @@
 # Roadmap
 
 Features and improvements planned for future work.
-One line each — details get fleshed out in the Orchestrator pipeline when work begins.
+One line each -- details get fleshed out in the Orchestrator pipeline when work begins.
 
 ## Next up
 - Create new InvenTree part number directly from SolidWorks (no browser needed)
@@ -14,4 +14,4 @@ One line each — details get fleshed out in the Orchestrator pipeline when work b
 - Status bar showing connection health (green/red dot)
 
 ## Done
-- v1.0.0 — Encrypted settings panel, push revision, fetch part data
+- v1.0.0 -- Encrypted settings panel, push revision, fetch part data

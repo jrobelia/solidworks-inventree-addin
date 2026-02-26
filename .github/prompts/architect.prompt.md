@@ -1,4 +1,4 @@
-﻿# Architect — Code Structure Design
+# Architect -- Code Structure Design
 
 You have a confirmed Implementation Plan. Design how the code will be
 organised before anyone writes a line of it. Think of this as producing
@@ -25,10 +25,10 @@ engineering drawings before manufacturing starts.
 |--------|----------|----------|---------------------|
 
 **Data flow:**
-[plain English — trace data from entry to result]
+[plain English -- trace data from entry to result]
 
 **Design decisions:**
-- [Decision] — [one-sentence reason]
+- [Decision] -- [one-sentence reason]
 ---
 
 3. Present it to the user and ask: "Does this structure make sense? Are
@@ -40,4 +40,4 @@ engineering drawings before manufacturing starts.
 - No implementation code. Interface signatures (names + parameters only)
   are acceptable if they clarify the design.
 - Apply `.github/instructions/design-principles.instructions.md` silently.
-- This is the last gate before code is written — be thorough.
+- This is the last gate before code is written -- be thorough.

@@ -15,7 +15,7 @@ actionable notes that the build agent can use to fix the issues.
 
 ---
 
-## Stage 1 — Spec Compliance
+## Stage 1 -- Spec Compliance
 
 Check: does the code match what was planned and designed?
 
@@ -28,7 +28,7 @@ Work through this checklist:
 - [ ] No files exist that were not in the approved architecture (no
       speculative additions).
 - [ ] Function and module names match the intent described in the design.
-- [ ] Data flows in the direction described — inputs enter where they
+- [ ] Data flows in the direction described -- inputs enter where they
       should, outputs leave where they should.
 - [ ] Error handling covers the edge cases identified in the Problem Brief.
 
@@ -37,7 +37,7 @@ a plain-English description of what's wrong.
 
 ---
 
-## Stage 2 — Code Quality
+## Stage 2 -- Code Quality
 
 Check: does the code follow the design principles from
 [design-principles.instructions.md](.github/instructions/design-principles.instructions.md)?
@@ -65,9 +65,9 @@ Classify each issue found:
 
 ---
 
-## Stage 3 — Verification Before Completion
+## Stage 3 -- Verification Before Completion
 
-Do not just assert that the code works — **prove it**.
+Do not just assert that the code works -- **prove it**.
 
 1. Run the full test suite:
    ```
@@ -75,7 +75,7 @@ Do not just assert that the code works — **prove it**.
    ```
    All tests must pass. If any fail, this is a critical issue.
 
-2. Run a real integration check — invoke the program with a realistic
+2. Run a real integration check -- invoke the program with a realistic
    input and confirm the output is correct:
    ```
    [appropriate run command with a sample input]
@@ -94,21 +94,21 @@ Produce your verdict in this exact format so the orchestrator can parse it:
 ---
 **CODE REVIEW VERDICT: [PASS / BLOCK]**
 
-**Stage 1 — Spec Compliance:** [PASS / ISSUES FOUND]
+**Stage 1 -- Spec Compliance:** [PASS / ISSUES FOUND]
 [List any issues found, each with: file path + plain-English description]
 
-**Stage 2 — Code Quality:**
+**Stage 2 -- Code Quality:**
 - Critical issues: [count]
   [List each: file path, line or function, plain-English description]
 - Minor issues: [count]
   [List each: same format]
 
-**Stage 3 — Verification:** [PASS / FAIL]
+**Stage 3 -- Verification:** [PASS / FAIL]
 [Describe what was run and what the result was]
 
 **Overall verdict:** PASS (all critical checks passed) or BLOCK (see above)
 
-**If BLOCK — specific fix instructions for the build agent:**
+**If BLOCK -- specific fix instructions for the build agent:**
 [Numbered list of exactly what needs to change, precise enough for the
 build agent to act on without ambiguity]
 ---
@@ -121,6 +121,6 @@ build agent to act on without ambiguity]
   acceptable. Every issue must name the file and describe the exact problem.
 - Minor issues are noted but never cause a BLOCK on their own.
 - A PASS on verification requires the program to actually run correctly on
-  a real input — not just compile or import without errors.
+  a real input -- not just compile or import without errors.
 - Do not suggest architectural changes at this stage. Scope changes go
   back to the orchestrator, not the build agent.
