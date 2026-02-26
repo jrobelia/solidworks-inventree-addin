@@ -27,6 +27,15 @@
   <ItemGroup>
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
   </ItemGroup>
+  <!-- Copy inventree_servers.json from the repo root to the output folder after each build.
+       This lets developers test without manually copying the config file.
+       The file is gitignored so it is never committed; the copy is silently skipped if absent. -->
+  <Target Name="CopyDevConfig" AfterTargets="Build">
+    <Copy Condition="Exists('$(MSBuildThisFileDirectory)..\inventree_servers.json')"
+          SourceFiles="$(MSBuildThisFileDirectory)..\inventree_servers.json"
+          DestinationFolder="$(OutputPath)"
+          SkipUnchangedFiles="true" />
+  </Target>
   <ItemGroup>
     <Content Include="Resources\inventree_logo.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

@@ -23,6 +23,7 @@ namespace SwInventreeAddin.Tests
 
         private static readonly InventreePart SamplePart = new InventreePart
         {
+            Pk       = 42,
             Name     = "Resistor 10k",
             Notes    = "SMD 0402",
             Revision = "A",
@@ -183,6 +184,120 @@ namespace SwInventreeAddin.Tests
                 Does.Contain("not found").IgnoreCase
                 .Or.Contain("no part").IgnoreCase,
                 "Status label must indicate that the part was not found");
+        }
+
+        // --- PushRevisionButton state ---
+
+        [Test]
+        public void PushRevisionButton_IsDisabledOnInitialisation()
+        {
+            CreateControl();
+
+            Assert.That(_control.PushRevisionButton.Enabled, Is.False);
+        }
+
+        [Test]
+        public async Task PushRevisionButton_IsEnabledAfterSuccessfulFetch()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateControl();
+
+            await _control.FetchPartAsync();
+
+            Assert.That(_control.PushRevisionButton.Enabled, Is.True);
+        }
+
+        [Test]
+        public async Task PushRevisionButton_IsDisabledAfterClearAll()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateControl();
+            await _control.FetchPartAsync();
+
+            _control.ClearAll();
+
+            Assert.That(_control.PushRevisionButton.Enabled, Is.False);
+        }
+
+        // --- PushRevisionToInventreeAsync behaviour ---
+
+        [Test]
+        public async Task PushRevision_WhenNoPartFetched_DoesNotCallClient()
+        {
+            // No fetch — _lastFetchedPart is null
+            CreateControl();
+
+            await _control.PushRevisionToInventreeAsync();
+
+            Assert.That(_client.LastPushedPk, Is.EqualTo(0));
+        }
+
+        [Test]
+        public async Task PushRevision_ReadsSWRevisionCustomProperty()
+        {
+            _propertyService.Seed("Revision", "B");
+            _client.PartToReturn = SamplePart;
+            CreateControl();
+            await _control.FetchPartAsync();
+
+            await _control.PushRevisionToInventreeAsync();
+
+            Assert.That(_client.LastPushedRevision, Is.EqualTo("B"));
+        }
+
+        [Test]
+        public async Task PushRevision_CallsClientWithCorrectPkAndRevision()
+        {
+            _propertyService.Seed("Revision", "C");
+            _client.PartToReturn = SamplePart;
+            CreateControl();
+            await _control.FetchPartAsync();
+
+            await _control.PushRevisionToInventreeAsync();
+
+            Assert.That(_client.LastPushedPk,       Is.EqualTo(42));
+            Assert.That(_client.LastPushedRevision, Is.EqualTo("C"));
+        }
+
+        [Test]
+        public async Task PushRevision_OnSuccess_UpdatesRevisionPreviewTextBox()
+        {
+            _propertyService.Seed("Revision", "D");
+            _client.PartToReturn = SamplePart;
+            CreateControl();
+            await _control.FetchPartAsync();
+
+            await _control.PushRevisionToInventreeAsync();
+
+            Assert.That(_control.RevisionPreviewTextBox.Text, Is.EqualTo("D"));
+        }
+
+        [Test]
+        public async Task PushRevision_OnSuccess_ShowsSuccessInStatusLabel()
+        {
+            _propertyService.Seed("Revision", "E");
+            _client.PartToReturn = SamplePart;
+            CreateControl();
+            await _control.FetchPartAsync();
+
+            await _control.PushRevisionToInventreeAsync();
+
+            Assert.That(_control.StatusLabel.Text,
+                Does.Contain("pushed").IgnoreCase
+                .Or.Contain("\u2713"));
+        }
+
+        [Test]
+        public async Task PushRevision_OnHttpError_ShowsErrorInStatusLabel()
+        {
+            _client.PartToReturn = SamplePart;
+            _client.ThrowOnUpdate = new System.Net.Http.HttpRequestException("InvenTree returned 500");
+            CreateControl();
+            await _control.FetchPartAsync();
+
+            await _control.PushRevisionToInventreeAsync();
+
+            Assert.That(_control.StatusLabel.Text, Does.Contain("Error").IgnoreCase);
         }
     }
 }
