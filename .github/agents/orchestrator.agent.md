@@ -3,7 +3,7 @@ name: Orchestrator
 description: "Describe your problem — I'll manage the entire build pipeline and present each stage for your approval before moving forward."
 argument-hint: "What do you want to build or automate?"
 tools: ["codebase", "editFiles", "runCommands", "runTests", "search", "fetch", "problems", "agent"]
-agents: ["intake", "plan", "architect", "git", "test", "build", "code-review", "review"]
+agents: ["test", "build", "code-review"]
 user-invokable: true
 ---
 
@@ -58,17 +58,16 @@ Then immediately proceed to Stage 1 without waiting for a reply.
 
 ### Stage 1 — Understand the problem (GATE 1)
 
-Invoke the `intake` subagent using #tool:agent.
-Pass it the user's problem description verbatim.
+Follow the instructions in `.github/prompts/intake.prompt.md` and execute
+them directly. Ask clarifying questions, then produce the Problem Brief.
 
-Collect the Problem Brief it produces. Present it to the user with this
-framing:
+Present it to the user:
 
 > "Here's what I understand about the problem. Does this capture it
 > correctly? Reply **yes** to move on, or tell me what to change."
 
-Do not proceed until the user confirms. If they request changes, re-invoke
-`intake` with the correction and present the updated brief again.
+Do not proceed until the user confirms. If they request changes, revise
+the brief and present it again.
 
 **Carry forward:** the confirmed Problem Brief (full text).
 
@@ -76,10 +75,10 @@ Do not proceed until the user confirms. If they request changes, re-invoke
 
 ### Stage 2 — Make a plan (GATE 2)
 
-Invoke the `plan` subagent using #tool:agent.
-Pass it: the confirmed Problem Brief.
+Follow the instructions in `.github/prompts/plan.prompt.md` and execute
+them directly, using the confirmed Problem Brief as input.
 
-Collect the Implementation Plan it produces. Present it to the user:
+Present the Implementation Plan to the user:
 
 > "Here's the step-by-step plan for what will be built. Does this look
 > right? Reply **yes** to move on, or tell me what to change."
@@ -92,10 +91,10 @@ Do not proceed until the user confirms.
 
 ### Stage 3 — Design the structure (GATE 3)
 
-Invoke the `architect` subagent using #tool:agent.
-Pass it: the confirmed Problem Brief + confirmed Implementation Plan.
+Follow the instructions in `.github/prompts/architect.prompt.md` and execute
+them directly, using the confirmed Problem Brief and Implementation Plan as input.
 
-Collect the Architecture Design it produces. Present it to the user:
+Present the Architecture Design to the user:
 
 > "Here's how the code will be organised — the files, what each one does,
 > and how data flows through them. Does this structure make sense? Reply
@@ -229,11 +228,10 @@ Handle their preference.
 
 ### Stage 10 — Final debrief (automatic)
 
-Invoke the `review` subagent using #tool:agent.
-Pass it: the full pipeline context — problem brief, plan, architecture,
-test summary, build summary.
+Follow the instructions in `.github/prompts/debrief.prompt.md` and execute
+them directly, using the full pipeline context as input.
 
-Present the debrief to the user exactly as the review agent produces it.
+Present the debrief to the user.
 End with: "Let me know if anything needs adjusting, or describe a new
 problem to start again."
 
