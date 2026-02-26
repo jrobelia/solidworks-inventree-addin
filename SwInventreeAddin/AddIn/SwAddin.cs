@@ -89,13 +89,14 @@ namespace SwInventreeAddin.AddIn
                 $@"Software\SolidWorks\Addins\{{{AddinGuid}}}", throwOnMissingSubKey: false);
         }
 
-        private ISldWorks?        _swApp;
-        private SldWorks?          _swEvents;   // concrete class needed to subscribe to COM events
-        private bool               _hasActiveDoc;  // tracks whether a document was open on last check
-        private TaskPaneControl?  _taskPaneControl;
-        private ITaskpaneView?    _taskPaneView;
+        private ISldWorks?               _swApp;
+        private SldWorks?               _swEvents;   // concrete class needed to subscribe to COM events
+        private bool                    _hasActiveDoc;  // tracks whether a document was open on last check
+        private TaskPaneControl?        _taskPaneControl;
+        private ITaskpaneView?          _taskPaneView;
         private System.Net.Http.HttpClient? _httpClient;
-        private int               _addinCookie;
+        private int                     _addinCookie;
+        private EncryptedConfigProvider? _configProvider;
 
         public bool ConnectToSW(object thisSW, int cookie)
         {
@@ -111,16 +112,22 @@ namespace SwInventreeAddin.AddIn
                 ServicePointManager.SecurityProtocol =
                     SecurityProtocolType.Tls12 | SecurityProtocolType.Tls13;
 
-                var configProvider  = new JsonFileConfigProvider(ResolveConfigPath());
+                var configProvider  = new EncryptedConfigProvider();
+                _configProvider     = configProvider;
                 var config          = configProvider.GetServerConfig();
 
-                _httpClient             = new System.Net.Http.HttpClient();
-                _httpClient.BaseAddress = new System.Uri(config.Url);
+                IInventreeClient? inventreeClient = null;
+                if (config != null)
+                {
+                    _httpClient             = new System.Net.Http.HttpClient();
+                    _httpClient.BaseAddress = new System.Uri(config.Url);
+                    inventreeClient = new InventreeHttpClient(_httpClient, config.ApiKey);
+                }
 
-                var inventreeClient = new InventreeHttpClient(_httpClient, config.ApiKey);
                 var propertyService = new SwDocumentPropertyService(_swApp);
 
                 _taskPaneControl = new TaskPaneControl(inventreeClient, propertyService);
+                _taskPaneControl.SettingsRequested += OnSettingsRequested;
 
                 // Refresh the PartNo field whenever the user opens or switches documents.
                 // OnIdleNotify detects when the last document is closed (ActiveDoc becomes null).
@@ -167,8 +174,12 @@ namespace SwInventreeAddin.AddIn
                 _taskPaneView = null;
             }
 
-            _taskPaneControl?.Dispose();
-            _taskPaneControl = null;
+            if (_taskPaneControl != null)
+            {
+                _taskPaneControl.SettingsRequested -= OnSettingsRequested;
+                _taskPaneControl.Dispose();
+                _taskPaneControl = null;
+            }
 
             _httpClient?.Dispose();
             _httpClient = null;
@@ -211,12 +222,23 @@ namespace SwInventreeAddin.AddIn
             return 0;
         }
 
-        private static string ResolveConfigPath()
+        private void OnSettingsRequested(object sender, EventArgs e)
         {
-            var assemblyDir = System.IO.Path.GetDirectoryName(
-                System.Reflection.Assembly.GetExecutingAssembly().Location)
-                ?? string.Empty;
-            return System.IO.Path.Combine(assemblyDir, "inventree_servers.json");
+            if (_configProvider == null) return;
+
+            using (var form = new SettingsForm(_configProvider))
+            {
+                if (form.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
+
+                var newConfig = _configProvider.GetServerConfig();
+                if (newConfig == null) return;
+
+                _httpClient?.Dispose();
+                _httpClient             = new System.Net.Http.HttpClient();
+                _httpClient.BaseAddress = new System.Uri(newConfig.Url);
+                var newClient = new InventreeHttpClient(_httpClient, newConfig.ApiKey);
+                _taskPaneControl?.UpdateClient(newClient);
+            }
         }
     }
 }
