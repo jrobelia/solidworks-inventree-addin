@@ -25,6 +25,9 @@
   at a time in a back-and-forth loop.
 - The **Orchestrator** agent manages the full engineering lifecycle:
   understand → plan → architect → git branch → failing tests → build →
-  code review → commit → debrief. Use it rather than jumping straight to code.
+  code review → **manual verification in real environment** → commit → debrief.
+  Use it rather than jumping straight to code.
+- Manual verification is a hard gate — do not commit until the user has
+  confirmed the feature works correctly in the real environment.
 - The **Debug** agent handles systematic fault-finding on existing code.
 - All other pipeline agents are subagent-only — never invoke them directly.

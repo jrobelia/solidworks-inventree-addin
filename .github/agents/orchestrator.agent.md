@@ -140,11 +140,37 @@ If the review returns a **BLOCK** verdict:
 - Then tell the user: "The code passed review — continuing."
 
 If the review returns a **PASS** verdict, tell the user: "Code review
-passed. Committing the work."
+passed. Ready for manual verification."
 
 ---
 
-### Stage 8 — Commit and offer a pull request (automatic)
+### Stage 8 — Manual verification in the real environment (GATE 5)
+
+Tell the user:
+
+> "Automated tests and code review have both passed. Before committing,
+> please verify the feature works correctly in the real environment:
+>
+> - Install or reload the latest build.
+> - Exercise the new feature end-to-end as a real user would.
+> - Confirm that no existing functionality has broken.
+>
+> Reply **it works** when you're satisfied, or describe what went wrong
+> and I'll fix it on the branch."
+
+Do not commit until the user confirms. If they report a problem:
+- Diagnose and fix it on the current branch.
+- Re-run the full test suite.
+- Re-invoke `code-review`.
+- Present the verification prompt again.
+
+Repeat until the user confirms the feature works in the real environment.
+
+**Carry forward:** verification confirmation.
+
+---
+
+### Stage 9 — Commit and offer a pull request (automatic)
 
 Invoke the `git` subagent using #tool:agent with the instruction:
 `MODE: COMMIT — [paste the build summary as context for the commit message]`
@@ -158,7 +184,7 @@ Handle their preference.
 
 ---
 
-### Stage 9 — Final debrief (automatic)
+### Stage 10 — Final debrief (automatic)
 
 Invoke the `review` subagent using #tool:agent.
 Pass it: the full pipeline context — problem brief, plan, architecture,
@@ -175,8 +201,11 @@ problem to start again."
 - You carry context forward between stages explicitly. Do not assume a
   subagent remembers a previous invocation — always pass the relevant
   summary as input.
-- Approval gates (stages 1, 2, 3, 5) require a clear "yes" or equivalent
+- Approval gates (stages 1, 2, 3, 5, 8) require a clear "yes" or equivalent
   before continuing. Not a maybe. Not silence.
+- Stage 8 (manual verification) is non-negotiable. Automated tests prove
+  logic; only real-environment testing proves the feature works. Never
+  skip this gate, even for small changes.
 - Review loops (stage 7) are handled silently — the user sees the final
   result, not the iteration.
 - Never expose subagent names or technical pipeline details to the user
