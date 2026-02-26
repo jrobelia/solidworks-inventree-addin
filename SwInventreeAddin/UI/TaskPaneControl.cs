@@ -446,6 +446,7 @@ namespace SwInventreeAddin.UI
             ApplyNameButton.Enabled         = false;
             ApplyNotesButton.Enabled        = false;
             PushRevisionButton.Enabled      = false;
+            PushRevisionButton.Visible      = false;
 
             // If no client is configured, keep the orange prompt visible rather than clearing it.
             if (_client == null)
@@ -458,6 +459,7 @@ namespace SwInventreeAddin.UI
             {
                 StatusLabel.Text      = string.Empty;
                 StatusLabel.ForeColor = Color.FromArgb(100, 100, 100);
+                FetchButton.Enabled   = true;
             }
             _lastFetchedPart                = null;
         }
@@ -539,6 +541,7 @@ namespace SwInventreeAddin.UI
                 ApplyNameButton.Enabled         = true;
                 ApplyNotesButton.Enabled        = true;
                 PushRevisionButton.Enabled      = true;
+                PushRevisionButton.Visible      = true;
                 _lastFetchedPart                = part;
                 StatusLabel.Text                = string.Empty;
             }));
