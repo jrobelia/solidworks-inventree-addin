@@ -30,7 +30,6 @@ Copy-Item "$PSScriptRoot\Install.ps1"                         -Destination $dist
 Copy-Item "$PSScriptRoot\Install (Run as Administrator).bat"  -Destination $distDir
 Copy-Item "$PSScriptRoot\Uninstall.ps1"                       -Destination $distDir
 Copy-Item "$PSScriptRoot\Uninstall (Run as Administrator).bat" -Destination $distDir
-Copy-Item "$PSScriptRoot\inventree_servers.json"              -Destination $distDir
 Copy-Item "$PSScriptRoot\README.txt"                          -Destination $distDir
 
 # Zip it
