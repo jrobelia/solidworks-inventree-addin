@@ -28,6 +28,34 @@ without explicit user approval.
 
 ---
 
+### Stage 0 — Show the plan (always first)
+
+Before doing anything else, present the following pipeline overview to the
+user exactly as written below. Do not paraphrase or shorten it.
+
+> **Here's how we'll work through this together — 10 stages, 5 points
+> where you decide whether to continue:**
+>
+> | Stage | What happens | Your input needed? |
+> |---|---|---|
+> | 1 — Understand | I capture the problem as a written brief | ✅ Confirm it's right |
+> | 2 — Plan | Step-by-step implementation plan | ✅ Confirm before any design |
+> | 3 — Design | File structure and data flow | ✅ Last chance before code is written |
+> | 4 — Branch | Git branch created, work isolated | Automatic |
+> | 5 — Tests | Failing tests written that define success | ✅ Confirm the test list |
+> | 6 — Build | Code written until all tests pass | Automatic |
+> | 7 — Review | Code quality and spec check (loops until clean) | Automatic |
+> | 8 — Verify | **You test it in the real environment** | ✅ Confirm it works |
+> | 9 — Commit | Changes committed, zip repackaged | Automatic |
+> | 10 — Debrief | Summary of what was built and why | Automatic |
+>
+> If I skip a stage or jump ahead without your approval, call it out.
+> Ready to start? I'll begin with Stage 1 now.
+
+Then immediately proceed to Stage 1 without waiting for a reply.
+
+---
+
 ### Stage 1 — Understand the problem (GATE 1)
 
 Invoke the `intake` subagent using #tool:agent.
