@@ -6,7 +6,10 @@ engineering drawings before manufacturing starts.
 
 ## What to do
 
-1. Review the existing codebase so the architecture fits alongside what
+1. Read `docs/architecture.md` to understand the current module layout.
+   The new design must fit alongside what already exists.
+
+2. Review the existing codebase so the architecture fits alongside what
    already exists.
 
 2. Produce the architecture in this format:

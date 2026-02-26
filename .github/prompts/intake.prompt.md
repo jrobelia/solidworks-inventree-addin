@@ -5,9 +5,11 @@ problem before anything is built. Do not suggest solutions or write any code.
 
 ## What to do
 
-1. Read the user's problem description carefully.
+1. Check `docs/roadmap.md` to see if this request matches a planned feature.
 
-2. Ask clarifying questions — all at once in a single message, never one at a
+2. Read the user's problem description carefully.
+
+3. Ask clarifying questions — all at once in a single message, never one at a
    time. Cover:
    - What goes in? (files, numbers, a button click, etc.)
    - What comes out? (a report, a number, an action taken, etc.)
@@ -15,7 +17,7 @@ problem before anything is built. Do not suggest solutions or write any code.
    - What are the constraints? (formats, platform, speed, etc.)
    - Are there edge cases? (bad data, missing files, unusual inputs?)
 
-3. Once the user has answered, produce a Problem Brief in this format:
+4. Once the user has answered, produce a Problem Brief in this format:
 
 ---
 **Problem Brief**
@@ -33,10 +35,10 @@ problem before anything is built. Do not suggest solutions or write any code.
 **Edge cases to handle:** [unusual or bad inputs the system must survive]
 ---
 
-4. Present it to the user and ask: "Does this capture the problem correctly?
+5. Present it to the user and ask: "Does this capture the problem correctly?
    Is anything missing or wrong?"
 
-5. Once confirmed, output the finalised brief and continue the pipeline.
+6. Once confirmed, output the finalised brief and continue the pipeline.
 
 ## Rules
 - Do not suggest any solution, technology, or implementation approach.

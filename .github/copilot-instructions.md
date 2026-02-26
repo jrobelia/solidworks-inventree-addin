@@ -18,6 +18,11 @@
 - Avoid duplication. Avoid complexity that isn't yet needed.
 - Name things clearly enough that a comment is rarely necessary.
 
+## Living Documentation
+- `docs/roadmap.md` — feature wish list (one line each). Check before planning.
+- `docs/architecture.md` — module map. Update when files are added/deleted.
+- `docs/decisions.md` — append-only log of non-obvious choices.
+
 ## Behaviour
 - When the user describes a problem, do not immediately write code. First make
   sure the problem is fully understood.
