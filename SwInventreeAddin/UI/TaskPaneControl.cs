@@ -23,6 +23,13 @@ namespace SwInventreeAddin.UI
         // Push revision from SolidWorks up to InvenTree.
         public Button  PushRevisionButton     { get; private set; } = null!;
         public Label   StatusLabel            { get; private set; } = null!;
+        // Load-from-InvenTree button — exposed so tests can check enabled state.
+        public Button  FetchButton            { get; private set; } = null!;
+        // Settings gear button — always present at the top of the panel.
+        public Button  SettingsButton         { get; private set; } = null!;
+
+        /// <summary>Raised when the user clicks the Settings button.</summary>
+        public event EventHandler? SettingsRequested;
 
         // Current-document value boxes (shown immediately when a part opens)
         private TextBox _currentDescriptionBox = null!;
@@ -36,7 +43,7 @@ namespace SwInventreeAddin.UI
 
         private Panel _propertiesSection = null!;   // whole properties block; hidden when no doc open
 
-        private readonly IInventreeClient         _client;
+        private IInventreeClient?                 _client;
         private readonly IDocumentPropertyService _propertyService;
         private InventreePart?                    _lastFetchedPart;
 
@@ -61,12 +68,12 @@ namespace SwInventreeAddin.UI
         private const int BoxHeight   = 26;
         private const int NotesHeight = 80;
 
-        public TaskPaneControl(IInventreeClient client, IDocumentPropertyService propertyService)
+        public TaskPaneControl(IInventreeClient? client, IDocumentPropertyService propertyService)
         {
             _client          = client;
             _propertyService = propertyService;
             InitialiseControls();
-            LoadPartNumber();
+            LoadPartNumber();  // calls ResetInvenTreeState(), which shows the no-server prompt if _client is null
         }
 
         // ── Build UI ──────────────────────────────────────────────────────────
@@ -104,9 +111,17 @@ namespace SwInventreeAddin.UI
             // Divider line above the properties section
             var divLine = MakeDivider();
 
-            // Import button
-            var btnImport = MakeButton("Load Properties from InvenTree", ImportBtnBg, DockStyle.Top);
-            btnImport.Click  += async (s, e) => await FetchPartAsync();
+            // Settings button — always enabled, lives above everything else.
+            SettingsButton = MakeButton("\u2699 Settings", Color.FromArgb(230, 230, 230), DockStyle.Top);
+            SettingsButton.ForeColor = Color.FromArgb(60, 60, 60);
+            SettingsButton.Font = UiFont;
+            SettingsButton.Click += (s, e) => SettingsRequested?.Invoke(this, EventArgs.Empty);
+
+            // Load-from-InvenTree button
+            FetchButton = MakeButton("Load Properties from InvenTree", ImportBtnBg, DockStyle.Top);
+            // ConfigureAwait(false) on the outer await so the click-handler continuation
+            // never tries to resume on the (possibly ShowDialog-disturbed) SyncContext.
+            FetchButton.Click += async (s, e) => await FetchPartAsync().ConfigureAwait(false);
 
             // OA Part Number entry
             PartNumberTextBox = new TextBox
@@ -119,13 +134,14 @@ namespace SwInventreeAddin.UI
             // "OA Part Number" label — 8 px top gap before first label, inside label.
             var lblPn = MakeFieldLabel("OA Part Number");
 
-            // Stack: bottom-to-top (StatusLabel at bottom, lblPn at top)
+            // Stack: bottom-to-top (StatusLabel at bottom, SettingsButton at top)
             Controls.Add(StatusLabel);
             Controls.Add(_propertiesSection);
             Controls.Add(divLine);
-            Controls.Add(btnImport);
+            Controls.Add(FetchButton);
             Controls.Add(PartNumberTextBox);
             Controls.Add(lblPn);
+            Controls.Add(SettingsButton);
         }
 
         /// <summary>Builds the three-field comparison section (Name, Notes, Revision).</summary>
@@ -161,7 +177,16 @@ namespace SwInventreeAddin.UI
             // Push Revision button — sends the SW revision up to InvenTree (opposite direction).
             PushRevisionButton = MakeButton("Push SW Rev to InvenTree", ImportBtnBg, DockStyle.Top);
             PushRevisionButton.Enabled = false;
-            PushRevisionButton.Click  += async (s, e) => await PushRevisionToInventreeAsync();
+            PushRevisionButton.Click  += async (s, e) =>
+            {
+                var confirm = MessageBox.Show(
+                    "Push the SolidWorks revision to InvenTree?\n\nThis will overwrite the revision stored in InvenTree.",
+                    "Confirm Push",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+                if (confirm == DialogResult.Yes)
+                    await PushRevisionToInventreeAsync().ConfigureAwait(false);
+            };
 
             var sectionHeader = BuildSectionHeader("Properties");
 
@@ -228,7 +253,7 @@ namespace SwInventreeAddin.UI
             };
             var tagNew = new Label
             {
-                Text      = incomingReadOnly ? "InvenTree  (display only \u2014 never written)" : "InvenTree",
+                Text      = "InvenTree",
                 Dock      = DockStyle.Top,
                 Font      = TagFont,
                 ForeColor = incomingReadOnly ? TagCurrentFg : TagNewFg,
@@ -345,6 +370,28 @@ namespace SwInventreeAddin.UI
             _currentRevisionBox.Text    = _propertyService.GetCustomProperty("Revision");
         }
 
+        /// <summary>
+        /// Hot-swaps the InvenTree client after credentials are saved in the Settings dialog.
+        /// Pass null when no credentials are configured yet.
+        /// </summary>
+        public void UpdateClient(IInventreeClient? newClient)
+        {
+            _client = newClient;
+
+            if (_client == null)
+            {
+                FetchButton.Enabled  = false;
+                StatusLabel.Text     = "No server configured — click \u2699 Settings to get started";
+                StatusLabel.ForeColor = Color.FromArgb(180, 80, 0);
+            }
+            else
+            {
+                FetchButton.Enabled  = true;
+                StatusLabel.Text     = string.Empty;
+                StatusLabel.ForeColor = Color.FromArgb(100, 100, 100);
+            }
+        }
+
         public void LoadPartNumber()
         {
             var partNo = _propertyService.GetCustomProperty("PartNo");
@@ -373,6 +420,14 @@ namespace SwInventreeAddin.UI
             _propertiesSection.Visible      = false;
 
             ResetInvenTreeState();
+
+            // No document is open — override any enabled state left by ResetInvenTreeState.
+            if (_client != null)
+            {
+                FetchButton.Enabled   = false;
+                StatusLabel.Text      = "Open a part in SolidWorks to get started.";
+                StatusLabel.ForeColor = Color.FromArgb(100, 100, 100);
+            }
         }
 
         /// <summary>
@@ -391,20 +446,46 @@ namespace SwInventreeAddin.UI
             ApplyNameButton.Enabled         = false;
             ApplyNotesButton.Enabled        = false;
             PushRevisionButton.Enabled      = false;
-            StatusLabel.Text                = string.Empty;
+            PushRevisionButton.Visible      = false;
+
+            // If no client is configured, keep the orange prompt visible rather than clearing it.
+            if (_client == null)
+            {
+                StatusLabel.Text      = "No server configured \u2014 click \u2699 Settings to get started";
+                StatusLabel.ForeColor = Color.FromArgb(180, 80, 0);
+                FetchButton.Enabled   = false;
+            }
+            else
+            {
+                StatusLabel.Text      = string.Empty;
+                StatusLabel.ForeColor = Color.FromArgb(100, 100, 100);
+                FetchButton.Enabled   = true;
+            }
             _lastFetchedPart                = null;
+        }
+
+        /// <summary>
+        /// Runs <paramref name="action"/> on the UI thread.
+        /// If called from a background thread and the control has a window handle,
+        /// uses a synchronous Invoke so callers (including tests) see the result immediately.
+        /// If there is no handle yet (e.g. in unit tests), runs directly on the current thread.
+        /// </summary>
+        private void RunOnUiThread(Action action)
+        {
+            if (IsHandleCreated && InvokeRequired)
+                Invoke(action);
+            else
+                action();
         }
 
         public async Task FetchPartAsync()
         {
-            // Refresh the Current column from the live document (Name/Notes/Revision only —
-            // the IPN box is left alone so the user can type a different part number to search).
             RefreshCurrentProperties();
 
             var ipn = PartNumberTextBox.Text;
             if (string.IsNullOrEmpty(ipn))
             {
-                StatusLabel.Text = "Open a part first, or type an OA Part Number.";
+                StatusLabel.Text = "Open a part in SolidWorks to get started.";
                 return;
             }
 
@@ -413,9 +494,33 @@ namespace SwInventreeAddin.UI
             ApplyNameButton.Enabled  = false;
             ApplyNotesButton.Enabled = false;
 
-            try
+            if (_client == null)
             {
-                var part = await _client.GetPartByIpnAsync(ipn);
+                StatusLabel.Text = "No server configured — click \u2699 Settings to get started";
+                return;
+            }
+
+            // ConfigureAwait(false) prevents resuming on the STA SynchronizationContext
+            // (which ShowDialog may have disturbed).  The HTTP client also uses
+            // ConfigureAwait(false) internally, so the real HTTP call never blocks the
+            // STA thread.  In tests the stub returns synchronously, so ConfigureAwait(false)
+            // is a no-op and everything stays on the calling thread — no hang.
+            // After the await, RunOnUiThread marshals UI updates back to the STA thread
+            // (via Invoke) in SolidWorks, or runs them directly in tests.
+            InventreePart? part = null;
+            Exception? fetchError = null;
+
+            try   { part = await _client.GetPartByIpnAsync(ipn).ConfigureAwait(false); }
+            catch (Exception ex) { fetchError = ex; }
+
+            RunOnUiThread(new Action(() =>
+            {
+
+                if (fetchError != null)
+                {
+                    StatusLabel.Text = $"Error: {fetchError.Message}";
+                    return;
+                }
 
                 if (part == null)
                 {
@@ -432,19 +537,15 @@ namespace SwInventreeAddin.UI
                 _nameInvenTreeRow.Visible       = true;
                 _notesInvenTreeRow.Visible      = true;
                 _revisionInvenTreeRow.Visible   = true;
-                ApplyButton.Enabled      = true;
-                ApplyNameButton.Enabled  = true;
-                ApplyNotesButton.Enabled = true;
-                PushRevisionButton.Enabled = true;
-                _lastFetchedPart               = part;
-                StatusLabel.Text               = string.Empty;
-            }
-            catch (Exception ex)
-            {
-                StatusLabel.Text = $"Error: {ex.Message}";
-            }
+                ApplyButton.Enabled             = true;
+                ApplyNameButton.Enabled         = true;
+                ApplyNotesButton.Enabled        = true;
+                PushRevisionButton.Enabled      = true;
+                PushRevisionButton.Visible      = true;
+                _lastFetchedPart                = part;
+                StatusLabel.Text                = string.Empty;
+            }));
         }
-
         public void ApplyToDocument()
         {
             if (_lastFetchedPart == null)
@@ -498,16 +599,25 @@ namespace SwInventreeAddin.UI
             var revision = _propertyService.GetCustomProperty("Revision");
             StatusLabel.Text = "Pushing revision to InvenTree\u2026";
 
+            if (_client == null)
+            {
+                StatusLabel.Text = "No server configured \u2014 click \u2699 Settings to get started";
+                return;
+            }
+
             try
             {
-                await _client.UpdatePartRevisionAsync(_lastFetchedPart.Pk, revision);
-                _lastFetchedPart.Revision   = revision;
-                RevisionPreviewTextBox.Text  = revision;
-                StatusLabel.Text             = "\u2713  Revision pushed to InvenTree.";
+                await _client.UpdatePartRevisionAsync(_lastFetchedPart.Pk, revision).ConfigureAwait(false);
+                RunOnUiThread(() =>
+                {
+                    _lastFetchedPart.Revision   = revision;
+                    RevisionPreviewTextBox.Text  = revision;
+                    StatusLabel.Text             = "\u2713  Revision pushed to InvenTree.";
+                });
             }
             catch (Exception ex)
             {
-                StatusLabel.Text = $"Error: {ex.Message}";
+                RunOnUiThread(() => StatusLabel.Text = $"Error: {ex.Message}");
             }
         }
     }

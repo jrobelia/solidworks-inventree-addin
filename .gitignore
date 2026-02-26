@@ -2,8 +2,12 @@
 # SolidWorks InvenTree Add-In  .gitignore
 # ===========================================
 
-# --- SECURITY: Server config contains API keys  NEVER commit this ---
+# --- SECURITY: Server config contains real API keys — NEVER commit ---
 inventree_servers.json
+
+# --- Scratch / debug output — never commit ---
+inventree_debug.log
+_scratch/
 
 # --- .NET / Visual Studio build outputs ---
 bin/
