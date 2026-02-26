@@ -2,6 +2,7 @@
 {
     public interface IConfigProvider
     {
-        ServerConfig GetServerConfig();
+        ServerConfig? GetServerConfig();
+        void SaveServerConfig(ServerConfig config);
     }
 }

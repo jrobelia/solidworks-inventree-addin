@@ -3,7 +3,7 @@ name: Orchestrator
 description: "Describe your problem — I'll manage the entire build pipeline and present each stage for your approval before moving forward."
 argument-hint: "What do you want to build or automate?"
 tools: ["codebase", "editFiles", "runCommands", "runTests", "search", "fetch", "problems", "agent"]
-agents: ["test", "build", "code-review"]
+agents: ["test", "code-review"]
 user-invokable: true
 ---
 
@@ -36,18 +36,18 @@ user exactly as written below. Do not paraphrase or shorten it.
 > **Here's how we'll work through this together — 10 stages, 5 points
 > where you decide whether to continue:**
 >
-> | Stage | What happens | Your input needed? |
-> |---|---|---|
-> | 1 — Understand | I capture the problem as a written brief | ✅ Confirm it's right |
-> | 2 — Plan | Step-by-step implementation plan | ✅ Confirm before any design |
-> | 3 — Design | File structure and data flow | ✅ Last chance before code is written |
-> | 4 — Branch | Git branch created, work isolated | Automatic |
-> | 5 — Tests | Failing tests written that define success | ✅ Confirm the test list |
-> | 6 — Build | Code written until all tests pass | Automatic |
-> | 7 — Review | Code quality and spec check (loops until clean) | Automatic |
-> | 8 — Verify | **You test it in the real environment** | ✅ Confirm it works |
-> | 9 — Commit | Changes committed, zip repackaged | Automatic |
-> | 10 — Debrief | Summary of what was built and why | Automatic |
+> | Stage | What happens | How it runs | Your input needed? |
+> |---|---|---|---|
+> | 1 — Understand | I capture the problem as a written brief | Orchestrator | ✅ Confirm it's right |
+> | 2 — Plan | Step-by-step implementation plan | Orchestrator | ✅ Confirm before any design |
+> | 3 — Design | File structure and data flow | Orchestrator | ✅ Last chance before code is written |
+> | 4 — Branch | Git branch created, work isolated | Orchestrator | Automatic |
+> | 5 — Tests | Failing tests written that define success | `test` subagent | ✅ Confirm the test list |
+> | 6 — Build | Code written until all tests pass | Orchestrator | Automatic |
+> | 7 — Review | Code quality and spec check (loops until clean) | `code-review` subagent | Automatic |
+> | 8 — Verify | **You test it in the real environment** | You | ✅ Confirm it works |
+> | 9 — Commit | Changes committed, zip repackaged | Orchestrator | Automatic |
+> | 10 — Debrief | Summary of what was built and why | Orchestrator | Automatic |
 >
 > If I skip a stage or jump ahead without your approval, call it out.
 > Ready to start? I'll begin with Stage 1 now.
@@ -145,14 +145,11 @@ Do not proceed until the user confirms.
 
 ### Stage 6 — Build until tests pass (automatic)
 
-Invoke the `build` subagent using #tool:agent.
-Pass it: the Architecture Design + test files + the instruction:
-`PHASE: GREEN then REFACTOR — Make every failing test pass, then clean up.`
+Implement the code directly using the available file editing and terminal tools.
+Use the Architecture Design and the failing test file paths as your guide.
+Work iteratively: write code, run tests, fix errors, repeat until all tests pass.
 
-The build agent will self-correct until all tests pass. It reports when
-done.
-
-Relay the Build Summary to the user in plain English.
+Report a plain-English Build Summary to the user when done.
 
 **Carry forward:** build summary + all file paths.
 

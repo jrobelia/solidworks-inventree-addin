@@ -5,6 +5,9 @@
 # --- SECURITY: Server config contains API keys  NEVER commit this ---
 inventree_servers.json
 
+# --- Scratch output (debug logs, test results, build output — never commit) ---
+_scratch/
+
 # --- .NET / Visual Studio build outputs ---
 bin/
 obj/

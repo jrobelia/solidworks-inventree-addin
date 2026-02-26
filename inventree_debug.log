@@ -1,0 +1,5 @@
+10:09:12.457  FETCH start — thread=17 STA=True
+10:09:12.459  FETCH calling HTTP via Task.Run
+10:09:12.461  FETCH Task.Run done — thread=9 STA=False
+10:09:12.462  FETCH RunOnUiThread — thread=9 STA=False
+10:09:12.515  FETCH complete
