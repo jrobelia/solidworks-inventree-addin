@@ -124,9 +124,10 @@ namespace SwInventreeAddin.AddIn
                     inventreeClient = new InventreeHttpClient(_httpClient, config.ApiKey);
                 }
 
-                var propertyService = new SwDocumentPropertyService(_swApp);
+                var propertyService  = new SwDocumentPropertyService(_swApp);
+                var viewportService  = new SwViewportCaptureService(_swApp);
 
-                _taskPaneControl = new TaskPaneControl(inventreeClient, propertyService);
+                _taskPaneControl = new TaskPaneControl(inventreeClient, propertyService, viewportService);
                 _taskPaneControl.SettingsRequested += OnSettingsRequested;
 
                 // Refresh the PartNo field whenever the user opens or switches documents.

@@ -13,15 +13,18 @@ SwInventreeAddin/
     ServerConfig.cs         -- data class: Url + ApiKey
     EncryptedConfigProvider  -- DPAPI-encrypted file in %AppData%
   InvenTree/
-    IInventreeClient.cs     -- interface: GetPartByIpnAsync / PatchPartRevisionAsync
+    IInventreeClient.cs     -- interface: GetPartByIpnAsync / PatchPartRevisionAsync / UploadPartImageAsync
     InventreeHttpClient.cs  -- real HTTP client (System.Net.Http)
     InventreePart.cs        -- data class: Pk, Name, Notes, Revision, Ipn
   SolidWorks/
     IDocumentPropertyService -- interface: get/set custom properties
+    IViewportCaptureService  -- interface: capture viewport as Image
     SwDocumentPropertyService -- real SolidWorks implementation
   UI/
-    TaskPaneControl.cs      -- main panel (fetch, compare, apply, push)
+    TaskPaneControl.cs      -- main panel (fetch, compare, apply, push, image)
     SettingsForm.cs         -- modal dialog for server URL + API key
+    ImageCropForm.cs        -- modal crop/preview dialog for viewport screenshots
+    ImagePipeline.cs        -- static: crop -> resize (800x800 max) -> PNG encode
 ```
 
 ## Data flow
@@ -31,12 +34,13 @@ SwInventreeAddin/
 3. User clicks Fetch -> TaskPaneControl calls IInventreeClient -> displays comparison
 4. User clicks Apply -> TaskPaneControl calls IDocumentPropertyService -> writes to part
 5. User clicks Push Rev -> TaskPaneControl calls IInventreeClient.PatchPartRevisionAsync
+6. User clicks Push Image -> capture viewport -> ImageCropForm -> ImagePipeline -> IInventreeClient.UploadPartImageAsync
 
 ## Module boundaries
 
 | Module    | Depends on          | Must not know about     |
 |-----------|---------------------|-------------------------|
-| UI        | IInventreeClient, IDocumentPropertyService, IConfigProvider | HTTP details, SolidWorks API |
+| UI        | IInventreeClient, IDocumentPropertyService, IConfigProvider, IViewportCaptureService | HTTP details, SolidWorks API |
 | InvenTree | System.Net.Http     | SolidWorks, UI          |
 | Config    | System.Security (DPAPI) | Everything else       |
 | SolidWorks| SolidWorks.Interop  | InvenTree, Config       |
