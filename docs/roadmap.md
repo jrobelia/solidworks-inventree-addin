@@ -22,10 +22,11 @@ One line each -- details get fleshed out in the Orchestrator pipeline when work 
 7. BOM writer -- from the BOM checker view, allow the user to push the SW immediate-child BOM to
    InvenTree. Creates missing lines and updates quantities. Never deletes a line without explicit
    per-line user confirmation (protects InvenTree-only parts such as PCBs).
-8. BOM verification stamp -- once the BOM checker confirms SW and InvenTree children match with no
-   mismatches, enable a "Mark BOM as Verified" button that sets InvenTree's built-in BOM validated
-   flag on that part. Single API call, no BOM content changes. Gives other users a visible
-   confirmation that the BOM was cross-checked against SolidWorks.
+8. BOM line validation -- from the BOM checker view, validate individual InvenTree BOM lines that
+   match their SolidWorks counterpart (part number, revision, and quantity all agree). Uses
+   InvenTree's per-line validated flag, not the whole-BOM flag. Lines that exist only in InvenTree
+   (consumables, PCBs, bought-in parts) are left unvalidated -- giving reviewers a clear visual
+   signal of which lines have been cross-checked against SolidWorks and which have not.
 
 ## Far Future ideas
 - Bulk sync: push/pull all open assembly parts in one operation
