@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Drawing;
+using System.Drawing.Imaging;
+using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using SwInventreeAddin.InvenTree;
@@ -22,6 +24,10 @@ namespace SwInventreeAddin.UI
         public Button  ApplyNotesButton       { get; private set; } = null!;
         // Push revision from SolidWorks up to InvenTree.
         public Button  PushRevisionButton     { get; private set; } = null!;
+        // Push a viewport screenshot as the InvenTree part thumbnail.
+        public Button  PushImageButton        { get; private set; } = null!;
+        // Spacer between the two push buttons — visible only when buttons are visible.
+        public Panel   ButtonSpacer           { get; private set; } = null!;
         public Label   StatusLabel            { get; private set; } = null!;
         // Load-from-InvenTree button — exposed so tests can check enabled state.
         public Button  FetchButton            { get; private set; } = null!;
@@ -45,6 +51,7 @@ namespace SwInventreeAddin.UI
 
         private IInventreeClient?                 _client;
         private readonly IDocumentPropertyService _propertyService;
+        private readonly IViewportCaptureService? _viewportService;
         private InventreePart?                    _lastFetchedPart;
 
         // ── Style constants ────────────────────────────────────────────────────
@@ -69,9 +76,13 @@ namespace SwInventreeAddin.UI
         private const int NotesHeight = 80;
 
         public TaskPaneControl(IInventreeClient? client, IDocumentPropertyService propertyService)
+            : this(client, propertyService, null) { }
+
+        public TaskPaneControl(IInventreeClient? client, IDocumentPropertyService propertyService, IViewportCaptureService? viewportService)
         {
             _client          = client;
             _propertyService = propertyService;
+            _viewportService = viewportService;
             InitialiseControls();
             LoadPartNumber();  // calls ResetInvenTreeState(), which shows the no-server prompt if _client is null
         }
@@ -179,17 +190,29 @@ namespace SwInventreeAddin.UI
             PushRevisionButton.Enabled = false;
             PushRevisionButton.Click  += async (s, e) =>
             {
-                var confirm = MessageBox.Show(
-                    "Push the SolidWorks revision to InvenTree?\n\nThis will overwrite the revision stored in InvenTree.",
-                    "Confirm Push",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Question);
-                if (confirm == DialogResult.Yes)
-                    await PushRevisionToInventreeAsync().ConfigureAwait(false);
+                bool includeImage;
+                if (!ShowPushRevisionConfirmDialog(out includeImage))
+                    return;
+
+                await PushRevisionToInventreeAsync().ConfigureAwait(false);
+
+                if (includeImage)
+                    await PushImageAsync().ConfigureAwait(false);
             };
 
             var sectionHeader = BuildSectionHeader("Properties");
 
+            // Push Image button — sends a viewport screenshot as InvenTree part thumbnail.
+            PushImageButton = MakeButton("Push Image to InvenTree", ImportBtnBg, DockStyle.Top);
+            PushImageButton.Enabled = false;
+            PushImageButton.Visible = false;
+            PushImageButton.Click  += async (s, e) => await PushImageAsync().ConfigureAwait(false);
+
+            // Invisible spacer — kept for test-hook compatibility.
+            ButtonSpacer = new Panel { Dock = DockStyle.Top, Height = 0, Visible = false };
+
+            section.Controls.Add(PushImageButton);
+            section.Controls.Add(ButtonSpacer);
             section.Controls.Add(PushRevisionButton);
             section.Controls.Add(revField);
             section.Controls.Add(notesField);
@@ -347,12 +370,14 @@ namespace SwInventreeAddin.UI
                 Text      = text,
                 Dock      = dock,
                 Height    = 30,
+                Margin    = new Padding(0, 2, 0, 2),
                 BackColor = backColor,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Font      = UiFontBold,
             };
-            btn.FlatAppearance.BorderSize = 0;
+            btn.FlatAppearance.BorderSize  = 1;
+            btn.FlatAppearance.BorderColor = Color.White;
             return btn;
         }
 
@@ -447,6 +472,9 @@ namespace SwInventreeAddin.UI
             ApplyNotesButton.Enabled        = false;
             PushRevisionButton.Enabled      = false;
             PushRevisionButton.Visible      = false;
+            PushImageButton.Enabled         = false;
+            PushImageButton.Visible         = false;
+            ButtonSpacer.Visible            = false;
 
             // If no client is configured, keep the orange prompt visible rather than clearing it.
             if (_client == null)
@@ -542,6 +570,9 @@ namespace SwInventreeAddin.UI
                 ApplyNotesButton.Enabled        = true;
                 PushRevisionButton.Enabled      = true;
                 PushRevisionButton.Visible      = true;
+                PushImageButton.Enabled         = true;
+                PushImageButton.Visible         = true;
+                ButtonSpacer.Visible            = true;
                 _lastFetchedPart                = part;
                 StatusLabel.Text                = string.Empty;
             }));
@@ -585,6 +616,65 @@ namespace SwInventreeAddin.UI
             StatusLabel.Text = "\u2713  Notes applied.";
         }
 
+        /// <summary>
+        /// Shows a custom confirmation dialog with an "Include image" checkbox.
+        /// Returns true if the user clicked Yes, false if they cancelled.
+        /// <paramref name="includeImage"/> is set to the checkbox state on Yes.
+        /// </summary>
+        private static bool ShowPushRevisionConfirmDialog(out bool includeImage)
+        {
+            includeImage = false;
+
+            using (var dlg = new Form())
+            {
+                dlg.Text            = "Confirm Push";
+                dlg.StartPosition   = FormStartPosition.CenterParent;
+                dlg.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dlg.MaximizeBox     = false;
+                dlg.MinimizeBox     = false;
+                dlg.ClientSize      = new Size(400, 160);
+
+                var lbl = new Label
+                {
+                    Text      = "Push the SolidWorks revision to InvenTree?\n\nThis will overwrite the revision stored in InvenTree.",
+                    Left      = 16, Top = 16, Width = 368, Height = 60,
+                    Font      = new Font("Segoe UI", 10f),
+                    AutoSize  = false,
+                };
+
+                var chk = new CheckBox
+                {
+                    Text    = "Also push image to InvenTree",
+                    Left    = 16, Top = 86, Width = 300,
+                    Checked = true,
+                    Font    = new Font("Segoe UI", 10f),
+                };
+
+                var btnYes = new Button
+                {
+                    Text         = "Yes",
+                    DialogResult = DialogResult.Yes,
+                    Left         = 218, Top = 118, Width = 80, Height = 28,
+                    Font         = new Font("Segoe UI", 10f),
+                };
+                var btnNo = new Button
+                {
+                    Text         = "No",
+                    DialogResult = DialogResult.No,
+                    Left         = 306, Top = 118, Width = 80, Height = 28,
+                    Font         = new Font("Segoe UI", 10f),
+                };
+
+                dlg.Controls.AddRange(new Control[] { lbl, chk, btnYes, btnNo });
+                dlg.AcceptButton = btnYes;
+                dlg.CancelButton = btnNo;
+
+                var result = dlg.ShowDialog();
+                includeImage = chk.Checked;
+                return result == DialogResult.Yes;
+            }
+        }
+
         public async Task PushRevisionToInventreeAsync()
         {
             if (_lastFetchedPart == null)
@@ -618,6 +708,62 @@ namespace SwInventreeAddin.UI
             catch (Exception ex)
             {
                 RunOnUiThread(() => StatusLabel.Text = $"Error: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Captures the viewport (or uses <paramref name="imageOverride"/> for tests),
+        /// runs it through <see cref="ImagePipeline"/>, and uploads the resulting
+        /// PNG to InvenTree as the part thumbnail.
+        /// </summary>
+        public async Task PushImageAsync(Image? imageOverride = null)
+        {
+            if (_lastFetchedPart == null || _lastFetchedPart.Pk == 0)
+                return;
+
+            if (_client == null)
+                return;
+
+            Image? image = null;
+            bool ownImage = false;
+            Rectangle cropRect = Rectangle.Empty;
+
+            try
+            {
+                if (imageOverride != null)
+                {
+                    image = imageOverride;
+                }
+                else if (_viewportService != null)
+                {
+                    image = _viewportService.CaptureViewportImage();
+                    ownImage = true;
+                    using (var cropForm = new ImageCropForm(image))
+                    {
+                        if (cropForm.ShowDialog() != DialogResult.OK)
+                            return;
+                        cropRect = cropForm.CropRectangle;
+                    }
+                }
+                else
+                {
+                    return;
+                }
+
+                byte[] pngData = ImagePipeline.Process(image, cropRect);
+
+                StatusLabel.Text = "Uploading image to InvenTree\u2026";
+
+                await _client.UploadPartImageAsync(_lastFetchedPart.Pk, pngData).ConfigureAwait(false);
+                RunOnUiThread(() => StatusLabel.Text = "\u2713  Image pushed to InvenTree.");
+            }
+            catch (Exception ex)
+            {
+                RunOnUiThread(() => StatusLabel.Text = $"Error: {ex.Message}");
+            }
+            finally
+            {
+                if (ownImage) image?.Dispose();
             }
         }
     }

@@ -80,5 +80,30 @@ namespace SwInventreeAddin.InvenTree
             element.TryGetProperty(propertyName, out var prop)
                 ? prop.GetString() ?? string.Empty
                 : string.Empty;
+
+        public async Task UploadPartImageAsync(int pk, byte[] pngData)
+        {
+            using var content = new MultipartFormDataContent();
+            using var imageContent = new ByteArrayContent(pngData);
+            imageContent.Headers.ContentType =
+                new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+            content.Add(imageContent, "image", "part_image.png");
+
+            using var request = new HttpRequestMessage(
+                new HttpMethod("PATCH"), $"/api/part/{pk}/")
+            {
+                Content = content
+            };
+
+            var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                throw new HttpRequestException(
+                    "InvenTree rejected the API key (401 Unauthorized).");
+
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException(
+                    $"InvenTree returned {(int)response.StatusCode} {response.StatusCode}");
+        }
     }
 }
