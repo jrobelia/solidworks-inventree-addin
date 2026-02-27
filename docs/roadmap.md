@@ -15,12 +15,19 @@ One line each -- details get fleshed out in the Orchestrator pipeline when work 
    snapshot file to the archive drive. Catches InvenTree-only edits (FAB BOMs, PCB quantities) that
    the add-in cannot see. Both this and item 4 produce the same file format so any diff tool
    (WinMerge, VS Code) can compare any two snapshots.
+6. BOM checker (read) -- when an assembly is open, serve a different task pane view showing the
+   immediate children from SolidWorks alongside the InvenTree BOM for the same part. Flag mismatches
+   in part number, revision, and quantity. Read-only; no writes. Full recursive tree view is a
+   future addition (users work bottom-up, starting at sub-assembly level).
+7. BOM writer -- from the BOM checker view, allow the user to push the SW immediate-child BOM to
+   InvenTree. Creates missing lines and updates quantities. Never deletes a line without explicit
+   per-line user confirmation (protects InvenTree-only parts such as PCBs).
 
 ## Far Future ideas
 - Bulk sync: push/pull all open assembly parts in one operation
 - Show part thumbnail from InvenTree in the task pane
 - Auto-detect IPN from filename when custom property is missing
-- Assembly BOM comparison: SolidWorks BOM vs InvenTree BOM
+- BOM checker recursive view: show full assembly tree, not just immediate children
 - Status bar showing connection health (green/red dot)
 
 ## Not pursuing
