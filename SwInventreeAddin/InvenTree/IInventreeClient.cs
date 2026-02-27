@@ -6,5 +6,6 @@ namespace SwInventreeAddin.InvenTree
     {
         Task<InventreePart?> GetPartByIpnAsync(string ipn);
         Task UpdatePartRevisionAsync(int pk, string revision);
+        Task UploadPartImageAsync(int pk, byte[] pngData);
     }
 }
