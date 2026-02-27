@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System.Drawing;
+using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using SwInventreeAddin.InvenTree;
@@ -298,6 +299,174 @@ namespace SwInventreeAddin.Tests
             await _control.PushRevisionToInventreeAsync();
 
             Assert.That(_control.StatusLabel.Text, Does.Contain("Error").IgnoreCase);
+        }
+
+        // --- PushImageButton visibility ---
+
+        [Test]
+        public void PushImageButton_IsHiddenOnInitialisation()
+        {
+            CreateControl();
+            _control.CreateControl();
+
+            Assert.That(_control.PushImageButton.Visible, Is.False);
+        }
+
+        [Test]
+        public void PushImageButton_IsHiddenBeforeFetch()
+        {
+            CreateControl();
+
+            Assert.That(_control.PushImageButton.Visible, Is.False);
+        }
+
+        [Test]
+        public async Task PushImageButton_IsVisibleAfterSuccessfulFetch()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateControl();
+
+            await _control.FetchPartAsync();
+
+            Assert.That(_control.PushImageButton.Visible, Is.True);
+        }
+
+        [Test]
+        public async Task PushImageButton_IsHiddenAfterClearAll()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateControl();
+            await _control.FetchPartAsync();
+
+            _control.ClearAll();
+
+            Assert.That(_control.PushImageButton.Visible, Is.False);
+        }
+
+        // --- PushImageAsync behaviour ---
+
+        [Test]
+        public async Task PushImageAsync_WhenNoPartFetched_DoesNotCallUpload()
+        {
+            CreateControl();
+            using (var testImage = new Bitmap(100, 100))
+            {
+                await _control.PushImageAsync(imageOverride: testImage);
+            }
+
+            Assert.That(_client.LastUploadedPk, Is.EqualTo(0));
+        }
+
+        [Test]
+        public async Task PushImageAsync_CallsUploadWithCorrectPk()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateControl();
+            await _control.FetchPartAsync();
+
+            using (var testImage = new Bitmap(100, 100))
+            {
+                await _control.PushImageAsync(imageOverride: testImage);
+            }
+
+            Assert.That(_client.LastUploadedPk, Is.EqualTo(42));
+        }
+
+        [Test]
+        public async Task PushImageAsync_CallsUploadWithNonEmptyPngData()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateControl();
+            await _control.FetchPartAsync();
+
+            using (var testImage = new Bitmap(100, 100))
+            {
+                await _control.PushImageAsync(imageOverride: testImage);
+            }
+
+            Assert.That(_client.LastUploadedImageData, Is.Not.Null.And.Not.Empty);
+            Assert.That(_client.LastUploadedImageData[0], Is.EqualTo(137));
+            Assert.That(_client.LastUploadedImageData[1], Is.EqualTo(80));
+            Assert.That(_client.LastUploadedImageData[2], Is.EqualTo(78));
+            Assert.That(_client.LastUploadedImageData[3], Is.EqualTo(71));
+        }
+
+        [Test]
+        public async Task PushImageAsync_OnSuccess_ShowsSuccessInStatusLabel()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateControl();
+            await _control.FetchPartAsync();
+
+            using (var testImage = new Bitmap(100, 100))
+            {
+                await _control.PushImageAsync(imageOverride: testImage);
+            }
+
+            Assert.That(_control.StatusLabel.Text,
+                Does.Contain("image").IgnoreCase
+                .Or.Contain("\u2713"));
+        }
+
+        [Test]
+        public async Task PushImageAsync_OnUploadError_ShowsErrorInStatusLabel()
+        {
+            _client.PartToReturn = SamplePart;
+            _client.ThrowOnUpload = new System.Net.Http.HttpRequestException("upload failed");
+            CreateControl();
+            await _control.FetchPartAsync();
+
+            using (var testImage = new Bitmap(100, 100))
+            {
+                await _control.PushImageAsync(imageOverride: testImage);
+            }
+
+            Assert.That(_control.StatusLabel.Text, Does.Contain("Error").IgnoreCase);
+        }
+
+        [Test]
+        public async Task PushImageAsync_WhenClientIsNull_DoesNotThrow()
+        {
+            _propertyService.Seed("PartNo", "R-10K-0402");
+            _control = new TaskPaneControl(null, _propertyService);
+
+            using (var testImage = new Bitmap(100, 100))
+            {
+                Assert.DoesNotThrowAsync(() => _control.PushImageAsync(imageOverride: testImage));
+            }
+        }
+
+        // --- ButtonSpacer visibility ---
+
+        [Test]
+        public void ButtonSpacer_IsHiddenBeforeFetch()
+        {
+            CreateControl();
+
+            Assert.That(_control.ButtonSpacer.Visible, Is.False);
+        }
+
+        [Test]
+        public async Task ButtonSpacer_IsVisibleAfterSuccessfulFetch()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateControl();
+
+            await _control.FetchPartAsync();
+
+            Assert.That(_control.ButtonSpacer.Visible, Is.True);
+        }
+
+        [Test]
+        public async Task ButtonSpacer_IsHiddenAfterClearAll()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateControl();
+            await _control.FetchPartAsync();
+
+            _control.ClearAll();
+
+            Assert.That(_control.ButtonSpacer.Visible, Is.False);
         }
     }
 }
