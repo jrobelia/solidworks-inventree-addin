@@ -4,7 +4,6 @@ using System.Drawing;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 using SwInventreeAddin.InvenTree;
 using SwInventreeAddin.SolidWorks;
 
@@ -67,14 +66,22 @@ namespace SwInventreeAddin.UI
         public string NamePreview
         {
             get => _namePreview;
-            set => Set(ref _namePreview, value);
+            set
+            {
+                Set(ref _namePreview, value);
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NameMatch)));
+            }
         }
 
         /// <summary>Notes fetched from InvenTree.</summary>
         public string NotesPreview
         {
             get => _notesPreview;
-            set => Set(ref _notesPreview, value);
+            set
+            {
+                Set(ref _notesPreview, value);
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NotesMatch)));
+            }
         }
 
         /// <summary>Revision fetched from InvenTree (or pushed).</summary>
@@ -88,14 +95,22 @@ namespace SwInventreeAddin.UI
         public string CurrentName
         {
             get => _currentName;
-            set => Set(ref _currentName, value);
+            set
+            {
+                Set(ref _currentName, value);
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NameMatch)));
+            }
         }
 
         /// <summary>Current SolidWorks document Notes value.</summary>
         public string CurrentNotes
         {
             get => _currentNotes;
-            set => Set(ref _currentNotes, value);
+            set
+            {
+                Set(ref _currentNotes, value);
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NotesMatch)));
+            }
         }
 
         /// <summary>Current SolidWorks document Revision value.</summary>
@@ -165,8 +180,31 @@ namespace SwInventreeAddin.UI
         public bool PropertiesSectionVisible
         {
             get => _propertiesSectionVisible;
-            private set => Set(ref _propertiesSectionVisible, value);
+            private set
+            {
+                Set(ref _propertiesSectionVisible, value);
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NameMatch)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NotesMatch)));
+            }
         }
+
+        /// <summary>
+        /// Null = not yet fetched. True = SW and InvenTree values match. False = mismatch.
+        /// </summary>
+        public bool? NameMatch =>
+            _propertiesSectionVisible
+                ? string.Equals(_currentName?.Trim(), _namePreview?.Trim(),
+                      StringComparison.OrdinalIgnoreCase)
+                : (bool?)null;
+
+        /// <summary>
+        /// Null = not yet fetched. True = SW and InvenTree values match. False = mismatch.
+        /// </summary>
+        public bool? NotesMatch =>
+            _propertiesSectionVisible
+                ? string.Equals(_currentNotes?.Trim(), _notesPreview?.Trim(),
+                      StringComparison.OrdinalIgnoreCase)
+                : (bool?)null;
 
         // ── State ─────────────────────────────────────────────────────────────
 
@@ -425,12 +463,10 @@ namespace SwInventreeAddin.UI
                     image    = _viewportService.CaptureViewportImage();
                     ownImage = true;
 
-                    using (var cropForm = new ImageCropForm(image))
-                    {
-                        if (cropForm.ShowDialog() != DialogResult.OK)
-                            return;
-                        cropRect = cropForm.CropRectangle;
-                    }
+                    var cropWindow = new ImageCropWindow(image);
+                    if (cropWindow.ShowDialog() != true)
+                        return;
+                    cropRect = cropWindow.CropRectangle;
                 }
                 else
                 {
