@@ -25,17 +25,20 @@ namespace SwInventreeAddin.AddIn
     [Guid("A1B2C3D4-E5F6-7890-ABCD-EF1234567890")]
     public class SwAddin : ISwAddin
     {
-        private const string AddinGuid        = "A1B2C3D4-E5F6-7890-ABCD-EF1234567890";
-        private const string AddinTitle       = "InvenTree";
-        private const string AddinDescription = "Imports part data from InvenTree into SolidWorks custom properties";
-
         /// <summary>
-        /// Static constructor — runs once when SolidWorks first loads this class.
-        /// Registers an assembly resolver so .NET can find our dependency DLLs
-        /// in the add-in's own folder, not just the SolidWorks installation folder.
+        /// Static constructor — runs once when SolidWorks first loads this class,
+        /// before any instance is created or any HttpClient is allocated.
         /// </summary>
         static SwAddin()
         {
+            // .NET Framework 4.8 defaults to TLS 1.0; InvenTree requires TLS 1.2+.
+            // Setting this here (rather than in ConnectToSW) guarantees it covers every
+            // HttpClient in the process, including those in SettingsWindow.
+            System.Net.ServicePointManager.SecurityProtocol =
+                System.Net.SecurityProtocolType.Tls12 | System.Net.SecurityProtocolType.Tls13;
+
+            // Registers an assembly resolver so .NET can find dependency DLLs
+            // in the add-in's own folder, not just the SolidWorks installation folder.
             AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>
             {
                 var addinDir = Path.GetDirectoryName(
@@ -51,6 +54,9 @@ namespace SwInventreeAddin.AddIn
             };
         }
 
+        private const string AddinGuid        = "A1B2C3D4-E5F6-7890-ABCD-EF1234567890";
+        private const string AddinTitle       = "InvenTree";
+        private const string AddinDescription = "Imports part data from InvenTree into SolidWorks custom properties";
 
         /// <summary>
         /// Called automatically by RegAsm /codebase — writes the registry keys
@@ -107,10 +113,6 @@ namespace SwInventreeAddin.AddIn
 
                 // Tell SolidWorks our cookie so it can track us
                 _swApp.SetAddinCallbackInfo2(0, this, cookie);
-
-                // .NET Framework 4.8 defaults to TLS 1.0; InvenTree requires TLS 1.2+
-                ServicePointManager.SecurityProtocol =
-                    SecurityProtocolType.Tls12 | SecurityProtocolType.Tls13;
 
                 var configProvider  = new EncryptedConfigProvider();
                 _configProvider     = configProvider;

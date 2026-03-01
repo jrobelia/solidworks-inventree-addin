@@ -101,9 +101,13 @@
                            FontWeight="SemiBold"
                            HorizontalAlignment="Center"
                            Margin="0,6,0,4" />
-                <Image x:Name="PreviewImage"
-                       Stretch="Uniform"
-                       RenderOptions.BitmapScalingMode="HighQuality" />
+                <Border BorderBrush="{StaticResource BrushBorder}"
+                        BorderThickness="1"
+                        Background="#FFE8E8E8">
+                    <Image x:Name="PreviewImage"
+                           Stretch="Uniform"
+                           RenderOptions.BitmapScalingMode="HighQuality" />
+                </Border>
             </DockPanel>
         </Grid>
 
