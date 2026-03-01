@@ -9,6 +9,11 @@ namespace SwInventreeAddin.Tests.Stubs
 
         public List<string> SetCallLog { get; } = new List<string>();
 
+        /// <summary>Set this to control what GetDocumentType() returns in tests. Defaults to Part.</summary>
+        public DocumentType DocumentTypeToReturn { get; set; } = DocumentType.Part;
+
+        public DocumentType GetDocumentType() => DocumentTypeToReturn;
+
         public void Seed(string name, string value) => _properties[name] = value;
 
         public string GetCustomProperty(string name) =>
