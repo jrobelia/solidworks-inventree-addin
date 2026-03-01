@@ -3,19 +3,27 @@ using System.Net.Http;
 using System.Windows;
 using System.Windows.Media;
 using SwInventreeAddin.Config;
+using SwInventreeAddin.InvenTree;
 
 namespace SwInventreeAddin.UI
 {
     /// <summary>
-    /// WPF settings dialog — replaces the old WinForms SettingsForm.
+    /// WPF settings dialog.
+    /// Primary path: enter URL + username + password — Save fetches the API token automatically.
+    /// Advanced path: expand "Advanced" and paste a raw API key (existing token or manual override).
     /// </summary>
     public partial class SettingsWindow : Window
     {
         private readonly IConfigProvider _configProvider;
+        private readonly IInventreeTokenService _tokenService;
 
         public SettingsWindow(IConfigProvider configProvider)
+            : this(configProvider, new InventreeTokenService(new HttpClient())) { }
+
+        internal SettingsWindow(IConfigProvider configProvider, IInventreeTokenService tokenService)
         {
             _configProvider = configProvider;
+            _tokenService   = tokenService;
             InitializeComponent();
 
             // Try to centre over the SolidWorks main window.
@@ -26,7 +34,8 @@ namespace SwInventreeAddin.UI
             }
             catch { /* cosmetic */ }
 
-            // Pre-fill saved values.
+            // Pre-fill: URL from saved config; username/password always blank;
+            // Advanced expander shows the saved token so user knows one exists.
             var config = _configProvider.GetServerConfig();
             if (config != null)
             {
@@ -35,11 +44,50 @@ namespace SwInventreeAddin.UI
             }
         }
 
-        private void Save_Click(object sender, RoutedEventArgs e)
+        // ── Shared helper ─────────────────────────────────────────────────────
+        // Returns the API key to use, either by fetching it via username/password
+        // or by reading the raw key from the Advanced field.
+        // Throws InvalidOperationException with a user-readable message on failure.
+        private async System.Threading.Tasks.Task<string> ResolveApiKeyAsync()
         {
-            if (string.IsNullOrWhiteSpace(UrlBox.Text) || string.IsNullOrWhiteSpace(ApiBox.Text))
+            var url      = UrlBox.Text.Trim();
+            var username = UsernameBox.Text.Trim();
+            var password = PasswordBox.Password;   // PasswordBox has no .Text
+            var rawKey   = ApiBox.Text.Trim();
+
+            if (string.IsNullOrWhiteSpace(url))
+                throw new InvalidOperationException("Server URL is required.");
+
+            // Sign-in path: username + password provided
+            if (!string.IsNullOrWhiteSpace(username) || !string.IsNullOrWhiteSpace(password))
             {
-                SetStatus("Both URL and API Key are required.", error: true);
+                if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+                    throw new InvalidOperationException("Enter both username and password.");
+
+                SetStatus("Signing in\u2026", error: false);
+                return await _tokenService.GetTokenAsync(url, username, password)
+                                          .ConfigureAwait(true);
+            }
+
+            // Advanced path: raw key pasted directly
+            if (!string.IsNullOrWhiteSpace(rawKey))
+                return rawKey;
+
+            throw new InvalidOperationException(
+                "Enter a username and password, or expand Advanced and paste an API key.");
+        }
+
+        // ── Save ──────────────────────────────────────────────────────────────
+        private async void Save_Click(object sender, RoutedEventArgs e)
+        {
+            string apiKey;
+            try
+            {
+                apiKey = await ResolveApiKeyAsync().ConfigureAwait(true);
+            }
+            catch (InvalidOperationException ex)
+            {
+                SetStatus(ex.Message, error: true);
                 return;
             }
 
@@ -48,31 +96,35 @@ namespace SwInventreeAddin.UI
                 _configProvider.SaveServerConfig(new ServerConfig
                 {
                     Url    = UrlBox.Text.Trim(),
-                    ApiKey = ApiBox.Text.Trim(),
+                    ApiKey = apiKey,
                 });
             }
             catch (Exception ex)
             {
-                SetStatus($"Failed to save: {ex.Message}", error: true);
+                SetStatus($"Failed to save settings: {ex.Message}", error: true);
                 return;
             }
 
             DialogResult = true;
         }
 
+        // ── Cancel ────────────────────────────────────────────────────────────
         private void Cancel_Click(object sender, RoutedEventArgs e)
         {
             DialogResult = false;
         }
 
+        // ── Test Connection ───────────────────────────────────────────────────
         private async void Test_Click(object sender, RoutedEventArgs e)
         {
-            var url    = UrlBox.Text.Trim();
-            var apiKey = ApiBox.Text.Trim();
-
-            if (string.IsNullOrWhiteSpace(url) || string.IsNullOrWhiteSpace(apiKey))
+            string apiKey;
+            try
             {
-                SetStatus("Enter a URL and API Key before testing.", error: true);
+                apiKey = await ResolveApiKeyAsync().ConfigureAwait(true);
+            }
+            catch (InvalidOperationException ex)
+            {
+                SetStatus(ex.Message, error: true);
                 return;
             }
 
@@ -80,6 +132,7 @@ namespace SwInventreeAddin.UI
 
             try
             {
+                var url = UrlBox.Text.Trim();
                 using (var client = new HttpClient())
                 {
                     client.BaseAddress = new Uri(url);
@@ -98,6 +151,7 @@ namespace SwInventreeAddin.UI
             }
         }
 
+        // ── Status bar ────────────────────────────────────────────────────────
         private void SetStatus(string text, bool error, bool success = false)
         {
             StatusText.Text = text;

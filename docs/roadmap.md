@@ -6,7 +6,7 @@ One line each -- details get fleshed out in the Orchestrator pipeline when work 
 - How to handle drawings, they don't currently exist in inventree, plugin should be disabled for drawing files.  I think this is already handled becasue it only appears for parts and assemblies, but we should still confirm that is the case.
 
 ## Next up
-1. Allow manual entry of Custom property names in the settings window.  Allow users to link SW custom property to inventree property, such as IPN and part name, etc.
+1. Allow manual entry of Custom property names in the settings window.  Allow users to link SW custom property to inventree property, such as IPN and part name, etc.  Maybe even have a drop down list of available inventree properties that can be linked, drop down list would have to account properties already slected in other boxes.
 2. Ask the question, could a custom property file be used to auto populate or guide the creation of the UI.
 3. Create new InvenTree part number directly from SolidWorks (no browser needed)
 4. InvenTree BOM snapshot on revision push -- when Push Revision fires in the add-in, snapshot
