@@ -131,5 +131,20 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(ex.Message, Does.Contain("token").IgnoreCase);
         }
+
+        [Test]
+        public void GetTokenAsync_HttpUrl_ThrowsBeforeNetworkCall()
+        {
+            // http:// must be rejected immediately — credentials must never travel over plaintext.
+            // The fake handler should never be called; the HTTPS check fires first.
+            var handler = new FakeHttpMessageHandler(_ =>
+                throw new InvalidOperationException("Handler should not be reached"));
+            var svc = new InventreeTokenService(MakeClient(handler));
+
+            var ex = Assert.ThrowsAsync<InvalidOperationException>(
+                () => svc.GetTokenAsync("http://inventree.example.com", Username, Password));
+
+            Assert.That(ex.Message, Does.Contain("https").IgnoreCase);
+        }
     }
 }

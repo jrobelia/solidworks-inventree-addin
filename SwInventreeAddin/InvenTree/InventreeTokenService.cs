@@ -24,6 +24,12 @@ namespace SwInventreeAddin.InvenTree
 
         public async Task<string> GetTokenAsync(string url, string username, string password)
         {
+            // Defence-in-depth: reject http:// even if the caller forgot to validate.
+            // Basic Auth credentials would otherwise travel in cleartext.
+            if (!url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException(
+                    "Server URL must begin with https:// — a plain http:// connection is not secure.");
+
             // Build the token endpoint URL, tolerating a trailing slash or not
             var baseUri  = new Uri(url.TrimEnd('/') + "/");
             var endpoint = new Uri(baseUri, "api/user/token/");

@@ -36,12 +36,17 @@ namespace SwInventreeAddin.UI
 
             // Pre-fill: URL from saved config; username/password always blank;
             // Advanced expander shows the saved token so user knows one exists.
-            var config = _configProvider.GetServerConfig();
-            if (config != null)
+            // If the settings file is corrupt, open the dialog empty rather than crashing.
+            try
             {
-                UrlBox.Text = config.Url    ?? string.Empty;
-                ApiBox.Text = config.ApiKey ?? string.Empty;
+                var config = _configProvider.GetServerConfig();
+                if (config != null)
+                {
+                    UrlBox.Text = config.Url    ?? string.Empty;
+                    ApiBox.Text = config.ApiKey ?? string.Empty;
+                }
             }
+            catch { /* corrupt settings — user can re-enter; swallowing is intentional */ }
         }
 
         // ── Shared helper ─────────────────────────────────────────────────────
@@ -57,6 +62,12 @@ namespace SwInventreeAddin.UI
 
             if (string.IsNullOrWhiteSpace(url))
                 throw new InvalidOperationException("Server URL is required.");
+
+            // Require HTTPS — Basic Auth credentials travel in base64 (not encrypted);
+            // an http:// URL would expose the username, password, and token in plaintext.
+            if (!url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException(
+                    "Server URL must begin with https:// — a plain http:// connection is not secure.");
 
             // Sign-in path: username + password provided
             if (!string.IsNullOrWhiteSpace(username) || !string.IsNullOrWhiteSpace(password))
@@ -136,7 +147,10 @@ namespace SwInventreeAddin.UI
                 using (var client = new HttpClient())
                 {
                     client.BaseAddress = new Uri(url);
-                    client.DefaultRequestHeaders.Add("Authorization", $"Token {apiKey}");
+                    // Use AuthenticationHeaderValue — validates the token value and rejects
+                    // any CR/LF characters that could cause header injection (CWE-113).
+                    client.DefaultRequestHeaders.Authorization =
+                        new System.Net.Http.Headers.AuthenticationHeaderValue("Token", apiKey);
                     var response = await client.GetAsync("api/part/?limit=1").ConfigureAwait(true);
 
                     if (response.IsSuccessStatusCode)
