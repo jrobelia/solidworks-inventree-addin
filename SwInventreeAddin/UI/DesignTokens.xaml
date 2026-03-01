@@ -1,0 +1,172 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ── Colour palette ─────────────────────────────────────────────────── -->
+
+    <!-- SolidWorks chrome grey -->
+    <Color x:Key="ColorSectionHeader">#FFD7D7D7</Color>
+    <!-- InvenTree signature blue -->
+    <Color x:Key="ColorAccentBlue">#FF0070C0</Color>
+    <!-- Cream for InvenTree read-only fields -->
+    <Color x:Key="ColorInventreeField">#FFFFFEF0</Color>
+    <!-- Status severities -->
+    <Color x:Key="ColorStatusSuccess">#FF4CAF50</Color>
+    <Color x:Key="ColorStatusWarning">#FFFFC107</Color>
+    <Color x:Key="ColorStatusError">#FFF44336</Color>
+    <Color x:Key="ColorStatusNone">#FFD7D7D7</Color>
+
+    <!-- Brushes -->
+    <SolidColorBrush x:Key="BrushSectionHeader"  Color="{StaticResource ColorSectionHeader}" />
+    <SolidColorBrush x:Key="BrushAccentBlue"     Color="{StaticResource ColorAccentBlue}" />
+    <SolidColorBrush x:Key="BrushInventreeField" Color="{StaticResource ColorInventreeField}" />
+    <SolidColorBrush x:Key="BrushStatusSuccess"  Color="{StaticResource ColorStatusSuccess}" />
+    <SolidColorBrush x:Key="BrushStatusWarning"  Color="{StaticResource ColorStatusWarning}" />
+    <SolidColorBrush x:Key="BrushStatusError"    Color="{StaticResource ColorStatusError}" />
+    <SolidColorBrush x:Key="BrushStatusNone"     Color="{StaticResource ColorStatusNone}" />
+    <SolidColorBrush x:Key="BrushForeground"     Color="#FF1A1A1A" />
+    <SolidColorBrush x:Key="BrushSubtle"         Color="#FF707070" />
+
+    <!-- ── Typography ─────────────────────────────────────────────────────── -->
+
+    <FontFamily x:Key="FontBody">Segoe UI</FontFamily>
+    <System:Double xmlns:System="clr-namespace:System;assembly=mscorlib"
+                   x:Key="FontSizeBody">12</System:Double>
+    <System:Double xmlns:System="clr-namespace:System;assembly=mscorlib"
+                   x:Key="FontSizeHeading">13</System:Double>
+
+    <!-- ── Spacing ────────────────────────────────────────────────────────── -->
+
+    <Thickness x:Key="PanelPadding">10,8,10,0</Thickness>
+    <Thickness x:Key="RowSpacing">0,4,0,0</Thickness>
+    <Thickness x:Key="SectionSpacing">0,8,0,0</Thickness>
+
+    <!-- ── Button styles ──────────────────────────────────────────────────── -->
+
+    <!-- Primary blue action button (e.g. Load from InvenTree) -->
+    <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+        <Setter Property="Background"   Value="{StaticResource BrushAccentBlue}" />
+        <Setter Property="Foreground"   Value="White" />
+        <Setter Property="FontFamily"   Value="{StaticResource FontBody}" />
+        <Setter Property="FontSize"     Value="{StaticResource FontSizeBody}" />
+        <Setter Property="Height"       Value="28" />
+        <Setter Property="Margin"       Value="{StaticResource RowSpacing}" />
+        <Setter Property="Padding"      Value="8,0" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Cursor"       Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}"
+                            CornerRadius="2"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="#FF005999" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Secondary grey button (e.g. Settings, individual Apply) -->
+    <Style x:Key="SecondaryButtonStyle" TargetType="Button">
+        <Setter Property="Background"      Value="{StaticResource BrushSectionHeader}" />
+        <Setter Property="Foreground"      Value="{StaticResource BrushForeground}" />
+        <Setter Property="FontFamily"      Value="{StaticResource FontBody}" />
+        <Setter Property="FontSize"        Value="{StaticResource FontSizeBody}" />
+        <Setter Property="Height"          Value="28" />
+        <Setter Property="Margin"          Value="{StaticResource RowSpacing}" />
+        <Setter Property="Padding"         Value="8,0" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Cursor"          Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}"
+                            CornerRadius="2"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="#FFC0C0C0" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ── TextBox styles ─────────────────────────────────────────────────── -->
+
+    <Style x:Key="SWFieldStyle" TargetType="TextBox">
+        <Setter Property="FontFamily"   Value="{StaticResource FontBody}" />
+        <Setter Property="FontSize"     Value="{StaticResource FontSizeBody}" />
+        <Setter Property="Background"   Value="White" />
+        <Setter Property="BorderBrush"  Value="#FFAAAAAA" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding"      Value="3,2" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="InvenTreeFieldStyle" TargetType="TextBox"
+           BasedOn="{StaticResource SWFieldStyle}">
+        <Setter Property="Background"  Value="{StaticResource BrushInventreeField}" />
+        <Setter Property="IsReadOnly"  Value="True" />
+        <Setter Property="Focusable"   Value="False" />
+    </Style>
+
+    <!-- ── Label style ────────────────────────────────────────────────────── -->
+
+    <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily"  Value="{StaticResource FontBody}" />
+        <Setter Property="FontSize"    Value="{StaticResource FontSizeBody}" />
+        <Setter Property="Foreground"  Value="{StaticResource BrushSubtle}" />
+        <Setter Property="Margin"      Value="0,6,0,2" />
+    </Style>
+
+    <!-- ── Column header style ────────────────────────────────────────────── -->
+
+    <Style x:Key="ColumnHeaderStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily"  Value="{StaticResource FontBody}" />
+        <Setter Property="FontSize"    Value="{StaticResource FontSizeBody}" />
+        <Setter Property="FontWeight"  Value="SemiBold" />
+        <Setter Property="Foreground"  Value="{StaticResource BrushForeground}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="Margin"      Value="0,4,0,4" />
+    </Style>
+
+    <!-- ── Global tooltip style ───────────────────────────────────────────── -->
+    <!--
+        Appears above the control, wraps text at the placement target's width.
+        Applied to every ToolTip in the app automatically.
+    -->
+    <Style TargetType="ToolTip">
+        <Setter Property="Placement"      Value="Top" />
+        <Setter Property="HasDropShadow"  Value="True" />
+        <Setter Property="ContentTemplate">
+            <Setter.Value>
+                <DataTemplate>
+                    <TextBlock
+                        Text="{Binding}"
+                        TextWrapping="Wrap"
+                        MaxWidth="{Binding PlacementTarget.ActualWidth,
+                                  RelativeSource={RelativeSource AncestorType=ToolTip}}" />
+                </DataTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>
