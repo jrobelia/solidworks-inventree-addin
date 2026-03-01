@@ -26,6 +26,7 @@
     <SolidColorBrush x:Key="BrushStatusNone"     Color="{StaticResource ColorStatusNone}" />
     <SolidColorBrush x:Key="BrushForeground"     Color="#FF1A1A1A" />
     <SolidColorBrush x:Key="BrushSubtle"         Color="#FF707070" />
+    <SolidColorBrush x:Key="BrushBorder"         Color="#FFAAAAAA" />
 
     <!-- ── Typography ─────────────────────────────────────────────────────── -->
 
@@ -115,7 +116,7 @@
         <Setter Property="FontFamily"   Value="{StaticResource FontBody}" />
         <Setter Property="FontSize"     Value="{StaticResource FontSizeBody}" />
         <Setter Property="Background"   Value="White" />
-        <Setter Property="BorderBrush"  Value="#FFAAAAAA" />
+        <Setter Property="BorderBrush"  Value="{StaticResource BrushBorder}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Padding"      Value="3,2" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
