@@ -44,6 +44,11 @@ if (Test-Path $resourcesSrc) {
     Write-Host "  Copied: Resources\"
 }
 
+# Copy uninstaller into the install folder so the user can delete the download
+Copy-Item (Join-Path $scriptDir "Uninstall.ps1")                        -Destination $installDir -Force
+Copy-Item (Join-Path $scriptDir "Uninstall (Run as Administrator).bat") -Destination $installDir -Force
+Write-Host "  Copied: Uninstaller"
+
 # Unblock all copied files (Windows blocks DLLs extracted from a downloaded zip)
 Get-ChildItem -Path $installDir -File -Recurse | Unblock-File
 
@@ -63,6 +68,26 @@ if ($LASTEXITCODE -ne 0) {
     Read-Host "Press Enter to exit"
     exit 1
 }
+
+# 4. Register in Add/Remove Programs so Windows knows this is installed
+#    and the user can uninstall from Settings without the original download.
+Write-Host ""
+Write-Host "Registering in Add/Remove Programs..."
+$version     = "unknown"
+$versionFile = Join-Path $scriptDir "version.txt"
+if (Test-Path $versionFile) { $version = (Get-Content $versionFile -Raw).Trim() }
+
+$uninstallBat = Join-Path $installDir "Uninstall (Run as Administrator).bat"
+$regPath      = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\OAInvenTreeAddin"
+New-Item -Path $regPath -Force | Out-Null
+Set-ItemProperty -Path $regPath -Name "DisplayName"     -Value "OA InvenTree Add-In"
+Set-ItemProperty -Path $regPath -Name "DisplayVersion"  -Value $version
+Set-ItemProperty -Path $regPath -Name "Publisher"       -Value "OA"
+Set-ItemProperty -Path $regPath -Name "InstallLocation" -Value $installDir
+Set-ItemProperty -Path $regPath -Name "UninstallString" -Value $uninstallBat
+Set-ItemProperty -Path $regPath -Name "NoModify"        -Value 1 -Type DWord
+Set-ItemProperty -Path $regPath -Name "NoRepair"        -Value 1 -Type DWord
+Write-Host "  Registered as version $version"
 
 Write-Host "Installation complete!" -ForegroundColor Green
 Write-Host ""
