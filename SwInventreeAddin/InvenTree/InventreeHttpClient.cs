@@ -20,7 +20,10 @@ namespace SwInventreeAddin.InvenTree
 
         public async Task<InventreePart?> GetPartByIpnAsync(string ipn)
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/part/?IPN={ipn}");
+            // IPN comes from SolidWorks custom properties (user-controlled) — must be encoded
+            // to prevent query-string injection (e.g. "ABC&limit=0").
+            using var request = new HttpRequestMessage(
+                HttpMethod.Get, $"/api/part/?IPN={Uri.EscapeDataString(ipn)}");
 
             var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
 
