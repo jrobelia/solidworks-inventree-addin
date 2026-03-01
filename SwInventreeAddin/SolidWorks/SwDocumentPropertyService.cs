@@ -16,6 +16,19 @@ namespace SwInventreeAddin.SolidWorks
             _swApp = swApp;
         }
 
+        public DocumentType GetDocumentType()
+        {
+            var modelDoc = _swApp.ActiveDoc as IModelDoc2;
+            if (modelDoc == null) return DocumentType.Unknown;
+            return (swDocumentTypes_e)modelDoc.GetType() switch
+            {
+                swDocumentTypes_e.swDocPART     => DocumentType.Part,
+                swDocumentTypes_e.swDocASSEMBLY => DocumentType.Assembly,
+                swDocumentTypes_e.swDocDRAWING  => DocumentType.Drawing,
+                _                               => DocumentType.Unknown,
+            };
+        }
+
         public string GetCustomProperty(string name)
         {
             // Use 'as' rather than a direct cast: when no document is open,

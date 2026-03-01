@@ -55,6 +55,13 @@ namespace SwInventreeAddin.UI
         private bool   _propertiesSectionVisible;
         private StatusSeverity _statusSeverity  = StatusSeverity.None;
 
+        /// <summary>
+        /// The type of the currently active SolidWorks document.
+        /// Set at the top of LoadPartNumber() on every document switch.
+        /// All future per-type logic (property mapping, enable/disable switches) reads from here.
+        /// </summary>
+        private DocumentType _currentDocumentType = DocumentType.Unknown;
+
         /// <summary>User-editable IPN entry box.</summary>
         public string PartNumber
         {
@@ -251,6 +258,16 @@ namespace SwInventreeAddin.UI
         /// </summary>
         public void LoadPartNumber()
         {
+            _currentDocumentType = _propertyService.GetDocumentType();
+
+            if (_currentDocumentType == DocumentType.Drawing)
+            {
+                ClearAll();
+                SetStatus("Drawings are not supported \u2014 open a part or assembly.",
+                          StatusSeverity.Warning);
+                return;
+            }
+
             var partNo = _propertyService.GetCustomProperty("PartNo");
 
             if (string.IsNullOrEmpty(partNo))
@@ -279,7 +296,7 @@ namespace SwInventreeAddin.UI
             if (_client != null)
             {
                 FetchEnabled = false;
-                SetStatus("Open a part in SolidWorks to get started.", StatusSeverity.None);
+                SetStatus("Open a part or assembly in SolidWorks to get started.", StatusSeverity.None);
             }
         }
 
@@ -313,7 +330,7 @@ namespace SwInventreeAddin.UI
             var ipn = PartNumber;
             if (string.IsNullOrEmpty(ipn))
             {
-                SetStatus("Open a part in SolidWorks to get started.", StatusSeverity.None);
+                SetStatus("Open a part or assembly in SolidWorks to get started.", StatusSeverity.None);
                 return;
             }
 
