@@ -148,4 +148,25 @@
         <Setter Property="Margin"      Value="0,4,0,4" />
     </Style>
 
+    <!-- ── Global tooltip style ───────────────────────────────────────────── -->
+    <!--
+        Appears above the control, wraps text at the placement target's width.
+        Applied to every ToolTip in the app automatically.
+    -->
+    <Style TargetType="ToolTip">
+        <Setter Property="Placement"      Value="Top" />
+        <Setter Property="HasDropShadow"  Value="True" />
+        <Setter Property="ContentTemplate">
+            <Setter.Value>
+                <DataTemplate>
+                    <TextBlock
+                        Text="{Binding}"
+                        TextWrapping="Wrap"
+                        MaxWidth="{Binding PlacementTarget.ActualWidth,
+                                  RelativeSource={RelativeSource AncestorType=ToolTip}}" />
+                </DataTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
 </ResourceDictionary>

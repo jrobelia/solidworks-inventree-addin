@@ -104,7 +104,7 @@
                     <Grid Margin="0,4,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition Width="20" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="SolidWorks"
@@ -119,46 +119,107 @@
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition Width="20" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="4" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
 
-                        <TextBox Grid.Column="0"
+                        <TextBox Grid.Column="0" Grid.Row="0"
                                  Text="{Binding CurrentName, Mode=OneWay}"
+                                 ToolTip="{Binding CurrentName}"
                                  Style="{StaticResource SWFieldStyle}"
                                  IsReadOnly="True" Height="26" />
-                        <TextBox Grid.Column="2"
+
+                        <!-- Match indicator -->
+                        <TextBlock Grid.Column="1" Grid.Row="0"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   FontSize="14" FontWeight="Bold">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="" />
+                                    <Setter Property="Foreground" Value="Transparent" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding NameMatch}" Value="True">
+                                            <Setter Property="Text" Value="=" />
+                                            <Setter Property="Foreground" Value="#FF2E7D32" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding NameMatch}" Value="False">
+                                            <Setter Property="Text" Value="&#x2260;" />
+                                            <Setter Property="Foreground" Value="#FFF9A825" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+
+                        <TextBox Grid.Column="2" Grid.Row="0"
                                  Text="{Binding NamePreview, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="{Binding NamePreview}"
                                  Style="{StaticResource InvenTreeFieldStyle}"
                                  IsReadOnly="False"
                                  Focusable="True"
                                  Height="26" />
+                        <Button Grid.Column="0" Grid.Row="2"
+                                Content="Apply to SW doc"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                HorizontalAlignment="Stretch"
+                                IsEnabled="{Binding ApplyNameEnabled}"
+                                Click="ApplyName_Click" />
                     </Grid>
-                    <Button Content="Apply Name to SW doc"
-                            Style="{StaticResource SecondaryButtonStyle}"
-                            HorizontalAlignment="Left"
-                            IsEnabled="{Binding ApplyNameEnabled}"
-                            Click="ApplyName_Click" />
 
                     <!-- Notes row -->
                     <TextBlock Text="Notes" Style="{StaticResource FieldLabelStyle}" />
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition Width="20" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="4" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
 
-                        <TextBox Grid.Column="0"
+                        <TextBox Grid.Column="0" Grid.Row="0"
                                  Text="{Binding CurrentNotes, Mode=OneWay}"
+                                 ToolTip="{Binding CurrentNotes}"
                                  Style="{StaticResource SWFieldStyle}"
                                  IsReadOnly="True"
                                  Height="52"
                                  TextWrapping="Wrap"
                                  AcceptsReturn="True"
                                  VerticalScrollBarVisibility="Auto" />
-                        <TextBox Grid.Column="2"
+
+                        <!-- Match indicator -->
+                        <TextBlock Grid.Column="1" Grid.Row="0"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   FontSize="14" FontWeight="Bold">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="" />
+                                    <Setter Property="Foreground" Value="Transparent" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding NotesMatch}" Value="True">
+                                            <Setter Property="Text" Value="=" />
+                                            <Setter Property="Foreground" Value="#FF2E7D32" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding NotesMatch}" Value="False">
+                                            <Setter Property="Text" Value="&#x2260;" />
+                                            <Setter Property="Foreground" Value="#FFF9A825" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+
+                        <TextBox Grid.Column="2" Grid.Row="0"
                                  Text="{Binding NotesPreview, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="{Binding NotesPreview}"
                                  Style="{StaticResource InvenTreeFieldStyle}"
                                  IsReadOnly="False"
                                  Focusable="True"
@@ -166,19 +227,20 @@
                                  TextWrapping="Wrap"
                                  AcceptsReturn="True"
                                  VerticalScrollBarVisibility="Auto" />
+                        <Button Grid.Column="0" Grid.Row="2"
+                                Content="Apply to SW doc"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                HorizontalAlignment="Stretch"
+                                IsEnabled="{Binding ApplyNotesEnabled}"
+                                Click="ApplyNotes_Click" />
                     </Grid>
-                    <Button Content="Apply Notes to SW doc"
-                            Style="{StaticResource SecondaryButtonStyle}"
-                            HorizontalAlignment="Left"
-                            IsEnabled="{Binding ApplyNotesEnabled}"
-                            Click="ApplyNotes_Click" />
 
                     <!-- Revision row (read-only both sides) -->
                     <TextBlock Text="Revision" Style="{StaticResource FieldLabelStyle}" />
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition Width="20" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 

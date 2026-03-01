@@ -21,9 +21,14 @@ SwInventreeAddin/
     IViewportCaptureService  -- interface: capture viewport as Image
     SwDocumentPropertyService -- real SolidWorks implementation
   UI/
-    TaskPaneControl.cs      -- main panel (fetch, compare, apply, push, image)
-    SettingsForm.cs         -- modal dialog for server URL + API key
-    ImageCropForm.cs        -- modal crop/preview dialog for viewport screenshots
+    TaskPaneControl.cs      -- ElementHost shim: wraps TaskPaneView for SolidWorks HWND
+    TaskPaneViewModel.cs    -- MVVM business logic: fetch, compare, apply, push
+    TaskPaneView.xaml       -- WPF layout for the task pane
+    DesignTokens.xaml       -- shared colours, brushes, button styles
+    SettingsWindow.xaml      -- WPF modal dialog for server URL + API key
+    PushRevisionConfirmDialog.xaml -- WPF confirmation with image checkbox
+    ImageCropWindow.xaml    -- WPF modal crop/preview dialog for viewport screenshots
+    CropGeometry.cs         -- pure C# crop math (no UI dependency)
     ImagePipeline.cs        -- static: crop -> resize (800x800 max) -> PNG encode
 ```
 
@@ -34,7 +39,7 @@ SwInventreeAddin/
 3. User clicks Fetch -> TaskPaneControl calls IInventreeClient -> displays comparison
 4. User clicks Apply -> TaskPaneControl calls IDocumentPropertyService -> writes to part
 5. User clicks Push Rev -> TaskPaneControl calls IInventreeClient.PatchPartRevisionAsync
-6. User clicks Push Image -> capture viewport -> ImageCropForm -> ImagePipeline -> IInventreeClient.UploadPartImageAsync
+6. User clicks Push Image -> capture viewport -> ImageCropWindow -> ImagePipeline -> IInventreeClient.UploadPartImageAsync
 
 ## Module boundaries
 
