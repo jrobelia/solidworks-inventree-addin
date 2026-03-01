@@ -1,11 +1,7 @@
 ﻿using System;
 using System.IO;
-using System.Threading;
-using System.Windows.Forms;
 using NUnit.Framework;
 using SwInventreeAddin.Config;
-using SwInventreeAddin.Tests.Stubs;
-using SwInventreeAddin.UI;
 
 namespace SwInventreeAddin.Tests
 {
@@ -61,71 +57,5 @@ namespace SwInventreeAddin.Tests
                 Throws.TypeOf<InvalidOperationException>());
         }
     }
-
-    // ── Fixture 2: TaskPaneControl settings surface ───────────────────────────
-    // WinForms requires STA thread; NUnit honours the [Apartment] attribute.
-    [TestFixture]
-    [Apartment(ApartmentState.STA)]
-    public class TaskPaneSettingsTests
-    {
-        private StubInventreeClient _client = null!;
-        private StubDocumentPropertyService _propertyService = null!;
-        private TaskPaneControl _control = null!;
-
-        [SetUp]
-        public void SetUp()
-        {
-            _client          = new StubInventreeClient();
-            _propertyService = new StubDocumentPropertyService();
-            _control         = new TaskPaneControl(_client, _propertyService);
-        }
-
-        [TearDown]
-        public void TearDown()
-        {
-            _control?.Dispose();
-        }
-
-        [Test]
-        public void UpdateClient_WithNull_SetsStatusToNotConfiguredMessage()
-        {
-            _control.UpdateClient(null);
-
-            Assert.That(_control.StatusLabel.Text, Does.Contain("No server configured"));
-        }
-
-        [Test]
-        public void UpdateClient_WithNull_DisablesFetchButton()
-        {
-            _control.UpdateClient(null);
-
-            Assert.That(_control.FetchButton.Enabled, Is.False);
-        }
-
-        [Test]
-        public void UpdateClient_WithValidClient_EnablesFetchButton()
-        {
-            _control.UpdateClient(null);
-            _control.UpdateClient(_client);
-
-            Assert.That(_control.FetchButton.Enabled, Is.True);
-        }
-
-        [Test]
-        public void SettingsButton_IsAlwaysPresent()
-        {
-            Assert.That(_control.SettingsButton, Is.Not.Null);
-        }
-
-        [Test]
-        public void SettingsButton_Click_FiresSettingsRequestedEvent()
-        {
-            bool eventFired = false;
-            _control.SettingsRequested += (s, e) => eventFired = true;
-
-            _control.SettingsButton.PerformClick();
-
-            Assert.That(eventFired, Is.True);
-        }
-    }
 }
+

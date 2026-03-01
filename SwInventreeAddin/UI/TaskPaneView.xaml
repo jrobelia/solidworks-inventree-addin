@@ -1,0 +1,219 @@
+<UserControl
+    x:Class="SwInventreeAddin.UI.TaskPaneView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="clr-namespace:SwInventreeAddin.UI"
+    FontFamily="Segoe UI"
+    FontSize="12"
+    UseLayoutRounding="True"
+    SnapsToDevicePixels="True">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="DesignTokens.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <!-- Visibility converters -->
+            <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <!--
+        Root DockPanel:
+          Bottom = status bar (always visible, pinned to foot)
+          Fill   = scrollable content area
+    -->
+    <DockPanel LastChildFill="True">
+
+        <!-- ── Status bar ──────────────────────────────────────────────── -->
+        <Border DockPanel.Dock="Bottom" Height="32"
+                Background="#FFF0F0F0"
+                BorderBrush="#FFD0D0D0" BorderThickness="0,1,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="4" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Colour stripe - bound via code-behind to StatusSeverity -->
+                <Border x:Name="StatusStripe" Grid.Column="0"
+                        Background="{StaticResource BrushStatusNone}" />
+
+                <TextBlock Grid.Column="1"
+                           Text="{Binding StatusText}"
+                           Style="{StaticResource FieldLabelStyle}"
+                           VerticalAlignment="Center"
+                           Margin="8,0,4,0"
+                           TextTrimming="CharacterEllipsis"
+                           Foreground="{StaticResource BrushForeground}" />
+            </Grid>
+        </Border>
+
+        <!-- ── Scrollable content ──────────────────────────────────────── -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="{StaticResource PanelPadding}">
+
+                <!-- Settings button -->
+                <Button Content="⚙ Settings"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        HorizontalAlignment="Stretch"
+                        Margin="0"
+                        Click="Settings_Click" />
+
+                <!-- Part number label + entry -->
+                <TextBlock Text="OA Part Number" Style="{StaticResource FieldLabelStyle}" />
+                <TextBox x:Name="PartNumberBox"
+                         Text="{Binding PartNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         Style="{StaticResource SWFieldStyle}"
+                         Height="26" />
+
+                <!-- Load button -->
+                <Button Content="Load Properties from InvenTree"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        HorizontalAlignment="Stretch"
+                        IsEnabled="{Binding FetchEnabled}"
+                        Click="Fetch_Click" />
+
+                <!-- Separator -->
+                <Separator Margin="0,8,0,0"
+                           Background="#FFD7D7D7" />
+
+                <!-- ── Properties comparison grid ─────────────────────── -->
+                <StackPanel Visibility="{Binding PropertiesSectionVisible,
+                                               Converter={StaticResource BoolToVis}}">
+
+                    <!-- Section header: grey band + 3px blue left stripe -->
+                    <Grid Margin="{StaticResource SectionSpacing}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="3" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0"
+                                Background="{StaticResource BrushAccentBlue}" />
+                        <Border Grid.Column="1"
+                                Background="{StaticResource BrushSectionHeader}"
+                                Padding="6,4">
+                            <TextBlock Text="Part Properties"
+                                       FontWeight="SemiBold"
+                                       FontSize="{StaticResource FontSizeHeading}" />
+                        </Border>
+                    </Grid>
+
+                    <!-- Column headers -->
+                    <Grid Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="SolidWorks"
+                                   Style="{StaticResource ColumnHeaderStyle}" />
+                        <TextBlock Grid.Column="2" Text="InvenTree"
+                                   Style="{StaticResource ColumnHeaderStyle}" />
+                    </Grid>
+
+                    <!-- Name row -->
+                    <TextBlock Text="Name / Description"
+                               Style="{StaticResource FieldLabelStyle}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBox Grid.Column="0"
+                                 Text="{Binding CurrentName, Mode=OneWay}"
+                                 Style="{StaticResource SWFieldStyle}"
+                                 IsReadOnly="True" Height="26" />
+                        <TextBox Grid.Column="2"
+                                 Text="{Binding NamePreview, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource InvenTreeFieldStyle}"
+                                 IsReadOnly="False"
+                                 Focusable="True"
+                                 Height="26" />
+                    </Grid>
+                    <Button Content="Apply Name to SW doc"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            HorizontalAlignment="Left"
+                            IsEnabled="{Binding ApplyNameEnabled}"
+                            Click="ApplyName_Click" />
+
+                    <!-- Notes row -->
+                    <TextBlock Text="Notes" Style="{StaticResource FieldLabelStyle}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBox Grid.Column="0"
+                                 Text="{Binding CurrentNotes, Mode=OneWay}"
+                                 Style="{StaticResource SWFieldStyle}"
+                                 IsReadOnly="True"
+                                 Height="52"
+                                 TextWrapping="Wrap"
+                                 AcceptsReturn="True"
+                                 VerticalScrollBarVisibility="Auto" />
+                        <TextBox Grid.Column="2"
+                                 Text="{Binding NotesPreview, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource InvenTreeFieldStyle}"
+                                 IsReadOnly="False"
+                                 Focusable="True"
+                                 Height="52"
+                                 TextWrapping="Wrap"
+                                 AcceptsReturn="True"
+                                 VerticalScrollBarVisibility="Auto" />
+                    </Grid>
+                    <Button Content="Apply Notes to SW doc"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            HorizontalAlignment="Left"
+                            IsEnabled="{Binding ApplyNotesEnabled}"
+                            Click="ApplyNotes_Click" />
+
+                    <!-- Revision row (read-only both sides) -->
+                    <TextBlock Text="Revision" Style="{StaticResource FieldLabelStyle}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBox Grid.Column="0"
+                                 Text="{Binding CurrentRevision, Mode=OneWay}"
+                                 Style="{StaticResource SWFieldStyle}"
+                                 IsReadOnly="True" Height="26" />
+                        <TextBox Grid.Column="2"
+                                 Text="{Binding RevisionPreview, Mode=OneWay}"
+                                 Style="{StaticResource InvenTreeFieldStyle}"
+                                 Height="26" />
+                    </Grid>
+
+                    <!-- Push Revision button -->
+                    <Button Content="Push SW Rev to InvenTree"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            HorizontalAlignment="Stretch"
+                            Visibility="{Binding PushRevisionVisible,
+                                                Converter={StaticResource BoolToVis}}"
+                            Click="PushRevision_Click" />
+
+                    <!-- Push Image button -->
+                    <Button Content="Push Image to InvenTree"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            HorizontalAlignment="Stretch"
+                            Visibility="{Binding PushImageVisible,
+                                               Converter={StaticResource BoolToVis}}"
+                            Margin="0,8,0,8"
+                            Click="PushImage_Click" />
+
+                </StackPanel>
+                <!-- end properties section -->
+
+            </StackPanel>
+        </ScrollViewer>
+
+    </DockPanel>
+</UserControl>

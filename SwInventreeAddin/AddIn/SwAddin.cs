@@ -227,19 +227,17 @@ namespace SwInventreeAddin.AddIn
         {
             if (_configProvider == null) return;
 
-            using (var form = new SettingsForm(_configProvider))
-            {
-                if (form.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
+            var form = new SettingsWindow(_configProvider);
+            if (form.ShowDialog() != true) return;
 
-                var newConfig = _configProvider.GetServerConfig();
-                if (newConfig == null) return;
+            var newConfig = _configProvider.GetServerConfig();
+            if (newConfig == null) return;
 
-                _httpClient?.Dispose();
-                _httpClient             = new System.Net.Http.HttpClient();
-                _httpClient.BaseAddress = new System.Uri(newConfig.Url);
-                var newClient = new InventreeHttpClient(_httpClient, newConfig.ApiKey);
-                _taskPaneControl?.UpdateClient(newClient);
-            }
+            _httpClient?.Dispose();
+            _httpClient             = new System.Net.Http.HttpClient();
+            _httpClient.BaseAddress = new System.Uri(newConfig.Url);
+            var newClient = new InventreeHttpClient(_httpClient, newConfig.ApiKey);
+            _taskPaneControl?.UpdateClient(newClient);
         }
     }
 }

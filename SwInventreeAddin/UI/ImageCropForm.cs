@@ -102,7 +102,7 @@ namespace SwInventreeAddin.UI
             splitContainer.Panel2.Controls.Add(previewLabel);
 
             // Bottom button bar
-            var buttonPanel = new Panel { Dock = DockStyle.Bottom, Height = 46 };
+            var buttonPanel = new Panel { Dock = DockStyle.Bottom, Height = 46, BackColor = Color.FromArgb(240, 240, 240) };
 
             _confirmButton = new Button
             {
@@ -110,7 +110,7 @@ namespace SwInventreeAddin.UI
                 Width     = 100,
                 Height    = 32,
                 Anchor    = AnchorStyles.Bottom | AnchorStyles.Right,
-                BackColor = Color.FromArgb(0, 130, 60),
+                BackColor = Color.FromArgb(0, 112, 192),  // InvenTree blue
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Font      = new Font("Segoe UI", 10f, FontStyle.Bold),
@@ -124,6 +124,7 @@ namespace SwInventreeAddin.UI
                 Width     = 100,
                 Height    = 32,
                 Anchor    = AnchorStyles.Bottom | AnchorStyles.Right,
+                BackColor = Color.FromArgb(215, 215, 215),  // SW chrome grey
                 FlatStyle = FlatStyle.Flat,
                 Font      = new Font("Segoe UI", 10f),
             };
