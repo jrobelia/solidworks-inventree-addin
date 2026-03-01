@@ -1,0 +1,547 @@
+using System.Drawing;
+using System.Threading.Tasks;
+using NUnit.Framework;
+using SwInventreeAddin.InvenTree;
+using SwInventreeAddin.Tests.Stubs;
+using SwInventreeAddin.UI;
+
+namespace SwInventreeAddin.Tests
+{
+    /// <summary>
+    /// Tests for TaskPaneViewModel — the business logic layer of the task pane.
+    /// No WinForms, no STA thread requirement, no UI controls to create or dispose.
+    /// </summary>
+    [TestFixture]
+    public class TaskPaneViewModelTests
+    {
+        private StubInventreeClient          _client;
+        private StubDocumentPropertyService  _propertyService;
+        private TaskPaneViewModel            _vm;
+
+        private static readonly InventreePart SamplePart = new InventreePart
+        {
+            Pk       = 42,
+            Name     = "Resistor 10k",
+            Notes    = "SMD 0402",
+            Revision = "A",
+            Ipn      = "R-10K-0402",
+        };
+
+        [SetUp]
+        public void SetUp()
+        {
+            _client          = new StubInventreeClient();
+            _propertyService = new StubDocumentPropertyService();
+        }
+
+        private void CreateVm(string seedPartNo = "R-10K-0402")
+        {
+            _propertyService.Seed("PartNo", seedPartNo);
+            _vm = new TaskPaneViewModel(_client, _propertyService);
+        }
+
+        // ── Initialisation ─────────────────────────────────────────────────────
+
+        [Test]
+        public void OnInitialisation_PartNumber_IsPopulatedFromCustomProperty()
+        {
+            CreateVm("R-10K-0402");
+
+            Assert.That(_vm.PartNumber, Is.EqualTo("R-10K-0402"));
+        }
+
+        [Test]
+        public void OnInitialisation_ApplyEnabled_IsFalse()
+        {
+            CreateVm();
+
+            Assert.That(_vm.ApplyEnabled, Is.False);
+        }
+
+        [Test]
+        public void OnInitialisation_PushRevisionVisible_IsFalse()
+        {
+            CreateVm();
+
+            Assert.That(_vm.PushRevisionVisible, Is.False);
+        }
+
+        [Test]
+        public void OnInitialisation_PushImageVisible_IsFalse()
+        {
+            CreateVm();
+
+            Assert.That(_vm.PushImageVisible, Is.False);
+        }
+
+        [Test]
+        public void OnInitialisation_WithNoClient_FetchEnabled_IsFalse()
+        {
+            _propertyService.Seed("PartNo", "R-10K-0402");
+            _vm = new TaskPaneViewModel(null, _propertyService);
+
+            Assert.That(_vm.FetchEnabled, Is.False);
+        }
+
+        [Test]
+        public void OnInitialisation_WithClient_FetchEnabled_IsTrue()
+        {
+            CreateVm();
+
+            Assert.That(_vm.FetchEnabled, Is.True);
+        }
+
+        // ── After successful fetch ─────────────────────────────────────────────
+
+        [Test]
+        public async Task AfterSuccessfulFetch_NamePreview_IsPopulated()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.NamePreview, Is.EqualTo("Resistor 10k"));
+        }
+
+        [Test]
+        public async Task AfterSuccessfulFetch_NotesPreview_IsPopulated()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.NotesPreview, Is.EqualTo("SMD 0402"));
+        }
+
+        [Test]
+        public async Task AfterSuccessfulFetch_RevisionPreview_IsPopulated()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.RevisionPreview, Is.EqualTo("A"));
+        }
+
+        [Test]
+        public async Task AfterSuccessfulFetch_ApplyEnabled_IsTrue()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.ApplyEnabled, Is.True);
+        }
+
+        [Test]
+        public async Task AfterSuccessfulFetch_PushRevisionVisible_IsTrue()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.PushRevisionVisible, Is.True);
+        }
+
+        [Test]
+        public async Task AfterSuccessfulFetch_PushImageVisible_IsTrue()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.PushImageVisible, Is.True);
+        }
+
+        [Test]
+        public async Task AfterSuccessfulFetch_PropertiesSectionVisible_IsTrue()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.PropertiesSectionVisible, Is.True);
+        }
+
+        [Test]
+        public async Task AfterSuccessfulFetch_StatusText_IsEmpty()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.StatusText, Is.Empty);
+        }
+
+        // ── Part not found ─────────────────────────────────────────────────────
+
+        [Test]
+        public async Task WhenPartNotFound_ApplyEnabled_RemainsDisabled()
+        {
+            _client.PartToReturn = null;
+            CreateVm();
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.ApplyEnabled, Is.False);
+        }
+
+        [Test]
+        public async Task WhenPartNotFound_StatusText_ShowsNotFoundMessage()
+        {
+            _client.PartToReturn = null;
+            CreateVm();
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.StatusText,
+                Does.Contain("not found").IgnoreCase
+                .Or.Contain("no part").IgnoreCase);
+        }
+
+        // ── Fetch error ────────────────────────────────────────────────────────
+
+        [Test]
+        public async Task WhenFetchThrows_StatusText_ShowsError()
+        {
+            _propertyService.Seed("PartNo", "R-10K-0402");
+            _vm = new TaskPaneViewModel(new ThrowingStubClient(), _propertyService);
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.StatusText, Does.Contain("Error").IgnoreCase);
+        }
+
+        // ── ClearAll ──────────────────────────────────────────────────────────
+
+        [Test]
+        public async Task AfterClearAll_PushRevisionVisible_IsFalse()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            _vm.ClearAll();
+
+            Assert.That(_vm.PushRevisionVisible, Is.False);
+        }
+
+        [Test]
+        public async Task AfterClearAll_PushImageVisible_IsFalse()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            _vm.ClearAll();
+
+            Assert.That(_vm.PushImageVisible, Is.False);
+        }
+
+        [Test]
+        public async Task AfterClearAll_ApplyEnabled_IsFalse()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            _vm.ClearAll();
+
+            Assert.That(_vm.ApplyEnabled, Is.False);
+        }
+
+        [Test]
+        public async Task AfterClearAll_PartNumber_IsEmpty()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            _vm.ClearAll();
+
+            Assert.That(_vm.PartNumber, Is.Empty);
+        }
+
+        // ── Apply ─────────────────────────────────────────────────────────────
+
+        [Test]
+        public async Task ApplyToDocument_SetsDescriptionToPartName()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            _vm.ApplyToDocument();
+
+            Assert.That(_propertyService.GetCustomProperty("Description"),
+                Is.EqualTo("Resistor 10k"));
+        }
+
+        [Test]
+        public async Task ApplyToDocument_SetsNotesToPartNotes()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            _vm.ApplyToDocument();
+
+            Assert.That(_propertyService.GetCustomProperty("Notes"),
+                Is.EqualTo("SMD 0402"));
+        }
+
+        [Test]
+        public async Task ApplyToDocument_NeverWritesPartNoProperty()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            _vm.ApplyToDocument();
+
+            Assert.That(_propertyService.SetCallLog, Does.Not.Contain("PartNo"));
+        }
+
+        [Test]
+        public async Task ApplyToDocument_NeverWritesRevisionProperty()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            _vm.ApplyToDocument();
+
+            Assert.That(_propertyService.SetCallLog, Does.Not.Contain("Revision"));
+        }
+
+        [Test]
+        public async Task ApplyNameToDocument_SetsDescription()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            _vm.ApplyNameToDocument();
+
+            Assert.That(_propertyService.GetCustomProperty("Description"),
+                Is.EqualTo("Resistor 10k"));
+        }
+
+        [Test]
+        public async Task ApplyNotesToDocument_SetsNotes()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            _vm.ApplyNotesToDocument();
+
+            Assert.That(_propertyService.GetCustomProperty("Notes"),
+                Is.EqualTo("SMD 0402"));
+        }
+
+        // ── PushRevision ──────────────────────────────────────────────────────
+
+        [Test]
+        public async Task PushRevision_WhenNoPartFetched_DoesNotCallClient()
+        {
+            CreateVm();
+
+            await _vm.PushRevisionToInventreeAsync();
+
+            Assert.That(_client.LastPushedPk, Is.EqualTo(0));
+        }
+
+        [Test]
+        public async Task PushRevision_CallsClientWithCorrectPkAndRevision()
+        {
+            _propertyService.Seed("Revision", "C");
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            await _vm.PushRevisionToInventreeAsync();
+
+            Assert.That(_client.LastPushedPk,       Is.EqualTo(42));
+            Assert.That(_client.LastPushedRevision,  Is.EqualTo("C"));
+        }
+
+        [Test]
+        public async Task PushRevision_OnSuccess_UpdatesRevisionPreview()
+        {
+            _propertyService.Seed("Revision", "D");
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            await _vm.PushRevisionToInventreeAsync();
+
+            Assert.That(_vm.RevisionPreview, Is.EqualTo("D"));
+        }
+
+        [Test]
+        public async Task PushRevision_OnSuccess_StatusText_ShowsSuccess()
+        {
+            _propertyService.Seed("Revision", "E");
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            await _vm.PushRevisionToInventreeAsync();
+
+            Assert.That(_vm.StatusText,
+                Does.Contain("pushed").IgnoreCase
+                .Or.Contain("\u2713"));
+        }
+
+        [Test]
+        public async Task PushRevision_OnHttpError_StatusText_ShowsError()
+        {
+            _client.PartToReturn  = SamplePart;
+            _client.ThrowOnUpdate = new System.Net.Http.HttpRequestException("500");
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            await _vm.PushRevisionToInventreeAsync();
+
+            Assert.That(_vm.StatusText, Does.Contain("Error").IgnoreCase);
+        }
+
+        // ── PushImage ─────────────────────────────────────────────────────────
+
+        [Test]
+        public async Task PushImage_WhenNoPartFetched_DoesNotCallUpload()
+        {
+            CreateVm();
+
+            using (var img = new Bitmap(100, 100))
+                await _vm.PushImageAsync(imageOverride: img);
+
+            Assert.That(_client.LastUploadedPk, Is.EqualTo(0));
+        }
+
+        [Test]
+        public async Task PushImage_CallsUploadWithCorrectPk()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            using (var img = new Bitmap(100, 100))
+                await _vm.PushImageAsync(imageOverride: img);
+
+            Assert.That(_client.LastUploadedPk, Is.EqualTo(42));
+        }
+
+        [Test]
+        public async Task PushImage_CallsUploadWithNonEmptyPngData()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            using (var img = new Bitmap(100, 100))
+                await _vm.PushImageAsync(imageOverride: img);
+
+            Assert.That(_client.LastUploadedImageData, Is.Not.Null.And.Not.Empty);
+            // PNG magic bytes
+            Assert.That(_client.LastUploadedImageData![0], Is.EqualTo(137));
+            Assert.That(_client.LastUploadedImageData![1], Is.EqualTo(80));
+        }
+
+        [Test]
+        public async Task PushImage_OnSuccess_StatusText_ShowsSuccess()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            using (var img = new Bitmap(100, 100))
+                await _vm.PushImageAsync(imageOverride: img);
+
+            Assert.That(_vm.StatusText,
+                Does.Contain("image").IgnoreCase
+                .Or.Contain("\u2713"));
+        }
+
+        [Test]
+        public async Task PushImage_OnUploadError_StatusText_ShowsError()
+        {
+            _client.PartToReturn  = SamplePart;
+            _client.ThrowOnUpload = new System.Net.Http.HttpRequestException("upload failed");
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            using (var img = new Bitmap(100, 100))
+                await _vm.PushImageAsync(imageOverride: img);
+
+            Assert.That(_vm.StatusText, Does.Contain("Error").IgnoreCase);
+        }
+
+        [Test]
+        public async Task PushImage_WhenClientIsNull_DoesNotThrow()
+        {
+            _propertyService.Seed("PartNo", "R-10K-0402");
+            _vm = new TaskPaneViewModel(null, _propertyService);
+
+            using (var img = new Bitmap(100, 100))
+                Assert.DoesNotThrowAsync(() => _vm.PushImageAsync(imageOverride: img));
+        }
+
+        // ── UpdateClient ──────────────────────────────────────────────────────
+
+        [Test]
+        public void UpdateClient_ToNull_FetchEnabled_IsFalse()
+        {
+            CreateVm();
+
+            _vm.UpdateClient(null);
+
+            Assert.That(_vm.FetchEnabled, Is.False);
+        }
+
+        [Test]
+        public void UpdateClient_ToNull_StatusText_ShowsConfigureMessage()
+        {
+            CreateVm();
+
+            _vm.UpdateClient(null);
+
+            Assert.That(_vm.StatusText,
+                Does.Contain("Settings").IgnoreCase
+                .Or.Contain("configured").IgnoreCase);
+        }
+
+        [Test]
+        public void UpdateClient_ToNewClient_FetchEnabled_IsTrue()
+        {
+            _propertyService.Seed("PartNo", "R-10K-0402");
+            _vm = new TaskPaneViewModel(null, _propertyService);
+
+            _vm.UpdateClient(new StubInventreeClient());
+
+            Assert.That(_vm.FetchEnabled, Is.True);
+        }
+    }
+
+    /// <summary>Stub client that throws on GetPartByIpnAsync — used to test the fetch error path.</summary>
+    internal sealed class ThrowingStubClient : IInventreeClient
+    {
+        public Task<InventreePart?> GetPartByIpnAsync(string ipn)
+            => throw new System.Net.Http.HttpRequestException("simulated network error");
+
+        public Task UpdatePartRevisionAsync(int pk, string revision)
+            => Task.CompletedTask;
+
+        public Task UploadPartImageAsync(int pk, byte[] pngData)
+            => Task.CompletedTask;
+    }
+}

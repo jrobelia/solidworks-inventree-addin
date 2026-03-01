@@ -36,10 +36,14 @@ namespace SwInventreeAddin.SolidWorks
                     throw new InvalidOperationException("SolidWorks SaveBMP failed — the viewport image could not be captured.");
 
                 // Load into memory and detach from the file so we can delete it.
+                // NOTE: Image.FromStream keeps an internal reference to the stream, so
+                // calling Save() after the stream is closed throws "generic error in GDI+".
+                // We copy into a fresh Bitmap to break that dependency before closing the stream.
                 Image image;
                 using (var fs = new FileStream(tempPath, FileMode.Open, FileAccess.Read))
+                using (var tmp = new Bitmap(fs))
                 {
-                    image = Image.FromStream(fs);
+                    image = new Bitmap(tmp);
                 }
 
                 return image;
