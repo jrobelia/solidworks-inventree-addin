@@ -34,20 +34,27 @@ namespace SwInventreeAddin.UI
             StartPosition   = FormStartPosition.CenterScreen;
             MaximizeBox     = false;
             MinimizeBox     = false;
-            ClientSize      = new Size(550, 230);
+            ClientSize      = new Size(550, 234);
             Font            = new Font("Segoe UI", 10f);
             BackColor       = SystemColors.Window;
-            Padding         = new Padding(16);
 
-            var lblUrl = new Label { Text = "Server URL", AutoSize = true, Location = new Point(16, 20) };
-            _urlBox    = new TextBox { Location = new Point(16, 42), Width = 518, Font = Font };
+            // Blue accent stripe across the top (matches WPF panels)
+            var stripe = new Panel
+            {
+                Dock      = DockStyle.Top,
+                Height    = 4,
+                BackColor = Color.FromArgb(0, 112, 192),
+            };
 
-            var lblKey = new Label { Text = "API Key", AutoSize = true, Location = new Point(16, 78) };
-            _apiBox    = new TextBox { Location = new Point(16, 100), Width = 518, Font = Font };
+            var lblUrl = new Label { Text = "Server URL", AutoSize = true, Location = new Point(16, 24) };
+            _urlBox    = new TextBox { Location = new Point(16, 46), Width = 518, Font = Font };
+
+            var lblKey = new Label { Text = "API Key", AutoSize = true, Location = new Point(16, 82) };
+            _apiBox    = new TextBox { Location = new Point(16, 104), Width = 518, Font = Font };
 
             _status = new Label
             {
-                Location  = new Point(16, 136),
+                Location  = new Point(16, 140),
                 Width     = 518,
                 Height    = 28,
                 AutoSize  = false,
@@ -57,10 +64,10 @@ namespace SwInventreeAddin.UI
 
             _testBtn = new Button
             {
-                Text     = "Test Connection",
-                Location = new Point(16, 172),
-                Width    = 140,
-                Height   = 32,
+                Text      = "Test Connection",
+                Location  = new Point(16, 176),
+                Width     = 140,
+                Height    = 32,
                 BackColor = Color.FromArgb(0, 112, 192),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
@@ -71,10 +78,10 @@ namespace SwInventreeAddin.UI
             _saveBtn = new Button
             {
                 Text      = "Save",
-                Location  = new Point(390, 172),
+                Location  = new Point(390, 176),
                 Width     = 70,
                 Height    = 32,
-                BackColor = Color.FromArgb(0, 130, 60),
+                BackColor = Color.FromArgb(0, 112, 192),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
             };
@@ -84,14 +91,16 @@ namespace SwInventreeAddin.UI
             var cancelBtn = new Button
             {
                 Text      = "Cancel",
-                Location  = new Point(464, 172),
+                Location  = new Point(464, 176),
                 Width     = 70,
                 Height    = 32,
+                BackColor = Color.FromArgb(215, 215, 215),
                 FlatStyle = FlatStyle.Flat,
             };
+            cancelBtn.FlatAppearance.BorderSize = 0;
             cancelBtn.Click += (s, e) => DialogResult = DialogResult.Cancel;
 
-            Controls.AddRange(new Control[] { lblUrl, _urlBox, lblKey, _apiBox, _status, _testBtn, _saveBtn, cancelBtn });
+            Controls.AddRange(new Control[] { stripe, lblUrl, _urlBox, lblKey, _apiBox, _status, _testBtn, _saveBtn, cancelBtn });
             AcceptButton = _saveBtn;
             CancelButton = cancelBtn;
         }
