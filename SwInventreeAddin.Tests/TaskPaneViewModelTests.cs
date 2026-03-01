@@ -545,3 +545,85 @@ namespace SwInventreeAddin.Tests
             => Task.CompletedTask;
     }
 }
+
+// ── Document-type awareness tests ──────────────────────────────────────────────
+namespace SwInventreeAddin.Tests
+{
+    using SwInventreeAddin.SolidWorks;
+
+    [TestFixture]
+    public class DocumentTypeAwarenessTests
+    {
+        private StubInventreeClient         _client;
+        private StubDocumentPropertyService _propertyService;
+        private TaskPaneViewModel           _vm;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _client          = new StubInventreeClient();
+            _propertyService = new StubDocumentPropertyService();
+            // Seed a part number so the drawing block is the only thing preventing load
+            _propertyService.Seed("PartNo", "DRW-001");
+        }
+
+        private void CreateVm() => _vm = new TaskPaneViewModel(_client, _propertyService);
+
+        [Test]
+        public void DrawingDocument_LoadPartNumber_ClearsPanel()
+        {
+            _propertyService.DocumentTypeToReturn = DocumentType.Drawing;
+            CreateVm();
+
+            // PartNumber should be empty — panel should be in cleared state
+            Assert.That(_vm.PartNumber, Is.Empty);
+            Assert.That(_vm.PropertiesSectionVisible, Is.False);
+        }
+
+        [Test]
+        public void DrawingDocument_LoadPartNumber_ShowsWarningStatus()
+        {
+            _propertyService.DocumentTypeToReturn = DocumentType.Drawing;
+            CreateVm();
+
+            Assert.That(_vm.StatusText,     Does.Contain("Drawings").IgnoreCase);
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+        }
+
+        [Test]
+        public void PartDocument_LoadPartNumber_LoadsNormally()
+        {
+            _propertyService.DocumentTypeToReturn = DocumentType.Part;
+            CreateVm();
+
+            Assert.That(_vm.PartNumber, Is.EqualTo("DRW-001"));
+            Assert.That(_vm.PropertiesSectionVisible, Is.True);
+        }
+
+        [Test]
+        public void AssemblyDocument_LoadPartNumber_LoadsNormally()
+        {
+            _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            CreateVm();
+
+            Assert.That(_vm.PartNumber, Is.EqualTo("DRW-001"));
+            Assert.That(_vm.PropertiesSectionVisible, Is.True);
+        }
+
+        [Test]
+        public void SwitchingFromDrawingToPart_LoadsNormally()
+        {
+            // Start as drawing — panel should be blocked
+            _propertyService.DocumentTypeToReturn = DocumentType.Drawing;
+            CreateVm();
+            Assert.That(_vm.PartNumber, Is.Empty);
+
+            // Switch to part — panel should load correctly
+            _propertyService.DocumentTypeToReturn = DocumentType.Part;
+            _vm.LoadPartNumber();
+
+            Assert.That(_vm.PartNumber, Is.EqualTo("DRW-001"));
+            Assert.That(_vm.PropertiesSectionVisible, Is.True);
+        }
+    }
+}

@@ -2,11 +2,17 @@
 
 Features and improvements planned for future work.
 One line each -- details get fleshed out in the Orchestrator pipeline when work begins.
-## Bug
-- How to handle drawings, they don't currently exist in inventree, plugin should be disabled for drawing files.  I think this is already handled becasue it only appears for parts and assemblies, but we should still confirm that is the case.
 
 ## Next up
-1. Allow manual entry of Custom property names in the settings window.  Allow users to link SW custom property to inventree property, such as IPN and part name, etc.  Maybe even have a drop down list of available inventree properties that can be linked, drop down list would have to account properties already slected in other boxes.
+0. add an the same equal sign behavior between the rev boxes just liek the other two properties.
+1. Move "apply to SW doc" under inventree text box and add an arrow pointing to the left "<- Apply to SW Doc" Add button where other button used to be and label it "Apply to InvneTree ->" make the button press write the SW custom property value in the text box above it to the corresnding inventree property of the loaded part number.
+2. Custom property mapping in Settings: allow users to link each SW custom property name to its
+   InvenTree counterpart (e.g. map "OA_IPN" → IPN, "Description" → name). Dropdown list of
+   available InvenTree fields; already-selected fields excluded from other dropdowns. This is also
+   where per-document-type enable/disable switches belong (Part / Assembly / Drawing on/off) --
+   the add-in already knows the document type at load time, so toggling behaviour per type is
+   straightforward once the Settings infrastructure exists. Could a SW custom property template
+   file (.prtprp / .asmprp) drive the available field list automatically? Could there be a way to add extra properties if the default amount are not enough, or should we just have them all?
 2. Ask the question, could a custom property file be used to auto populate or guide the creation of the UI.
 3. Create new InvenTree part number directly from SolidWorks (no browser needed)
 4. InvenTree BOM snapshot on revision push -- when Push Revision fires in the add-in, snapshot
@@ -36,6 +42,9 @@ One line each -- details get fleshed out in the Orchestrator pipeline when work 
 - Auto-detect IPN from filename when custom property is missing
 - BOM checker recursive view: show full assembly tree, not just immediate children
 - Status bar showing connection health (green/red dot)
+- Per-document-type enable/disable switches in Settings (Part on, Assembly on, Drawing off by
+  default). Drawings are currently blocked outright -- this would make it configurable. Fits
+  naturally alongside roadmap item 1 (custom property mapping).
 
 ## Pipeline / tooling improvements
 - Security checklist baked into Stage 7 (code review) on every pipeline run -- not a separate step.
@@ -52,3 +61,5 @@ One line each -- details get fleshed out in the Orchestrator pipeline when work 
 - Push part image to InvenTree -- viewport capture via SaveBMP API, crop dialog with
   square-lock and move-drag, 800x800 PNG resize pipeline, "Also push image" checkbox
   on Push Revision confirmation dialog
+- Drawing protection -- drawings blocked with amber warning; document type stored as
+  first-class ViewModel state (_currentDocumentType) ready for per-type feature work
