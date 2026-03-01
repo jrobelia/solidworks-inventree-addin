@@ -21,5 +21,13 @@ if (Test-Path $addinDll) {
 
 Write-Host "Deleting add-in files..."
 Remove-Item $installDir -Recurse -Force -ErrorAction SilentlyContinue
+
+# Remove the Add/Remove Programs entry
+$regPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\OAInvenTreeAddin"
+if (Test-Path $regPath) {
+    Remove-Item $regPath -Force
+    Write-Host "Removed from Add/Remove Programs."
+}
+
 Write-Host "Done. Restart SolidWorks to complete removal." -ForegroundColor Green
 Read-Host "Press Enter to exit"

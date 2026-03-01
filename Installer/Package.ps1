@@ -22,24 +22,31 @@ Write-Host "Assembling distribution..." -ForegroundColor Cyan
 Remove-Item $distDir -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Path $distDir | Out-Null
 
+# _addin\ holds everything except the top-level launcher and README.
+# Users only need to see two items when they open the zip.
+$addinDir = "$distDir\_addin"
+New-Item -ItemType Directory -Path $addinDir | Out-Null
+
 # Write version stamp so the installed copy is identifiable
-Set-Content -Path "$distDir\version.txt" -Value $version -Encoding UTF8
+Set-Content -Path "$addinDir\version.txt" -Value $version -Encoding UTF8
 
 # Copy all DLLs from the build output
-Get-ChildItem "$buildOut\*.dll" | Copy-Item -Destination $distDir
+Get-ChildItem "$buildOut\*.dll" | Copy-Item -Destination $addinDir
 
 # Copy Resources subfolder
 if (Test-Path "$buildOut\Resources") {
-    New-Item -ItemType Directory -Path "$distDir\Resources" | Out-Null
-    Copy-Item "$buildOut\Resources\*" -Destination "$distDir\Resources"
+    New-Item -ItemType Directory -Path "$addinDir\Resources" | Out-Null
+    Copy-Item "$buildOut\Resources\*" -Destination "$addinDir\Resources"
 }
 
-# Copy installer scripts
-Copy-Item "$PSScriptRoot\Install.ps1"                         -Destination $distDir
-Copy-Item "$PSScriptRoot\Install (Run as Administrator).bat"  -Destination $distDir
-Copy-Item "$PSScriptRoot\Uninstall.ps1"                       -Destination $distDir
-Copy-Item "$PSScriptRoot\Uninstall (Run as Administrator).bat" -Destination $distDir
-Copy-Item "$PSScriptRoot\README.txt"                          -Destination $distDir
+# PS1 scripts + Uninstall launcher go into _addin\ (installer copies them to Program Files)
+Copy-Item "$PSScriptRoot\Install.ps1"                          -Destination $addinDir
+Copy-Item "$PSScriptRoot\Uninstall.ps1"                        -Destination $addinDir
+Copy-Item "$PSScriptRoot\Uninstall (Run as Administrator).bat" -Destination $addinDir
+
+# Only the Install launcher and README sit at the zip root
+Copy-Item "$PSScriptRoot\Install (Run as Administrator).bat"   -Destination $distDir
+Copy-Item "$PSScriptRoot\README.txt"                           -Destination $distDir
 
 # Zip it
 if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
