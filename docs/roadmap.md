@@ -37,6 +37,11 @@ One line each -- details get fleshed out in the Orchestrator pipeline when work 
 - BOM checker recursive view: show full assembly tree, not just immediate children
 - Status bar showing connection health (green/red dot)
 
+## Pipeline / tooling improvements
+- Security checklist baked into Stage 7 (code review) on every pipeline run -- not a separate step.
+  Covers: boundary validation, credential handling, token storage, HTTPS enforcement, no hardcoded
+  secrets, no shell injection, error message hygiene. See `.github` repo agent instructions.
+
 ## Not pursuing
 - PDM Standard integration -- PDM Standard (bundled with SW Professional) has no public API,
   so automation is not possible. Requires active subscription to activate anyway.
