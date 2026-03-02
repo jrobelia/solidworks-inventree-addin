@@ -22,19 +22,19 @@ namespace SwInventreeAddin.InvenTree
         {
             // IPN comes from SolidWorks custom properties (user-controlled) — must be encoded
             // to prevent query-string injection (e.g. "ABC&limit=0").
-            using var request = new HttpRequestMessage(
+            using var listRequest = new HttpRequestMessage(
                 HttpMethod.Get, $"/api/part/?IPN={Uri.EscapeDataString(ipn)}");
 
-            var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
+            var listResponse = await _httpClient.SendAsync(listRequest).ConfigureAwait(false);
 
-            if (!response.IsSuccessStatusCode)
+            if (!listResponse.IsSuccessStatusCode)
                 throw new HttpRequestException(
-                    $"InvenTree API returned {(int)response.StatusCode} {response.StatusCode}");
+                    $"InvenTree API returned {(int)listResponse.StatusCode} {listResponse.StatusCode}");
 
-            var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            var listJson = await listResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
 
-            using var document = JsonDocument.Parse(json);
-            var root = document.RootElement;
+            using var listDocument = JsonDocument.Parse(listJson);
+            var root = listDocument.RootElement;
 
             // InvenTree list endpoints return a paginated envelope:
             // { "count": N, "results": [ {...}, ... ] }
@@ -48,13 +48,44 @@ namespace SwInventreeAddin.InvenTree
                 return null;
 
             var first = array[0];
+            int pk = first.TryGetProperty("pk", out var pkProp) ? pkProp.GetInt32() : 0;
+
+            // The list endpoint omits some fields (e.g. notes). Fetch the full
+            // record from the detail endpoint so we get every field we need.
+            if (pk > 0)
+            {
+                using var detailRequest = new HttpRequestMessage(
+                    HttpMethod.Get, $"/api/part/{pk}/");
+
+                var detailResponse = await _httpClient.SendAsync(detailRequest).ConfigureAwait(false);
+
+                if (detailResponse.IsSuccessStatusCode)
+                {
+                    var detailJson = await detailResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    using var detailDocument = JsonDocument.Parse(detailJson);
+                    var detail = detailDocument.RootElement;
+
+                    return new InventreePart
+                    {
+                        Pk           = pk,
+                        Name         = GetString(detail, "name"),
+                        Notes        = GetString(detail, "notes"),
+                        Revision     = GetString(detail, "revision"),
+                        Ipn          = GetString(detail, "IPN"),
+                        ThumbnailUrl = GetString(detail, "thumbnail") is var t && t.Length > 0 ? t : null,
+                    };
+                }
+            }
+
+            // Fallback: build from list data (notes may be absent)
             return new InventreePart
             {
-                Pk       = first.TryGetProperty("pk", out var pkProp) ? pkProp.GetInt32() : 0,
-                Name     = GetString(first, "name"),
-                Notes    = GetString(first, "notes"),
-                Revision = GetString(first, "revision"),
-                Ipn      = GetString(first, "IPN"),
+                Pk           = pk,
+                Name         = GetString(first, "name"),
+                Notes        = GetString(first, "notes"),
+                Revision     = GetString(first, "revision"),
+                Ipn          = GetString(first, "IPN"),
+                ThumbnailUrl = GetString(first, "thumbnail") is var t2 && t2.Length > 0 ? t2 : null,
             };
         }
 
@@ -125,6 +156,29 @@ namespace SwInventreeAddin.InvenTree
             element.TryGetProperty(propertyName, out var prop)
                 ? prop.GetString() ?? string.Empty
                 : string.Empty;
+
+        public async Task<byte[]?> DownloadImageAsync(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+                return null;
+
+            // Reject absolute non-HTTPS URLs — the auth token must not travel over plain HTTP.
+            // Relative URLs (e.g. /media/thumbnails/widget.png) are safe because BaseAddress is HTTPS.
+            if (Uri.TryCreate(url, UriKind.Absolute, out var parsed) &&
+                !string.Equals(parsed.Scheme, "https", StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                return null;
+
+            if (!response.IsSuccessStatusCode)
+                return null;   // treat any error as "no image" — caller shows placeholder
+
+            return await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+        }
 
         public async Task UploadPartImageAsync(int pk, byte[] pngData)
         {

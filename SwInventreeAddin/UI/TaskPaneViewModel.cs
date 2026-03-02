@@ -55,6 +55,7 @@ namespace SwInventreeAddin.UI
         private bool   _pushImageVisible;
         private bool   _fetchEnabled;
         private bool   _propertiesSectionVisible;
+        private byte[]? _thumbnailBytes;
         private StatusSeverity _statusSeverity  = StatusSeverity.None;
 
         /// <summary>
@@ -184,6 +185,13 @@ namespace SwInventreeAddin.UI
         {
             get => _pushImageVisible;
             private set => Set(ref _pushImageVisible, value);
+        }
+
+        /// <summary>Raw PNG/JPEG bytes of the InvenTree part thumbnail. Null when none fetched.</summary>
+        public byte[]? ThumbnailBytes
+        {
+            get => _thumbnailBytes;
+            private set => Set(ref _thumbnailBytes, value);
         }
 
         /// <summary>Controls Load button enabled state.</summary>
@@ -380,11 +388,18 @@ namespace SwInventreeAddin.UI
                 return;
             }
 
-            InventreePart? part      = null;
-            Exception?     fetchError = null;
+            InventreePart? part       = null;
+            byte[]?        thumbBytes  = null;
+            Exception?     fetchError  = null;
 
             try   { part = await _client.GetPartByIpnAsync(ipn).ConfigureAwait(false); }
             catch (Exception ex) { fetchError = ex; }
+
+            if (part != null && !string.IsNullOrEmpty(part.ThumbnailUrl))
+            {
+                try   { thumbBytes = await _client.DownloadImageAsync(part.ThumbnailUrl!).ConfigureAwait(false); }
+                catch { /* silent — placeholder will show */ }
+            }
 
             RunOnUiThread(() =>
             {
@@ -403,6 +418,7 @@ namespace SwInventreeAddin.UI
                 NamePreview      = part.Name;
                 NotesPreview     = part.Notes;
                 RevisionPreview  = part.Revision;
+                ThumbnailBytes    = thumbBytes;
                 ApplyEnabled      = true;
                 ApplyNameEnabled  = true;
                 ApplyNotesEnabled = true;
@@ -588,8 +604,27 @@ namespace SwInventreeAddin.UI
                 await _client.UploadPartImageAsync(_lastFetchedPart.Pk, pngData)
                               .ConfigureAwait(false);
 
+                // Re-fetch the part to get the updated thumbnail URL (the old
+                // URL may be null if the part previously had no image).
+                byte[]? newThumb = null;
+                try
+                {
+                    var refreshed = await _client.GetPartByIpnAsync(_lastFetchedPart.Ipn)
+                                                  .ConfigureAwait(false);
+                    if (refreshed != null && !string.IsNullOrEmpty(refreshed.ThumbnailUrl))
+                    {
+                        _lastFetchedPart.ThumbnailUrl = refreshed.ThumbnailUrl;
+                        newThumb = await _client.DownloadImageAsync(refreshed.ThumbnailUrl!)
+                                                 .ConfigureAwait(false);
+                    }
+                }
+                catch { /* silent — stale thumbnail stays until next fetch */ }
+
                 RunOnUiThread(() =>
-                    SetStatus("\u2713  Image pushed to InvenTree.", StatusSeverity.Success));
+                {
+                    if (newThumb != null) ThumbnailBytes = newThumb;
+                    SetStatus("\u2713  Image pushed to InvenTree.", StatusSeverity.Success);
+                });
             }
             catch (Exception ex)
             {
@@ -616,6 +651,7 @@ namespace SwInventreeAddin.UI
             NamePreview      = string.Empty;
             NotesPreview     = string.Empty;
             RevisionPreview  = string.Empty;
+            ThumbnailBytes    = null;
             ApplyEnabled      = false;
             ApplyNameEnabled  = false;
             ApplyNotesEnabled = false;
