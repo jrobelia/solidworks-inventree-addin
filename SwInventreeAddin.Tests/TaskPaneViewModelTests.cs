@@ -549,6 +549,9 @@ namespace SwInventreeAddin.Tests
 
         public Task UploadPartImageAsync(int pk, byte[] pngData)
             => Task.CompletedTask;
+
+        public Task<byte[]?> DownloadImageAsync(string url)
+            => Task.FromResult<byte[]?>(null);
     }
 }
 
@@ -719,6 +722,92 @@ namespace SwInventreeAddin.Tests
             await _vm.PushNotesToInvenTreeAsync();
 
             Assert.That(_client.LastPushedNotes, Is.EqualTo("Custom notes here"));
+        }
+    }
+}
+
+// ── Thumbnail tests ────────────────────────────────────────────────────────────
+namespace SwInventreeAddin.Tests
+{
+    using System.Threading.Tasks;
+
+    [TestFixture]
+    public class ThumbnailTests
+    {
+        private StubInventreeClient         _client;
+        private StubDocumentPropertyService _propertyService;
+        private TaskPaneViewModel           _vm;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _client          = new StubInventreeClient();
+            _propertyService = new StubDocumentPropertyService();
+            _propertyService.Seed("PartNo", "TEST-001");
+
+            _client.PartToReturn = new InventreePart
+            {
+                Pk           = 7,
+                Ipn          = "TEST-001",
+                Name         = "Widget",
+                Notes        = string.Empty,
+                Revision     = "A",
+                ThumbnailUrl = "/media/thumbnails/widget.png"
+            };
+
+            _vm = new TaskPaneViewModel(_client, _propertyService);
+        }
+
+        [Test]
+        public async Task ThumbnailBytes_AfterFetch_WhenClientReturnsBytes_IsSet()
+        {
+            var fakeBytes = new byte[] { 1, 2, 3 };
+            _client.ThumbnailBytesToReturn = fakeBytes;
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.ThumbnailBytes, Is.EqualTo(fakeBytes));
+        }
+
+        [Test]
+        public async Task ThumbnailBytes_AfterFetch_WhenClientReturnsNull_IsNull()
+        {
+            _client.ThumbnailBytesToReturn = null;
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.ThumbnailBytes, Is.Null);
+        }
+
+        [Test]
+        public async Task ThumbnailBytes_AfterReset_IsNull()
+        {
+            _client.ThumbnailBytesToReturn = new byte[] { 9, 8, 7 };
+            await _vm.FetchPartAsync();
+
+            _vm.ClearAll();
+
+            Assert.That(_vm.ThumbnailBytes, Is.Null);
+        }
+
+        [Test]
+        public async Task ThumbnailBytes_WhenPartHasNoThumbnailUrl_DownloadNotCalled()
+        {
+            _client.PartToReturn!.ThumbnailUrl = null;
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_client.DownloadImageCallCount, Is.Zero);
+        }
+
+        [Test]
+        public async Task ThumbnailBytes_WhenDownloadThrows_IsNullAndNoException()
+        {
+            _client.ThrowOnDownload = new System.Net.Http.HttpRequestException("network error");
+
+            // Should complete without throwing and leave ThumbnailBytes null
+            Assert.DoesNotThrowAsync(async () => await _vm.FetchPartAsync());
+            Assert.That(_vm.ThumbnailBytes, Is.Null);
         }
     }
 }
