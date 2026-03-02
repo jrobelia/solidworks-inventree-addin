@@ -541,6 +541,12 @@ namespace SwInventreeAddin.Tests
         public Task UpdatePartRevisionAsync(int pk, string revision)
             => Task.CompletedTask;
 
+        public Task UpdatePartNameAsync(int pk, string name)
+            => Task.CompletedTask;
+
+        public Task UpdatePartNotesAsync(int pk, string notes)
+            => Task.CompletedTask;
+
         public Task UploadPartImageAsync(int pk, byte[] pngData)
             => Task.CompletedTask;
     }
@@ -624,6 +630,95 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(_vm.PartNumber, Is.EqualTo("DRW-001"));
             Assert.That(_vm.PropertiesSectionVisible, Is.True);
+        }
+    }
+}
+
+// ── Bidirectional property push tests ──────────────────────────────────────────
+namespace SwInventreeAddin.Tests
+{
+    using System.Threading.Tasks;
+
+    [TestFixture]
+    public class BidirectionalPropertyTests
+    {
+        private StubInventreeClient         _client;
+        private StubDocumentPropertyService _propertyService;
+        private TaskPaneViewModel           _vm;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _client          = new StubInventreeClient();
+            _propertyService = new StubDocumentPropertyService();
+            _propertyService.Seed("PartNo", "ABC-001");
+
+            _client.PartToReturn = new InventreePart
+            {
+                Pk       = 42,
+                Ipn      = "ABC-001",
+                Name     = "Widget",
+                Notes    = "Some notes",
+                Revision = "A"
+            };
+
+            _vm = new TaskPaneViewModel(_client, _propertyService);
+        }
+
+        // ── RevisionMatch ──────────────────────────────────────────────────────
+
+        [Test]
+        public async Task RevisionMatch_WhenEqual_IsTrue()
+        {
+            _propertyService.Seed("Revision", "A");
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.RevisionMatch, Is.True);
+        }
+
+        [Test]
+        public async Task RevisionMatch_WhenDifferent_IsFalse()
+        {
+            _propertyService.Seed("Revision", "B");
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.RevisionMatch, Is.False);
+        }
+
+        // ── PushNameEnabled ────────────────────────────────────────────────────
+
+        [Test]
+        public async Task PushNameEnabled_WhenPartLoaded_IsTrue()
+        {
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.PushNameEnabled, Is.True);
+        }
+
+        // ── PushNameToInvenTreeAsync ───────────────────────────────────────────
+
+        [Test]
+        public async Task PushName_CallsClientWithSwValue()
+        {
+            _propertyService.Seed("Description", "My Part Name");
+            await _vm.FetchPartAsync();
+
+            await _vm.PushNameToInvenTreeAsync();
+
+            Assert.That(_client.LastPushedName, Is.EqualTo("My Part Name"));
+        }
+
+        // ── PushNotesToInvenTreeAsync ──────────────────────────────────────────
+
+        [Test]
+        public async Task PushNotes_CallsClientWithSwValue()
+        {
+            _propertyService.Seed("Notes", "Custom notes here");
+            await _vm.FetchPartAsync();
+
+            await _vm.PushNotesToInvenTreeAsync();
+
+            Assert.That(_client.LastPushedNotes, Is.EqualTo("Custom notes here"));
         }
     }
 }

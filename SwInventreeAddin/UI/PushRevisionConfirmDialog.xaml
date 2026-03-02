@@ -25,15 +25,12 @@
 
         <StackPanel Margin="20,16,20,20">
 
-            <TextBlock TextWrapping="Wrap" Margin="0,0,0,16"
-                       Foreground="{StaticResource BrushForeground}">
-                Push the SolidWorks revision to InvenTree? This will overwrite
-                the revision currently stored in InvenTree.
-            </TextBlock>
+            <TextBlock x:Name="MessageText"
+                       TextWrapping="Wrap" Margin="0,0,0,16"
+                       Foreground="{StaticResource BrushForeground}" />
 
             <CheckBox x:Name="IncludeImageCheckBox"
                       Content="Also push image to InvenTree"
-                      IsChecked="True"
                       Margin="0,0,0,20"
                       FontSize="{StaticResource FontSizeBody}" />
 
