@@ -4,7 +4,7 @@ Features and improvements planned for future work.
 One line each -- details get fleshed out in the Orchestrator pipeline when work begins.
 
 ## Next up
-0. We shoudl pull the invntree image with the get data from inventree, change button to load data
+0. We shoudl pull the invntree image with the get data from inventree, change button to load data instead of properties.  How do we lay it out?  Since we will only ever have one image the left right symetry won't hold. We could put the image on the right "inventree" side.  Maybe share space with the part number and load data button on the left solid works side.
 1. This shoudl proably be a seperate window. Custom property mapping in Settings: allow users to link each SW custom property name to its
    InvenTree counterpart (e.g. map "OA_IPN" → IPN, "Description" → name). Dropdown list of
    available InvenTree fields; already-selected fields excluded from other dropdowns. This is also
