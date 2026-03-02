@@ -54,5 +54,16 @@ namespace SwInventreeAddin.Tests.Stubs
             LastUploadedImageData = pngData;
             return Task.CompletedTask;
         }
+
+        public byte[]?   ThumbnailBytesToReturn { get; set; }
+        public int        DownloadImageCallCount { get; private set; }
+        public Exception? ThrowOnDownload        { get; set; }
+
+        public Task<byte[]?> DownloadImageAsync(string url)
+        {
+            DownloadImageCallCount++;
+            if (ThrowOnDownload != null) throw ThrowOnDownload;
+            return Task.FromResult(ThumbnailBytesToReturn);
+        }
     }
 }

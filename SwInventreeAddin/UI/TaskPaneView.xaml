@@ -15,6 +15,7 @@
             </ResourceDictionary.MergedDictionaries>
             <!-- Visibility converters -->
             <BooleanToVisibilityConverter x:Key="BoolToVis" />
+            <local:ByteArrayToBitmapImageConverter x:Key="ThumbConverter" />
         </ResourceDictionary>
     </UserControl.Resources>
 
@@ -62,10 +63,12 @@
                         Click="Settings_Click" />
 
                 <!-- Part number label + entry -->
-                <TextBlock Text="OA Part Number" Style="{StaticResource FieldLabelStyle}" />
+                <TextBlock Text="Part Number" Style="{StaticResource FieldLabelStyle}" />
                 <TextBox x:Name="PartNumberBox"
-                         Text="{Binding PartNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         Text="{Binding PartNumber, Mode=OneWay}"
                          Style="{StaticResource SWFieldStyle}"
+                         IsReadOnly="True"
+                         Focusable="False"
                          Height="26" />
 
                 <!-- Load button -->
@@ -113,7 +116,46 @@
                                    Style="{StaticResource ColumnHeaderStyle}" />
                     </Grid>
 
-                    <!-- Name row -->
+                    <!-- Image row -->
+                    <Grid Margin="0,4,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="20" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Push-image button on SW side: 50px tall, bottom of row -->
+                        <Button Grid.Column="0"
+                                Height="50"
+                                VerticalAlignment="Bottom"
+                                HorizontalAlignment="Stretch"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                IsEnabled="{Binding PushImageVisible}"
+                                Click="PushImage_Click">
+                            <TextBlock TextWrapping="Wrap"
+                                       TextAlignment="Center"
+                                       Text="Capture and Push Image to InvenTree &#x2192;" />
+                        </Button>
+
+                        <!-- Thumbnail on InvenTree side -->
+                        <Grid Grid.Column="2"
+                              Width="120" Height="120"
+                              HorizontalAlignment="Center">
+                            <!-- Grey placeholder box (always visible) -->
+                            <Border Background="#FFE0E0E0" CornerRadius="4" />
+                            <!-- No-image icon (only when InvenTree data loaded but no thumbnail) -->
+                            <TextBlock Text="&#x1F5BC;"
+                                       FontSize="36"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Foreground="#FF888888"
+                                       Visibility="{Binding PushImageVisible, Converter={StaticResource BoolToVis}}" />
+                            <!-- Actual thumbnail paints over placeholder when loaded -->
+                            <Image Source="{Binding ThumbnailBytes, Converter={StaticResource ThumbConverter}}"
+                                   Stretch="UniformToFill"
+                                   RenderOptions.BitmapScalingMode="HighQuality" />
+                        </Grid>
+                    </Grid>
                     <TextBlock Text="Name / Description"
                                Style="{StaticResource FieldLabelStyle}" />
                     <Grid>
@@ -132,7 +174,9 @@
                                  Text="{Binding CurrentName, Mode=OneWay}"
                                  ToolTip="{Binding CurrentName}"
                                  Style="{StaticResource SWFieldStyle}"
-                                 IsReadOnly="True" Height="26" />
+                                 IsReadOnly="True"
+                                 Focusable="False"
+                                 Height="26" />
 
                         <!-- Match indicator -->
                         <TextBlock Grid.Column="1" Grid.Row="0"
@@ -157,14 +201,12 @@
                         </TextBlock>
 
                         <TextBox Grid.Column="2" Grid.Row="0"
-                                 Text="{Binding NamePreview, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Text="{Binding NamePreview, Mode=OneWay}"
                                  ToolTip="{Binding NamePreview}"
                                  Style="{StaticResource InvenTreeFieldStyle}"
-                                 IsReadOnly="False"
-                                 Focusable="True"
                                  Height="26" />
                         <Button Grid.Column="0" Grid.Row="2"
-                                Content="Apply to InvenTree &#x2192;"
+                                Content="Push to InvenTree &#x2192;"
                                 Style="{StaticResource SecondaryButtonStyle}"
                                 HorizontalAlignment="Stretch"
                                 IsEnabled="{Binding PushNameEnabled}"
@@ -196,9 +238,11 @@
                                  ToolTip="{Binding CurrentNotes}"
                                  Style="{StaticResource SWFieldStyle}"
                                  IsReadOnly="True"
+                                 Focusable="False"
                                  Height="52"
                                  TextWrapping="Wrap"
                                  AcceptsReturn="True"
+                                 VerticalContentAlignment="Top"
                                  VerticalScrollBarVisibility="Auto" />
 
                         <!-- Match indicator -->
@@ -224,17 +268,16 @@
                         </TextBlock>
 
                         <TextBox Grid.Column="2" Grid.Row="0"
-                                 Text="{Binding NotesPreview, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Text="{Binding NotesPreview, Mode=OneWay}"
                                  ToolTip="{Binding NotesPreview}"
                                  Style="{StaticResource InvenTreeFieldStyle}"
-                                 IsReadOnly="False"
-                                 Focusable="True"
                                  Height="52"
                                  TextWrapping="Wrap"
                                  AcceptsReturn="True"
+                                 VerticalContentAlignment="Top"
                                  VerticalScrollBarVisibility="Auto" />
                         <Button Grid.Column="0" Grid.Row="2"
-                                Content="Apply to InvenTree &#x2192;"
+                                Content="Push to InvenTree &#x2192;"
                                 Style="{StaticResource SecondaryButtonStyle}"
                                 HorizontalAlignment="Stretch"
                                 IsEnabled="{Binding PushNotesEnabled}"
@@ -259,7 +302,9 @@
                         <TextBox Grid.Column="0"
                                  Text="{Binding CurrentRevision, Mode=OneWay}"
                                  Style="{StaticResource SWFieldStyle}"
-                                 IsReadOnly="True" Height="26" />
+                                 IsReadOnly="True"
+                                 Focusable="False"
+                                 Height="26" />
 
                         <!-- Match indicator -->
                         <TextBlock Grid.Column="1"
@@ -286,6 +331,7 @@
                         <TextBox Grid.Column="2"
                                  Text="{Binding RevisionPreview, Mode=OneWay}"
                                  Style="{StaticResource InvenTreeFieldStyle}"
+                                 IsReadOnly="True"
                                  Height="26" />
                     </Grid>
 
@@ -296,15 +342,6 @@
                             Visibility="{Binding PushRevisionVisible,
                                                 Converter={StaticResource BoolToVis}}"
                             Click="PushRevision_Click" />
-
-                    <!-- Push Image button -->
-                    <Button Content="Push Image to InvenTree"
-                            Style="{StaticResource SecondaryButtonStyle}"
-                            HorizontalAlignment="Stretch"
-                            Visibility="{Binding PushImageVisible,
-                                               Converter={StaticResource BoolToVis}}"
-                            Margin="0,8,0,8"
-                            Click="PushImage_Click" />
 
                 </StackPanel>
                 <!-- end properties section -->
