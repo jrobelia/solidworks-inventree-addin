@@ -49,6 +49,8 @@ namespace SwInventreeAddin.UI
         private bool   _applyEnabled;
         private bool   _applyNameEnabled;
         private bool   _applyNotesEnabled;
+        private bool   _pushNameEnabled;
+        private bool   _pushNotesEnabled;
         private bool   _pushRevisionVisible;
         private bool   _pushImageVisible;
         private bool   _fetchEnabled;
@@ -95,7 +97,11 @@ namespace SwInventreeAddin.UI
         public string RevisionPreview
         {
             get => _revisionPreview;
-            set => Set(ref _revisionPreview, value);
+            set
+            {
+                Set(ref _revisionPreview, value);
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RevisionMatch)));
+            }
         }
 
         /// <summary>Current SolidWorks document Name / Description value.</summary>
@@ -124,7 +130,11 @@ namespace SwInventreeAddin.UI
         public string CurrentRevision
         {
             get => _currentRevision;
-            set => Set(ref _currentRevision, value);
+            set
+            {
+                Set(ref _currentRevision, value);
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RevisionMatch)));
+            }
         }
 
         /// <summary>Status bar message.</summary>
@@ -192,6 +202,7 @@ namespace SwInventreeAddin.UI
                 Set(ref _propertiesSectionVisible, value);
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NameMatch)));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NotesMatch)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RevisionMatch)));
             }
         }
 
@@ -212,6 +223,29 @@ namespace SwInventreeAddin.UI
                 ? string.Equals(_currentNotes?.Trim(), _notesPreview?.Trim(),
                       StringComparison.OrdinalIgnoreCase)
                 : (bool?)null;
+
+        /// <summary>
+        /// Null = not yet fetched. True = SW and InvenTree revisions match. False = mismatch.
+        /// </summary>
+        public bool? RevisionMatch =>
+            _propertiesSectionVisible
+                ? string.Equals(_currentRevision?.Trim(), _revisionPreview?.Trim(),
+                      StringComparison.OrdinalIgnoreCase)
+                : (bool?)null;
+
+        /// <summary>True when a part has been fetched and pushing Name to InvenTree is meaningful.</summary>
+        public bool PushNameEnabled
+        {
+            get => _pushNameEnabled;
+            private set => Set(ref _pushNameEnabled, value);
+        }
+
+        /// <summary>True when a part has been fetched and pushing Notes to InvenTree is meaningful.</summary>
+        public bool PushNotesEnabled
+        {
+            get => _pushNotesEnabled;
+            private set => Set(ref _pushNotesEnabled, value);
+        }
 
         // ── State ─────────────────────────────────────────────────────────────
 
@@ -369,9 +403,11 @@ namespace SwInventreeAddin.UI
                 NamePreview      = part.Name;
                 NotesPreview     = part.Notes;
                 RevisionPreview  = part.Revision;
-                ApplyEnabled     = true;
-                ApplyNameEnabled = true;
+                ApplyEnabled      = true;
+                ApplyNameEnabled  = true;
                 ApplyNotesEnabled = true;
+                PushNameEnabled   = true;
+                PushNotesEnabled  = true;
                 PushRevisionVisible = true;
                 PushImageVisible    = true;
                 _lastFetchedPart    = part;
@@ -456,6 +492,62 @@ namespace SwInventreeAddin.UI
             }
         }
 
+        /// <summary>Pushes the current SolidWorks name/description up to InvenTree.</summary>
+        public async Task PushNameToInvenTreeAsync()
+        {
+            if (_lastFetchedPart == null || _lastFetchedPart.Pk == 0) return;
+            if (_client == null) return;
+
+            var name = _propertyService.GetCustomProperty("Description");
+            SetStatus("Pushing name to InvenTree\u2026", StatusSeverity.None);
+
+            try
+            {
+                await _client.UpdatePartNameAsync(_lastFetchedPart.Pk, name)
+                              .ConfigureAwait(false);
+
+                RunOnUiThread(() =>
+                {
+                    _lastFetchedPart.Name = name;
+                    NamePreview           = name;
+                    SetStatus("\u2713  Name pushed to InvenTree.", StatusSeverity.Success);
+                });
+            }
+            catch (Exception ex)
+            {
+                RunOnUiThread(() =>
+                    SetStatus($"Error: {ex.Message}", StatusSeverity.Error));
+            }
+        }
+
+        /// <summary>Pushes the current SolidWorks notes up to InvenTree.</summary>
+        public async Task PushNotesToInvenTreeAsync()
+        {
+            if (_lastFetchedPart == null || _lastFetchedPart.Pk == 0) return;
+            if (_client == null) return;
+
+            var notes = _propertyService.GetCustomProperty("Notes");
+            SetStatus("Pushing notes to InvenTree\u2026", StatusSeverity.None);
+
+            try
+            {
+                await _client.UpdatePartNotesAsync(_lastFetchedPart.Pk, notes)
+                              .ConfigureAwait(false);
+
+                RunOnUiThread(() =>
+                {
+                    _lastFetchedPart.Notes = notes;
+                    NotesPreview           = notes;
+                    SetStatus("\u2713  Notes pushed to InvenTree.", StatusSeverity.Success);
+                });
+            }
+            catch (Exception ex)
+            {
+                RunOnUiThread(() =>
+                    SetStatus($"Error: {ex.Message}", StatusSeverity.Error));
+            }
+        }
+
         /// <summary>
         /// Captures the viewport (or uses <paramref name="imageOverride"/> for tests),
         /// runs it through <see cref="ImagePipeline"/>, and uploads the PNG to InvenTree.
@@ -524,9 +616,11 @@ namespace SwInventreeAddin.UI
             NamePreview      = string.Empty;
             NotesPreview     = string.Empty;
             RevisionPreview  = string.Empty;
-            ApplyEnabled     = false;
-            ApplyNameEnabled = false;
+            ApplyEnabled      = false;
+            ApplyNameEnabled  = false;
             ApplyNotesEnabled = false;
+            PushNameEnabled   = false;
+            PushNotesEnabled  = false;
             PushRevisionVisible = false;
             PushImageVisible    = false;
             _lastFetchedPart    = null;

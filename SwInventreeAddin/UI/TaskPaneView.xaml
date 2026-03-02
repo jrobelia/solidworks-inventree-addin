@@ -164,7 +164,13 @@
                                  Focusable="True"
                                  Height="26" />
                         <Button Grid.Column="0" Grid.Row="2"
-                                Content="Apply to SW doc"
+                                Content="Apply to InvenTree &#x2192;"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                HorizontalAlignment="Stretch"
+                                IsEnabled="{Binding PushNameEnabled}"
+                                Click="PushName_Click" />
+                        <Button Grid.Column="2" Grid.Row="2"
+                                Content="&#x2190; Apply to SW Doc"
                                 Style="{StaticResource SecondaryButtonStyle}"
                                 HorizontalAlignment="Stretch"
                                 IsEnabled="{Binding ApplyNameEnabled}"
@@ -228,7 +234,13 @@
                                  AcceptsReturn="True"
                                  VerticalScrollBarVisibility="Auto" />
                         <Button Grid.Column="0" Grid.Row="2"
-                                Content="Apply to SW doc"
+                                Content="Apply to InvenTree &#x2192;"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                HorizontalAlignment="Stretch"
+                                IsEnabled="{Binding PushNotesEnabled}"
+                                Click="PushNotes_Click" />
+                        <Button Grid.Column="2" Grid.Row="2"
+                                Content="&#x2190; Apply to SW Doc"
                                 Style="{StaticResource SecondaryButtonStyle}"
                                 HorizontalAlignment="Stretch"
                                 IsEnabled="{Binding ApplyNotesEnabled}"
@@ -248,6 +260,29 @@
                                  Text="{Binding CurrentRevision, Mode=OneWay}"
                                  Style="{StaticResource SWFieldStyle}"
                                  IsReadOnly="True" Height="26" />
+
+                        <!-- Match indicator -->
+                        <TextBlock Grid.Column="1"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   FontSize="14" FontWeight="Bold">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="" />
+                                    <Setter Property="Foreground" Value="Transparent" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding RevisionMatch}" Value="True">
+                                            <Setter Property="Text" Value="=" />
+                                            <Setter Property="Foreground" Value="#FF2E7D32" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding RevisionMatch}" Value="False">
+                                            <Setter Property="Text" Value="&#x2260;" />
+                                            <Setter Property="Foreground" Value="#FFF9A825" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+
                         <TextBox Grid.Column="2"
                                  Text="{Binding RevisionPreview, Mode=OneWay}"
                                  Style="{StaticResource InvenTreeFieldStyle}"

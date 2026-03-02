@@ -11,9 +11,17 @@ namespace SwInventreeAddin.UI
         /// <summary>True when the user ticked "Also push image to InvenTree".</summary>
         public bool IncludeImage { get; private set; }
 
-        public PushRevisionConfirmDialog()
+        /// <summary>
+        /// Creates the confirmation dialog.
+        /// </summary>
+        /// <param name="message">The question shown to the user.</param>
+        /// <param name="imageCheckedByDefault">Whether the "Also push image" checkbox starts ticked.</param>
+        public PushRevisionConfirmDialog(string message, bool imageCheckedByDefault = true)
         {
             InitializeComponent();
+
+            MessageText.Text                  = message;
+            IncludeImageCheckBox.IsChecked    = imageCheckedByDefault;
 
             // Attempt to set SolidWorks as the owner window so the dialog
             // centres over it rather than the primary monitor centre.

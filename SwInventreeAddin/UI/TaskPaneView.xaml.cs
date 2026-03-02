@@ -72,10 +72,41 @@ namespace SwInventreeAddin.UI
 
         private void PushRevision_Click(object sender, RoutedEventArgs e)
         {
-            var dlg = new PushRevisionConfirmDialog();
+            var dlg = new PushRevisionConfirmDialog(
+                "Push the SolidWorks revision to InvenTree? This will overwrite the revision currently stored in InvenTree.",
+                imageCheckedByDefault: true);
+
             if (dlg.ShowDialog() != true) return;
 
             _ = _vm?.PushRevisionToInventreeAsync();
+
+            if (dlg.IncludeImage)
+                _ = _vm?.PushImageAsync();
+        }
+
+        private void PushName_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new PushRevisionConfirmDialog(
+                "Push the SolidWorks name/description to InvenTree? This will overwrite the name currently stored in InvenTree.",
+                imageCheckedByDefault: false);
+
+            if (dlg.ShowDialog() != true) return;
+
+            _ = _vm?.PushNameToInvenTreeAsync();
+
+            if (dlg.IncludeImage)
+                _ = _vm?.PushImageAsync();
+        }
+
+        private void PushNotes_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new PushRevisionConfirmDialog(
+                "Push the SolidWorks notes to InvenTree? This will overwrite the notes currently stored in InvenTree.",
+                imageCheckedByDefault: false);
+
+            if (dlg.ShowDialog() != true) return;
+
+            _ = _vm?.PushNotesToInvenTreeAsync();
 
             if (dlg.IncludeImage)
                 _ = _vm?.PushImageAsync();
