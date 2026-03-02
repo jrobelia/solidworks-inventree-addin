@@ -4,15 +4,6 @@ Features and improvements planned for future work.
 One line each -- details get fleshed out in the Orchestrator pipeline when work begins.
 
 ## Next up
-0. Fetch and display the InvenTree part image alongside the properties panel. When data is loaded, the
-   InvenTree part image appears in a dedicated row at the top of the properties section (below the
-   SolidWorks / InvenTree column headers). InvenTree column (right): 120×120 thumbnail, centered,
-   display-only. SolidWorks column (left): "Push Image to InvenTree →" button, vertically centered.
-   Hidden until data is fetched; shows a "no image" icon placeholder when the part has no image in
-   InvenTree. The existing standalone "Push Image to InvenTree" button at the bottom of the panel is
-   removed -- replaced by this new image-row button. API: GET /api/part/{pk}/thumbs/ or the
-   thumbnail_url field on the part response. Also rename the Name and Notes push buttons from
-   "Apply to InvenTree →" to "Push to InvenTree →" for consistency.
 1. This shoudl proably be a seperate window. Some data from inventree may just be for display purposes only not tied to custom properties but might be nice to display. Need to take big picture look at UI/UX desgin princples. Custom property mapping in Settings: allow users to link each SW custom property name to its
    InvenTree counterpart (e.g. map "OA_IPN" → IPN, "Description" → name). Dropdown list of
    available InvenTree fields; already-selected fields excluded from other dropdowns. This is also
@@ -45,7 +36,6 @@ One line each -- details get fleshed out in the Orchestrator pipeline when work 
 
 ## Far Future ideas
 - Bulk sync: push/pull all open assembly parts in one operation
-- Show part thumbnail from InvenTree in the task pane
 - Auto-detect IPN from filename when custom property is missing
 - BOM checker recursive view: show full assembly tree, not just immediate children
 - Status bar showing connection health (green/red dot)
@@ -74,3 +64,9 @@ One line each -- details get fleshed out in the Orchestrator pipeline when work 
   RevisionMatch indicator (= / ≠) added to Revision row to match Name/Notes rows;
   confirmation dialog parameterised so each field shows its own message with image checkbox
   defaulting on for Revision and off for Name/Notes
+- InvenTree thumbnail display + capture-push button -- 120×120 thumbnail in image row between
+  column headers and Name row; grey placeholder box with 🖼 icon when data loaded but no image;
+  "Capture and Push Image to InvenTree →" button (50px, bottom-aligned); thumbnail refreshes
+  after successful push; detail endpoint fetch (GET /api/part/{pk}/) for full fields including
+  notes; all property text boxes read-only + non-focusable; "Part Number" label renamed;
+  Name/Notes push buttons renamed to "Push to InvenTree →"
