@@ -1,4 +1,4 @@
-﻿# OA InvenTree Add-In Installer
+﻿# SwInventreeAddin Installer
 # Run this script as Administrator. It installs the add-in for all users
 # on this machine and registers it with SolidWorks.
 
@@ -14,13 +14,13 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 }
 #endregion
 
-$installDir    = "C:\Program Files\OA InvenTree Addin"
+$installDir    = "C:\Program Files\SwInventreeAddin"
 $regasm        = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\RegAsm.exe"
 $addinDll      = Join-Path $installDir "SwInventreeAddin.dll"
 $scriptDir     = $PSScriptRoot
 
 Write-Host ""
-Write-Host "OA InvenTree Add-In Installer" -ForegroundColor Cyan
+Write-Host "SwInventreeAddin Installer" -ForegroundColor Cyan
 Write-Host "================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -80,7 +80,7 @@ if (Test-Path $versionFile) { $version = (Get-Content $versionFile -Raw).Trim() 
 $uninstallBat = Join-Path $installDir "Uninstall (Run as Administrator).bat"
 $regPath      = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\OAInvenTreeAddin"
 New-Item -Path $regPath -Force | Out-Null
-Set-ItemProperty -Path $regPath -Name "DisplayName"     -Value "OA InvenTree Add-In"
+Set-ItemProperty -Path $regPath -Name "DisplayName"     -Value "SwInventreeAddin"
 Set-ItemProperty -Path $regPath -Name "DisplayVersion"  -Value $version
 Set-ItemProperty -Path $regPath -Name "Publisher"       -Value "OA"
 Set-ItemProperty -Path $regPath -Name "InstallLocation" -Value $installDir

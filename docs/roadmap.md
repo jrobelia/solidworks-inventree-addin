@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-03-03 (Iteration 0)
+Last updated: 2026-03-10 (Iteration 0 — property mapping design session)
 
 ## Project North Star
 
@@ -48,9 +48,8 @@ keeping the inventory system in sync while designing.
   (immediate children), compare against the InvenTree BOM, show a side-by-side
   diff (added / updated / InvenTree-only), let the user select which lines to
   push. Never delete InvenTree-only lines.
-- **Configurable property mapping** -- Let users define which SW custom property
-  names map to which InvenTree fields via the Settings UI. Required for
-  open-source viability.
+- ~~**Configurable property mapping**~~ -- Moved to Milestone 1 as a prerequisite.
+  Ships before part creation so hardcoded property names never accumulate.
 
 ### Future Vision / Parking Lot
 
@@ -90,6 +89,11 @@ The add-in can create a new part in InvenTree without leaving SolidWorks,
 including category selection and IPN write-back. The task pane also shows
 useful read-only InvenTree data for existing parts.
 
+Property mapping configuration ships as a Milestone 1 prerequisite so that
+no hardcoded property name strings ever accumulate. Every feature built in
+this milestone reads SW custom property names from a user-configurable JSON
+file rather than constants in code.
+
 ### Milestone 2 -- Assembly BOM Sync (status: future)
 
 The add-in can compare a SolidWorks assembly BOM against InvenTree and push
@@ -98,8 +102,10 @@ CSV export workflow.
 
 ### Milestone 3 -- Open-Source Ready (status: future)
 
-Property mapping is configurable, hardcoded company conventions are removed,
-and the add-in is usable by any SolidWorks + InvenTree shop out of the box.
+Property mapping is already configurable (shipped in Milestone 1). This
+milestone focuses on removing remaining company-specific conventions (part
+number naming, filename patterns) and verifying the add-in works out of the
+box for any SolidWorks + InvenTree shop. Lighter lift than originally scoped.
 
 ---
 
@@ -107,17 +113,19 @@ and the add-in is usable by any SolidWorks + InvenTree shop out of the box.
 
 | # | Task | Milestone | Type | Status | Pass / fail condition |
 |---|------|-----------|------|--------|-----------------------|
+| 0a | Add `GetServerInfoAsync()` to `IInventreeClient`, implement it in `InventreeHttpClient`, and add the stub method to `StubInventreeClient` in the test project | 1 | build | open | Returns InvenTree server version string and API version int from the live server; test project compiles |
+| 0b | Build `PropertyMappingConfig`, `IPropertyMappingProvider`, `PropertyMappingProvider` with file I/O, source path resolution, and copy-to-local flow | 1 | build | open | Config loads from local or configured path; first-run defaults write correctly; copy-to-local works |
+| 0c | Settings panel mapping row and `PropertyMappingEditorWindow` dialog | 1 | build | open | User can view and edit field mappings; read-only when loaded from configured path; version mismatch shows amber warning in the task pane (not the editor) |
 | 1 | Fetch and display the InvenTree category tree in a dialog | 1 | build | open | User sees a browsable list of categories from their InvenTree server |
 | 2 | Create a new InvenTree part (category + name) from the dialog | 1 | build | open | POST to /api/part/ succeeds; new part appears in InvenTree |
-| 3 | After creation, re-fetch the part to get the plugin-generated IPN and write IPN + name into SW custom properties | 1 | build | open | PartNo and Description properties are populated in the open SW document without manual typing |
+| 3 | After creation, re-fetch the part to get the plugin-generated IPN and write IPN + name into SW custom properties | 1 | build | open | IPN and name properties are populated in the open SW document using mapped property names from config |
 | 4 | Display read-only InvenTree fields (stock, on order, price, active, default supplier) in the task pane after fetch | 1 | build | open | Fields appear below the existing property comparison when a part is loaded |
 | 5 | Add a name-based search box to the task pane (searches InvenTree, displays results) | 1 | build | open | User can type a partial name, see matching parts, and view their details |
 | 6 | Add Description as a synced property row (same pattern as Name/Notes/Revision) | 1 | cleanup | open | Description row appears in the comparison grid with match indicator and push/apply buttons |
 | 7 | Read the SolidWorks assembly BOM (immediate children with IPN + quantity) | 2 | build | open | When an assembly is open, the add-in can list child components and their quantities |
 | 8 | Fetch the InvenTree BOM for the same part and diff against the SW BOM | 2 | build | open | Side-by-side comparison shows added, updated, matched, and InvenTree-only lines |
 | 9 | Interactive review screen: user selects which BOM lines to push, confirms, add-in writes to InvenTree | 2 | build | open | Only user-selected lines are created/updated; InvenTree-only lines are untouched |
-| 10 | Settings UI for custom property name mapping (SW property <-> InvenTree field) | 3 | build | open | User can change which SW property maps to IPN, name, revision, etc. and the add-in uses those mappings |
-| 11 | Replace all hardcoded property names with mapped values from settings | 3 | build | open | No property name strings remain in ViewModel or PropertyService code; all read from config |
+| 10 | Remove remaining company-specific conventions (part number naming, filename patterns) | 3 | cleanup | open | No company-specific strings remain; add-in works out of the box for any SW + InvenTree shop |
 
 ### Done
 
@@ -138,14 +146,30 @@ and the add-in is usable by any SolidWorks + InvenTree shop out of the box.
 
 When Milestone 1 is built, `docs/architecture.md` will need:
 
+**Property mapping config (tasks 0a–0c):**
+- `PropertyMappingConfig` data class and `IPropertyMappingProvider` interface
+  in `Config/`.
+- `PropertyMappingProvider` concrete implementation handling file I/O, source
+  path resolution, and copy-to-local flow.
+- `ServerConfig` gains a nullable `MappingSourcePath` string field to persist
+  the configured source path alongside existing credentials (stays DPAPI-
+  encrypted since it lives in the same file).
+- `IInventreeClient` grows: `GetServerInfoAsync()` returning server version
+  string and API version int.
+- `PropertyMappingEditorWindow` dialog in `UI/`.
+- Module boundary note: `PropertyMappingProvider` does not call
+  `IInventreeClient` directly -- version strings are passed in by the UI
+  ViewModel.
+
+**Part creation (tasks 1–6):**
 - A new **InvenTree category service** (or methods on the existing client) for
   `GET /api/part/category/` and `POST /api/part/`.
 - A new **Create Part dialog** (WPF window) with category browser and name
   entry.
 - The `InventreePart` data class will need additional fields (`in_stock`,
   `ordering`, `default_supplier`, etc.) or a companion read-only display model.
-- The `IInventreeClient` interface will grow: `GetCategoriesAsync()`,
-  `CreatePartAsync()`, `SearchPartsByNameAsync()`.
+- `IInventreeClient` also grows: `GetCategoriesAsync()`, `CreatePartAsync()`,
+  `SearchPartsByNameAsync()`.
 - A new "InvenTree info" section in the task pane XAML below the properties
   grid.
 
@@ -156,8 +180,9 @@ debrief as each feature is completed.
 
 ## Next Action
 
-Run the build pipeline on **task #1** (fetch and display the category tree)
-next. It is the foundation that tasks #2 and #3 depend on.
+Run the build pipeline on **task #0a** (add `GetServerInfoAsync()`) first.
+It is a small, self-contained change that unblocks task #0b, which in turn
+unblocks all of Milestone 1.
 
 ## Call to Action
 

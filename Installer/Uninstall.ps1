@@ -1,4 +1,4 @@
-﻿# OA InvenTree Add-In Uninstaller
+﻿# SwInventreeAddin Uninstaller
 
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
           ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))
@@ -7,11 +7,11 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
     Read-Host "Press Enter to exit"; exit 1
 }
 
-$installDir = "C:\Program Files\OA InvenTree Addin"
+$installDir = "C:\Program Files\SwInventreeAddin"
 $regasm     = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\RegAsm.exe"
 $addinDll   = Join-Path $installDir "SwInventreeAddin.dll"
 
-Write-Host "OA InvenTree Add-In Uninstaller" -ForegroundColor Cyan
+Write-Host "SwInventreeAddin Uninstaller" -ForegroundColor Cyan
 Write-Host ""
 
 if (Test-Path $addinDll) {
