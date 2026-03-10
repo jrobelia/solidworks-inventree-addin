@@ -9,7 +9,7 @@ namespace SwInventreeAddin.Config
     /// <summary>
     /// Stores server credentials encrypted with Windows DPAPI (current-user scope).
     /// The file is not portable between machines or user accounts.
-    /// Default storage path: %APPDATA%\OA InvenTree Addin\settings.dat
+    /// Default storage path: %APPDATA%\SwInventreeAddin\settings.dat
     /// </summary>
     public class EncryptedConfigProvider : IConfigProvider
     {
@@ -83,7 +83,7 @@ namespace SwInventreeAddin.Config
         private static string DefaultFilePath()
         {
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            return Path.Combine(appData, "OA InvenTree Addin", "settings.dat");
+            return Path.Combine(appData, "SwInventreeAddin", "settings.dat");
         }
     }
 }

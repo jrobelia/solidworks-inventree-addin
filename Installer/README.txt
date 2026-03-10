@@ -1,4 +1,4 @@
-﻿OA InvenTree Add-In  Installation Instructions
+﻿SwInventreeAddin  Installation Instructions
 ================================================
 
 REQUIREMENTS
@@ -10,7 +10,7 @@ FIRST-TIME INSTALL
   1. Extract this zip to any folder (e.g. your Desktop).
   2. Right-click "Install (Run as Administrator).bat" -> Run as administrator.
   3. You can delete the zip and extracted folder — the add-in is now self-contained
-     in "C:\Program Files\OA InvenTree Addin\" and does not need the download.
+     in "C:\Program Files\SwInventreeAddin\" and does not need the download.
   4. Start SolidWorks. The InvenTree panel appears in the right-hand task pane.
   5. Click the Settings button (gear icon) in the panel.
   6. Enter your InvenTree server URL and API key, then click Save.
@@ -21,8 +21,8 @@ UPDATING TO A NEW VERSION
   Your saved server settings are preserved automatically.
 
 UNINSTALLING
-  Option A: Windows Settings -> Apps -> "OA InvenTree Add-In" -> Uninstall.
-  Option B: Browse to "C:\Program Files\OA InvenTree Addin\" and double-click
+  Option A: Windows Settings -> Apps -> "SwInventreeAddin" -> Uninstall.
+  Option B: Browse to "C:\Program Files\SwInventreeAddin\" and double-click
             "Uninstall (Run as Administrator).bat".
 
 TROUBLESHOOTING
