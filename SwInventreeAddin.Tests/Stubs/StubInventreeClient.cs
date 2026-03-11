@@ -65,5 +65,14 @@ namespace SwInventreeAddin.Tests.Stubs
             if (ThrowOnDownload != null) throw ThrowOnDownload;
             return Task.FromResult(ThumbnailBytesToReturn);
         }
+
+        public InventreeServerInfo? ServerInfoToReturn { get; set; }
+        public Exception? ThrowOnGetServerInfo { get; set; }
+
+        public Task<InventreeServerInfo> GetServerInfoAsync()
+        {
+            if (ThrowOnGetServerInfo != null) throw ThrowOnGetServerInfo;
+            return Task.FromResult(ServerInfoToReturn ?? new InventreeServerInfo());
+        }
     }
 }

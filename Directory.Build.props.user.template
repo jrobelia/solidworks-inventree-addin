@@ -1,0 +1,18 @@
+<Project>
+  <!--
+    Copy this file to Directory.Build.props.user and set the path to match
+    your local SolidWorks installation. Directory.Build.props.user is gitignored.
+
+    Find your path: open a SolidWorks part, go to
+      Tools > Options > System Options > File Locations
+    or search C:\Program Files for SolidWorks.Interop.sldworks.dll.
+
+    Common paths:
+      SW 2022  C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\api\redist
+      SW 2024  C:\Program Files\Dassault Systemes\SOLIDWORKS 2024\SOLIDWORKS\api\redist
+      SW 2026  C:\Program Files\Dassault Systemes\SOLIDWORKS 3DEXPERIENCE R2026x\SOLIDWORKS\api\redist
+  -->
+  <PropertyGroup>
+    <SolidWorksApiRedist>C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\api\redist</SolidWorksApiRedist>
+  </PropertyGroup>
+</Project>

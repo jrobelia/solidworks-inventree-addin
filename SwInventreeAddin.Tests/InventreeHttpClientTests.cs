@@ -18,6 +18,9 @@ namespace SwInventreeAddin.Tests
         private static readonly string ValidSinglePartJson =
             @"[{ ""name"": ""Resistor 10k"", ""notes"": ""SMD 0402"", ""revision"": ""A"", ""IPN"": ""R-10K-0402"" }]";
 
+        private static readonly string ValidServerInfoJson =
+            @"{ ""server"": ""InvenTree"", ""version"": ""0.17.0"", ""apiVersion"": 117 }";
+
         private static InventreeHttpClient CreateClient(StubHttpMessageHandler handler)
         {
             var http = new HttpClient(handler) { BaseAddress = new Uri(BaseUrl) };
@@ -100,6 +103,40 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(handler.LastRequest.RequestUri.PathAndQuery,
                 Is.EqualTo("/api/part/?IPN=R-10K-0402"));
+        }
+
+        // --- GetServerInfoAsync ---
+
+        [Test]
+        public async Task GetServerInfoAsync_ValidResponse_ReturnsServerVersion()
+        {
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, ValidServerInfoJson);
+            var info = await CreateClient(handler).GetServerInfoAsync();
+            Assert.That(info.ServerVersion, Is.EqualTo("0.17.0"));
+        }
+
+        [Test]
+        public async Task GetServerInfoAsync_ValidResponse_ReturnsApiVersion()
+        {
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, ValidServerInfoJson);
+            var info = await CreateClient(handler).GetServerInfoAsync();
+            Assert.That(info.ApiVersion, Is.EqualTo(117));
+        }
+
+        [Test]
+        public async Task GetServerInfoAsync_ConstructsCorrectRequestUrl()
+        {
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, ValidServerInfoJson);
+            await CreateClient(handler).GetServerInfoAsync();
+            Assert.That(handler.LastRequest.RequestUri.PathAndQuery, Is.EqualTo("/api/"));
+        }
+
+        [Test]
+        public void GetServerInfoAsync_ServerError_ThrowsHttpRequestException()
+        {
+            var handler = new StubHttpMessageHandler(HttpStatusCode.InternalServerError, "error");
+            Assert.ThrowsAsync<HttpRequestException>(() =>
+                CreateClient(handler).GetServerInfoAsync());
         }
     }
 

@@ -204,5 +204,25 @@ namespace SwInventreeAddin.InvenTree
                 throw new HttpRequestException(
                     $"InvenTree returned {(int)response.StatusCode} {response.StatusCode}");
         }
+
+        public async Task<InventreeServerInfo> GetServerInfoAsync()
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, "/api/");
+            var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException(
+                    $"InvenTree API returned {(int)response.StatusCode} {response.StatusCode}");
+
+            var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            return new InventreeServerInfo
+            {
+                ServerVersion = GetString(root, "version"),
+                ApiVersion    = root.TryGetProperty("apiVersion", out var v) ? v.GetInt32() : 0,
+            };
+        }
     }
 }
