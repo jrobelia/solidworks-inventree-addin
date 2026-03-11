@@ -113,7 +113,7 @@ box for any SolidWorks + InvenTree shop. Lighter lift than originally scoped.
 
 | # | Task | Milestone | Type | Status | Pass / fail condition |
 |---|------|-----------|------|--------|-----------------------|
-| 0a | Add `GetServerInfoAsync()` to `IInventreeClient`, implement it in `InventreeHttpClient`, and add the stub method to `StubInventreeClient` in the test project | 1 | build | open | Returns InvenTree server version string and API version int from the live server; test project compiles |
+| 0a | Add `GetServerInfoAsync()` to `IInventreeClient`, implement it in `InventreeHttpClient`, and add the stub method to `StubInventreeClient` in the test project | 1 | build | done | Returns InvenTree server version string and API version int from the live server; test project compiles |
 | 0b | Build `PropertyMappingConfig`, `IPropertyMappingProvider`, `PropertyMappingProvider` with file I/O, source path resolution, and copy-to-local flow | 1 | build | open | Config loads from local or configured path; first-run defaults write correctly; copy-to-local works |
 | 0c | Settings panel mapping row and `PropertyMappingEditorWindow` dialog | 1 | build | open | User can view and edit field mappings; read-only when loaded from configured path; version mismatch shows amber warning in the task pane (not the editor) |
 | 1 | Fetch and display the InvenTree category tree in a dialog | 1 | build | open | User sees a browsable list of categories from their InvenTree server |
