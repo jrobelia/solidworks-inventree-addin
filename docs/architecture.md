@@ -41,6 +41,12 @@ SwInventreeAddin/
 5. User clicks Push Rev -> TaskPaneControl calls IInventreeClient.PatchPartRevisionAsync
 6. User clicks Push Image -> capture viewport -> ImageCropWindow -> ImagePipeline -> IInventreeClient.UploadPartImageAsync
 
+## Design files
+
+UI mockups are maintained in `docs/sw-addin-layout.pen` using Pencil, available via the
+Pencil MCP server (`mcp__pencil__*` tools). Each window in `UI/` has a corresponding frame
+in that file. Update the mockup when adding or changing screens.
+
 ## Module boundaries
 
 | Module    | Depends on          | Must not know about     |
