@@ -145,7 +145,7 @@ namespace SwInventreeAddin.AddIn
                     "Resources", "inventree_icon.png");
 
                 _taskPaneView = (ITaskpaneView)_swApp.CreateTaskpaneView2(iconPath, AddinTitle);
-                _taskPaneView.DisplayWindowFromHandle(_taskPaneControl.Handle.ToInt32());
+                _taskPaneView.DisplayWindowFromHandlex64(_taskPaneControl.Handle.ToInt64());
 
                 return true;
             }
