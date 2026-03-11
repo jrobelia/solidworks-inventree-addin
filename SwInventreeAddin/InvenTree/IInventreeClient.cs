@@ -10,5 +10,6 @@ namespace SwInventreeAddin.InvenTree
         Task UpdatePartNotesAsync(int pk, string notes);
         Task UploadPartImageAsync(int pk, byte[] pngData);
         Task<byte[]?> DownloadImageAsync(string url);
+        Task<InventreeServerInfo> GetServerInfoAsync();
     }
 }

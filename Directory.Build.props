@@ -1,0 +1,23 @@
+<Project>
+  <!--
+    SolidWorks API interop DLL location.
+
+    This path differs between SolidWorks versions and install locations.
+    Each developer must set it locally by copying Directory.Build.props.user.template
+    to Directory.Build.props.user and editing the path.
+
+    Directory.Build.props.user is gitignored (*.user rule in .gitignore).
+
+    Common paths:
+      SW 2022  C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\api\redist
+      SW 2024+ C:\Program Files\Dassault Systemes\SOLIDWORKS <year>\SOLIDWORKS\api\redist
+  -->
+  <PropertyGroup>
+    <SolidWorksApiRedist Condition="'$(SolidWorksApiRedist)' == ''">
+      C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\api\redist
+    </SolidWorksApiRedist>
+  </PropertyGroup>
+
+  <Import Project="$(MSBuildThisFileDirectory)Directory.Build.props.user"
+          Condition="Exists('$(MSBuildThisFileDirectory)Directory.Build.props.user')" />
+</Project>

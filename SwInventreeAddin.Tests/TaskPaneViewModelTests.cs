@@ -552,6 +552,9 @@ namespace SwInventreeAddin.Tests
 
         public Task<byte[]?> DownloadImageAsync(string url)
             => Task.FromResult<byte[]?>(null);
+
+        public Task<InventreeServerInfo> GetServerInfoAsync()
+            => Task.FromResult(new InventreeServerInfo());
     }
 }
 
