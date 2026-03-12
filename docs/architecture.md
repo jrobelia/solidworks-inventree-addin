@@ -9,9 +9,12 @@ SwInventreeAddin/
   AddIn/
     SwAddin.cs              -- COM entry point, SolidWorks lifecycle, event wiring
   Config/
-    IConfigProvider.cs      -- interface: GetServerConfig / SaveServerConfig
-    ServerConfig.cs         -- data class: Url + ApiKey
-    EncryptedConfigProvider  -- DPAPI-encrypted file in %AppData%
+    IConfigProvider.cs          -- interface: GetServerConfig / SaveServerConfig
+    ServerConfig.cs             -- data class: Url + ApiKey + MappingSourcePath (nullable)
+    EncryptedConfigProvider.cs  -- DPAPI-encrypted file in %AppData%
+    IPropertyMappingProvider.cs -- interface: GetMapping / SaveMapping / CopyToLocal / IsReadOnly
+    PropertyMappingConfig.cs    -- data class: five SW property-name fields + schema version
+    PropertyMappingProvider.cs  -- JSON file I/O; local-file > source-path > first-run-defaults
   InvenTree/
     IInventreeClient.cs     -- interface: GetPartByIpnAsync / PatchPartRevisionAsync / UploadPartImageAsync
     InventreeHttpClient.cs  -- real HTTP client (System.Net.Http)
@@ -53,6 +56,6 @@ in that file. Update the mockup when adding or changing screens.
 |-----------|---------------------|-------------------------|
 | UI        | IInventreeClient, IDocumentPropertyService, IConfigProvider, IViewportCaptureService | HTTP details, SolidWorks API |
 | InvenTree | System.Net.Http     | SolidWorks, UI          |
-| Config    | System.Security (DPAPI) | Everything else       |
+| Config    | System.Security (DPAPI), System.Text.Json | Everything else       |
 | SolidWorks| SolidWorks.Interop  | InvenTree, Config       |
 | AddIn     | All interfaces      | Implementation details  |
