@@ -261,6 +261,7 @@ namespace SwInventreeAddin.UI
         // ── State ─────────────────────────────────────────────────────────────
 
         private InventreePart? _lastFetchedPart;
+        private bool _schemaMismatchActive;
 
         /// <summary>
         /// UI-thread synchronisation context captured at construction.
@@ -704,12 +705,13 @@ namespace SwInventreeAddin.UI
             var mapping = _mappingProvider.GetMapping();
             if (mapping.SchemaVersion != ExpectedMappingSchemaVersion)
             {
+                _schemaMismatchActive = true;
                 SetStatus("Mapping schema mismatch \u2014 review Settings",
                           StatusSeverity.Warning);
             }
-            else
+            else if (_schemaMismatchActive)
             {
-                // Schema matches — clear any prior mismatch warning.
+                _schemaMismatchActive = false;
                 SetStatus(string.Empty, StatusSeverity.None);
             }
         }

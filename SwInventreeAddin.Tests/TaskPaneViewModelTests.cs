@@ -544,7 +544,7 @@ namespace SwInventreeAddin.Tests
             _propertyService.Seed("PartNo", "");
             _vm = new TaskPaneViewModel(_client, _propertyService, null, provider);
 
-            Assert.That(_vm.StatusSeverity, Is.Not.EqualTo(StatusSeverity.Warning));
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.None));
         }
 
         [Test]
@@ -592,7 +592,7 @@ namespace SwInventreeAddin.Tests
             };
             _vm.UpdateMapping(good);
 
-            Assert.That(_vm.StatusSeverity, Is.Not.EqualTo(StatusSeverity.Warning));
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.None));
         }
     }
 
