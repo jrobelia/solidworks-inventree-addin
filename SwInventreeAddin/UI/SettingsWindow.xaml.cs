@@ -108,7 +108,7 @@ namespace SwInventreeAddin.UI
         {
             var editor = new PropertyMappingEditorWindow(_mappingProvider) { Owner = this };
             editor.ShowDialog();
-            // Editor's Save does not change MappingSourcePath; no status refresh needed.
+            RefreshMappingStatus();
         }
 
         // ── Mapping status bar ────────────────────────────────────────────────

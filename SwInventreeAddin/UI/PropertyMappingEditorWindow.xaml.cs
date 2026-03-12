@@ -71,6 +71,7 @@ namespace SwInventreeAddin.UI
             {
                 _provider.SaveMapping(new PropertyMappingConfig
                 {
+                    SchemaVersion       = PropertyMappingConfig.CurrentSchemaVersion,
                     IpnProperty         = IpnPropertyBox.Text.Trim(),
                     NameProperty        = NamePropertyBox.Text.Trim(),
                     DescriptionProperty = DescriptionPropertyBox.Text.Trim(),

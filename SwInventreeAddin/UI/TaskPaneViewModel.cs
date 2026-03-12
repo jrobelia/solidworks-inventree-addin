@@ -34,7 +34,7 @@ namespace SwInventreeAddin.UI
         private readonly IDocumentPropertyService _propertyService;
         private readonly IViewportCaptureService? _viewportService;
         private IPropertyMappingProvider?         _mappingProvider;
-        private const string ExpectedMappingSchemaVersion = "1";
+        private const string ExpectedMappingSchemaVersion = PropertyMappingConfig.CurrentSchemaVersion;
 
         /// <summary>Raised when the user triggers the Settings action.</summary>
         public event EventHandler? SettingsRequested;

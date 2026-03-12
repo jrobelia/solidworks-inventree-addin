@@ -6,8 +6,11 @@ namespace SwInventreeAddin.Config
     /// </summary>
     public class PropertyMappingConfig
     {
+        /// <summary>Current schema version — bump when adding new required fields.</summary>
+        public const string CurrentSchemaVersion = "1";
+
         /// <summary>Schema version — bump when adding new required fields.</summary>
-        public string SchemaVersion { get; set; } = "1";
+        public string SchemaVersion { get; set; } = CurrentSchemaVersion;
 
         /// <summary>SW custom property that holds the InvenTree IPN.</summary>
         public string IpnProperty { get; set; } = "PartNo";
