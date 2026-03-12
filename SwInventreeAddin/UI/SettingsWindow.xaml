@@ -25,13 +25,19 @@
 
         <StackPanel Margin="16,14,16,16">
 
-            <TextBlock Text="Server URL" Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,4" />
+            <!-- ── Server Connection section ──────────────────────────────── -->
+
+            <TextBlock Text="Inventree Server Connection"
+                       FontWeight="SemiBold"
+                       Foreground="{StaticResource BrushForeground}" />
+
+            <TextBlock Text="Server URL" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
             <TextBox x:Name="UrlBox" Style="{StaticResource SWFieldStyle}" Height="28" />
 
-            <TextBlock Text="Username" Style="{StaticResource FieldLabelStyle}" Margin="0,10,0,4" />
+            <TextBlock Text="Username" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
             <TextBox x:Name="UsernameBox" Style="{StaticResource SWFieldStyle}" Height="28" />
 
-            <TextBlock Text="Password" Style="{StaticResource FieldLabelStyle}" Margin="0,10,0,4" />
+            <TextBlock Text="Password" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
             <PasswordBox x:Name="PasswordBox" Height="28"
                          Padding="6,0"
                          VerticalContentAlignment="Center"
@@ -39,10 +45,10 @@
                          BorderThickness="1"
                          Background="White" />
 
-            <!-- Advanced: raw API key for manual override or diagnostics -->
+            <!-- Advanced expander: raw API key -->
             <Expander x:Name="AdvancedExpander"
                       Header="Advanced — paste API key directly"
-                      Margin="0,12,0,0"
+                      Margin="0,10,0,0"
                       Foreground="{StaticResource BrushSubtle}"
                       FontSize="{StaticResource FontSizeBody}">
                 <StackPanel Margin="0,6,0,0">
@@ -56,36 +62,140 @@
                 </StackPanel>
             </Expander>
 
-            <!-- Status message -->
+            <!-- Test Connection (right-aligned, upper section) -->
+            <Grid Margin="0,10,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="1" Content="Test Connection"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Width="140" Margin="0"
+                        Click="Test_Click" />
+            </Grid>
+
+            <!-- Status message (connection test result) -->
             <TextBlock x:Name="StatusText"
-                       Height="24"
-                       Margin="0,10,0,0"
+                       Height="20"
+                       Margin="0,6,0,0"
                        TextTrimming="CharacterEllipsis"
                        Foreground="{StaticResource BrushSubtle}"
                        FontSize="{StaticResource FontSizeBody}" />
 
-            <!-- Buttons -->
-            <Grid Margin="0,4,0,0">
+            <!-- ── Separator ────────────────────────────────────────────────── -->
+            <Separator Background="{StaticResource BrushBorder}" Margin="0,8,0,0" />
+
+            <!-- ── Property Mappings section ──────────────────────────────── -->
+
+            <TextBlock Text="Inventree to Solidworks Property Mappings"
+                       FontWeight="SemiBold"
+                       Foreground="{StaticResource BrushForeground}"
+                       Margin="0,8,0,0" />
+
+            <TextBlock Text="Map InvenTree field names to SolidWorks custom property names. A shared team file keeps everyone in sync."
+                       Style="{StaticResource FieldLabelStyle}"
+                       Margin="0,4,0,0"
+                       TextWrapping="Wrap" />
+
+            <!-- Shared radio + label -->
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,2" VerticalAlignment="Center">
+                <RadioButton x:Name="SharedRadio"
+                             GroupName="MappingSource"
+                             IsChecked="True"
+                             VerticalAlignment="Center"
+                             Margin="0,0,6,0"
+                             Checked="SharedRadio_Checked" />
+                <TextBlock Text="Shared mapping file (optional)"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource BrushForeground}" />
+            </StackPanel>
+
+            <!-- Shared file path + Browse button -->
+            <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="120" />
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="SharedPathBox"
+                         Grid.Column="0"
+                         Style="{StaticResource SWFieldStyle}"
+                         Height="28" />
+                <Button Grid.Column="2" Content="Browse…"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Height="28" Width="120" Margin="0"
+                        Click="Browse_Click" />
+            </Grid>
+
+            <!-- Local radio + label -->
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,2" VerticalAlignment="Center">
+                <RadioButton x:Name="LocalRadio"
+                             GroupName="MappingSource"
+                             VerticalAlignment="Center"
+                             Margin="0,0,6,0"
+                             Checked="LocalRadio_Checked" />
+                <TextBlock x:Name="LocalRadioLabel"
+                           Text="Local mapping file"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource BrushSubtle}" />
+            </StackPanel>
+
+            <!-- Local file path (read-only) + Edit Mappings button -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="120" />
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="LocalPathBox"
+                         Grid.Column="0"
+                         Style="{StaticResource SWFieldStyle}"
+                         Background="{StaticResource BrushSectionHeader}"
+                         IsReadOnly="True"
+                         Height="28" />
+                <Button x:Name="EditMappingsButton"
+                        Grid.Column="2" Content="Edit Mappings…"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Height="28" Width="120" Margin="0"
+                        Click="EditMappings_Click" />
+            </Grid>
+
+            <!-- Mapping status bar -->
+            <Border x:Name="MappingStatusBar"
+                    Height="32" Margin="0,8,0,0"
+                    Background="#FFF0F0F0"
+                    BorderBrush="#FFD0D0D0" BorderThickness="0,1,0,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="4" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Border x:Name="MappingStatusStripe" Grid.Column="0"
+                            Background="{StaticResource BrushSectionHeader}" />
+                    <TextBlock x:Name="MappingStatusText"
+                               Grid.Column="1"
+                               VerticalAlignment="Center"
+                               Margin="8,0,4,0"
+                               FontSize="{StaticResource FontSizeBody}"
+                               TextTrimming="CharacterEllipsis"
+                               Foreground="{StaticResource BrushForeground}" />
+                </Grid>
+            </Border>
+
+            <!-- Save / Cancel buttons -->
+            <Grid Margin="0,8,0,0">
+                <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="8" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-
-                <Button Grid.Column="0" Content="Test Connection"
-                        Style="{StaticResource SecondaryButtonStyle}"
-                        Width="140" Margin="0"
-                        Click="Test_Click" />
-
-                <Button Grid.Column="2" Content="Save"
+                <Button Grid.Column="1" Content="Save"
                         Style="{StaticResource PrimaryButtonStyle}"
                         Width="70" Margin="0"
                         IsDefault="True"
                         Click="Save_Click" />
-
-                <Button Grid.Column="4" Content="Cancel"
+                <Button Grid.Column="3" Content="Cancel"
                         Style="{StaticResource SecondaryButtonStyle}"
                         Width="70" Margin="0"
                         IsCancel="True"

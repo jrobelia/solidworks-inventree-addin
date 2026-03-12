@@ -103,6 +103,7 @@ namespace SwInventreeAddin.AddIn
         private System.Net.Http.HttpClient? _httpClient;
         private int                     _addinCookie;
         private EncryptedConfigProvider? _configProvider;
+        private IPropertyMappingProvider? _mappingProvider;
 
         public bool ConnectToSW(object thisSW, int cookie)
         {
@@ -129,7 +130,10 @@ namespace SwInventreeAddin.AddIn
                 var propertyService  = new SwDocumentPropertyService(_swApp);
                 var viewportService  = new SwViewportCaptureService(_swApp);
 
-                _taskPaneControl = new TaskPaneControl(inventreeClient, propertyService, viewportService);
+                _mappingProvider = new PropertyMappingProvider(config?.MappingSourcePath);
+
+                _taskPaneControl = new TaskPaneControl(
+                    inventreeClient, propertyService, viewportService, _mappingProvider);
                 _taskPaneControl.SettingsRequested += OnSettingsRequested;
 
                 // Refresh the PartNo field whenever the user opens or switches documents.
@@ -227,19 +231,26 @@ namespace SwInventreeAddin.AddIn
 
         private void OnSettingsRequested(object sender, EventArgs e)
         {
-            if (_configProvider == null) return;
+            if (_configProvider == null || _mappingProvider == null) return;
 
-            var form = new SettingsWindow(_configProvider);
+            var form = new SettingsWindow(_configProvider, _mappingProvider);
             if (form.ShowDialog() != true) return;
 
             var newConfig = _configProvider.GetServerConfig();
             if (newConfig == null) return;
 
+            // Re-build the HTTP client with the new credentials
             _httpClient?.Dispose();
             _httpClient             = new System.Net.Http.HttpClient();
             _httpClient.BaseAddress = new System.Uri(newConfig.Url);
             var newClient = new InventreeHttpClient(_httpClient, newConfig.ApiKey);
             _taskPaneControl?.UpdateClient(newClient);
+
+            // Re-create the mapping provider with the (possibly changed) source path.
+            // Single-arg constructor uses DefaultLocalPath() → property_mapping.json internally.
+            _mappingProvider = new PropertyMappingProvider(newConfig.MappingSourcePath);
+
+            _taskPaneControl?.UpdateMapping(_mappingProvider);
         }
     }
 }
