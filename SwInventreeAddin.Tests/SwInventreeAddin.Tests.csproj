@@ -2,6 +2,7 @@
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
+    <UseWpf>true</UseWpf>
     <RootNamespace>SwInventreeAddin.Tests</RootNamespace>
     <AssemblyName>SwInventreeAddin.Tests</AssemblyName>
     <IsPackable>false</IsPackable>
