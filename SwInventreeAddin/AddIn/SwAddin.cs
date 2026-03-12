@@ -231,7 +231,11 @@ namespace SwInventreeAddin.AddIn
 
         private void OnSettingsRequested(object sender, EventArgs e)
         {
-            if (_configProvider == null || _mappingProvider == null) return;
+            if (_configProvider == null || _mappingProvider == null)
+            {
+                System.Diagnostics.Trace.WriteLine("[SwInventreeAddin] OnSettingsRequested: provider not initialised — settings dialog suppressed.");
+                return;
+            }
 
             var form = new SettingsWindow(_configProvider, _mappingProvider);
             if (form.ShowDialog() != true) return;

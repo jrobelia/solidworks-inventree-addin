@@ -56,3 +56,14 @@ Attempted invisible spacer Panel between buttons for visual separation.
 WinForms AutoSize layout collapsed the spacer repeatedly. Simpler fix:
 1px white border + 2px vertical margin on every button via `MakeButton`.
 Stands out against the blue background and requires no extra controls.
+
+## [2026-03-12] Placeholder text in PropertyMappingEditorWindow deferred
+
+The task 0c spec called for italic placeholder text (e.g. "(property name)") in the five
+mapping TextBoxes in `PropertyMappingEditorWindow`. WPF TextBox does not have a built-in
+placeholder property — it requires a trigger-based Style or AdornerDecorator pattern.
+
+Decided to defer: the editor is fully functional without it, and the fields pre-fill from
+`GetMapping()` so they are never visually empty on first open (defaults are written on
+first launch). Placeholder styling can be added as a cosmetic polish task when the full
+mapping UI is revisited.

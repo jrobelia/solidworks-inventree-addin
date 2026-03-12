@@ -129,7 +129,7 @@ namespace SwInventreeAddin.UI
 
             // Check for schema version mismatch
             var mapping = _mappingProvider.GetMapping();
-            bool schemaMismatch = mapping.SchemaVersion != "1";
+            bool schemaMismatch = mapping.SchemaVersion != PropertyMappingConfig.CurrentSchemaVersion;
 
             if (schemaMismatch)
             {
