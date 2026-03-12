@@ -10,6 +10,7 @@ namespace SwInventreeAddin.Tests.Stubs
     {
         public PropertyMappingConfig Config       { get; set; } = new PropertyMappingConfig();
         public bool                  IsReadOnly   { get; set; } = false;
+        public string                LocalFilePath { get; set; } = string.Empty;
 
         public PropertyMappingConfig? LastSaved        { get; private set; }
         public bool                   CopyToLocalCalled { get; private set; }

@@ -145,6 +145,16 @@ namespace SwInventreeAddin.Tests
             }
         }
 
+        // ── LocalFilePath ─────────────────────────────────────────────────────
+
+        [Test]
+        public void LocalFilePath_ReturnsPathPassedToConstructor()
+        {
+            var provider = new PropertyMappingProvider(_localPath, null);
+
+            Assert.That(provider.LocalFilePath, Is.EqualTo(_localPath));
+        }
+
         // ── CopyToLocal ───────────────────────────────────────────────────────
 
         [Test]

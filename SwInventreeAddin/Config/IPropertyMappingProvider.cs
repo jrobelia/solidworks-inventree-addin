@@ -28,5 +28,11 @@ namespace SwInventreeAddin.Config
         /// False when a local file is present or no source path is configured.
         /// </summary>
         bool IsReadOnly { get; }
+
+        /// <summary>
+        /// The absolute path to the local copy of the mapping file.
+        /// Shown in the Settings window so the user can locate or copy the path.
+        /// </summary>
+        string LocalFilePath { get; }
     }
 }

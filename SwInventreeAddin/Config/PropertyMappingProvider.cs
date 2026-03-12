@@ -36,6 +36,9 @@ namespace SwInventreeAddin.Config
             !File.Exists(_localPath);
 
         /// <inheritdoc/>
+        public string LocalFilePath => _localPath;
+
+        /// <inheritdoc/>
         public PropertyMappingConfig GetMapping()
         {
             if (File.Exists(_localPath))
