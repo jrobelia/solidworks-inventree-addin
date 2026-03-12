@@ -878,3 +878,50 @@ namespace SwInventreeAddin.Tests
         }
     }
 }
+
+// ── PropertyMappingEditorWindow.HasDuplicatePropertyNames ──────────────────
+
+[TestFixture]
+public class PropertyMappingEditorWindowHelpersTests
+{
+    [Test]
+    public void HasDuplicatePropertyNames_NoDuplicates_ReturnsFalse()
+    {
+        var names = new[] { "PartNo", "Description", "Notes" };
+
+        Assert.That(
+            PropertyMappingEditorWindow.HasDuplicatePropertyNames(names),
+            Is.False);
+    }
+
+    [Test]
+    public void HasDuplicatePropertyNames_CaseInsensitiveDuplicate_ReturnsTrue()
+    {
+        var names = new[] { "PartNo", "partno" };
+
+        Assert.That(
+            PropertyMappingEditorWindow.HasDuplicatePropertyNames(names),
+            Is.True);
+    }
+
+    [Test]
+    public void HasDuplicatePropertyNames_EmptyNamesIgnored_ReturnsFalse()
+    {
+        // Blank entries (unmapped fields) should not count as duplicates of each other
+        var names = new[] { "", "", "PartNo" };
+
+        Assert.That(
+            PropertyMappingEditorWindow.HasDuplicatePropertyNames(names),
+            Is.False);
+    }
+
+    [Test]
+    public void HasDuplicatePropertyNames_AllEmpty_ReturnsFalse()
+    {
+        var names = new[] { "", "" };
+
+        Assert.That(
+            PropertyMappingEditorWindow.HasDuplicatePropertyNames(names),
+            Is.False);
+    }
+}
