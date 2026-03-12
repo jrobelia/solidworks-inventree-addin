@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
@@ -39,7 +40,8 @@ namespace SwInventreeAddin.UI
             ReadOnlyBanner.Visibility = Visibility.Visible;
             SaveButton.IsEnabled      = false;
 
-            var greyBrush = (Brush)FindResource("BrushSectionHeader");
+            var greyBrush = TryFindResource("BrushSectionHeader") as Brush
+                            ?? SystemColors.ControlBrush;
             foreach (var box in MappingBoxes())
             {
                 box.IsReadOnly = true;
@@ -65,15 +67,23 @@ namespace SwInventreeAddin.UI
 
             ErrorText.Visibility = Visibility.Collapsed;
 
-            _provider.SaveMapping(new PropertyMappingConfig
+            try
             {
-                SchemaVersion       = "1",
-                IpnProperty         = IpnPropertyBox.Text.Trim(),
-                NameProperty        = NamePropertyBox.Text.Trim(),
-                DescriptionProperty = DescriptionPropertyBox.Text.Trim(),
-                RevisionProperty    = RevisionPropertyBox.Text.Trim(),
-                NotesProperty       = NotesPropertyBox.Text.Trim(),
-            });
+                _provider.SaveMapping(new PropertyMappingConfig
+                {
+                    IpnProperty         = IpnPropertyBox.Text.Trim(),
+                    NameProperty        = NamePropertyBox.Text.Trim(),
+                    DescriptionProperty = DescriptionPropertyBox.Text.Trim(),
+                    RevisionProperty    = RevisionPropertyBox.Text.Trim(),
+                    NotesProperty       = NotesPropertyBox.Text.Trim(),
+                });
+            }
+            catch (Exception ex)
+            {
+                ErrorText.Text = $"Could not save mapping: {ex.Message}";
+                ErrorText.Visibility = Visibility.Visible;
+                return;
+            }
 
             DialogResult = true;
         }

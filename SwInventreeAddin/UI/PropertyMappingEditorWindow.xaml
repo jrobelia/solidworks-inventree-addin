@@ -140,7 +140,7 @@
             <!-- Validation error (visible when duplicate names detected) -->
             <TextBlock x:Name="ErrorText"
                        Visibility="Collapsed"
-                       Foreground="{StaticResource BrushStatusWarning}"
+                       Foreground="{StaticResource BrushStatusError}"
                        FontSize="{StaticResource FontSizeBody}"
                        TextWrapping="Wrap"
                        Margin="0,6,0,0" />
