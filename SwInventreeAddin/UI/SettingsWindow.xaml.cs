@@ -48,20 +48,8 @@ namespace SwInventreeAddin.UI
                     UrlBox.Text = config.Url    ?? string.Empty;
                     ApiBox.Text = config.ApiKey ?? string.Empty;
 
-                    // Pre-fill shared path if configured
                     if (!string.IsNullOrEmpty(config.MappingSourcePath))
-                    {
                         SharedPathBox.Text = config.MappingSourcePath;
-                        SharedRadio.IsChecked = true;
-                    }
-                    else
-                    {
-                        LocalRadio.IsChecked = true;
-                    }
-                }
-                else
-                {
-                    LocalRadio.IsChecked = true;
                 }
             }
             catch { /* corrupt settings — user can re-enter */ }
