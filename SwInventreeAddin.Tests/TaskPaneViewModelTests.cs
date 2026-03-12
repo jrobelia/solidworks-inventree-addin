@@ -1,6 +1,7 @@
 using System.Drawing;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using SwInventreeAddin.Config;
 using SwInventreeAddin.InvenTree;
 using SwInventreeAddin.Tests.Stubs;
 using SwInventreeAddin.UI;
@@ -529,6 +530,69 @@ namespace SwInventreeAddin.Tests
             _vm.UpdateClient(new StubInventreeClient());
 
             Assert.That(_vm.FetchEnabled, Is.True);
+        }
+
+        // ── Mapping schema check ───────────────────────────────────────────────────
+
+        [Test]
+        public void OnInitialisation_MappingSchemaMatches_NoWarning()
+        {
+            var provider = new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig { SchemaVersion = "1" }
+            };
+            _propertyService.Seed("PartNo", "");
+            _vm = new TaskPaneViewModel(_client, _propertyService, null, provider);
+
+            Assert.That(_vm.StatusSeverity, Is.Not.EqualTo(StatusSeverity.Warning));
+        }
+
+        [Test]
+        public void OnInitialisation_MappingSchemaVersionMismatch_SetsWarningStatus()
+        {
+            var provider = new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig { SchemaVersion = "99" }
+            };
+            _propertyService.Seed("PartNo", "");
+            _vm = new TaskPaneViewModel(_client, _propertyService, null, provider);
+
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+            Assert.That(_vm.StatusText,     Does.Contain("schema mismatch"));
+        }
+
+        [Test]
+        public void UpdateMapping_SchemaVersionMismatch_SetsWarningStatus()
+        {
+            CreateVm();
+            var provider = new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig { SchemaVersion = "99" }
+            };
+
+            _vm.UpdateMapping(provider);
+
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+        }
+
+        [Test]
+        public void UpdateMapping_SchemaVersionMatches_ClearsWarning()
+        {
+            // Start with a mismatch, then update to a matching provider
+            var bad = new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig { SchemaVersion = "99" }
+            };
+            _propertyService.Seed("PartNo", "");
+            _vm = new TaskPaneViewModel(_client, _propertyService, null, bad);
+
+            var good = new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig { SchemaVersion = "1" }
+            };
+            _vm.UpdateMapping(good);
+
+            Assert.That(_vm.StatusSeverity, Is.Not.EqualTo(StatusSeverity.Warning));
         }
     }
 

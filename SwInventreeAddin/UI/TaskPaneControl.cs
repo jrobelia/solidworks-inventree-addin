@@ -1,6 +1,7 @@
 using System;
 using System.Windows.Forms;
 using System.Windows.Forms.Integration;
+using SwInventreeAddin.Config;
 using SwInventreeAddin.InvenTree;
 using SwInventreeAddin.SolidWorks;
 
@@ -26,18 +27,19 @@ namespace SwInventreeAddin.UI
             IInventreeClient?        client,
             IDocumentPropertyService propertyService,
             IViewportCaptureService? viewportService)
+            : this(client, propertyService, viewportService, null) { }
+
+        public TaskPaneControl(
+            IInventreeClient?         client,
+            IDocumentPropertyService  propertyService,
+            IViewportCaptureService?  viewportService,
+            IPropertyMappingProvider? mappingProvider = null)
         {
-            _vm = new TaskPaneViewModel(client, propertyService, viewportService);
+            _vm = new TaskPaneViewModel(client, propertyService, viewportService, mappingProvider);
             _vm.SettingsRequested += (s, e) => SettingsRequested?.Invoke(this, e);
 
             var view = new TaskPaneView { DataContext = _vm };
-
-            var host = new ElementHost
-            {
-                Dock  = DockStyle.Fill,
-                Child = view,
-            };
-
+            var host = new ElementHost { Dock = DockStyle.Fill, Child = view };
             Controls.Add(host);
             Dock = DockStyle.Fill;
         }
@@ -47,5 +49,7 @@ namespace SwInventreeAddin.UI
         public void LoadPartNumber()    => _vm.LoadPartNumber();
         public void ClearAll()          => _vm.ClearAll();
         public void UpdateClient(IInventreeClient? client) => _vm.UpdateClient(client);
+        public void UpdateMapping(IPropertyMappingProvider provider) =>
+            _vm.UpdateMapping(provider);
     }
 }

@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using SwInventreeAddin.Config;
 using SwInventreeAddin.InvenTree;
 using SwInventreeAddin.SolidWorks;
 
@@ -32,6 +33,8 @@ namespace SwInventreeAddin.UI
         private IInventreeClient?                 _client;
         private readonly IDocumentPropertyService _propertyService;
         private readonly IViewportCaptureService? _viewportService;
+        private IPropertyMappingProvider?         _mappingProvider;
+        private const string ExpectedMappingSchemaVersion = "1";
 
         /// <summary>Raised when the user triggers the Settings action.</summary>
         public event EventHandler? SettingsRequested;
@@ -272,18 +275,28 @@ namespace SwInventreeAddin.UI
         public TaskPaneViewModel(IInventreeClient? client, IDocumentPropertyService propertyService)
             : this(client, propertyService, null) { }
 
-        /// <summary>Full constructor used by the production add-in.</summary>
+        /// <summary>Three-service constructor (no mapping provider).</summary>
         public TaskPaneViewModel(
             IInventreeClient?        client,
             IDocumentPropertyService propertyService,
             IViewportCaptureService? viewportService)
+            : this(client, propertyService, viewportService, null) { }
+
+        /// <summary>Full constructor used by the production add-in.</summary>
+        public TaskPaneViewModel(
+            IInventreeClient?         client,
+            IDocumentPropertyService  propertyService,
+            IViewportCaptureService?  viewportService,
+            IPropertyMappingProvider? mappingProvider = null)
         {
             _client          = client;
             _propertyService = propertyService;
             _viewportService = viewportService;
+            _mappingProvider = mappingProvider;
             _uiContext       = SynchronizationContext.Current;
 
             LoadPartNumber();
+            CheckMappingSchema();
         }
 
         // ── Commands (called by WPF bindings and forwarded by the shim) ───────
@@ -670,6 +683,33 @@ namespace SwInventreeAddin.UI
             else
             {
                 FetchEnabled = true;
+                SetStatus(string.Empty, StatusSeverity.None);
+            }
+        }
+
+        /// <summary>
+        /// Updates the mapping provider reference and re-checks the schema version.
+        /// Called after settings are saved with a new MappingSourcePath.
+        /// </summary>
+        public void UpdateMapping(IPropertyMappingProvider provider)
+        {
+            _mappingProvider = provider;
+            CheckMappingSchema();
+        }
+
+        private void CheckMappingSchema()
+        {
+            if (_mappingProvider == null) return;
+
+            var mapping = _mappingProvider.GetMapping();
+            if (mapping.SchemaVersion != ExpectedMappingSchemaVersion)
+            {
+                SetStatus("Mapping schema mismatch \u2014 review Settings",
+                          StatusSeverity.Warning);
+            }
+            else
+            {
+                // Schema matches — clear any prior mismatch warning.
                 SetStatus(string.Empty, StatusSeverity.None);
             }
         }
