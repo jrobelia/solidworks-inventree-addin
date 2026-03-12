@@ -67,3 +67,26 @@ Decided to defer: the editor is fully functional without it, and the fields pre-
 `GetMapping()` so they are never visually empty on first open (defaults are written on
 first launch). Placeholder styling can be added as a cosmetic polish task when the full
 mapping UI is revisited.
+
+## [2026-03-12] SettingsWindow refreshes mapping status after editor closes (plan deviation)
+
+The task 0c plan (line 145) stated "the status bar does not need to refresh when the editor closes."
+The implementation calls `RefreshMappingStatus()` in `SettingsWindow.EditMappings_Click` after
+`editor.ShowDialog()` returns.
+
+This is a deliberate improvement: if the user edits and saves mappings, the status bar correctly
+transitions (e.g. "No mappings configured" → "Using local mappings") without requiring a
+Settings dialog close-and-reopen. The plan was conservative; the implementation is better.
+
+## [2026-03-12] GetMapping() has a first-run file-write side-effect
+
+`PropertyMappingProvider.GetMapping()` writes default JSON to the local path on first call if
+the file does not exist. This means opening the Settings dialog (which calls `RefreshMappingStatus()`
+→ `GetMapping()` for schema version checking) silently creates the local mapping file.
+
+As a result, the "No mappings configured" status in `SettingsWindow` is unreachable in practice
+— the first Settings open always creates defaults and transitions to "Using local mappings."
+
+Accepted as a known limitation for Milestone 1. Fix would require a `TryGetMapping()` interface
+variant that does not have the first-run write side-effect. Deferring until the mapping lifecycle
+(e.g. explicit "Reset to defaults") is designed properly.
