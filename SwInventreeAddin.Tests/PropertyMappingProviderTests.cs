@@ -70,14 +70,15 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void GetMapping_SourceConfiguredAndLocalExists_LocalTakesPrecedence()
+        public void GetMapping_SourceConfiguredAndLocalExists_SourceTakesPrecedence()
         {
             WriteJson(_localPath,  new PropertyMappingConfig { IpnProperty = "LocalIPN"  });
             WriteJson(_sourcePath, new PropertyMappingConfig { IpnProperty = "SourceIPN" });
 
             var config = new PropertyMappingProvider(_localPath, _sourcePath).GetMapping();
 
-            Assert.That(config.IpnProperty, Is.EqualTo("LocalIPN"));
+            // Source path takes priority when configured — local is only used when no source is set.
+            Assert.That(config.IpnProperty, Is.EqualTo("SourceIPN"));
         }
 
         // ── IsReadOnly ────────────────────────────────────────────────────────
@@ -93,14 +94,15 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void IsReadOnly_SourceConfiguredAndLocalExists_ReturnsFalse()
+        public void IsReadOnly_SourceConfiguredAndLocalExists_ReturnsTrue()
         {
             WriteJson(_localPath,  new PropertyMappingConfig());
             WriteJson(_sourcePath, new PropertyMappingConfig());
 
             var provider = new PropertyMappingProvider(_localPath, _sourcePath);
 
-            Assert.That(provider.IsReadOnly, Is.False);
+            // Source configured → always read-only regardless of whether a local file also exists.
+            Assert.That(provider.IsReadOnly, Is.True);
         }
 
         [Test]
@@ -165,9 +167,14 @@ namespace SwInventreeAddin.Tests
 
             provider.CopyToLocal();
 
-            Assert.That(File.Exists(_localPath),             Is.True);
-            Assert.That(provider.IsReadOnly,                 Is.False);
-            Assert.That(provider.GetMapping().IpnProperty,   Is.EqualTo("SourceIPN"));
+            // Local file is created with the source content.
+            Assert.That(File.Exists(_localPath), Is.True);
+
+            // Source path is still configured, so IsReadOnly stays true and GetMapping still
+            // returns source content.  To switch to editable mode the caller must clear the
+            // MappingSourcePath in settings (select the Local radio button and save).
+            Assert.That(provider.IsReadOnly, Is.True);
+            Assert.That(provider.GetMapping().IpnProperty, Is.EqualTo("SourceIPN"));
         }
 
         [Test]

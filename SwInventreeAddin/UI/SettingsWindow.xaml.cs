@@ -15,7 +15,7 @@ namespace SwInventreeAddin.UI
     {
         private readonly IConfigProvider          _configProvider;
         private readonly IInventreeTokenService   _tokenService;
-        private readonly IPropertyMappingProvider _mappingProvider;
+        private IPropertyMappingProvider _mappingProvider;
 
         public SettingsWindow(IConfigProvider configProvider,
                               IPropertyMappingProvider mappingProvider)
@@ -232,6 +232,43 @@ namespace SwInventreeAddin.UI
             }
 
             DialogResult = true;
+        }
+
+        // ── Apply ─────────────────────────────────────────────────────────────
+
+        private async void Apply_Click(object sender, RoutedEventArgs e)
+        {
+            string apiKey;
+            try
+            {
+                apiKey = await ResolveApiKeyAsync().ConfigureAwait(true);
+            }
+            catch (InvalidOperationException ex)
+            {
+                SetStatus(ex.Message, error: true);
+                return;
+            }
+
+            string? sharedPath = (SharedRadio.IsChecked == true)
+                ? (string.IsNullOrWhiteSpace(SharedPathBox.Text) ? null : SharedPathBox.Text.Trim())
+                : null;
+
+            try
+            {
+                _configProvider.SaveServerConfig(new ServerConfig
+                {
+                    Url               = UrlBox.Text.Trim(),
+                    ApiKey            = apiKey,
+                    MappingSourcePath = sharedPath,
+                });
+
+                _mappingProvider = new PropertyMappingProvider(sharedPath);
+                RefreshMappingStatus();
+            }
+            catch (Exception ex)
+            {
+                SetStatus($"Failed to apply settings: {ex.Message}", error: true);
+            }
         }
 
         // ── Cancel ────────────────────────────────────────────────────────────

@@ -62,25 +62,24 @@
                 </StackPanel>
             </Expander>
 
-            <!-- Test Connection (right-aligned, upper section) -->
+            <!-- Test Connection + inline status message -->
             <Grid Margin="0,10,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="8" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <Button Grid.Column="1" Content="Test Connection"
+                <TextBlock x:Name="StatusText"
+                           Grid.Column="0"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           Foreground="{StaticResource BrushSubtle}"
+                           FontSize="{StaticResource FontSizeBody}" />
+                <Button Grid.Column="2" Content="Test Connection"
                         Style="{StaticResource SecondaryButtonStyle}"
                         Width="140" Margin="0"
                         Click="Test_Click" />
             </Grid>
-
-            <!-- Status message (connection test result) -->
-            <TextBlock x:Name="StatusText"
-                       Height="20"
-                       Margin="0,6,0,0"
-                       TextTrimming="CharacterEllipsis"
-                       Foreground="{StaticResource BrushSubtle}"
-                       FontSize="{StaticResource FontSizeBody}" />
 
             <!-- ── Separator ────────────────────────────────────────────────── -->
             <Separator Background="{StaticResource BrushBorder}" Margin="0,8,0,0" />
@@ -182,20 +181,26 @@
                 </Grid>
             </Border>
 
-            <!-- Save / Cancel buttons -->
+            <!-- Apply / Save / Cancel buttons -->
             <Grid Margin="0,8,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="8" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <Button Grid.Column="1" Content="Save"
+                <Button Grid.Column="1" Content="Apply"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Width="70" Margin="0"
+                        Click="Apply_Click" />
+                <Button Grid.Column="3" Content="Save"
                         Style="{StaticResource PrimaryButtonStyle}"
                         Width="70" Margin="0"
                         IsDefault="True"
                         Click="Save_Click" />
-                <Button Grid.Column="3" Content="Cancel"
+                <Button Grid.Column="5" Content="Cancel"
                         Style="{StaticResource SecondaryButtonStyle}"
                         Width="70" Margin="0"
                         IsCancel="True"

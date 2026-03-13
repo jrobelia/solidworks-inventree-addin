@@ -32,8 +32,7 @@ namespace SwInventreeAddin.Config
         /// <inheritdoc/>
         public bool IsReadOnly =>
             !string.IsNullOrEmpty(_sourcePath) &&
-            File.Exists(_sourcePath)           &&
-            !File.Exists(_localPath);
+            File.Exists(_sourcePath);
 
         /// <inheritdoc/>
         public string LocalFilePath => _localPath;
@@ -41,11 +40,12 @@ namespace SwInventreeAddin.Config
         /// <inheritdoc/>
         public PropertyMappingConfig GetMapping()
         {
-            if (File.Exists(_localPath))
-                return Load(_localPath);
-
+            // Source path takes priority when configured and the file exists.
             if (!string.IsNullOrEmpty(_sourcePath) && File.Exists(_sourcePath))
                 return Load(_sourcePath);
+
+            if (File.Exists(_localPath))
+                return Load(_localPath);
 
             // First run — write defaults so the user has a file to edit.
             var defaults = new PropertyMappingConfig();
@@ -92,7 +92,7 @@ namespace SwInventreeAddin.Config
         private static string DefaultLocalPath()
         {
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            return Path.Combine(appData, "SwInventreeAddin", "property_mapping.json");
+            return Path.Combine(appData, "SwInventreeAddin", "sw_inventree_property_mappings.json");
         }
     }
 }

@@ -324,7 +324,8 @@ namespace SwInventreeAddin.UI
                 return;
             }
 
-            var partNo = _propertyService.GetCustomProperty("PartNo");
+            var mapping = GetMappingOrDefault();
+            var partNo = _propertyService.GetCustomProperty(mapping.IpnProperty);
 
             if (string.IsNullOrEmpty(partNo))
             {
@@ -450,8 +451,9 @@ namespace SwInventreeAddin.UI
         {
             if (_lastFetchedPart == null) return;
 
-            _propertyService.SetCustomProperty("Description", _lastFetchedPart.Name);
-            _propertyService.SetCustomProperty("Notes",       _lastFetchedPart.Notes);
+            var mapping = GetMappingOrDefault();
+            _propertyService.SetCustomProperty(mapping.NameProperty,  _lastFetchedPart.Name);
+            _propertyService.SetCustomProperty(mapping.NotesProperty, _lastFetchedPart.Notes);
 
             CurrentName  = _lastFetchedPart.Name;
             CurrentNotes = _lastFetchedPart.Notes;
@@ -465,7 +467,7 @@ namespace SwInventreeAddin.UI
             if (_lastFetchedPart == null) return;
 
             var value = NamePreview;
-            _propertyService.SetCustomProperty("Description", value);
+            _propertyService.SetCustomProperty(GetMappingOrDefault().NameProperty, value);
             CurrentName = value;
             SetStatus("\u2713  Name applied.", StatusSeverity.Success);
         }
@@ -476,7 +478,7 @@ namespace SwInventreeAddin.UI
             if (_lastFetchedPart == null) return;
 
             var value = NotesPreview;
-            _propertyService.SetCustomProperty("Notes", value);
+            _propertyService.SetCustomProperty(GetMappingOrDefault().NotesProperty, value);
             CurrentNotes = value;
             SetStatus("\u2713  Notes applied.", StatusSeverity.Success);
         }
@@ -493,7 +495,7 @@ namespace SwInventreeAddin.UI
                 return;
             }
 
-            var revision = _propertyService.GetCustomProperty("Revision");
+            var revision = _propertyService.GetCustomProperty(GetMappingOrDefault().RevisionProperty);
             SetStatus("Pushing revision to InvenTree\u2026", StatusSeverity.None);
 
             if (_client == null)
@@ -528,7 +530,7 @@ namespace SwInventreeAddin.UI
             if (_lastFetchedPart == null || _lastFetchedPart.Pk == 0) return;
             if (_client == null) return;
 
-            var name = _propertyService.GetCustomProperty("Description");
+            var name = _propertyService.GetCustomProperty(GetMappingOrDefault().NameProperty);
             SetStatus("Pushing name to InvenTree\u2026", StatusSeverity.None);
 
             try
@@ -556,7 +558,7 @@ namespace SwInventreeAddin.UI
             if (_lastFetchedPart == null || _lastFetchedPart.Pk == 0) return;
             if (_client == null) return;
 
-            var notes = _propertyService.GetCustomProperty("Notes");
+            var notes = _propertyService.GetCustomProperty(GetMappingOrDefault().NotesProperty);
             SetStatus("Pushing notes to InvenTree\u2026", StatusSeverity.None);
 
             try
@@ -655,9 +657,10 @@ namespace SwInventreeAddin.UI
 
         private void RefreshCurrentProperties()
         {
-            CurrentName     = _propertyService.GetCustomProperty("Description");
-            CurrentNotes    = _propertyService.GetCustomProperty("Notes");
-            CurrentRevision = _propertyService.GetCustomProperty("Revision");
+            var mapping = GetMappingOrDefault();
+            CurrentName     = _propertyService.GetCustomProperty(mapping.NameProperty);
+            CurrentNotes    = _propertyService.GetCustomProperty(mapping.NotesProperty);
+            CurrentRevision = _propertyService.GetCustomProperty(mapping.RevisionProperty);
         }
 
         private void ResetInvenTreeState()
@@ -697,6 +700,9 @@ namespace SwInventreeAddin.UI
             _mappingProvider = provider;
             CheckMappingSchema();
         }
+
+        private PropertyMappingConfig GetMappingOrDefault() =>
+            _mappingProvider?.GetMapping() ?? new PropertyMappingConfig();
 
         private void CheckMappingSchema()
         {
