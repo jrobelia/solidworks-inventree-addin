@@ -9,8 +9,8 @@ namespace SwInventreeAddin.Config
     /// Loads and saves the property-name mapping from/to a local JSON file.
     ///
     /// Resolution order:
-    ///   1. Local file exists → use it (editable).
-    ///   2. Source path configured and file exists → use it (read-only).
+    ///   1. Source path configured and file exists → use it (read-only).
+    ///   2. Local file exists → use it (editable).
     ///   3. Neither → write defaults to local path and return them (first run).
     /// </summary>
     public class PropertyMappingProvider : IPropertyMappingProvider

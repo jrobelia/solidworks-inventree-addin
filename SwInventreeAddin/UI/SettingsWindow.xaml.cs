@@ -271,6 +271,7 @@ namespace SwInventreeAddin.UI
                 _mappingProvider = new PropertyMappingProvider(sharedPath);
                 RefreshMappingStatus();
                 MappingApplied?.Invoke(this, _mappingProvider);
+                SetStatus("\u2713  Settings applied.", error: false, success: true);
             }
             catch (Exception ex)
             {

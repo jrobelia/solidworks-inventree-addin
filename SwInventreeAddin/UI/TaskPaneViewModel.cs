@@ -495,7 +495,8 @@ namespace SwInventreeAddin.UI
                 return;
             }
 
-            var revision = _propertyService.GetCustomProperty(GetMappingOrDefault().RevisionProperty);
+            var mapping  = GetMappingOrDefault();
+            var revision = _propertyService.GetCustomProperty(mapping.RevisionProperty);
             SetStatus("Pushing revision to InvenTree\u2026", StatusSeverity.None);
 
             if (_client == null)
@@ -530,7 +531,8 @@ namespace SwInventreeAddin.UI
             if (_lastFetchedPart == null || _lastFetchedPart.Pk == 0) return;
             if (_client == null) return;
 
-            var name = _propertyService.GetCustomProperty(GetMappingOrDefault().NameProperty);
+            var mapping = GetMappingOrDefault();
+            var name    = _propertyService.GetCustomProperty(mapping.NameProperty);
             SetStatus("Pushing name to InvenTree\u2026", StatusSeverity.None);
 
             try
@@ -558,7 +560,8 @@ namespace SwInventreeAddin.UI
             if (_lastFetchedPart == null || _lastFetchedPart.Pk == 0) return;
             if (_client == null) return;
 
-            var notes = _propertyService.GetCustomProperty(GetMappingOrDefault().NotesProperty);
+            var mapping = GetMappingOrDefault();
+            var notes   = _propertyService.GetCustomProperty(mapping.NotesProperty);
             SetStatus("Pushing notes to InvenTree\u2026", StatusSeverity.None);
 
             try

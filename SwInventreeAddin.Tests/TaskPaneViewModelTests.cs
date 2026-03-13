@@ -594,6 +594,41 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.None));
         }
+
+        [Test]
+        public void UpdateMapping_WhenDocumentOpen_RefreshesCurrentProperties()
+        {
+            // Arrange: document open with default mapping property names
+            _propertyService.Seed("PartNo",      "R-10K-0402");
+            _propertyService.Seed("Description", "Resistor original");
+            _propertyService.Seed("Notes",       "Old notes");
+            _propertyService.Seed("Revision",    "A");
+            _vm = new TaskPaneViewModel(_client, _propertyService);
+
+            // Seed renamed properties that the new mapping will point to
+            _propertyService.Seed("MyName",     "Resistor remapped");
+            _propertyService.Seed("MyNotes",    "New notes");
+            _propertyService.Seed("MyRevision", "B");
+
+            // Act: switch to a provider with different property names
+            var remapped = new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig
+                {
+                    SchemaVersion    = "1",
+                    IpnProperty      = "PartNo",
+                    NameProperty     = "MyName",
+                    NotesProperty    = "MyNotes",
+                    RevisionProperty = "MyRevision",
+                }
+            };
+            _vm.UpdateMapping(remapped);
+
+            // Assert: SW property text boxes now reflect the remapped names
+            Assert.That(_vm.CurrentName,     Is.EqualTo("Resistor remapped"));
+            Assert.That(_vm.CurrentNotes,    Is.EqualTo("New notes"));
+            Assert.That(_vm.CurrentRevision, Is.EqualTo("B"));
+        }
     }
 
     /// <summary>Stub client that throws on GetPartByIpnAsync — used to test the fetch error path.</summary>
