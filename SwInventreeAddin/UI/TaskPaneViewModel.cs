@@ -699,6 +699,8 @@ namespace SwInventreeAddin.UI
         {
             _mappingProvider = provider;
             CheckMappingSchema();
+            if (_propertiesSectionVisible)
+                RefreshCurrentProperties();
         }
 
         private PropertyMappingConfig GetMappingOrDefault() =>

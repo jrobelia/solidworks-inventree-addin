@@ -238,6 +238,11 @@ namespace SwInventreeAddin.AddIn
             }
 
             var form = new SettingsWindow(_configProvider, _mappingProvider);
+            form.MappingApplied += (_, provider) =>
+            {
+                _mappingProvider = provider;
+                _taskPaneControl?.UpdateMapping(provider);
+            };
             if (form.ShowDialog() != true) return;
 
             var newConfig = _configProvider.GetServerConfig();
@@ -251,7 +256,6 @@ namespace SwInventreeAddin.AddIn
             _taskPaneControl?.UpdateClient(newClient);
 
             // Re-create the mapping provider with the (possibly changed) source path.
-            // Single-arg constructor uses DefaultLocalPath() → property_mapping.json internally.
             _mappingProvider = new PropertyMappingProvider(newConfig.MappingSourcePath);
 
             _taskPaneControl?.UpdateMapping(_mappingProvider);

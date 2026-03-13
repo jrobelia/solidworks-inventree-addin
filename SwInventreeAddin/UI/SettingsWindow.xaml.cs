@@ -17,6 +17,12 @@ namespace SwInventreeAddin.UI
         private readonly IInventreeTokenService   _tokenService;
         private IPropertyMappingProvider _mappingProvider;
 
+        /// <summary>
+        /// Raised after Apply successfully saves settings, so the caller can update
+        /// the live mapping provider without waiting for the dialog to close.
+        /// </summary>
+        public event EventHandler<IPropertyMappingProvider>? MappingApplied;
+
         public SettingsWindow(IConfigProvider configProvider,
                               IPropertyMappingProvider mappingProvider)
             : this(configProvider, mappingProvider,
@@ -264,6 +270,7 @@ namespace SwInventreeAddin.UI
 
                 _mappingProvider = new PropertyMappingProvider(sharedPath);
                 RefreshMappingStatus();
+                MappingApplied?.Invoke(this, _mappingProvider);
             }
             catch (Exception ex)
             {
