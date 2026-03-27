@@ -2658,7 +2658,7 @@
       "y": 50,
       "name": "createPartDialog",
       "width": 360,
-      "height": 460,
+      "height": 435,
       "fill": "#FFFFFF",
       "cornerRadius": 3,
       "stroke": {
@@ -2711,7 +2711,7 @@
           "id": "Cbylt",
           "name": "dialogBody",
           "width": "fill_container",
-          "height": "fill_container",
+          "height": 401,
           "layout": "vertical",
           "gap": 8,
           "padding": 12,
@@ -2779,224 +2779,254 @@
                 "thickness": 1,
                 "fill": "$color-border"
               },
-              "layout": "vertical",
               "children": [
                 {
                   "type": "frame",
-                  "id": "TCuRb",
-                  "name": "treeRow1",
+                  "id": "VcGHl",
+                  "name": "treeContent",
                   "width": "fill_container",
-                  "height": 26,
-                  "gap": 6,
-                  "padding": [
-                    0,
-                    8
-                  ],
-                  "alignItems": "center",
+                  "height": "fill_container",
+                  "layout": "vertical",
                   "children": [
                     {
-                      "type": "icon_font",
-                      "id": "1yQ6H",
-                      "name": "r1expand",
-                      "width": 16,
-                      "height": 16,
-                      "iconFontName": "keyboard_arrow_down",
-                      "iconFontFamily": "Material Symbols Outlined",
-                      "fill": "$color-subtle"
+                      "type": "frame",
+                      "id": "TCuRb",
+                      "name": "treeRow1",
+                      "width": "fill_container",
+                      "height": 26,
+                      "gap": 6,
+                      "padding": [
+                        0,
+                        8
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon_font",
+                          "id": "1yQ6H",
+                          "name": "r1expand",
+                          "width": 16,
+                          "height": 16,
+                          "iconFontName": "keyboard_arrow_down",
+                          "iconFontFamily": "Material Symbols Outlined",
+                          "fill": "$color-subtle"
+                        },
+                        {
+                          "type": "text",
+                          "id": "VF8GG",
+                          "name": "r1lbl",
+                          "fill": "$color-foreground",
+                          "content": "Electronics",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
                     },
                     {
-                      "type": "text",
-                      "id": "VF8GG",
-                      "name": "r1lbl",
-                      "fill": "$color-foreground",
-                      "content": "Electronics",
-                      "fontFamily": "Inter",
-                      "fontSize": 12,
-                      "fontWeight": "normal"
+                      "type": "frame",
+                      "id": "ALBJa",
+                      "name": "treeRow2",
+                      "width": "fill_container",
+                      "height": 26,
+                      "gap": 6,
+                      "padding": [
+                        0,
+                        8,
+                        0,
+                        28
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon_font",
+                          "id": "BqIOm",
+                          "name": "r2expand",
+                          "width": 16,
+                          "height": 16,
+                          "iconFontName": "chevron_right",
+                          "iconFontFamily": "Material Symbols Outlined",
+                          "fill": "$color-subtle"
+                        },
+                        {
+                          "type": "text",
+                          "id": "bLft3",
+                          "name": "r2lbl",
+                          "fill": "$color-foreground",
+                          "content": "Resistors",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "YTfgS",
+                      "name": "treeRow3",
+                      "width": "fill_container",
+                      "height": 26,
+                      "fill": "$color-bg-highlight",
+                      "gap": 6,
+                      "padding": [
+                        0,
+                        8,
+                        0,
+                        28
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon_font",
+                          "id": "qDxAw",
+                          "name": "r3expand",
+                          "width": 16,
+                          "height": 16,
+                          "iconFontName": "chevron_right",
+                          "iconFontFamily": "Material Symbols Outlined",
+                          "fill": "$color-accent-blue"
+                        },
+                        {
+                          "type": "text",
+                          "id": "8S5gY",
+                          "name": "r3lbl",
+                          "fill": "$color-accent-blue",
+                          "content": "Capacitors",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "bold"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "jZQOa",
+                      "name": "treeRow4",
+                      "width": "fill_container",
+                      "height": 26,
+                      "gap": 6,
+                      "padding": [
+                        0,
+                        8
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon_font",
+                          "id": "h2xeo",
+                          "name": "r4expand",
+                          "width": 16,
+                          "height": 16,
+                          "iconFontName": "chevron_right",
+                          "iconFontFamily": "Material Symbols Outlined",
+                          "fill": "$color-subtle"
+                        },
+                        {
+                          "type": "text",
+                          "id": "9fiYW",
+                          "name": "r4lbl",
+                          "fill": "$color-foreground",
+                          "content": "Mechanical",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "apeXQ",
+                      "name": "treeRow5",
+                      "width": "fill_container",
+                      "height": 26,
+                      "gap": 6,
+                      "padding": [
+                        0,
+                        8,
+                        0,
+                        28
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon_font",
+                          "id": "2GtoF",
+                          "name": "r5expand",
+                          "width": 16,
+                          "height": 16,
+                          "iconFontName": "keyboard_arrow_down",
+                          "iconFontFamily": "Material Symbols Outlined",
+                          "fill": "$color-subtle"
+                        },
+                        {
+                          "type": "text",
+                          "id": "J7F1x",
+                          "name": "r5lbl",
+                          "fill": "$color-foreground",
+                          "content": "Fasteners",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "M214I",
+                      "name": "treeRow6",
+                      "width": "fill_container",
+                      "height": 26,
+                      "gap": 6,
+                      "padding": [
+                        0,
+                        8,
+                        0,
+                        48
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon_font",
+                          "id": "HxxgA",
+                          "name": "r6dot",
+                          "width": 10,
+                          "height": 10,
+                          "iconFontName": "fiber_manual_record",
+                          "iconFontFamily": "Material Symbols Outlined",
+                          "fill": "$color-subtle"
+                        },
+                        {
+                          "type": "text",
+                          "id": "qHiXK",
+                          "name": "r6lbl",
+                          "fill": "$color-foreground",
+                          "content": "Bolts",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
                     }
                   ]
                 },
                 {
                   "type": "frame",
-                  "id": "ALBJa",
-                  "name": "treeRow2",
-                  "width": "fill_container",
-                  "height": 26,
-                  "gap": 6,
-                  "padding": [
-                    0,
-                    8,
-                    0,
-                    28
-                  ],
-                  "alignItems": "center",
+                  "id": "x7TPi",
+                  "name": "scrollBar",
+                  "width": 6,
+                  "height": "fill_container",
+                  "fill": "$color-bg-disabled",
+                  "layout": "vertical",
+                  "alignItems": "end",
                   "children": [
                     {
-                      "type": "icon_font",
-                      "id": "BqIOm",
-                      "name": "r2expand",
-                      "width": 16,
-                      "height": 16,
-                      "iconFontName": "chevron_right",
-                      "iconFontFamily": "Material Symbols Outlined",
-                      "fill": "$color-subtle"
-                    },
-                    {
-                      "type": "text",
-                      "id": "bLft3",
-                      "name": "r2lbl",
-                      "fill": "$color-foreground",
-                      "content": "Resistors",
-                      "fontFamily": "Inter",
-                      "fontSize": 12,
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "YTfgS",
-                  "name": "treeRow3",
-                  "width": "fill_container",
-                  "height": 26,
-                  "fill": "#E8F0F8",
-                  "gap": 6,
-                  "padding": [
-                    0,
-                    8,
-                    0,
-                    28
-                  ],
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon_font",
-                      "id": "qDxAw",
-                      "name": "r3expand",
-                      "width": 16,
-                      "height": 16,
-                      "iconFontName": "chevron_right",
-                      "iconFontFamily": "Material Symbols Outlined",
-                      "fill": "$color-accent-blue"
-                    },
-                    {
-                      "type": "text",
-                      "id": "8S5gY",
-                      "name": "r3lbl",
-                      "fill": "$color-accent-blue",
-                      "content": "Capacitors",
-                      "fontFamily": "Inter",
-                      "fontSize": 12,
-                      "fontWeight": "bold"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "jZQOa",
-                  "name": "treeRow4",
-                  "width": "fill_container",
-                  "height": 26,
-                  "gap": 6,
-                  "padding": [
-                    0,
-                    8
-                  ],
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon_font",
-                      "id": "h2xeo",
-                      "name": "r4expand",
-                      "width": 16,
-                      "height": 16,
-                      "iconFontName": "chevron_right",
-                      "iconFontFamily": "Material Symbols Outlined",
-                      "fill": "$color-subtle"
-                    },
-                    {
-                      "type": "text",
-                      "id": "9fiYW",
-                      "name": "r4lbl",
-                      "fill": "$color-foreground",
-                      "content": "Mechanical",
-                      "fontFamily": "Inter",
-                      "fontSize": 12,
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "apeXQ",
-                  "name": "treeRow5",
-                  "width": "fill_container",
-                  "height": 26,
-                  "gap": 6,
-                  "padding": [
-                    0,
-                    8,
-                    0,
-                    28
-                  ],
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon_font",
-                      "id": "2GtoF",
-                      "name": "r5expand",
-                      "width": 16,
-                      "height": 16,
-                      "iconFontName": "keyboard_arrow_down",
-                      "iconFontFamily": "Material Symbols Outlined",
-                      "fill": "$color-subtle"
-                    },
-                    {
-                      "type": "text",
-                      "id": "J7F1x",
-                      "name": "r5lbl",
-                      "fill": "$color-foreground",
-                      "content": "Fasteners",
-                      "fontFamily": "Inter",
-                      "fontSize": 12,
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "M214I",
-                  "name": "treeRow6",
-                  "width": "fill_container",
-                  "height": 26,
-                  "gap": 6,
-                  "padding": [
-                    0,
-                    8,
-                    0,
-                    48
-                  ],
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon_font",
-                      "id": "HxxgA",
-                      "name": "r6dot",
-                      "width": 10,
-                      "height": 10,
-                      "iconFontName": "fiber_manual_record",
-                      "iconFontFamily": "Material Symbols Outlined",
-                      "fill": "$color-subtle"
-                    },
-                    {
-                      "type": "text",
-                      "id": "qHiXK",
-                      "name": "r6lbl",
-                      "fill": "$color-foreground",
-                      "content": "Bolts",
-                      "fontFamily": "Inter",
-                      "fontSize": 12,
-                      "fontWeight": "normal"
+                      "type": "rectangle",
+                      "cornerRadius": 2,
+                      "id": "WZksv",
+                      "name": "scrollThumb",
+                      "fill": "$color-border",
+                      "width": 4,
+                      "height": 60
                     }
                   ]
                 }
