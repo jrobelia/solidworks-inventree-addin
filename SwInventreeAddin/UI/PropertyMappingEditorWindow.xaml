@@ -155,17 +155,27 @@
                 </Grid.ColumnDefinitions>
                 <Button x:Name="SaveButton"
                         Grid.Column="1"
-                        Content="Save"
                         Style="{StaticResource PrimaryButtonStyle}"
-                        Width="70" Margin="0"
+                        Width="80" Margin="0"
                         IsDefault="True"
-                        Click="Save_Click" />
+                        Click="Save_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Save" VerticalAlignment="Center" />
+                        <TextBlock Text="&#xE74E;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                   VerticalAlignment="Center" Margin="6,0,0,0" />
+                    </StackPanel>
+                </Button>
                 <Button Grid.Column="3"
-                        Content="Cancel"
                         Style="{StaticResource SecondaryButtonStyle}"
-                        Width="70" Margin="0"
+                        Width="80" Margin="0"
                         IsCancel="True"
-                        Click="Cancel_Click" />
+                        Click="Cancel_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Cancel" VerticalAlignment="Center" />
+                        <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                   VerticalAlignment="Center" Margin="6,0,0,0" />
+                    </StackPanel>
+                </Button>
             </Grid>
 
         </StackPanel>

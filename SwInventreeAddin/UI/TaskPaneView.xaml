@@ -33,6 +33,7 @@
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="4" />
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
@@ -40,11 +41,20 @@
                 <Border x:Name="StatusStripe" Grid.Column="0"
                         Background="{StaticResource BrushStatusNone}" />
 
-                <TextBlock Grid.Column="1"
+                <!-- Severity icon - glyph and visibility set by code-behind -->
+                <TextBlock x:Name="StatusIcon" Grid.Column="1"
+                           FontFamily="Segoe MDL2 Assets"
+                           FontSize="13"
+                           VerticalAlignment="Center"
+                           Margin="6,0,2,0"
+                           Visibility="Collapsed"
+                           Foreground="{StaticResource BrushStatusNone}" />
+
+                <TextBlock Grid.Column="2"
                            Text="{Binding StatusText}"
                            Style="{StaticResource FieldLabelStyle}"
                            VerticalAlignment="Center"
-                           Margin="8,0,4,0"
+                           Margin="4,0,4,0"
                            TextTrimming="CharacterEllipsis"
                            Foreground="{StaticResource BrushForeground}" />
             </Grid>
@@ -56,11 +66,16 @@
             <StackPanel Margin="{StaticResource PanelPadding}">
 
                 <!-- Settings button -->
-                <Button Content="⚙ Settings"
-                        Style="{StaticResource SecondaryButtonStyle}"
+                <Button Style="{StaticResource SecondaryButtonStyle}"
                         HorizontalAlignment="Stretch"
                         Margin="0"
-                        Click="Settings_Click" />
+                        Click="Settings_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Text="Settings" VerticalAlignment="Center" Margin="6,0,0,0" />
+                    </StackPanel>
+                </Button>
 
                 <!-- Part number label + entry -->
                 <TextBlock Text="Part Number" Style="{StaticResource FieldLabelStyle}" />
@@ -72,11 +87,16 @@
                          Height="26" />
 
                 <!-- Load button -->
-                <Button Content="Load Properties from InvenTree"
-                        Style="{StaticResource PrimaryButtonStyle}"
+                <Button Style="{StaticResource PrimaryButtonStyle}"
                         HorizontalAlignment="Stretch"
                         IsEnabled="{Binding FetchEnabled}"
-                        Click="Fetch_Click" />
+                        Click="Fetch_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Load Properties from InvenTree" VerticalAlignment="Center" />
+                        <TextBlock Text="&#xE896;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                   VerticalAlignment="Center" Margin="6,0,0,0" />
+                    </StackPanel>
+                </Button>
 
                 <!-- Separator -->
                 <Separator Margin="0,8,0,0"
@@ -132,9 +152,10 @@
                                 Style="{StaticResource SecondaryButtonStyle}"
                                 IsEnabled="{Binding PushImageVisible}"
                                 Click="PushImage_Click">
-                            <TextBlock TextWrapping="Wrap"
-                                       TextAlignment="Center"
-                                       Text="Capture and Push Image to InvenTree &#x2192;" />
+                            <TextBlock TextWrapping="Wrap" TextAlignment="Center">
+                                <Run Text="Capture and Push Image to InvenTree " />
+                                <Run Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" />
+                            </TextBlock>
                         </Button>
 
                         <!-- Thumbnail on InvenTree side -->
@@ -206,17 +227,27 @@
                                  Style="{StaticResource InvenTreeFieldStyle}"
                                  Height="26" />
                         <Button Grid.Column="0" Grid.Row="2"
-                                Content="Push to InvenTree &#x2192;"
                                 Style="{StaticResource SecondaryButtonStyle}"
                                 HorizontalAlignment="Stretch"
                                 IsEnabled="{Binding PushNameEnabled}"
-                                Click="PushName_Click" />
+                                Click="PushName_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Push to InvenTree" VerticalAlignment="Center" />
+                                <TextBlock Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                           VerticalAlignment="Center" Margin="4,0,0,0" />
+                            </StackPanel>
+                        </Button>
                         <Button Grid.Column="2" Grid.Row="2"
-                                Content="&#x2190; Apply to SW Doc"
                                 Style="{StaticResource SecondaryButtonStyle}"
                                 HorizontalAlignment="Stretch"
                                 IsEnabled="{Binding ApplyNameEnabled}"
-                                Click="ApplyName_Click" />
+                                Click="ApplyName_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE76B;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                           VerticalAlignment="Center" Margin="0,0,4,0" />
+                                <TextBlock Text="Apply to SW Doc" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
                     </Grid>
 
                     <!-- Notes row -->
@@ -277,17 +308,27 @@
                                  VerticalContentAlignment="Top"
                                  VerticalScrollBarVisibility="Auto" />
                         <Button Grid.Column="0" Grid.Row="2"
-                                Content="Push to InvenTree &#x2192;"
                                 Style="{StaticResource SecondaryButtonStyle}"
                                 HorizontalAlignment="Stretch"
                                 IsEnabled="{Binding PushNotesEnabled}"
-                                Click="PushNotes_Click" />
+                                Click="PushNotes_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Push to InvenTree" VerticalAlignment="Center" />
+                                <TextBlock Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                           VerticalAlignment="Center" Margin="4,0,0,0" />
+                            </StackPanel>
+                        </Button>
                         <Button Grid.Column="2" Grid.Row="2"
-                                Content="&#x2190; Apply to SW Doc"
                                 Style="{StaticResource SecondaryButtonStyle}"
                                 HorizontalAlignment="Stretch"
                                 IsEnabled="{Binding ApplyNotesEnabled}"
-                                Click="ApplyNotes_Click" />
+                                Click="ApplyNotes_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE76B;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                           VerticalAlignment="Center" Margin="0,0,4,0" />
+                                <TextBlock Text="Apply to SW Doc" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
                     </Grid>
 
                     <!-- Revision row (read-only both sides) -->
@@ -335,13 +376,25 @@
                                  Height="26" />
                     </Grid>
 
-                    <!-- Push Revision button -->
-                    <Button Content="Push SW Rev to InvenTree"
-                            Style="{StaticResource SecondaryButtonStyle}"
-                            HorizontalAlignment="Stretch"
-                            Visibility="{Binding PushRevisionVisible,
-                                                Converter={StaticResource BoolToVis}}"
-                            Click="PushRevision_Click" />
+                    <!-- Push Revision button (SW side only) -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="20" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                HorizontalAlignment="Stretch"
+                                IsEnabled="{Binding PushRevisionVisible}"
+                                Click="PushRevision_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Push SW Rev to InvenTree" VerticalAlignment="Center" />
+                                <TextBlock Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                           VerticalAlignment="Center" Margin="6,0,0,0" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
 
                 </StackPanel>
                 <!-- end properties section -->

@@ -1,5 +1,5 @@
 {
-  "version": "2.8",
+  "version": "2.9",
   "children": [
     {
       "type": "frame",
@@ -88,6 +88,22 @@
                   "fontFamily": "Inter",
                   "fontSize": 12,
                   "fontWeight": "normal"
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 2,
+                  "id": "Gtf0R",
+                  "name": "focusOverlay",
+                  "opacity": 0,
+                  "metadata": {
+                    "type": "focus-indicator"
+                  },
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "stroke": {
+                    "thickness": 2,
+                    "fill": "$color-accent-blue"
+                  }
                 }
               ]
             },
@@ -111,6 +127,16 @@
                   "fontFamily": "Inter",
                   "fontSize": 12,
                   "fontWeight": "normal"
+                },
+                {
+                  "type": "icon_font",
+                  "id": "E1RKd",
+                  "name": "loadIcon",
+                  "width": 16,
+                  "height": 16,
+                  "iconFontName": "download",
+                  "iconFontFamily": "Material Symbols Outlined",
+                  "fill": "#FFFFFF"
                 }
               ]
             },
@@ -275,7 +301,7 @@
               "id": "fuquh",
               "name": "nameLbl",
               "fill": "$color-subtle",
-              "content": "Name / Description",
+              "content": "Name",
               "fontFamily": "Inter",
               "fontSize": 12,
               "fontWeight": "normal"
@@ -699,7 +725,7 @@
               "id": "UWCP7",
               "name": "pushRevBtn",
               "width": "fill_container",
-              "height": 28,
+              "height": 27,
               "fill": "$color-section-header",
               "cornerRadius": 2,
               "justifyContent": "center",
@@ -710,7 +736,7 @@
                   "id": "a8nqV",
                   "name": "pushRevTxt",
                   "fill": "$color-foreground",
-                  "content": "Push SW Rev to InvenTree",
+                  "content": "Push SW Rev to InvenTree →",
                   "fontFamily": "Inter",
                   "fontSize": 12,
                   "fontWeight": "normal"
@@ -740,7 +766,19 @@
               "name": "stripe",
               "width": 4,
               "height": "fill_container",
-              "fill": "$color-status-success"
+              "fill": "$color-status-warning",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "o0udQ",
+                  "name": "errorIcon",
+                  "width": 16,
+                  "height": 16,
+                  "iconFontName": "error",
+                  "iconFontFamily": "Material Symbols Outlined",
+                  "fill": "$color-status-error"
+                }
+              ]
             },
             {
               "type": "text",
@@ -750,7 +788,7 @@
               "textGrowth": "fixed-width-height",
               "width": "fill_container",
               "height": "fill_container",
-              "content": "Properties loaded",
+              "content": "⚠ Mapping schema mismatch — review Settings",
               "textAlignVertical": "middle",
               "fontFamily": "Segoe UI",
               "fontSize": 12,
@@ -784,6 +822,7 @@
           "name": "body",
           "width": "fill_container",
           "layout": "vertical",
+          "gap": 8,
           "padding": [
             14,
             16,
@@ -791,6 +830,48 @@
             16
           ],
           "children": [
+            {
+              "type": "frame",
+              "id": "ntF1f",
+              "name": "connSecHdr",
+              "width": "fill_container",
+              "height": 26,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Jdcon",
+                  "name": "connStripe",
+                  "width": 3,
+                  "height": 26,
+                  "fill": "$color-accent-blue"
+                },
+                {
+                  "type": "frame",
+                  "id": "1ROty",
+                  "name": "connGrey",
+                  "width": "fill_container",
+                  "height": 26,
+                  "fill": "$color-section-header",
+                  "padding": [
+                    0,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "qC0NL",
+                      "name": "connTitle",
+                      "fill": "$color-foreground",
+                      "content": "Inventree Server Connection",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
             {
               "type": "text",
               "id": "79P74",
@@ -828,6 +909,22 @@
                   "fontFamily": "Inter",
                   "fontSize": 12,
                   "fontWeight": "normal"
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 2,
+                  "id": "LzDFF",
+                  "name": "focusOverlay",
+                  "opacity": 0,
+                  "metadata": {
+                    "type": "focus-indicator"
+                  },
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "stroke": {
+                    "thickness": 2,
+                    "fill": "$color-accent-blue"
+                  }
                 }
               ]
             },
@@ -868,6 +965,22 @@
                   "fontFamily": "Inter",
                   "fontSize": 12,
                   "fontWeight": "normal"
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 2,
+                  "id": "LE35N",
+                  "name": "focusOverlay",
+                  "opacity": 0,
+                  "metadata": {
+                    "type": "focus-indicator"
+                  },
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "stroke": {
+                    "thickness": 2,
+                    "fill": "$color-accent-blue"
+                  }
                 }
               ]
             },
@@ -908,8 +1021,37 @@
                   "fontFamily": "Inter",
                   "fontSize": 12,
                   "fontWeight": "normal"
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 2,
+                  "id": "iTb10",
+                  "name": "focusOverlay",
+                  "opacity": 0,
+                  "metadata": {
+                    "type": "focus-indicator"
+                  },
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "stroke": {
+                    "thickness": 2,
+                    "fill": "$color-accent-blue"
+                  }
                 }
               ]
+            },
+            {
+              "type": "text",
+              "id": "FDGKT",
+              "name": "credHelpTxt",
+              "fill": "$color-subtle",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Enter username + password to fetch a key, or expand below to paste one directly.",
+              "fontFamily": "Inter",
+              "fontSize": 11,
+              "fontWeight": "normal",
+              "fontStyle": "italic"
             },
             {
               "type": "frame",
@@ -924,6 +1066,7 @@
                   "type": "text",
                   "id": "IqBRZ",
                   "name": "swAdvArrow",
+                  "context": "This arrow should rotate 90° when expanded and be keyboard accessible. Clicking toggles the advanced section.",
                   "fill": "$color-subtle",
                   "content": "▶",
                   "fontFamily": "Inter",
@@ -935,7 +1078,123 @@
                   "id": "GmAnW",
                   "name": "swAdvLbl",
                   "fill": "$color-subtle",
-                  "content": "Advanced — paste API key directly",
+                  "content": "Enter API Key Directly",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "6kMoA",
+                  "name": "advSpacer",
+                  "width": "fill_container",
+                  "height": 28
+                },
+                {
+                  "type": "frame",
+                  "id": "Dl4yh",
+                  "name": "testConnBtn",
+                  "width": 130,
+                  "height": 26,
+                  "fill": "$color-section-header",
+                  "cornerRadius": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "JXE2U",
+                      "name": "testTxt2",
+                      "fill": "$color-foreground",
+                      "content": "Test Connection",
+                      "fontFamily": "Inter",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "sXGPm",
+              "name": "mapSecHdr",
+              "width": "fill_container",
+              "height": 26,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "v5QRl",
+                  "name": "mapSecStripe",
+                  "width": 3,
+                  "height": 26,
+                  "fill": "$color-accent-blue"
+                },
+                {
+                  "type": "frame",
+                  "id": "75LKU",
+                  "name": "mapSecGrey",
+                  "width": "fill_container",
+                  "height": 26,
+                  "fill": "$color-section-header",
+                  "padding": [
+                    0,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "QPoDy",
+                      "name": "mapSecTitle",
+                      "fill": "$color-foreground",
+                      "content": "Property Mappings",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "vDBrd",
+              "name": "mappingDesc",
+              "fill": "$color-subtle",
+              "textGrowth": "fixed-width-height",
+              "width": "fill_container",
+              "height": 40,
+              "content": "Map InvenTree field names to SolidWorks custom property names. A shared team file keeps everyone in sync.",
+              "fontFamily": "Inter",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "3TwYD",
+              "name": "sharedLabelRow",
+              "width": "fill_container",
+              "height": 20,
+              "gap": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "XEsQh",
+                  "name": "sharedRadio",
+                  "fill": "$color-accent-blue",
+                  "content": "●",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "3DUTU",
+                  "name": "sharedLbl",
+                  "fill": "$color-foreground",
+                  "content": "Shared Mapping File (optional)",
                   "fontFamily": "Inter",
                   "fontSize": 12,
                   "fontWeight": "normal"
@@ -943,28 +1202,65 @@
               ]
             },
             {
-              "type": "text",
-              "id": "QHUjn",
-              "name": "swStatusTxt",
-              "fill": "$color-subtle",
-              "textGrowth": "fixed-width",
-              "width": "fill_container",
-              "fontFamily": "Inter",
-              "fontSize": 12,
-              "fontWeight": "normal"
-            },
-            {
               "type": "frame",
-              "id": "mdHjK",
-              "name": "buttonRow",
+              "id": "KZC1f",
+              "name": "sharedFileRow",
               "width": "fill_container",
               "height": 28,
+              "gap": 8,
+              "alignItems": "center",
               "children": [
                 {
                   "type": "frame",
-                  "id": "t1Qbq",
-                  "name": "swTestBtn",
-                  "width": 140,
+                  "id": "42oCx",
+                  "name": "sharedFileField",
+                  "width": "fill_container",
+                  "height": 28,
+                  "fill": "$color-sw-field",
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "$color-border"
+                  },
+                  "padding": [
+                    0,
+                    6
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "vl8Sq",
+                      "name": "sharedFileTxt",
+                      "fill": "$color-subtle",
+                      "content": "(not configured)",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 2,
+                      "id": "Tj3zV",
+                      "name": "focusOverlay",
+                      "opacity": 0,
+                      "metadata": {
+                        "type": "focus-indicator"
+                      },
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "stroke": {
+                        "thickness": 2,
+                        "fill": "$color-accent-blue"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "SEmQm",
+                  "name": "browseBtn",
+                  "width": 120,
                   "height": 28,
                   "fill": "$color-section-header",
                   "cornerRadius": 2,
@@ -973,21 +1269,243 @@
                   "children": [
                     {
                       "type": "text",
-                      "id": "DXob4",
-                      "name": "swTestTxt",
+                      "id": "nIgHv",
+                      "name": "browseLbl",
                       "fill": "$color-foreground",
-                      "content": "Test Connection",
+                      "content": "Browse...",
                       "fontFamily": "Inter",
                       "fontSize": 12,
                       "fontWeight": "normal"
                     }
                   ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "LbQh7",
+              "name": "localLabelRow",
+              "width": "fill_container",
+              "height": 20,
+              "gap": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "RCLDI",
+                  "name": "localRadio",
+                  "fill": "$color-subtle",
+                  "content": "○",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
+                {
+                  "type": "text",
+                  "id": "pyLoo",
+                  "name": "localLbl",
+                  "fill": "$color-subtle",
+                  "content": "Local Mapping File",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "TifZv",
+              "name": "localFileRow",
+              "width": "fill_container",
+              "height": 28,
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Q2Ngt",
+                  "name": "localFileField",
+                  "context": "This field is read-only. Tooltip: 'This path is managed by the app and cannot be edited.'",
+                  "width": "fill_container",
+                  "height": 28,
+                  "fill": "$color-section-header",
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "$color-border"
+                  },
+                  "padding": [
+                    0,
+                    6
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "OEEZ6",
+                      "name": "localFileTxt",
+                      "fill": "$color-subtle",
+                      "content": "(not configured)",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 2,
+                      "id": "uSWf0",
+                      "name": "focusOverlay",
+                      "opacity": 0,
+                      "metadata": {
+                        "type": "focus-indicator"
+                      },
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "stroke": {
+                        "thickness": 2,
+                        "fill": "$color-accent-blue"
+                      }
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "fi5WM",
+                      "name": "lockIcon",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "lock",
+                      "iconFontFamily": "Material Symbols Outlined",
+                      "fill": "$color-subtle"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "16qfG",
+                  "name": "mapEditBtn",
+                  "width": 120,
+                  "height": 26,
+                  "fill": "$color-section-header",
+                  "cornerRadius": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "pZz1s",
+                      "name": "mapEditBtnLbl",
+                      "fill": "$color-foreground",
+                      "content": "Edit Mappings...",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ROUZj",
+              "name": "statusRow",
+              "width": "fill_container",
+              "height": 32,
+              "fill": "#F0F0F0",
+              "stroke": {
+                "align": "inside",
+                "thickness": {
+                  "top": 1
+                },
+                "fill": "#D0D0D0"
+              },
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "h2sjq",
+                  "name": "statusStripe",
+                  "width": 4,
+                  "height": "fill_container",
+                  "fill": "$color-status-success"
+                },
+                {
+                  "type": "text",
+                  "id": "F4ixu",
+                  "name": "mapSummaryStat",
+                  "fill": "$color-subtle",
+                  "content": "Using local mappings",
+                  "textAlignVertical": "middle",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "uEKiU",
+              "name": "actionStatusTxt",
+              "fill": "#008040",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "✓  Settings applied.",
+              "fontFamily": "Inter",
+              "fontSize": 11,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "mdHjK",
+              "name": "buttonRow",
+              "width": "fill_container",
+              "height": 28,
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
                 {
                   "type": "frame",
                   "id": "gYp9T",
                   "name": "swBtnSpacer",
                   "width": "fill_container",
+                  "height": 28
+                },
+                {
+                  "type": "frame",
+                  "id": "W1WZC",
+                  "name": "swApplyBtn",
+                  "width": 70,
+                  "height": 28,
+                  "fill": "$color-section-header",
+                  "cornerRadius": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Gpfkj",
+                      "name": "applyTxt2",
+                      "fill": "$color-foreground",
+                      "content": "Apply",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "X745o",
+                      "name": "applyIcon",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "check",
+                      "iconFontFamily": "Material Symbols Outlined",
+                      "fill": "$color-foreground"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "CKSX5",
+                  "name": "applyGap",
+                  "width": 16,
                   "height": 28
                 },
                 {
@@ -1010,15 +1528,18 @@
                       "fontFamily": "Inter",
                       "fontSize": 12,
                       "fontWeight": "normal"
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "zsUeU",
+                      "name": "saveIcon",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "save",
+                      "iconFontFamily": "Material Symbols Outlined",
+                      "fill": "#FFFFFF"
                     }
                   ]
-                },
-                {
-                  "type": "frame",
-                  "id": "WhOD3",
-                  "name": "swGap",
-                  "width": 8,
-                  "height": 28
                 },
                 {
                   "type": "frame",
@@ -1040,6 +1561,16 @@
                       "fontFamily": "Inter",
                       "fontSize": 12,
                       "fontWeight": "normal"
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "EhiQx",
+                      "name": "cancelIcon",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "close",
+                      "iconFontFamily": "Material Symbols Outlined",
+                      "fill": "$color-foreground"
                     }
                   ]
                 }
@@ -1056,7 +1587,6 @@
       "y": 50,
       "name": "PushRevisionConfirmDialog",
       "width": 420,
-      "height": 220,
       "fill": "#FFFFFF",
       "layout": "vertical",
       "children": [
@@ -1073,15 +1603,57 @@
           "id": "TKBH9",
           "name": "cdBody",
           "width": "fill_container",
-          "height": "fill_container",
           "layout": "vertical",
+          "gap": 8,
           "padding": [
-            16,
+            12,
             20,
             20,
             20
           ],
           "children": [
+            {
+              "type": "frame",
+              "id": "tGqqB",
+              "name": "cdSecHdr",
+              "width": "fill_container",
+              "height": 26,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "q4Otg",
+                  "name": "cdStripe",
+                  "width": 3,
+                  "height": 26,
+                  "fill": "$color-accent-blue"
+                },
+                {
+                  "type": "frame",
+                  "id": "gZLbG",
+                  "name": "cdGrey",
+                  "width": "fill_container",
+                  "height": 26,
+                  "fill": "$color-section-header",
+                  "padding": [
+                    0,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "8V11Z",
+                      "name": "cdTitle",
+                      "fill": "$color-foreground",
+                      "content": "Push Revision",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
             {
               "type": "text",
               "id": "IRPE5",
@@ -1099,7 +1671,7 @@
               "id": "KnmRt",
               "name": "cdCheckRow",
               "width": "fill_container",
-              "height": 28,
+              "height": 50,
               "gap": 8,
               "alignItems": "center",
               "children": [
@@ -1118,14 +1690,14 @@
                   }
                 },
                 {
-                  "type": "text",
-                  "id": "MCzrZ",
+                  "type": "icon_font",
+                  "id": "MA5MV",
                   "name": "cdCheckMark",
-                  "fill": "$color-accent-blue",
-                  "content": "✓",
-                  "fontFamily": "Inter",
-                  "fontSize": 11,
-                  "fontWeight": "normal"
+                  "width": 14,
+                  "height": 14,
+                  "iconFontName": "check_small",
+                  "iconFontFamily": "Material Symbols Outlined",
+                  "fill": "$color-accent-blue"
                 },
                 {
                   "type": "text",
@@ -1149,9 +1721,16 @@
               "children": [
                 {
                   "type": "frame",
+                  "id": "Z7IvD",
+                  "name": "cdSpacer",
+                  "width": "fill_container",
+                  "height": 28
+                },
+                {
+                  "type": "frame",
                   "id": "Q0721",
                   "name": "cdPushBtn",
-                  "width": "fill_container",
+                  "width": 70,
                   "height": 28,
                   "fill": "$color-accent-blue",
                   "cornerRadius": 2,
@@ -1163,10 +1742,20 @@
                       "id": "Mk8MG",
                       "name": "cdPushTxt",
                       "fill": "#FFFFFF",
-                      "content": "Push",
+                      "content": "Confirm",
                       "fontFamily": "Inter",
                       "fontSize": 12,
                       "fontWeight": "normal"
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "4yjoT",
+                      "name": "cdConfirmIcon",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "check",
+                      "iconFontFamily": "Material Symbols Outlined",
+                      "fill": "#FFFFFF"
                     }
                   ]
                 },
@@ -1174,7 +1763,7 @@
                   "type": "frame",
                   "id": "kTIS1",
                   "name": "cdCancelBtn",
-                  "width": "fill_container",
+                  "width": 70,
                   "height": 28,
                   "fill": "$color-section-header",
                   "cornerRadius": 2,
@@ -1190,6 +1779,16 @@
                       "fontFamily": "Inter",
                       "fontSize": 12,
                       "fontWeight": "normal"
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "i8ghF",
+                      "name": "cancelIconPushRev",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "close",
+                      "iconFontFamily": "Material Symbols Outlined",
+                      "fill": "$color-foreground"
                     }
                   ]
                 }
@@ -1298,17 +1897,46 @@
               ],
               "children": [
                 {
-                  "type": "text",
-                  "id": "r2II9",
-                  "name": "cropPreviewLbl",
-                  "fill": "$color-foreground",
-                  "textGrowth": "fixed-width",
+                  "type": "frame",
+                  "id": "LGk6D",
+                  "name": "previewSecHdr",
                   "width": "fill_container",
-                  "content": "Preview",
-                  "textAlign": "center",
-                  "fontFamily": "Inter",
-                  "fontSize": 12,
-                  "fontWeight": "600"
+                  "height": 26,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "0yAKq",
+                      "name": "prevStripe",
+                      "width": 3,
+                      "height": 26,
+                      "fill": "$color-accent-blue"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "TcZeN",
+                      "name": "prevGrey",
+                      "width": "fill_container",
+                      "height": 26,
+                      "fill": "$color-section-header",
+                      "padding": [
+                        0,
+                        8
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "v4jJO",
+                          "name": "prevTitle",
+                          "fill": "$color-foreground",
+                          "content": "Preview",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
                 },
                 {
                   "type": "frame",
@@ -1431,6 +2059,16 @@
                   "fontFamily": "Inter",
                   "fontSize": 12,
                   "fontWeight": "normal"
+                },
+                {
+                  "type": "icon_font",
+                  "id": "Q5Ic5",
+                  "name": "cropConfirmIcon",
+                  "width": 16,
+                  "height": 16,
+                  "iconFontName": "check",
+                  "iconFontFamily": "Material Symbols Outlined",
+                  "fill": "#FFFFFF"
                 }
               ]
             },
@@ -1461,6 +2099,508 @@
                   "fontFamily": "Inter",
                   "fontSize": 12,
                   "fontWeight": "normal"
+                },
+                {
+                  "type": "icon_font",
+                  "id": "jSHSu",
+                  "name": "cancelIconCrop",
+                  "width": 16,
+                  "height": 16,
+                  "iconFontName": "close",
+                  "iconFontFamily": "Material Symbols Outlined",
+                  "fill": "$color-foreground"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "prFal",
+      "x": 920,
+      "y": 300,
+      "name": "PropertyMappingEditorWindow",
+      "width": 520,
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "BOXBa",
+          "name": "edBlueStripe",
+          "width": "fill_container",
+          "height": 4,
+          "fill": "$color-accent-blue"
+        },
+        {
+          "type": "frame",
+          "id": "YLGAm",
+          "name": "edBody",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 8,
+          "padding": [
+            14,
+            16,
+            16,
+            16
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "hor6t",
+              "name": "edSecHdr",
+              "width": "fill_container",
+              "height": 26,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Q3DTl",
+                  "name": "edStripe",
+                  "width": 3,
+                  "height": 26,
+                  "fill": "$color-accent-blue"
+                },
+                {
+                  "type": "frame",
+                  "id": "auJ6i",
+                  "name": "edGrey",
+                  "width": "fill_container",
+                  "height": 26,
+                  "fill": "$color-section-header",
+                  "padding": [
+                    0,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "GzgcM",
+                      "name": "edTitle",
+                      "fill": "$color-foreground",
+                      "content": "Property Field Mappings",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "UWLFP",
+              "name": "edSub",
+              "fill": "$color-subtle",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Map InvenTree part properties to your SolidWorks custom property names.",
+              "fontFamily": "Inter",
+              "fontSize": 11,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "CyIdx",
+              "name": "edColHdr",
+              "width": "fill_container",
+              "height": 20,
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "kBg44",
+                  "name": "edColInv",
+                  "fill": "$color-subtle",
+                  "textGrowth": "fixed-width",
+                  "width": 150,
+                  "content": "InvenTree Part Property",
+                  "fontFamily": "Inter",
+                  "fontSize": 11,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "3zNoK",
+                  "name": "edColSW",
+                  "fill": "$color-subtle",
+                  "content": "SolidWorks Custom Property",
+                  "fontFamily": "Inter",
+                  "fontSize": 11,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "rectangle",
+              "id": "wUaTS",
+              "name": "edSep1",
+              "fill": "$color-border",
+              "width": "fill_container",
+              "height": 1
+            },
+            {
+              "type": "frame",
+              "id": "8rn4R",
+              "name": "rowIPN",
+              "width": "fill_container",
+              "height": 28,
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "lQzIq",
+                  "name": "r1Role",
+                  "fill": "$color-foreground",
+                  "textGrowth": "fixed-width",
+                  "width": 150,
+                  "content": "IPN",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "nerDm",
+                  "name": "r1SW",
+                  "width": "fill_container",
+                  "height": 26,
+                  "fill": "$color-sw-field",
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "$color-border"
+                  },
+                  "padding": [
+                    0,
+                    6
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "XcRsF",
+                      "name": "r1SWTxt",
+                      "fill": "$color-subtle",
+                      "content": "(property name)",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal",
+                      "fontStyle": "italic"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Wkw5F",
+              "name": "rowName",
+              "width": "fill_container",
+              "height": 28,
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "UpgXA",
+                  "name": "r2Role",
+                  "fill": "$color-foreground",
+                  "textGrowth": "fixed-width",
+                  "width": 150,
+                  "content": "Name",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "tcxv3",
+                  "name": "r2SW",
+                  "width": "fill_container",
+                  "height": 26,
+                  "fill": "$color-sw-field",
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "$color-border"
+                  },
+                  "padding": [
+                    0,
+                    6
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "fu414",
+                      "name": "r2SWTxt",
+                      "fill": "$color-subtle",
+                      "content": "(property name)",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal",
+                      "fontStyle": "italic"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "0XEri",
+              "name": "rowDescription",
+              "width": "fill_container",
+              "height": 28,
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "wSJd7",
+                  "name": "r5Role",
+                  "fill": "$color-foreground",
+                  "textGrowth": "fixed-width",
+                  "width": 150,
+                  "content": "Description",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "ocoZu",
+                  "name": "r5SW",
+                  "width": "fill_container",
+                  "height": 26,
+                  "fill": "$color-sw-field",
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "$color-border"
+                  },
+                  "padding": [
+                    0,
+                    6
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "WBNGu",
+                      "name": "r5SWTxt",
+                      "fill": "$color-subtle",
+                      "content": "(property name)",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal",
+                      "fontStyle": "italic"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "YSZ9r",
+              "name": "rowRevision",
+              "width": "fill_container",
+              "height": 28,
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "bQfjI",
+                  "name": "r4Role",
+                  "fill": "$color-foreground",
+                  "textGrowth": "fixed-width",
+                  "width": 150,
+                  "content": "Revision",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "Oq4WJ",
+                  "name": "r4SW",
+                  "width": "fill_container",
+                  "height": 26,
+                  "fill": "$color-sw-field",
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "$color-border"
+                  },
+                  "padding": [
+                    0,
+                    6
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "7eK5e",
+                      "name": "r4SWTxt",
+                      "fill": "$color-subtle",
+                      "content": "(property name)",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal",
+                      "fontStyle": "italic"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "J201L",
+              "name": "rowNotes",
+              "width": "fill_container",
+              "height": 28,
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "gcvxi",
+                  "name": "r3Role",
+                  "fill": "$color-foreground",
+                  "textGrowth": "fixed-width",
+                  "width": 150,
+                  "content": "Notes",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "fLMoy",
+                  "name": "r3SW",
+                  "width": "fill_container",
+                  "height": 26,
+                  "fill": "$color-sw-field",
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "$color-border"
+                  },
+                  "padding": [
+                    0,
+                    6
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "HNDtl",
+                      "name": "r3SWTxt",
+                      "fill": "$color-subtle",
+                      "content": "(property name)",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal",
+                      "fontStyle": "italic"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "rectangle",
+              "id": "m12m3",
+              "name": "edSep2",
+              "fill": "$color-border",
+              "width": "fill_container",
+              "height": 1
+            },
+            {
+              "type": "frame",
+              "id": "jVrnJ",
+              "name": "edBtnRow",
+              "width": "fill_container",
+              "height": 28,
+              "gap": 8,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "FParw",
+                  "name": "edBtnSpacer",
+                  "width": "fill_container",
+                  "height": 28
+                },
+                {
+                  "type": "frame",
+                  "id": "T9wMH",
+                  "name": "edSaveBtn",
+                  "width": 70,
+                  "height": 28,
+                  "fill": "$color-accent-blue",
+                  "cornerRadius": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "kJolC",
+                      "name": "edSaveLbl",
+                      "fill": "#FFFFFF",
+                      "content": "Save",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "VIDXZ",
+                      "name": "edSaveIcon",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "save",
+                      "iconFontFamily": "Material Symbols Outlined",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "CFMBO",
+                  "name": "edCancelBtn",
+                  "width": 70,
+                  "height": 28,
+                  "fill": "$color-section-header",
+                  "cornerRadius": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "s2RxG",
+                      "name": "edCancelLbl",
+                      "fill": "$color-foreground",
+                      "content": "Cancel",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "OumBK",
+                      "name": "edCancelIcon",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "close",
+                      "iconFontFamily": "Material Symbols Outlined",
+                      "fill": "$color-foreground"
+                    }
+                  ]
                 }
               ]
             }

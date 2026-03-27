@@ -47,13 +47,33 @@ namespace SwInventreeAddin.UI
         {
             if (StatusStripe == null || _vm == null) return;
 
-            StatusStripe.Background = _vm.StatusSeverity switch
+            var brushKey = _vm.StatusSeverity switch
             {
-                StatusSeverity.Success => (Brush)FindResource("BrushStatusSuccess"),
-                StatusSeverity.Warning => (Brush)FindResource("BrushStatusWarning"),
-                StatusSeverity.Error   => (Brush)FindResource("BrushStatusError"),
-                _                      => (Brush)FindResource("BrushStatusNone"),
+                StatusSeverity.Success => "BrushStatusSuccess",
+                StatusSeverity.Warning => "BrushStatusWarning",
+                StatusSeverity.Error   => "BrushStatusError",
+                _                      => "BrushStatusNone",
             };
+
+            var iconGlyph = _vm.StatusSeverity switch
+            {
+                StatusSeverity.Success => "\uE73E",
+                StatusSeverity.Warning => "\uE7BA",
+                StatusSeverity.Error   => "\uE783",
+                _                      => "",
+            };
+
+            var brush = (Brush)FindResource(brushKey);
+            StatusStripe.Background = brush;
+
+            if (StatusIcon != null)
+            {
+                StatusIcon.Text       = iconGlyph;
+                StatusIcon.Foreground = brush;
+                StatusIcon.Visibility = iconGlyph.Length > 0
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+            }
         }
 
         // ── Button click handlers ──────────────────────────────────────────

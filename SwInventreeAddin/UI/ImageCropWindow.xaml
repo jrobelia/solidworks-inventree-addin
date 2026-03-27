@@ -42,16 +42,28 @@
                           IsChecked="True"
                           VerticalAlignment="Center" />
 
-                <Button Grid.Column="2" Content="Confirm"
+                <Button Grid.Column="2"
                         Style="{StaticResource PrimaryButtonStyle}"
                         Width="100" Margin="0"
-                        Click="Confirm_Click" />
+                        Click="Confirm_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Confirm" VerticalAlignment="Center" />
+                        <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                   VerticalAlignment="Center" Margin="6,0,0,0" />
+                    </StackPanel>
+                </Button>
 
-                <Button Grid.Column="4" Content="Cancel"
+                <Button Grid.Column="4"
                         Style="{StaticResource SecondaryButtonStyle}"
                         Width="100" Margin="0"
                         IsCancel="True"
-                        Click="Cancel_Click" />
+                        Click="Cancel_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Cancel" VerticalAlignment="Center" />
+                        <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                   VerticalAlignment="Center" Margin="6,0,0,0" />
+                    </StackPanel>
+                </Button>
             </Grid>
         </Border>
 
