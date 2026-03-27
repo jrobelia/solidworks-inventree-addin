@@ -68,6 +68,27 @@ Decided to defer: the editor is fully functional without it, and the fields pre-
 first launch). Placeholder styling can be added as a cosmetic polish task when the full
 mapping UI is revisited.
 
+## [2026-03-27] Segoe MDL2 Assets for all UI icons
+
+Segoe MDL2 Assets chosen as the icon font across all WPF windows. It ships
+with Windows 10/11 — no bundling, no NuGet package, no font file in Resources.
+Rendered as `FontFamily="Segoe MDL2 Assets"` TextBlocks inside Button
+StackPanels. Key glyphs in use: E713 settings gear, E896 download/load,
+E76C forward arrow (push →), E76B back arrow (apply ←), E74E save floppy,
+E711 cancel ✕, E73E check ✓, E703 refresh/test, E8B7 folder/browse, E70F
+edit pencil, E783 error.
+
+Rejected Material Symbols and Segoe Fluent Icons — MDL2 is the widest-supported
+option on Windows 10 installs without bundling.
+
+## [2026-03-27] WPF focus ring pattern for text inputs
+
+All editable TextBox and PasswordBox controls use an `IsFocused` trigger in
+their Style (`SWFieldStyle` / `SWPasswordBoxStyle`) that sets
+`BorderBrush=BrushAccentBlue` and `BorderThickness=2` when focused.
+Read-only InvenTree fields use `InvenTreeFieldStyle` with a lock tooltip
+(`ToolTip="Read-only — value from InvenTree"`) but no focus ring.
+
 ## [2026-03-12] SettingsWindow refreshes mapping status after editor closes (plan deviation)
 
 The task 0c plan (line 145) stated "the status bar does not need to refresh when the editor closes."

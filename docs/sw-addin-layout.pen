@@ -109,34 +109,77 @@
             },
             {
               "type": "frame",
-              "id": "Povc1",
-              "name": "loadBtn",
+              "id": "U2GHo",
+              "name": "buttonRow",
               "width": "fill_container",
               "height": 28,
-              "fill": "$color-accent-blue",
-              "cornerRadius": 2,
-              "justifyContent": "center",
-              "alignItems": "center",
+              "gap": 4,
               "children": [
                 {
-                  "type": "text",
-                  "id": "3Px9t",
-                  "name": "loadBtnLbl",
-                  "fill": "#FFFFFF",
-                  "content": "Load Properties from InvenTree",
-                  "fontFamily": "Inter",
-                  "fontSize": 12,
-                  "fontWeight": "normal"
+                  "type": "frame",
+                  "id": "Povc1",
+                  "name": "loadBtn",
+                  "width": "fill_container",
+                  "height": 28,
+                  "fill": "$color-accent-blue",
+                  "cornerRadius": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "3Px9t",
+                      "name": "loadBtnLbl",
+                      "fill": "#FFFFFF",
+                      "content": "Load from InvenTree",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "E1RKd",
+                      "name": "loadIcon",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "download",
+                      "iconFontFamily": "Material Symbols Outlined",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
                 },
                 {
-                  "type": "icon_font",
-                  "id": "E1RKd",
-                  "name": "loadIcon",
-                  "width": 16,
-                  "height": 16,
-                  "iconFontName": "download",
-                  "iconFontFamily": "Material Symbols Outlined",
-                  "fill": "#FFFFFF"
+                  "type": "frame",
+                  "id": "oKZi7",
+                  "name": "createBtn",
+                  "width": "fill_container",
+                  "height": 28,
+                  "fill": "$color-status-success",
+                  "cornerRadius": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "KDLuj",
+                      "name": "createBtnLbl",
+                      "fill": "#FFFFFF",
+                      "content": "Create in InvenTree",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "6xMxI",
+                      "name": "createIcon",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "add_circle",
+                      "iconFontFamily": "Material Symbols Outlined",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
                 }
               ]
             },
@@ -1802,7 +1845,7 @@
       "type": "frame",
       "id": "wyPDW",
       "x": 50,
-      "y": 870,
+      "y": 890,
       "name": "ImageCropWindow",
       "width": 900,
       "height": 700,
@@ -2120,7 +2163,7 @@
       "type": "frame",
       "id": "prFal",
       "x": 920,
-      "y": 300,
+      "y": 338,
       "name": "PropertyMappingEditorWindow",
       "width": 520,
       "fill": "#FFFFFF",
@@ -2607,6 +2650,731 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "brqfW",
+      "x": 1490,
+      "y": 50,
+      "name": "createPartDialog",
+      "width": 360,
+      "height": 460,
+      "fill": "#FFFFFF",
+      "cornerRadius": 3,
+      "stroke": {
+        "align": "inside",
+        "thickness": 1,
+        "fill": "$color-border"
+      },
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "ILxzJ",
+          "name": "dialogTitleBar",
+          "width": "fill_container",
+          "height": 36,
+          "fill": "$color-section-header",
+          "gap": 8,
+          "padding": [
+            0,
+            10,
+            0,
+            12
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "icon_font",
+              "id": "m6Uuq",
+              "name": "titleIcon",
+              "width": 18,
+              "height": 18,
+              "iconFontName": "add_circle",
+              "iconFontFamily": "Material Symbols Outlined",
+              "fill": "$color-status-success"
+            },
+            {
+              "type": "text",
+              "id": "pA3MH",
+              "name": "titleLbl",
+              "fill": "$color-foreground",
+              "content": "Create Part in InvenTree",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "bold"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Cbylt",
+          "name": "dialogBody",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 8,
+          "padding": 12,
+          "children": [
+            {
+              "type": "text",
+              "id": "rVa0f",
+              "name": "nameLbl",
+              "fill": "$color-subtle",
+              "content": "Name  (pre-filled from SolidWorks)",
+              "fontFamily": "Inter",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "kk8ox",
+              "name": "nameField",
+              "width": "fill_container",
+              "height": 26,
+              "fill": "$color-sw-field",
+              "stroke": {
+                "align": "inside",
+                "thickness": 1,
+                "fill": "$color-accent-blue"
+              },
+              "padding": [
+                0,
+                6
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "xigPW",
+                  "name": "nameFieldTxt",
+                  "fill": "$color-foreground",
+                  "content": "Bracket - Front Mount Assembly",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "JkYK1",
+              "name": "categoryLbl",
+              "fill": "$color-subtle",
+              "content": "Category",
+              "fontFamily": "Inter",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "bYkAF",
+              "name": "categoryTree",
+              "clip": true,
+              "width": "fill_container",
+              "height": 220,
+              "fill": "#FFFFFF",
+              "stroke": {
+                "align": "inside",
+                "thickness": 1,
+                "fill": "$color-border"
+              },
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "TCuRb",
+                  "name": "treeRow1",
+                  "width": "fill_container",
+                  "height": 26,
+                  "gap": 6,
+                  "padding": [
+                    0,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "1yQ6H",
+                      "name": "r1expand",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "keyboard_arrow_down",
+                      "iconFontFamily": "Material Symbols Outlined",
+                      "fill": "$color-subtle"
+                    },
+                    {
+                      "type": "text",
+                      "id": "VF8GG",
+                      "name": "r1lbl",
+                      "fill": "$color-foreground",
+                      "content": "Electronics",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ALBJa",
+                  "name": "treeRow2",
+                  "width": "fill_container",
+                  "height": 26,
+                  "gap": 6,
+                  "padding": [
+                    0,
+                    8,
+                    0,
+                    28
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "BqIOm",
+                      "name": "r2expand",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "chevron_right",
+                      "iconFontFamily": "Material Symbols Outlined",
+                      "fill": "$color-subtle"
+                    },
+                    {
+                      "type": "text",
+                      "id": "bLft3",
+                      "name": "r2lbl",
+                      "fill": "$color-foreground",
+                      "content": "Resistors",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "YTfgS",
+                  "name": "treeRow3",
+                  "width": "fill_container",
+                  "height": 26,
+                  "fill": "#E8F0F8",
+                  "gap": 6,
+                  "padding": [
+                    0,
+                    8,
+                    0,
+                    28
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "qDxAw",
+                      "name": "r3expand",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "chevron_right",
+                      "iconFontFamily": "Material Symbols Outlined",
+                      "fill": "$color-accent-blue"
+                    },
+                    {
+                      "type": "text",
+                      "id": "8S5gY",
+                      "name": "r3lbl",
+                      "fill": "$color-accent-blue",
+                      "content": "Capacitors",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "bold"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "jZQOa",
+                  "name": "treeRow4",
+                  "width": "fill_container",
+                  "height": 26,
+                  "gap": 6,
+                  "padding": [
+                    0,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "h2xeo",
+                      "name": "r4expand",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "chevron_right",
+                      "iconFontFamily": "Material Symbols Outlined",
+                      "fill": "$color-subtle"
+                    },
+                    {
+                      "type": "text",
+                      "id": "9fiYW",
+                      "name": "r4lbl",
+                      "fill": "$color-foreground",
+                      "content": "Mechanical",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "apeXQ",
+                  "name": "treeRow5",
+                  "width": "fill_container",
+                  "height": 26,
+                  "gap": 6,
+                  "padding": [
+                    0,
+                    8,
+                    0,
+                    28
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "2GtoF",
+                      "name": "r5expand",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "keyboard_arrow_down",
+                      "iconFontFamily": "Material Symbols Outlined",
+                      "fill": "$color-subtle"
+                    },
+                    {
+                      "type": "text",
+                      "id": "J7F1x",
+                      "name": "r5lbl",
+                      "fill": "$color-foreground",
+                      "content": "Fasteners",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "M214I",
+                  "name": "treeRow6",
+                  "width": "fill_container",
+                  "height": 26,
+                  "gap": 6,
+                  "padding": [
+                    0,
+                    8,
+                    0,
+                    48
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "HxxgA",
+                      "name": "r6dot",
+                      "width": 10,
+                      "height": 10,
+                      "iconFontName": "fiber_manual_record",
+                      "iconFontFamily": "Material Symbols Outlined",
+                      "fill": "$color-subtle"
+                    },
+                    {
+                      "type": "text",
+                      "id": "qHiXK",
+                      "name": "r6lbl",
+                      "fill": "$color-foreground",
+                      "content": "Bolts",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "pfPvN",
+              "name": "selectedCatLbl",
+              "fill": "$color-status-success",
+              "content": "Selected: Capacitors",
+              "fontFamily": "Inter",
+              "fontSize": 11,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "rectangle",
+              "id": "VvCrO",
+              "name": "footerSep",
+              "fill": "$color-border",
+              "width": "fill_container",
+              "height": 1
+            },
+            {
+              "type": "frame",
+              "id": "vrwDh",
+              "name": "footerRow",
+              "width": "fill_container",
+              "height": 32,
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "2bJY3",
+                  "name": "cancelBtn",
+                  "width": "fill_container",
+                  "height": 28,
+                  "fill": "$color-section-header",
+                  "cornerRadius": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "gCeLU",
+                      "name": "cancelBtnLbl",
+                      "fill": "$color-foreground",
+                      "content": "Cancel",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Fh1Fv",
+                  "name": "createBtn",
+                  "width": "fill_container",
+                  "height": 28,
+                  "fill": "$color-status-success",
+                  "cornerRadius": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "BtBRh",
+                      "name": "createBtnLbl",
+                      "fill": "#FFFFFF",
+                      "content": "Create Part",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "bold"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "iR7M0",
+      "x": 1920,
+      "y": 50,
+      "name": "Style Reference",
+      "width": 700,
+      "height": 800,
+      "fill": "#FFFFFF",
+      "stroke": {
+        "thickness": 1,
+        "fill": "#AAAAAA"
+      },
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "c0SJK",
+          "width": "fill_container",
+          "height": 4,
+          "fill": "#0070C0"
+        },
+        {
+          "type": "frame",
+          "id": "du4oP",
+          "name": "content",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 14,
+          "padding": 14,
+          "children": [
+            {
+              "type": "text",
+              "id": "j6w6y",
+              "fill": "#1A1A1A",
+              "content": "SW Add-In · Design System Reference",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "bold"
+            },
+            {
+              "type": "text",
+              "id": "sVBcK",
+              "name": "sub",
+              "fill": "#707070",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "WPF .NET 4.8 · C# 8  ·  Body: Segoe UI  ·  Icons: Segoe MDL2 Assets (Windows 10/11 built-in, no bundling)  ·  Updated 2026-03-27",
+              "fontFamily": "Inter",
+              "fontSize": 10,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "Hq0PI",
+              "name": "colHdr",
+              "width": "fill_container",
+              "height": 26,
+              "fill": "#D7D7D7",
+              "padding": [
+                0,
+                8
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "SnZBJ",
+                  "fill": "#1A1A1A",
+                  "content": "COLOR PALETTE",
+                  "fontFamily": "Inter",
+                  "fontSize": 11,
+                  "fontWeight": "bold"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "03Jbn",
+              "name": "bgRow",
+              "width": "fill_container",
+              "gap": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "fkPoM",
+                  "width": 52,
+                  "height": 44,
+                  "fill": "#FFFFFF",
+                  "stroke": {
+                    "thickness": 1,
+                    "fill": "#AAAAAA"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "dhglJ",
+                  "width": 52,
+                  "height": 44,
+                  "fill": "#FFFEF0",
+                  "stroke": {
+                    "thickness": 1,
+                    "fill": "#AAAAAA"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "hUt42",
+                  "width": 52,
+                  "height": 44,
+                  "fill": "#F5F5F5",
+                  "stroke": {
+                    "thickness": 1,
+                    "fill": "#AAAAAA"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "iAXSB",
+                  "width": 52,
+                  "height": 44,
+                  "fill": "#EFF6FF",
+                  "stroke": {
+                    "thickness": 1,
+                    "fill": "#AAAAAA"
+                  }
+                },
+                {
+                  "type": "text",
+                  "id": "JhfPl",
+                  "fill": "#1A1A1A",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "color-sw-field #FFFFFF — editable SolidWorks field\ncolor-inventree-field #FFFEF0 — read-only InvenTree field\ncolor-bg-disabled #F5F5F5 — disabled inputs\ncolor-bg-highlight #EFF6FF — selected / hover highlight",
+                  "lineHeight": 1.6,
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "SR8FI",
+              "name": "accentRow",
+              "width": "fill_container",
+              "gap": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "QmMUi",
+                  "width": 52,
+                  "height": 44,
+                  "fill": "#1A1A1A"
+                },
+                {
+                  "type": "frame",
+                  "id": "Ty0ze",
+                  "width": 52,
+                  "height": 44,
+                  "fill": "#707070"
+                },
+                {
+                  "type": "frame",
+                  "id": "sR8Xj",
+                  "width": 52,
+                  "height": 44,
+                  "fill": "#0070C0"
+                },
+                {
+                  "type": "frame",
+                  "id": "vWJfb",
+                  "width": 52,
+                  "height": 44,
+                  "fill": "#4CAF50"
+                },
+                {
+                  "type": "frame",
+                  "id": "07yAE",
+                  "width": 52,
+                  "height": 44,
+                  "fill": "#FFC107"
+                },
+                {
+                  "type": "text",
+                  "id": "gKUFG",
+                  "fill": "#1A1A1A",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "color-foreground #1A1A1A   color-subtle #707070\ncolor-accent-blue #0070C0  ← ALL interactive states (buttons, focus rings)\ncolor-status-success #4CAF50   color-status-warning #FFC107\ncolor-status-error #F44336   color-border #AAAAAA   color-section-header #D7D7D7",
+                  "lineHeight": 1.6,
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "6ut3o",
+              "name": "typoHdr",
+              "width": "fill_container",
+              "height": 26,
+              "fill": "#D7D7D7",
+              "padding": [
+                0,
+                8
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "9tJAe",
+                  "fill": "#1A1A1A",
+                  "content": "TYPOGRAPHY",
+                  "fontFamily": "Inter",
+                  "fontSize": 11,
+                  "fontWeight": "bold"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "RsNmO",
+              "fill": "#1A1A1A",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Segoe UI  13px Bold    — Section/dialog titles  ($font-size-heading)\nSegoe UI  12px Regular — Body text, field labels  ($font-size-body)\nSegoe UI  11px Regular — Sub-labels, hints, status bar text\nAll text: fontFamily=\"Segoe UI\"  ·  No extra letter-spacing  ·  Default line-height",
+              "lineHeight": 1.7,
+              "fontFamily": "Inter",
+              "fontSize": 11,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "tzdrA",
+              "name": "iconHdr",
+              "width": "fill_container",
+              "height": 26,
+              "fill": "#D7D7D7",
+              "padding": [
+                0,
+                8
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "fyGcB",
+                  "fill": "#1A1A1A",
+                  "content": "ICONS — SEGOE MDL2 ASSETS  (FontFamily=\"Segoe MDL2 Assets\", built into Windows 10/11)",
+                  "fontFamily": "Inter",
+                  "fontSize": 11,
+                  "fontWeight": "bold"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "4eiNp",
+              "name": "iconRow",
+              "width": "fill_container",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "esDZ9",
+                  "fill": "#0070C0",
+                  "content": "E713\nE896\nE76C\nE76B\nE74E\nE711\nE73E\nE703\nE8B7\nE70F\nE783\nE7BA\nE72E",
+                  "lineHeight": 2,
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "text",
+                  "id": "cj2Nq",
+                  "fill": "#1A1A1A",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "E713  Settings gear          —  Settings button\nE896  Load / Download        —  Load Properties from InvenTree\nE76C  Forward arrow (→)      —  Push to InvenTree\nE76B  Back arrow (←)         —  Apply to SW Doc\nE74E  Save floppy            —  Save (Settings, Mapping Editor)\nE711  Cancel / Close (×)     —  Cancel buttons\nE73E  Check mark (✓)        —  Confirm buttons, success indicator\nE703  Refresh (↻)            —  Test Connection\nE8B7  Folder / Browse        —  Browse file path\nE70F  Edit pencil            —  Edit Mappings button\nE783  Error icon             —  Status bar error severity\nE7BA  Warning icon           —  Status bar warning severity\nE72E  Lock icon              —  Read-only field tooltip indicator",
+                  "lineHeight": 2,
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "variables": {
@@ -2717,6 +3485,46 @@
     "status-stripe-width": {
       "type": "number",
       "value": 4
+    },
+    "color-bg-disabled": {
+      "type": "color",
+      "value": "#F5F5F5"
+    },
+    "color-bg-highlight": {
+      "type": "color",
+      "value": "#EFF6FF"
+    },
+    "color-placeholder": {
+      "type": "color",
+      "value": "#A1A1AA"
+    },
+    "color-text-secondary": {
+      "type": "color",
+      "value": "#707070"
+    },
+    "dialog-padding": {
+      "type": "number",
+      "value": 16
+    },
+    "dialog-width": {
+      "type": "number",
+      "value": 480
+    },
+    "font-size-label": {
+      "type": "number",
+      "value": 12
+    },
+    "font-size-small": {
+      "type": "number",
+      "value": 11
+    },
+    "section-header-height": {
+      "type": "number",
+      "value": 32
+    },
+    "tree-indent": {
+      "type": "number",
+      "value": 16
     }
   }
 }
