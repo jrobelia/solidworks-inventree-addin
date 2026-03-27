@@ -205,44 +205,26 @@ namespace SwInventreeAddin.UI
 
         private async void Save_Click(object sender, RoutedEventArgs e)
         {
-            string apiKey;
-            try
-            {
-                apiKey = await ResolveApiKeyAsync().ConfigureAwait(true);
-            }
-            catch (InvalidOperationException ex)
-            {
-                SetStatus(ex.Message, error: true);
-                return;
-            }
-
-            // Determine shared path: use SharedPathBox value when SharedRadio is checked,
-            // otherwise null (LocalRadio selected = no shared source).
-            string? sharedPath = (SharedRadio.IsChecked == true)
-                ? (string.IsNullOrWhiteSpace(SharedPathBox.Text) ? null : SharedPathBox.Text.Trim())
-                : null;
-
-            try
-            {
-                _configProvider.SaveServerConfig(new ServerConfig
-                {
-                    Url               = UrlBox.Text.Trim(),
-                    ApiKey            = apiKey,
-                    MappingSourcePath = sharedPath,
-                });
-            }
-            catch (Exception ex)
-            {
-                SetStatus($"Failed to save settings: {ex.Message}", error: true);
-                return;
-            }
-
+            if (!await ApplySettingsCore()) return;
             DialogResult = true;
         }
 
         // ── Apply ─────────────────────────────────────────────────────────────
 
         private async void Apply_Click(object sender, RoutedEventArgs e)
+        {
+            if (!await ApplySettingsCore()) return;
+            SetStatus("\u2713  Settings applied.", error: false, success: true);
+        }
+
+        // ── Shared settings save + notify ─────────────────────────────────────
+
+        /// <summary>
+        /// Resolves credentials, persists server config, rebuilds the mapping provider,
+        /// refreshes the status bar, and fires <see cref="MappingApplied"/>.
+        /// Returns true on success, false if an error was shown to the user.
+        /// </summary>
+        private async System.Threading.Tasks.Task<bool> ApplySettingsCore()
         {
             string apiKey;
             try
@@ -252,7 +234,7 @@ namespace SwInventreeAddin.UI
             catch (InvalidOperationException ex)
             {
                 SetStatus(ex.Message, error: true);
-                return;
+                return false;
             }
 
             string? sharedPath = (SharedRadio.IsChecked == true)
@@ -271,11 +253,12 @@ namespace SwInventreeAddin.UI
                 _mappingProvider = new PropertyMappingProvider(sharedPath);
                 RefreshMappingStatus();
                 MappingApplied?.Invoke(this, _mappingProvider);
-                SetStatus("\u2713  Settings applied.", error: false, success: true);
+                return true;
             }
             catch (Exception ex)
             {
-                SetStatus($"Failed to apply settings: {ex.Message}", error: true);
+                SetStatus($"Failed to save settings: {ex.Message}", error: true);
+                return false;
             }
         }
 

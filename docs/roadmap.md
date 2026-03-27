@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-03-10 (Iteration 0 — property mapping design session)
+Last updated: 2026-03-27 (tasks 0a–0c complete; visual polish committed)
 
 ## Project North Star
 
@@ -114,8 +114,8 @@ box for any SolidWorks + InvenTree shop. Lighter lift than originally scoped.
 | # | Task | Milestone | Type | Status | Pass / fail condition |
 |---|------|-----------|------|--------|-----------------------|
 | 0a | Add `GetServerInfoAsync()` to `IInventreeClient`, implement it in `InventreeHttpClient`, and add the stub method to `StubInventreeClient` in the test project | 1 | build | done | Returns InvenTree server version string and API version int from the live server; test project compiles |
-| 0b | Build `PropertyMappingConfig`, `IPropertyMappingProvider`, `PropertyMappingProvider` with file I/O, source path resolution, and copy-to-local flow | 1 | build | open | Config loads from local or configured path; first-run defaults write correctly; copy-to-local works |
-| 0c | Settings panel mapping row and `PropertyMappingEditorWindow` dialog | 1 | build | open | User can view and edit field mappings; read-only when loaded from configured path; version mismatch shows amber warning in the task pane (not the editor) |
+| 0b | Build `PropertyMappingConfig`, `IPropertyMappingProvider`, `PropertyMappingProvider` with file I/O, source path resolution, and copy-to-local flow | 1 | build | done | Config loads from local or configured path; first-run defaults write correctly; copy-to-local works |
+| 0c | Settings panel mapping row and `PropertyMappingEditorWindow` dialog | 1 | build | done | User can view and edit field mappings; read-only when loaded from configured path; version mismatch shows amber warning in the task pane (not the editor) |
 | 1 | Fetch and display the InvenTree category tree in a dialog | 1 | build | open | User sees a browsable list of categories from their InvenTree server |
 | 2 | Create a new InvenTree part (category + name) from the dialog | 1 | build | open | POST to /api/part/ succeeds; new part appears in InvenTree |
 | 3 | After creation, re-fetch the part to get the plugin-generated IPN and write IPN + name into SW custom properties | 1 | build | open | IPN and name properties are populated in the open SW document using mapped property names from config |
@@ -139,6 +139,11 @@ box for any SolidWorks + InvenTree shop. Lighter lift than originally scoped.
   buttons; RevisionMatch indicator; confirmation dialog with image checkbox
 - InvenTree thumbnail display + capture-push button -- 120x120 thumbnail, grey
   placeholder, detail endpoint fetch for full fields
+- Visual polish -- focus rings on all inputs, Segoe MDL2 Assets icons on all
+  buttons, status bar icon, lock tooltip on InvenTree read-only fields
+- Property mapping configuration (tasks 0a–0c) -- configurable field name
+  mapping between SolidWorks and InvenTree; shared or local JSON file;
+  `PropertyMappingEditorWindow` dialog; `GetServerInfoAsync()` for version check
 
 ---
 
@@ -180,9 +185,8 @@ debrief as each feature is completed.
 
 ## Next Action
 
-Run the build pipeline on **task #0a** (add `GetServerInfoAsync()`) first.
-It is a small, self-contained change that unblocks task #0b, which in turn
-unblocks all of Milestone 1.
+Tasks 0a–0c are complete. Move to **task #1** (fetch and display the InvenTree
+category tree in a dialog) — the first step of actual part creation.
 
 ## Call to Action
 

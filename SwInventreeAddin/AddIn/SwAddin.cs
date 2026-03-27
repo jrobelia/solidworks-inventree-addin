@@ -245,20 +245,16 @@ namespace SwInventreeAddin.AddIn
             };
             if (form.ShowDialog() != true) return;
 
+            // MappingApplied already updated _mappingProvider and refreshed the task pane.
+            // Only rebuild the HTTP client with the saved credentials.
             var newConfig = _configProvider.GetServerConfig();
             if (newConfig == null) return;
 
-            // Re-build the HTTP client with the new credentials
             _httpClient?.Dispose();
             _httpClient             = new System.Net.Http.HttpClient();
             _httpClient.BaseAddress = new System.Uri(newConfig.Url);
             var newClient = new InventreeHttpClient(_httpClient, newConfig.ApiKey);
             _taskPaneControl?.UpdateClient(newClient);
-
-            // Re-create the mapping provider with the (possibly changed) source path.
-            _mappingProvider = new PropertyMappingProvider(newConfig.MappingSourcePath);
-
-            _taskPaneControl?.UpdateMapping(_mappingProvider);
         }
     }
 }
