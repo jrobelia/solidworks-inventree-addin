@@ -362,7 +362,11 @@ namespace SwInventreeAddin.UI
             PartNumber               = partNo;
             PropertiesSectionVisible = true;
             RefreshCurrentProperties();
-            ResetInvenTreeState();
+
+            // If we already have fetched data for this IPN (e.g. just created the part),
+            // stay in POPULATED state — don't blow away the previews and button state.
+            if (_lastFetchedPart == null || _lastFetchedPart.Ipn != partNo)
+                ResetInvenTreeState();
         }
 
         /// <summary>Resets the entire panel. Called when no document is active.</summary>
@@ -425,28 +429,11 @@ namespace SwInventreeAddin.UI
 
             vm.PartCreated += (_, part) =>
             {
-                RunOnUiThread(() =>
-                {
-                    PartNumber               = part.Ipn ?? string.Empty;
-                    _isDocumentOpen          = true;
-                    NamePreview              = part.Name ?? string.Empty;
-                    NotesPreview             = part.Notes ?? string.Empty;
-                    RevisionPreview          = part.Revision ?? string.Empty;
-                    ThumbnailBytes           = null;
-                    PropertiesSectionVisible = true;
-                    ApplyEnabled             = true;
-                    ApplyNameEnabled         = true;
-                    ApplyNotesEnabled        = true;
-                    PushNameEnabled          = true;
-                    PushNotesEnabled         = true;
-                    PushRevisionVisible      = true;
-                    PushImageVisible         = true;
-                    _lastFetchedPart         = part;
-                    RefreshCurrentProperties();
-                    FetchEnabled             = !string.IsNullOrEmpty(part.Ipn);
-                    CreatePartEnabled        = CanCreatePart();
-                    SetStatus("\u2713  Part created in InvenTree.", StatusSeverity.Success);
-                });
+                PartNumber        = part.Ipn ?? string.Empty;
+                FetchEnabled      = !string.IsNullOrEmpty(part.Ipn);
+                CreatePartEnabled = CanCreatePart();
+                ApplyFetchedPart(part);
+                SetStatus("Part created in InvenTree.", StatusSeverity.Success);
             };
 
             showDialog(vm);
@@ -505,18 +492,7 @@ namespace SwInventreeAddin.UI
                     return;
                 }
 
-                NamePreview      = part.Name;
-                NotesPreview     = part.Notes;
-                RevisionPreview  = part.Revision;
-                ThumbnailBytes    = thumbBytes;
-                ApplyEnabled      = true;
-                ApplyNameEnabled  = true;
-                ApplyNotesEnabled = true;
-                PushNameEnabled   = true;
-                PushNotesEnabled  = true;
-                PushRevisionVisible = true;
-                PushImageVisible    = true;
-                _lastFetchedPart    = part;
+                ApplyFetchedPart(part, thumbBytes);
                 SetStatus(string.Empty, StatusSeverity.None);
             });
         }
@@ -533,7 +509,7 @@ namespace SwInventreeAddin.UI
             CurrentName  = _lastFetchedPart.Name;
             CurrentNotes = _lastFetchedPart.Notes;
 
-            SetStatus("\u2713  Applied to document.", StatusSeverity.Success);
+            SetStatus("Applied to document.", StatusSeverity.Success);
         }
 
         /// <summary>Writes only the Name field to the SolidWorks document.</summary>
@@ -544,7 +520,7 @@ namespace SwInventreeAddin.UI
             var value = NamePreview;
             _propertyService.SetCustomProperty(GetMappingOrDefault().NameProperty, value);
             CurrentName = value;
-            SetStatus("\u2713  Name applied.", StatusSeverity.Success);
+            SetStatus("Name applied.", StatusSeverity.Success);
         }
 
         /// <summary>Writes only the Notes field to the SolidWorks document.</summary>
@@ -555,7 +531,7 @@ namespace SwInventreeAddin.UI
             var value = NotesPreview;
             _propertyService.SetCustomProperty(GetMappingOrDefault().NotesProperty, value);
             CurrentNotes = value;
-            SetStatus("\u2713  Notes applied.", StatusSeverity.Success);
+            SetStatus("Notes applied.", StatusSeverity.Success);
         }
 
         /// <summary>Pushes the current SolidWorks revision up to InvenTree.</summary>
@@ -590,7 +566,7 @@ namespace SwInventreeAddin.UI
                 {
                     _lastFetchedPart.Revision = revision;
                     RevisionPreview           = revision;
-                    SetStatus("\u2713  Revision pushed to InvenTree.", StatusSeverity.Success);
+                    SetStatus("Revision pushed to InvenTree.", StatusSeverity.Success);
                 });
             }
             catch (Exception ex)
@@ -619,7 +595,7 @@ namespace SwInventreeAddin.UI
                 {
                     _lastFetchedPart.Name = name;
                     NamePreview           = name;
-                    SetStatus("\u2713  Name pushed to InvenTree.", StatusSeverity.Success);
+                    SetStatus("Name pushed to InvenTree.", StatusSeverity.Success);
                 });
             }
             catch (Exception ex)
@@ -648,7 +624,7 @@ namespace SwInventreeAddin.UI
                 {
                     _lastFetchedPart.Notes = notes;
                     NotesPreview           = notes;
-                    SetStatus("\u2713  Notes pushed to InvenTree.", StatusSeverity.Success);
+                    SetStatus("Notes pushed to InvenTree.", StatusSeverity.Success);
                 });
             }
             catch (Exception ex)
@@ -717,7 +693,7 @@ namespace SwInventreeAddin.UI
                 RunOnUiThread(() =>
                 {
                     if (newThumb != null) ThumbnailBytes = newThumb;
-                    SetStatus("\u2713  Image pushed to InvenTree.", StatusSeverity.Success);
+                    SetStatus("Image pushed to InvenTree.", StatusSeverity.Success);
                 });
             }
             catch (Exception ex)
@@ -739,6 +715,29 @@ namespace SwInventreeAddin.UI
             CurrentName     = _propertyService.GetCustomProperty(mapping.NameProperty);
             CurrentNotes    = _propertyService.GetCustomProperty(mapping.NotesProperty);
             CurrentRevision = _propertyService.GetCustomProperty(mapping.RevisionProperty);
+        }
+
+        /// <summary>
+        /// Applies a fetched InvenTree part to the task pane, entering POPULATED state.
+        /// Called from both FetchPartAsync (after a Load) and the PartCreated handler
+        /// (after a create — the part was already fetched inside CreateAsync).
+        /// </summary>
+        private void ApplyFetchedPart(InventreePart part, byte[]? thumbBytes = null)
+        {
+            PropertiesSectionVisible = true;
+            NamePreview              = part.Name     ?? string.Empty;
+            NotesPreview             = part.Notes    ?? string.Empty;
+            RevisionPreview          = part.Revision ?? string.Empty;
+            ThumbnailBytes           = thumbBytes;
+            ApplyEnabled             = true;
+            ApplyNameEnabled         = true;
+            ApplyNotesEnabled        = true;
+            PushNameEnabled          = true;
+            PushNotesEnabled         = true;
+            PushRevisionVisible      = true;
+            PushImageVisible         = true;
+            _lastFetchedPart         = part;
+            RefreshCurrentProperties();
         }
 
         private void ResetInvenTreeState()

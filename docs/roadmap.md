@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-03-27 (tasks 0a–0c complete; visual polish committed)
+Last updated: 2026-03-28 (tasks 1–3 complete; part creation end-to-end verified)
 
 ## Project North Star
 
@@ -116,9 +116,9 @@ box for any SolidWorks + InvenTree shop. Lighter lift than originally scoped.
 | 0a | Add `GetServerInfoAsync()` to `IInventreeClient`, implement it in `InventreeHttpClient`, and add the stub method to `StubInventreeClient` in the test project | 1 | build | done | Returns InvenTree server version string and API version int from the live server; test project compiles |
 | 0b | Build `PropertyMappingConfig`, `IPropertyMappingProvider`, `PropertyMappingProvider` with file I/O, source path resolution, and copy-to-local flow | 1 | build | done | Config loads from local or configured path; first-run defaults write correctly; copy-to-local works |
 | 0c | Settings panel mapping row and `PropertyMappingEditorWindow` dialog | 1 | build | done | User can view and edit field mappings; read-only when loaded from configured path; version mismatch shows amber warning in the task pane (not the editor) |
-| 1 | Fetch and display the InvenTree category tree in a dialog | 1 | build | open | User sees a browsable list of categories from their InvenTree server |
-| 2 | Create a new InvenTree part (category + name) from the dialog | 1 | build | open | POST to /api/part/ succeeds; new part appears in InvenTree |
-| 3 | After creation, re-fetch the part to get the plugin-generated IPN and write IPN + name into SW custom properties | 1 | build | open | IPN and name properties are populated in the open SW document using mapped property names from config |
+| 1 | Fetch and display the InvenTree category tree in a dialog | 1 | build | done | User sees a browsable list of categories from their InvenTree server |
+| 2 | Create a new InvenTree part (category + name) from the dialog | 1 | build | done | POST to /api/part/ succeeds; new part appears in InvenTree |
+| 3 | After creation, re-fetch the part to get the plugin-generated IPN and write IPN + name into SW custom properties | 1 | build | done | IPN and name properties are populated in the open SW document using mapped property names from config |
 | 4 | Display read-only InvenTree fields (stock, on order, price, active, default supplier) in the task pane after fetch | 1 | build | open | Fields appear below the existing property comparison when a part is loaded |
 | 5 | Add a name-based search box to the task pane (searches InvenTree, displays results) | 1 | build | open | User can type a partial name, see matching parts, and view their details |
 | 6 | Add Description as a synced property row (same pattern as Name/Notes/Revision) | 1 | cleanup | open | Description row appears in the comparison grid with match indicator and push/apply buttons |
@@ -131,6 +131,9 @@ box for any SolidWorks + InvenTree shop. Lighter lift than originally scoped.
 
 ### Done
 
+- Tasks 1–3: Create Part in InvenTree from SolidWorks -- category tree dialog, POST new part,
+  IPN + Name write-back to SW doc, auto-populate comparison grid. Optional IPN field for
+  users without a server-side IPN plugin. Verified 2026-03-28.
 - v1.0.0 -- Encrypted settings panel, push revision, fetch part data
 - Push part image to InvenTree -- viewport capture via SaveBMP API, crop dialog
   with square-lock and move-drag, 800x800 PNG resize pipeline, "Also push

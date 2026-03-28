@@ -1088,6 +1088,7 @@ namespace SwInventreeAddin.Tests
 
             _propertyService.Seed("PartNo",      string.Empty);
             _propertyService.Seed("Description", string.Empty);
+            _client.PartToReturn = createdPart;   // FetchPartAsync looks up by IPN after create
             var vm            = CreateVm();
             bool dialogOpened = false;
 
@@ -1106,10 +1107,11 @@ namespace SwInventreeAddin.Tests
                 handler?.Invoke(createVm, createdPart);
             });
 
-            Assert.That(dialogOpened,      Is.True);
-            Assert.That(vm.PartNumber,     Is.EqualTo("R-NEW-001"));
-            Assert.That(vm.NamePreview,    Is.EqualTo("New Resistor"));
-            Assert.That(vm.CreatePartEnabled, Is.False);  // IPN now set — Create disabled
+            Assert.That(dialogOpened,         Is.True);
+            Assert.That(vm.PartNumber,        Is.EqualTo("R-NEW-001"));
+            Assert.That(vm.NamePreview,       Is.EqualTo("New Resistor"));
+            Assert.That(vm.ApplyEnabled,      Is.True);           // fields unlocked via FetchPartAsync
+            Assert.That(vm.CreatePartEnabled, Is.False);          // IPN now set — Create disabled
         }
 
         [Test]

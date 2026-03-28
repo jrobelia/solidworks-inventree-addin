@@ -99,7 +99,29 @@ This is a deliberate improvement: if the user edits and saves mappings, the stat
 transitions (e.g. "No mappings configured" → "Using local mappings") without requiring a
 Settings dialog close-and-reopen. The plan was conservative; the implementation is better.
 
-## [2026-03-12] GetMapping() has a first-run file-write side-effect
+## [2026-03-28] PartCreated handler delegates to ApplyFetchedPart, not FetchPartAsync
+
+After a successful part create, the task pane needs to enter POPULATED state (previews filled,
+Apply/Push buttons enabled). The first attempt called `FetchPartAsync()` from the `PartCreated`
+handler. This caused a race: SolidWorks fires `ActiveDocChangeNotify` when the dialog closes,
+which called `LoadPartNumber()` → `ResetInvenTreeState()`, blowing away the state before or
+after the async fetch completed.
+
+Fix: introduced `ApplyFetchedPart(part, thumbBytes?)` as a private method — the single
+authoritative place to enter POPULATED state. `FetchPartAsync` and the `PartCreated` handler
+both call it. The handler sets state synchronously (part already in hand from `CreateAsync`),
+so no async race is possible. `LoadPartNumber` guards against resetting if `_lastFetchedPart.Ipn`
+already matches the doc IPN.
+
+## [2026-03-28] Optional IPN field on Create Part dialog
+
+Users without an InvenTree IPN-generation plugin, or who want a specific IPN, need a way to
+provide one at create time. Added an optional "Part Number" field to `CreatePartWindow`.
+When blank, the IPN key is omitted from the POST body entirely — InvenTree plugin or server
+default handles assignment. When filled, it is sent as `"ipn"` in the POST body.
+Never overrides server behaviour when left blank.
+
+## [2026-03-28] GetMapping() has a first-run file-write side-effect
 
 `PropertyMappingProvider.GetMapping()` writes default JSON to the local path on first call if
 the file does not exist. This means opening the Settings dialog (which calls `RefreshMappingStatus()`

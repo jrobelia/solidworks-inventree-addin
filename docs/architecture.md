@@ -44,6 +44,35 @@ SwInventreeAddin/
 5. User clicks Push Rev -> TaskPaneControl calls IInventreeClient.PatchPartRevisionAsync
 6. User clicks Push Image -> capture viewport -> ImageCropWindow -> ImagePipeline -> IInventreeClient.UploadPartImageAsync
 
+## Task pane state machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> EMPTY
+
+    EMPTY : EMPTY\nNo doc / Drawing\n──\nFetch = off\nCreate = off\nProperties section = hidden\nPreviews = blank\nApply / Push = disabled
+
+    UNLINKED : UNLINKED\nDoc open, SW IPN blank\n──\nFetch = off\nCreate = ON\nProperties section = hidden\nPreviews = blank\nApply / Push = disabled
+
+    LINKED : LINKED\nSW IPN known, not fetched\n──\nFetch = ON\nCreate = off\nProperties section = visible\nCurrent SW fields = shown\nPreviews = blank\nApply / Push = disabled (fields locked)
+
+    POPULATED : LINKED + POPULATED\nInvenTree data in hand\n──\nFetch = ON (can reload)\nCreate = off\nProperties section = visible\nCurrent SW fields = shown\nPreviews = populated (name, notes, rev, image)\nApply / Push = enabled (fields unlocked)
+
+    EMPTY --> UNLINKED : part/assy opened\nSW IPN property blank
+    EMPTY --> LINKED : part/assy opened\nSW IPN property has value
+    UNLINKED --> LINKED : Create dialog → PartCreated fires\n(IPN + Name written to SW doc)\nthen FetchPartAsync()
+    LINKED --> POPULATED : user clicks Load\nFetchPartAsync() succeeds
+    POPULATED --> POPULATED : user clicks Load again
+    LINKED --> EMPTY : doc closed / switched
+    POPULATED --> EMPTY : doc closed / switched
+    POPULATED --> LINKED : doc switched to different part with IPN
+    EMPTY --> EMPTY : Drawing opened
+```
+
+**Single source of truth for the "populated" state: `FetchPartAsync()`.**
+After a create, the `PartCreated` handler sets `PartNumber` and calls `FetchPartAsync()` directly —
+it does not manually replicate the field-unlock logic.
+
 ## Design files
 
 UI mockups are maintained in `docs/sw-addin-layout.pen` using Pencil, available via the
