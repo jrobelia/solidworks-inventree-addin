@@ -148,9 +148,17 @@ namespace SwInventreeAddin.InvenTree
             return list;
         }
 
-        public async Task<int> CreatePartAsync(int categoryPk, string name)
+        public async Task<int> CreatePartAsync(int categoryPk, string name, string? ipn = null)
         {
-            var payload = JsonSerializer.Serialize(new { category = categoryPk, name });
+            var payloadDict = new System.Collections.Generic.Dictionary<string, object>
+            {
+                ["category"] = categoryPk,
+                ["name"]     = name
+            };
+            if (!string.IsNullOrWhiteSpace(ipn))
+                payloadDict["ipn"] = ipn.Trim();
+
+            var payload = JsonSerializer.Serialize(payloadDict);
             var body    = new StringContent(payload, System.Text.Encoding.UTF8, "application/json");
 
             using var request = new HttpRequestMessage(HttpMethod.Post, "/api/part/")

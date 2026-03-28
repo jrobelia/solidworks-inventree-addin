@@ -2658,7 +2658,7 @@
       "y": 50,
       "name": "createPartDialog",
       "width": 360,
-      "height": 435,
+      "height": 491,
       "fill": "#FFFFFF",
       "cornerRadius": 3,
       "stroke": {
@@ -2711,7 +2711,7 @@
           "id": "Cbylt",
           "name": "dialogBody",
           "width": "fill_container",
-          "height": 401,
+          "height": 457,
           "layout": "vertical",
           "gap": 8,
           "padding": 12,
@@ -2721,7 +2721,7 @@
               "id": "rVa0f",
               "name": "nameLbl",
               "fill": "$color-subtle",
-              "content": "Name  (pre-filled from SolidWorks)",
+              "content": "Name",
               "fontFamily": "Inter",
               "fontSize": 12,
               "fontWeight": "normal"
@@ -2736,7 +2736,7 @@
               "stroke": {
                 "align": "inside",
                 "thickness": 1,
-                "fill": "$color-accent-blue"
+                "fill": "$color-border"
               },
               "padding": [
                 0,
@@ -2748,8 +2748,48 @@
                   "type": "text",
                   "id": "xigPW",
                   "name": "nameFieldTxt",
-                  "fill": "$color-foreground",
+                  "fill": "$color-subtle",
                   "content": "Bracket - Front Mount Assembly",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "Ps8jF",
+              "name": "ipnLbl",
+              "fill": "$color-subtle",
+              "content": "Part Number  (optional)",
+              "fontFamily": "Inter",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "VRV7F",
+              "name": "ipnField",
+              "width": "fill_container",
+              "height": 26,
+              "fill": "$color-sw-field",
+              "stroke": {
+                "align": "inside",
+                "thickness": 1,
+                "fill": "$color-border"
+              },
+              "padding": [
+                0,
+                6
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "shGRD",
+                  "name": "ipnFieldTxt",
+                  "fill": "$color-subtle",
+                  "content": "(leave blank for auto-assign)",
                   "fontFamily": "Inter",
                   "fontSize": 12,
                   "fontWeight": "normal"

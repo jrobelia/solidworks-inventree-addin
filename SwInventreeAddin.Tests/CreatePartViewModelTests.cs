@@ -269,5 +269,21 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(_client.LastCreateCategoryPk, Is.EqualTo(0));
         }
+
+        [Test]
+        public async Task CreateAsync_UserProvidesIpn_PassesIpnToClient()
+        {
+            _client.PkToReturnOnCreate = 42;
+            _client.PartByPkToReturn   = new InventreePart { Pk = 42, Ipn = "FAB-001", Name = "Custom" };
+            _propertyService.Seed("PartNo",      string.Empty);
+            _propertyService.Seed("Description", string.Empty);
+
+            var vm = CreateVm();
+            vm.SelectedCategory = MakeNode();
+            vm.IpnEntry         = "FAB-001";
+            await vm.CreateAsync();
+
+            Assert.That(_client.LastCreateIpn, Is.EqualTo("FAB-001"));
+        }
     }
 }

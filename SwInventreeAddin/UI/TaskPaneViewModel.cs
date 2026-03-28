@@ -443,6 +443,7 @@ namespace SwInventreeAddin.UI
                     PushImageVisible         = true;
                     _lastFetchedPart         = part;
                     RefreshCurrentProperties();
+                    FetchEnabled             = !string.IsNullOrEmpty(part.Ipn);
                     CreatePartEnabled        = CanCreatePart();
                     SetStatus("\u2713  Part created in InvenTree.", StatusSeverity.Success);
                 });

@@ -99,10 +99,13 @@ namespace SwInventreeAddin.Tests.Stubs
         public string LastCreateName       { get; private set; } = string.Empty;
         public bool   ThrowOnCreate        { get; set; }
 
-        public Task<int> CreatePartAsync(int categoryPk, string name)
+        public string LastCreateIpn       { get; private set; } = string.Empty;
+
+        public Task<int> CreatePartAsync(int categoryPk, string name, string? ipn = null)
         {
             LastCreateCategoryPk = categoryPk;
             LastCreateName       = name;
+            LastCreateIpn        = ipn ?? string.Empty;
             if (ThrowOnCreate)
                 throw new HttpRequestException("Stub: CreatePart failed");
             return Task.FromResult(PkToReturnOnCreate);

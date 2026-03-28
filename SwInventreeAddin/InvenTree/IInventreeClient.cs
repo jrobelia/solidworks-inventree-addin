@@ -20,7 +20,7 @@ namespace SwInventreeAddin.InvenTree
         Task<IReadOnlyList<InventreeCategory>> GetCategoriesAsync(int? parentId);
 
         /// <summary>Creates a new part and returns its server-assigned PK.</summary>
-        Task<int> CreatePartAsync(int categoryPk, string name);
+        Task<int> CreatePartAsync(int categoryPk, string name, string? ipn = null);
 
         /// <summary>Fetches a single part by its primary key. Returns null when not found.</summary>
         Task<InventreePart?> GetPartByPkAsync(int pk);

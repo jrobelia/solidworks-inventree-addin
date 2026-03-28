@@ -37,6 +37,7 @@ namespace SwInventreeAddin.UI
 
             // Two-way text binding wired in code so the XAML stays clean.
             PartNameBox.TextChanged += (_, __) => vm.PartName = PartNameBox.Text;
+            IpnEntryBox.TextChanged += (_, __) => vm.IpnEntry = IpnEntryBox.Text;
 
             // Close the dialog with a success result as soon as the part is created.
             vm.PartCreated += OnPartCreated;

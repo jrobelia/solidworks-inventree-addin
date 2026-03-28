@@ -659,7 +659,7 @@ namespace SwInventreeAddin.Tests
             => Task.FromResult<System.Collections.Generic.IReadOnlyList<InventreeCategory>>(
                 new System.Collections.Generic.List<InventreeCategory>());
 
-        public Task<int> CreatePartAsync(int categoryPk, string name)
+        public Task<int> CreatePartAsync(int categoryPk, string name, string? ipn = null)
             => Task.FromResult(0);
 
         public Task<InventreePart?> GetPartByPkAsync(int pk)

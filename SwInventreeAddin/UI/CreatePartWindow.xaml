@@ -4,7 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="Create Part in InvenTree"
     Width="360"
-    Height="435"
+    Height="490"
     ResizeMode="NoResize"
     WindowStartupLocation="CenterScreen"
     FontFamily="Segoe UI"
@@ -42,6 +42,8 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -61,17 +63,33 @@
                      FontSize="{StaticResource FontSizeBody}"
                      BorderBrush="{StaticResource BrushBorder}"
                      BorderThickness="1"
+                     Margin="0,0,0,8" />
+
+            <!-- Part Number (optional) label + TextBox -->
+            <TextBlock Grid.Row="2"
+                       Text="Part Number (optional)"
+                       Foreground="{StaticResource BrushSubtle}"
+                       FontSize="{StaticResource FontSizeBody}"
+                       Margin="0,0,0,4" />
+
+            <TextBox Grid.Row="3"
+                     x:Name="IpnEntryBox"
+                     Height="26"
+                     Padding="4,4"
+                     FontSize="{StaticResource FontSizeBody}"
+                     BorderBrush="{StaticResource BrushBorder}"
+                     BorderThickness="1"
                      Margin="0,0,0,12" />
 
             <!-- Category label -->
-            <TextBlock Grid.Row="2"
+            <TextBlock Grid.Row="4"
                        Text="Category"
                        Foreground="{StaticResource BrushSubtle}"
                        FontSize="{StaticResource FontSizeBody}"
                        Margin="0,0,0,4" />
 
             <!-- Category TreeView -->
-            <Border Grid.Row="3"
+            <Border Grid.Row="5"
                     BorderBrush="{StaticResource BrushBorder}"
                     BorderThickness="1"
                     Margin="0,0,0,12">
@@ -119,7 +137,7 @@
             </Border>
 
             <!-- Selected category indicator -->
-            <Border Grid.Row="4"
+            <Border Grid.Row="6"
                     BorderBrush="{StaticResource BrushBorder}"
                     BorderThickness="1"
                     Background="{StaticResource BrushSectionHeader}"
@@ -138,7 +156,7 @@
             </Border>
 
             <!-- Button row -->
-            <Grid Grid.Row="5">
+            <Grid Grid.Row="7">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition />
                     <ColumnDefinition Width="8" />

@@ -125,6 +125,30 @@ namespace SwInventreeAddin.Tests
                 CreateClient(handler).CreatePartAsync(7, "New Part"));
         }
 
+        [Test]
+        public async Task CreatePartAsync_WithIpn_SendsIpnInBody()
+        {
+            var responseJson = @"{""pk"":99,""name"":""New Part""}";
+            var handler      = new StubHttpMessageHandler(HttpStatusCode.OK, responseJson);
+
+            await CreateClient(handler).CreatePartAsync(7, "New Part", "ABC-001");
+
+            using var doc = JsonDocument.Parse(handler.LastRequestBody);
+            Assert.That(doc.RootElement.GetProperty("ipn").GetString(), Is.EqualTo("ABC-001"));
+        }
+
+        [Test]
+        public async Task CreatePartAsync_NoIpn_OmitsIpnFromBody()
+        {
+            var responseJson = @"{""pk"":99,""name"":""New Part""}";
+            var handler      = new StubHttpMessageHandler(HttpStatusCode.OK, responseJson);
+
+            await CreateClient(handler).CreatePartAsync(7, "New Part");
+
+            using var doc = JsonDocument.Parse(handler.LastRequestBody);
+            Assert.That(doc.RootElement.TryGetProperty("ipn", out _), Is.False);
+        }
+
         // ── GetPartByPkAsync ────────────────────────────────────────────────────
 
         [Test]

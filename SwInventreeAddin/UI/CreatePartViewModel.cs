@@ -46,6 +46,14 @@ namespace SwInventreeAddin.UI
             }
         }
 
+        private string _ipnEntry = string.Empty;
+        /// <summary>Optional IPN entered by the user. When non-empty, sent as the part IPN on creation.</summary>
+        public string IpnEntry
+        {
+            get => _ipnEntry;
+            set => Set(ref _ipnEntry, value);
+        }
+
         private CategoryNode? _selectedCategory;
         public CategoryNode? SelectedCategory
         {
@@ -183,9 +191,10 @@ namespace SwInventreeAddin.UI
 
             try
             {
-                var categoryPk = _selectedCategory!.Category.Pk;
-                var pk         = await _client.CreatePartAsync(categoryPk, _partName)
-                                              .ConfigureAwait(false);
+                var categoryPk  = _selectedCategory!.Category.Pk;
+                var ipnToSubmit = string.IsNullOrWhiteSpace(_ipnEntry) ? null : _ipnEntry.Trim();
+                var pk          = await _client.CreatePartAsync(categoryPk, _partName, ipnToSubmit)
+                                               .ConfigureAwait(false);
 
                 RunOnUiThread(() => StatusText = "Fetching new part\u2026");
 
