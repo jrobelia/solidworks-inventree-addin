@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Net.Http;
 using System.Threading.Tasks;
 using SwInventreeAddin.InvenTree;
 
@@ -73,6 +75,51 @@ namespace SwInventreeAddin.Tests.Stubs
         {
             if (ThrowOnGetServerInfo != null) throw ThrowOnGetServerInfo;
             return Task.FromResult(ServerInfoToReturn ?? new InventreeServerInfo());
+        }
+
+        // ── GetCategoriesAsync ─────────────────────────────────────────────────
+
+        public IReadOnlyList<InventreeCategory> CategoriesToReturn { get; set; }
+            = new List<InventreeCategory>();
+        public int?  LastGetCategoriesParentId { get; private set; }
+        public bool  ThrowOnGetCategories { get; set; }
+
+        public Task<IReadOnlyList<InventreeCategory>> GetCategoriesAsync(int? parentId)
+        {
+            LastGetCategoriesParentId = parentId;
+            if (ThrowOnGetCategories)
+                throw new HttpRequestException("Stub: GetCategories failed");
+            return Task.FromResult(CategoriesToReturn);
+        }
+
+        // ── CreatePartAsync ────────────────────────────────────────────────────
+
+        public int    PkToReturnOnCreate  { get; set; }
+        public int    LastCreateCategoryPk { get; private set; }
+        public string LastCreateName       { get; private set; } = string.Empty;
+        public bool   ThrowOnCreate        { get; set; }
+
+        public Task<int> CreatePartAsync(int categoryPk, string name)
+        {
+            LastCreateCategoryPk = categoryPk;
+            LastCreateName       = name;
+            if (ThrowOnCreate)
+                throw new HttpRequestException("Stub: CreatePart failed");
+            return Task.FromResult(PkToReturnOnCreate);
+        }
+
+        // ── GetPartByPkAsync ───────────────────────────────────────────────────
+
+        public InventreePart? PartByPkToReturn  { get; set; }
+        public int            LastGetPartByPkPk { get; private set; }
+        public bool           ThrowOnGetPartByPk { get; set; }
+
+        public Task<InventreePart?> GetPartByPkAsync(int pk)
+        {
+            LastGetPartByPkPk = pk;
+            if (ThrowOnGetPartByPk)
+                throw new HttpRequestException("Stub: GetPartByPk failed");
+            return Task.FromResult(PartByPkToReturn);
         }
     }
 }

@@ -654,6 +654,16 @@ namespace SwInventreeAddin.Tests
 
         public Task<InventreeServerInfo> GetServerInfoAsync()
             => Task.FromResult(new InventreeServerInfo());
+
+        public Task<System.Collections.Generic.IReadOnlyList<InventreeCategory>> GetCategoriesAsync(int? parentId)
+            => Task.FromResult<System.Collections.Generic.IReadOnlyList<InventreeCategory>>(
+                new System.Collections.Generic.List<InventreeCategory>());
+
+        public Task<int> CreatePartAsync(int categoryPk, string name)
+            => Task.FromResult(0);
+
+        public Task<InventreePart?> GetPartByPkAsync(int pk)
+            => Task.FromResult<InventreePart?>(null);
     }
 }
 

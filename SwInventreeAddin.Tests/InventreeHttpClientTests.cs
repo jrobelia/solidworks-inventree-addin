@@ -149,6 +149,7 @@ namespace SwInventreeAddin.Tests
         private readonly string _responseBody;
 
         public HttpRequestMessage LastRequest { get; private set; }
+        public string LastRequestBody { get; private set; } = string.Empty;
 
         public StubHttpMessageHandler(HttpStatusCode statusCode, string responseBody)
         {
@@ -156,15 +157,18 @@ namespace SwInventreeAddin.Tests
             _responseBody = responseBody;
         }
 
-        protected override Task<HttpResponseMessage> SendAsync(
+        protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request, CancellationToken cancellationToken)
         {
             LastRequest = request;
+            if (request.Content != null)
+                LastRequestBody = await request.Content.ReadAsStringAsync().ConfigureAwait(false);
+
             var response = new HttpResponseMessage(_statusCode)
             {
                 Content = new StringContent(_responseBody, Encoding.UTF8, "application/json")
             };
-            return Task.FromResult(response);
+            return response;
         }
     }
 }

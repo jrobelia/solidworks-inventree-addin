@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace SwInventreeAddin.InvenTree
 {
@@ -11,5 +12,17 @@ namespace SwInventreeAddin.InvenTree
         Task UploadPartImageAsync(int pk, byte[] pngData);
         Task<byte[]?> DownloadImageAsync(string url);
         Task<InventreeServerInfo> GetServerInfoAsync();
+
+        /// <summary>
+        /// Returns the immediate children of the given category, or all top-level
+        /// categories when <paramref name="parentId"/> is null.
+        /// </summary>
+        Task<IReadOnlyList<InventreeCategory>> GetCategoriesAsync(int? parentId);
+
+        /// <summary>Creates a new part and returns its server-assigned PK.</summary>
+        Task<int> CreatePartAsync(int categoryPk, string name);
+
+        /// <summary>Fetches a single part by its primary key. Returns null when not found.</summary>
+        Task<InventreePart?> GetPartByPkAsync(int pk);
     }
 }
