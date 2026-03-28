@@ -361,7 +361,8 @@ namespace SwInventreeAddin.UI
             if (_client != null)
             {
                 FetchEnabled       = false;
-                CreatePartEnabled  = false;
+                // CreatePartEnabled stays true — creating a part is the right action
+                // when no IPN exists yet. It only goes false when there's no client.
                 SetStatus("Open a part or assembly in SolidWorks to get started.", StatusSeverity.None);
             }
         }

@@ -411,9 +411,9 @@
                                 IsEnabled="{Binding PushRevisionVisible}"
                                 Click="PushRevision_Click">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Push SW Rev to InvenTree" VerticalAlignment="Center" />
+                                <TextBlock Text="Push to InvenTree" VerticalAlignment="Center" />
                                 <TextBlock Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="13"
-                                           VerticalAlignment="Center" Margin="6,0,0,0" />
+                                           VerticalAlignment="Center" Margin="4,0,0,0" />
                             </StackPanel>
                         </Button>
                     </Grid>

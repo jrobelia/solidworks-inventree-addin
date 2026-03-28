@@ -126,6 +126,8 @@ box for any SolidWorks + InvenTree shop. Lighter lift than originally scoped.
 | 8 | Fetch the InvenTree BOM for the same part and diff against the SW BOM | 2 | build | open | Side-by-side comparison shows added, updated, matched, and InvenTree-only lines |
 | 9 | Interactive review screen: user selects which BOM lines to push, confirms, add-in writes to InvenTree | 2 | build | open | Only user-selected lines are created/updated; InvenTree-only lines are untouched |
 | 10 | Remove remaining company-specific conventions (part number naming, filename patterns) | 3 | cleanup | open | No company-specific strings remain; add-in works out of the box for any SW + InvenTree shop |
+| 11 | Store InvenTree PK as a SW custom property after fetch and create | 1 | build | open | A configurable `PkProperty` field (default `InventreePK`) is written to the SW document; future fetches can use PK for reliability |
+| 12 | Validate that SW custom property names in the mapping config actually exist in the open document before writing | 1 | cleanup | open | If a mapped property name is not found in the document, the add-in warns the user rather than silently creating a new property; prevents typos in Settings from poisoning document properties |
 
 ### Done
 

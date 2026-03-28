@@ -1041,11 +1041,13 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void ClearAll_DisablesCreatePart()
+        public void ClearAll_KeepsCreatePartEnabled_WhenClientExists()
         {
+            // ClearAll clears document state but Create is still valid —
+            // a part with no IPN is exactly what the Create button is for.
             var vm = CreateVm();
             vm.ClearAll();
-            Assert.That(vm.CreatePartEnabled, Is.False);
+            Assert.That(vm.CreatePartEnabled, Is.True);
         }
 
         // ── OpenCreatePartWindow ─────────────────────────────────────────────
