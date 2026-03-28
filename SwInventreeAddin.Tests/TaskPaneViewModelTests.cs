@@ -1023,15 +1023,27 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void CreatePartEnabled_WithClient_IsTrue()
+        public void CreatePartEnabled_WithClient_AndEmptyIpn_IsTrue()
         {
+            // No IPN on the document — Create should be available.
+            _propertyService.Seed("PartNo", string.Empty);
             var vm = CreateVm();
             Assert.That(vm.CreatePartEnabled, Is.True);
         }
 
         [Test]
+        public void CreatePartEnabled_WithNonEmptyIpn_IsFalse()
+        {
+            // Part already has an IPN — Create would overwrite it.
+            var vm = CreateVm();   // SetUp seeds PartNo="OA-001"
+            Assert.That(vm.CreatePartEnabled, Is.False);
+        }
+
+        [Test]
         public void UpdateClient_ToNull_DisablesCreatePart()
         {
+            // Start with a blank document so CreatePart is initially enabled.
+            _propertyService.Seed("PartNo", string.Empty);
             var vm = CreateVm();
             Assert.That(vm.CreatePartEnabled, Is.True);
 

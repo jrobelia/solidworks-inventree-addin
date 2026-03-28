@@ -73,7 +73,11 @@ namespace SwInventreeAddin.UI
         public string PartNumber
         {
             get => _partNumber;
-            set => Set(ref _partNumber, value);
+            set
+            {
+                Set(ref _partNumber, value);
+                CreatePartEnabled = CanCreatePart();
+            }
         }
 
         /// <summary>Name fetched from InvenTree.</summary>
@@ -211,6 +215,9 @@ namespace SwInventreeAddin.UI
             get => _createPartEnabled;
             private set => Set(ref _createPartEnabled, value);
         }
+
+        private bool CanCreatePart() =>
+            _client != null && string.IsNullOrEmpty(_partNumber);
 
         /// <summary>True once a document is open (shows the comparison grid).</summary>
         public bool PropertiesSectionVisible
@@ -360,9 +367,9 @@ namespace SwInventreeAddin.UI
 
             if (_client != null)
             {
-                FetchEnabled       = false;
-                // CreatePartEnabled stays true — creating a part is the right action
-                // when no IPN exists yet. It only goes false when there's no client.
+                FetchEnabled      = false;
+                // CreatePartEnabled is recomputed from CanCreatePart() via the
+                // PartNumber setter above — no explicit set needed here.
                 SetStatus("Open a part or assembly in SolidWorks to get started.", StatusSeverity.None);
             }
         }
@@ -384,7 +391,7 @@ namespace SwInventreeAddin.UI
             else
             {
                 FetchEnabled      = true;
-                CreatePartEnabled = true;
+                CreatePartEnabled = CanCreatePart();
                 SetStatus(string.Empty, StatusSeverity.None);
             }
         }
@@ -727,7 +734,7 @@ namespace SwInventreeAddin.UI
             else
             {
                 FetchEnabled      = true;
-                CreatePartEnabled = true;
+                CreatePartEnabled = CanCreatePart();
                 SetStatus(string.Empty, StatusSeverity.None);
             }
         }
