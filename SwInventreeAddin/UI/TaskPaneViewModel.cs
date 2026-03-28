@@ -340,6 +340,13 @@ namespace SwInventreeAddin.UI
                 return;
             }
 
+            if (_currentDocumentType == DocumentType.Unknown)
+            {
+                // No document open — Create is not meaningful.
+                ClearAll();
+                return;
+            }
+
             var mapping = GetMappingOrDefault();
             var partNo = _propertyService.GetCustomProperty(mapping.IpnProperty);
 

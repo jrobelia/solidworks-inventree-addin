@@ -101,9 +101,13 @@ namespace SwInventreeAddin.InvenTree
 
         public async Task<IReadOnlyList<InventreeCategory>> GetCategoriesAsync(int? parentId)
         {
+            // When fetching children of a known parent, filter server-side.
+            // When fetching root categories, fetch all and filter client-side for
+            // items with no parent — avoids relying on ?parent=null which some
+            // InvenTree versions reject with 400.
             var query = parentId.HasValue
                 ? $"/api/part/category/?parent={parentId.Value}&limit=0"
-                : "/api/part/category/?parent=null&limit=0";
+                : "/api/part/category/?limit=0";
 
             using var request = new HttpRequestMessage(HttpMethod.Get, query);
             var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
@@ -124,12 +128,19 @@ namespace SwInventreeAddin.InvenTree
             var list = new List<InventreeCategory>(array.GetArrayLength());
             foreach (var item in array.EnumerateArray())
             {
+                var parentPk = item.TryGetProperty("parent", out var parP) && parP.ValueKind == JsonValueKind.Number
+                                ? parP.GetInt32() : (int?)null;
+
+                // When loading root categories (no parentId given), skip any item
+                // that actually has a parent — they belong lower in the tree.
+                if (!parentId.HasValue && parentPk.HasValue)
+                    continue;
+
                 list.Add(new InventreeCategory
                 {
                     Pk          = item.TryGetProperty("pk",            out var pkP)   ? pkP.GetInt32()              : 0,
                     Name        = item.TryGetProperty("name",          out var nameP) ? nameP.GetString() ?? string.Empty : string.Empty,
-                    ParentPk    = item.TryGetProperty("parent",        out var parP)  && parP.ValueKind == JsonValueKind.Number
-                                    ? parP.GetInt32() : (int?)null,
+                    ParentPk    = parentPk,
                     HasChildren = item.TryGetProperty("subcategories", out var subP)  && subP.ValueKind == JsonValueKind.Number
                                     ? subP.GetInt32() > 0 : false,
                 });

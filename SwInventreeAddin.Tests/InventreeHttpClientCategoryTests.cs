@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text.Json;
@@ -56,12 +57,30 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public async Task GetCategoriesAsync_RootLevel_SendsParentNullQuery()
+        public async Task GetCategoriesAsync_RootLevel_FetchesAllAndFiltersClientSide()
         {
             var handler = new StubHttpMessageHandler(HttpStatusCode.OK, CategoriesJson);
             await CreateClient(handler).GetCategoriesAsync(null);
 
-            Assert.That(handler.LastRequest.RequestUri.Query, Does.Contain("parent=null"));
+            // No parent filter in query — fetches all then filters client-side.
+            Assert.That(handler.LastRequest.RequestUri.Query, Does.Not.Contain("parent="));
+        }
+
+        [Test]
+        public async Task GetCategoriesAsync_RootLevel_ExcludesItemsWithParent()
+        {
+            // Mix of root and child items returned by server.
+            var mixedJson =
+                @"{""count"":3,""results"":[" +
+                @"{""pk"":1,""name"":""Root A"",""parent"":null,""subcategories"":1}," +
+                @"{""pk"":2,""name"":""Child of Root A"",""parent"":1,""subcategories"":0}," +
+                @"{""pk"":3,""name"":""Root B"",""parent"":null,""subcategories"":0}" +
+                @"]}";
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, mixedJson);
+            var cats    = await CreateClient(handler).GetCategoriesAsync(null);
+
+            Assert.That(cats.Count, Is.EqualTo(2));
+            Assert.That(cats.Select(c => c.Pk), Is.EquivalentTo(new[] { 1, 3 }));
         }
 
         [Test]
