@@ -30,3 +30,6 @@ Desktop.ini
 
 # --- VS Code ---
 .vscode/
+
+# Git worktrees
+.worktrees/
