@@ -58,6 +58,7 @@ namespace SwInventreeAddin.UI
         private bool   _pushImageVisible;
         private bool   _fetchEnabled;
         private bool   _createPartEnabled;
+        private bool   _isDocumentOpen;
         private bool   _propertiesSectionVisible;
         private byte[]? _thumbnailBytes;
         private StatusSeverity _statusSeverity  = StatusSeverity.None;
@@ -217,7 +218,7 @@ namespace SwInventreeAddin.UI
         }
 
         private bool CanCreatePart() =>
-            _client != null && string.IsNullOrEmpty(_partNumber);
+            _client != null && string.IsNullOrEmpty(_partNumber) && _isDocumentOpen;
 
         /// <summary>True once a document is open (shows the comparison grid).</summary>
         public bool PropertiesSectionVisible
@@ -345,11 +346,14 @@ namespace SwInventreeAddin.UI
             if (string.IsNullOrEmpty(partNo))
             {
                 ClearAll();
+                _isDocumentOpen   = true;   // blank part: doc IS open, Create should be enabled
+                CreatePartEnabled = CanCreatePart();
                 return;
             }
 
-            PartNumber                = partNo;
-            PropertiesSectionVisible  = true;
+            _isDocumentOpen          = true;
+            PartNumber               = partNo;
+            PropertiesSectionVisible = true;
             RefreshCurrentProperties();
             ResetInvenTreeState();
         }
@@ -357,6 +361,7 @@ namespace SwInventreeAddin.UI
         /// <summary>Resets the entire panel. Called when no document is active.</summary>
         public void ClearAll()
         {
+            _isDocumentOpen          = false;
             PartNumber               = string.Empty;
             CurrentName              = string.Empty;
             CurrentNotes             = string.Empty;
@@ -411,10 +416,29 @@ namespace SwInventreeAddin.UI
 
             var vm = new CreatePartViewModel(_client, _propertyService, name, _mappingProvider);
 
-            vm.PartCreated += async (_, ipn) =>
+            vm.PartCreated += (_, part) =>
             {
-                PartNumber = ipn;
-                await FetchPartAsync().ConfigureAwait(false);
+                RunOnUiThread(() =>
+                {
+                    PartNumber               = part.Ipn ?? string.Empty;
+                    _isDocumentOpen          = true;
+                    NamePreview              = part.Name ?? string.Empty;
+                    NotesPreview             = part.Notes ?? string.Empty;
+                    RevisionPreview          = part.Revision ?? string.Empty;
+                    ThumbnailBytes           = null;
+                    PropertiesSectionVisible = true;
+                    ApplyEnabled             = true;
+                    ApplyNameEnabled         = true;
+                    ApplyNotesEnabled        = true;
+                    PushNameEnabled          = true;
+                    PushNotesEnabled         = true;
+                    PushRevisionVisible      = true;
+                    PushImageVisible         = true;
+                    _lastFetchedPart         = part;
+                    RefreshCurrentProperties();
+                    CreatePartEnabled        = CanCreatePart();
+                    SetStatus("\u2713  Part created in InvenTree.", StatusSeverity.Success);
+                });
             };
 
             showDialog(vm);

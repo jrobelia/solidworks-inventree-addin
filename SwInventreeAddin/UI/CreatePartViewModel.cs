@@ -18,8 +18,8 @@ namespace SwInventreeAddin.UI
     {
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        /// <summary>Raised with the new IPN after the part is created and written to the SW document.</summary>
-        public event EventHandler<string>? PartCreated;
+        /// <summary>Raised with the new part after it is created and IPN+Name are written to the SW document.</summary>
+        public event EventHandler<InventreePart>? PartCreated;
 
         private void Set<T>(ref T field, T value, [CallerMemberName] string? name = null)
         {
@@ -207,7 +207,7 @@ namespace SwInventreeAddin.UI
                     _propertyService.SetCustomProperty(mapping.IpnProperty,  ipn);
                     _propertyService.SetCustomProperty(mapping.NameProperty, name);
                     IsBusy = false;
-                    PartCreated?.Invoke(this, ipn);
+                    PartCreated?.Invoke(this, part);
                 });
             }
             catch (Exception ex)

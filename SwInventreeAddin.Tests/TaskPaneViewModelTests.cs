@@ -1053,31 +1053,43 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void ClearAll_KeepsCreatePartEnabled_WhenClientExists()
+        public void ClearAll_WithNoDocument_DisablesCreatePart()
         {
-            // ClearAll clears document state but Create is still valid —
-            // a part with no IPN is exactly what the Create button is for.
+            // ClearAll represents "no document open" — Create should be disabled
+            // even when a client exists, because there is no document to write IPN to.
+            _propertyService.Seed("PartNo", string.Empty);
             var vm = CreateVm();
             vm.ClearAll();
+            Assert.That(vm.CreatePartEnabled, Is.False);
+        }
+
+        [Test]
+        public void LoadPartNumber_BlankPart_KeepsCreatePartEnabled()
+        {
+            // A document IS open but has no IPN yet — Create should be enabled.
+            _propertyService.Seed("PartNo", string.Empty);
+            var vm = CreateVm();
             Assert.That(vm.CreatePartEnabled, Is.True);
         }
 
         // ── OpenCreatePartWindow ─────────────────────────────────────────────
 
         [Test]
-        public async Task OpenCreatePartWindow_OnPartCreated_FetchesNewPart()
+        public void OpenCreatePartWindow_OnPartCreated_PopulatesTaskPane()
         {
-            // Part that FetchPartAsync will find after the dialog closes.
-            _client.PartToReturn = new InventreePart
+            var createdPart = new InventreePart
             {
+                Pk       = 1,
                 Ipn      = "R-NEW-001",
                 Name     = "New Resistor",
                 Notes    = string.Empty,
                 Revision = string.Empty,
             };
 
-            var vm             = CreateVm();
-            bool dialogOpened  = false;
+            _propertyService.Seed("PartNo",      string.Empty);
+            _propertyService.Seed("Description", string.Empty);
+            var vm            = CreateVm();
+            bool dialogOpened = false;
 
             vm.OpenCreatePartWindow(createVm =>
             {
@@ -1090,15 +1102,14 @@ namespace SwInventreeAddin.Tests
                         System.Reflection.BindingFlags.Instance |
                         System.Reflection.BindingFlags.Public);
                 var handler = backingField?.GetValue(createVm) as
-                    System.EventHandler<string>;
-                handler?.Invoke(createVm, "R-NEW-001");
+                    System.EventHandler<InventreePart>;
+                handler?.Invoke(createVm, createdPart);
             });
 
-            // Give the async PartCreated handler a moment to complete.
-            await Task.Delay(200);
-
-            Assert.That(dialogOpened,              Is.True);
-            Assert.That(_client.LastIpnRequested,  Is.EqualTo("R-NEW-001"));
+            Assert.That(dialogOpened,      Is.True);
+            Assert.That(vm.PartNumber,     Is.EqualTo("R-NEW-001"));
+            Assert.That(vm.NamePreview,    Is.EqualTo("New Resistor"));
+            Assert.That(vm.CreatePartEnabled, Is.False);  // IPN now set — Create disabled
         }
 
         [Test]

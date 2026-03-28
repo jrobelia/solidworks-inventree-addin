@@ -103,7 +103,7 @@ namespace SwInventreeAddin.InvenTree
         {
             var query = parentId.HasValue
                 ? $"/api/part/category/?parent={parentId.Value}&limit=0"
-                : "/api/part/category/?level=0&limit=0";
+                : "/api/part/category/?parent=null&limit=0";
 
             using var request = new HttpRequestMessage(HttpMethod.Get, query);
             var response = await _httpClient.SendAsync(request).ConfigureAwait(false);

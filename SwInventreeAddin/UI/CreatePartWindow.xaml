@@ -44,6 +44,7 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <!-- Part Name label + TextBox -->
@@ -117,8 +118,27 @@
                 </Grid>
             </Border>
 
+            <!-- Selected category indicator -->
+            <Border Grid.Row="4"
+                    BorderBrush="{StaticResource BrushBorder}"
+                    BorderThickness="1"
+                    Background="{StaticResource BrushSectionHeader}"
+                    Padding="6,4"
+                    Margin="0,0,0,8">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Selected: "
+                               Foreground="{StaticResource BrushSubtle}"
+                               FontSize="{StaticResource FontSizeBody}" />
+                    <TextBlock x:Name="SelectedCategoryLabel"
+                               Text="(none)"
+                               Foreground="{StaticResource BrushForeground}"
+                               FontSize="{StaticResource FontSizeBody}"
+                               TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Border>
+
             <!-- Button row -->
-            <Grid Grid.Row="4">
+            <Grid Grid.Row="5">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition />
                     <ColumnDefinition Width="8" />

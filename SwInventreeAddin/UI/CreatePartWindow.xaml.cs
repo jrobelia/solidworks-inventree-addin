@@ -1,6 +1,7 @@
 using System;
 using System.Windows;
 using System.Windows.Controls;
+using SwInventreeAddin.InvenTree;
 
 namespace SwInventreeAddin.UI
 {
@@ -51,7 +52,7 @@ namespace SwInventreeAddin.UI
             _ = vm.LoadRootCategoriesAsync();
         }
 
-        private void OnPartCreated(object sender, string ipn)
+        private void OnPartCreated(object sender, InventreePart part)
         {
             DialogResult = true;
         }
@@ -74,6 +75,7 @@ namespace SwInventreeAddin.UI
         {
             if (_vm == null) return;
             _vm.SelectedCategory = e.NewValue as CategoryNode;
+            SelectedCategoryLabel.Text = _vm.SelectedCategory?.Category.Name ?? "(none)";
         }
 
         private async void TreeViewItem_Expanded(object sender, RoutedEventArgs e)

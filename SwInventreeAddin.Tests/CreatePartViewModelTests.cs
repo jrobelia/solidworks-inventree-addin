@@ -166,19 +166,20 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public async Task CreateAsync_Success_RaisesPartCreatedWithIpn()
+        public async Task CreateAsync_Success_RaisesPartCreatedWithPart()
         {
             _client.PkToReturnOnCreate = 99;
             _client.PartByPkToReturn   = new InventreePart { Pk = 99, Ipn = "R-NEW-001", Name = "New Resistor" };
 
-            string? raisedIpn = null;
+            InventreePart? raisedPart = null;
             var vm = CreateVm();
-            vm.PartCreated += (_, ipn) => raisedIpn = ipn;
+            vm.PartCreated += (_, part) => raisedPart = part;
             vm.SelectedCategory = MakeNode(pk: 7);
 
             await vm.CreateAsync();
 
-            Assert.That(raisedIpn, Is.EqualTo("R-NEW-001"));
+            Assert.That(raisedPart,     Is.Not.Null);
+            Assert.That(raisedPart!.Ipn, Is.EqualTo("R-NEW-001"));
         }
 
         [Test]

@@ -56,12 +56,12 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public async Task GetCategoriesAsync_RootLevel_SendsLevelZeroQuery()
+        public async Task GetCategoriesAsync_RootLevel_SendsParentNullQuery()
         {
             var handler = new StubHttpMessageHandler(HttpStatusCode.OK, CategoriesJson);
             await CreateClient(handler).GetCategoriesAsync(null);
 
-            Assert.That(handler.LastRequest.RequestUri.Query, Does.Contain("level=0"));
+            Assert.That(handler.LastRequest.RequestUri.Query, Does.Contain("parent=null"));
         }
 
         [Test]

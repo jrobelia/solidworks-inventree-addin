@@ -112,7 +112,7 @@
                             ToolTip="Create a new part in InvenTree and write the IPN back to this document."
                             Click="CreatePart_Click">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Create" VerticalAlignment="Center" />
+                            <TextBlock Text="Create InvenTree P/N" VerticalAlignment="Center" />
                             <TextBlock Text="&#xE710;"
                                        FontFamily="Segoe MDL2 Assets" FontSize="13"
                                        VerticalAlignment="Center" Margin="5,0,0,0" />
