@@ -114,11 +114,22 @@ namespace SwInventreeAddin.Tests.Stubs
         public int            LastGetPartByPkPk { get; private set; }
         public bool           ThrowOnGetPartByPk { get; set; }
 
+        // Queue successive return values for polling tests.
+        // When the queue runs out, falls back to PartByPkToReturn.
+        private Queue<InventreePart?> _partByPkQueue;
+
+        public void QueuePartByPkResponses(params InventreePart?[] parts)
+        {
+            _partByPkQueue = new Queue<InventreePart?>(parts);
+        }
+
         public Task<InventreePart?> GetPartByPkAsync(int pk)
         {
             LastGetPartByPkPk = pk;
             if (ThrowOnGetPartByPk)
                 throw new HttpRequestException("Stub: GetPartByPk failed");
+            if (_partByPkQueue != null && _partByPkQueue.Count > 0)
+                return Task.FromResult(_partByPkQueue.Dequeue());
             return Task.FromResult(PartByPkToReturn);
         }
     }

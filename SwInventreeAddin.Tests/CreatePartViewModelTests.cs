@@ -22,7 +22,7 @@ namespace SwInventreeAddin.Tests
         }
 
         private CreatePartViewModel CreateVm(string name = DefaultName) =>
-            new CreatePartViewModel(_client, _propertyService, name);
+            new CreatePartViewModel(_client, _propertyService, name, ipnPollDelayMs: 0);
 
         private static CategoryNode MakeNode(int pk = 1, string name = "Resistors") =>
             new CategoryNode(new InventreeCategory { Pk = pk, Name = name });
@@ -212,6 +212,52 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.StatusText, Does.Contain("IPN not yet written"));
             Assert.That(vm.IsBusy,     Is.False);
             Assert.That(_propertyService.GetCustomProperty("PartNo"), Is.EqualTo("ORIGINAL"));
+        }
+
+        [Test]
+        public async Task CreateAsync_IpnAppearsOnSecondPoll_WritesIpnAndRaisesEvent()
+        {
+            // First fetch returns no IPN (plugin not yet run); second fetch has it.
+            _client.PkToReturnOnCreate = 99;
+            _client.QueuePartByPkResponses(
+                new InventreePart { Pk = 99, Ipn = string.Empty, Name = "New Resistor" },
+                new InventreePart { Pk = 99, Ipn = "R-NEW-001",  Name = "New Resistor" });
+            _propertyService.Seed("PartNo",      string.Empty);
+            _propertyService.Seed("Description", string.Empty);
+
+            InventreePart? raisedPart = null;
+            var vm = CreateVm();
+            vm.PartCreated += (_, p) => raisedPart = p;
+            vm.SelectedCategory = MakeNode(pk: 7);
+
+            await vm.CreateAsync();
+
+            Assert.That(_propertyService.GetCustomProperty("PartNo"), Is.EqualTo("R-NEW-001"),
+                "IPN should be written once the poll succeeds");
+            Assert.That(raisedPart?.Ipn, Is.EqualTo("R-NEW-001"));
+        }
+
+        [Test]
+        public async Task CreateAsync_IpnNeverArrives_SetsStatusText_DoesNotWriteIpn()
+        {
+            // All poll fetches return empty IPN — simulates plugin not installed.
+            const int newPk = 99;
+            _client.PkToReturnOnCreate = newPk;
+            // Seed the queue with enough empty responses to exhaust the 20-attempt poll.
+            var emptyParts = new InventreePart[21];
+            for (int i = 0; i < emptyParts.Length; i++)
+                emptyParts[i] = new InventreePart { Pk = newPk, Ipn = string.Empty, Name = "New Part" };
+            _client.QueuePartByPkResponses(emptyParts);
+            _propertyService.Seed("PartNo", string.Empty);
+
+            var vm = CreateVm();
+            vm.SelectedCategory = MakeNode(pk: 7);
+            await vm.CreateAsync();
+
+            Assert.That(_propertyService.GetCustomProperty("PartNo"), Is.EqualTo(string.Empty),
+                "Should NOT write empty IPN to the document");
+            Assert.That(vm.StatusText, Does.Contain("refresh manually"));
+            Assert.That(vm.IsBusy, Is.False);
         }
 
         [Test]

@@ -31,6 +31,7 @@ namespace SwInventreeAddin.UI
         private readonly IInventreeClient          _client;
         private readonly IDocumentPropertyService  _propertyService;
         private readonly IPropertyMappingProvider? _mappingProvider;
+        private readonly int                       _ipnPollDelayMs;
 
         // ── Bindable properties ───────────────────────────────────────────────
 
@@ -90,11 +91,13 @@ namespace SwInventreeAddin.UI
             IInventreeClient          client,
             IDocumentPropertyService  propertyService,
             string                    initialName,
-            IPropertyMappingProvider? mappingProvider = null)
+            IPropertyMappingProvider? mappingProvider = null,
+            int                       ipnPollDelayMs  = 500)
         {
             _client          = client;
             _propertyService = propertyService;
             _mappingProvider = mappingProvider;
+            _ipnPollDelayMs  = ipnPollDelayMs;
             PartName         = initialName;
         }
 
@@ -198,16 +201,38 @@ namespace SwInventreeAddin.UI
                     return;
                 }
 
-                var ipn  = part.Ipn  ?? string.Empty;
-                var name = part.Name ?? string.Empty;
+                // InvenTree plugins generate the IPN asynchronously after the POST.
+                // Poll until it appears or 10 seconds (20 × 500 ms) elapse.
+                if (string.IsNullOrEmpty(part.Ipn))
+                {
+                    const int maxAttempts = 20;
+                    for (int i = 0; i < maxAttempts && string.IsNullOrEmpty(part?.Ipn); i++)
+                    {
+                        int secondsLeft = (maxAttempts - i) / 2;
+                        RunOnUiThread(() => StatusText =
+                            $"Waiting for part number from server\u2026 ({secondsLeft}s)");
+                        await Task.Delay(_ipnPollDelayMs).ConfigureAwait(false);
+                        part = await _client.GetPartByPkAsync(pk).ConfigureAwait(false);
+                    }
+                }
+
+                var ipn  = part?.Ipn  ?? string.Empty;
+                var name = part?.Name ?? string.Empty;
 
                 RunOnUiThread(() =>
                 {
                     var mapping = _mappingProvider?.GetMapping() ?? new PropertyMappingConfig();
-                    _propertyService.SetCustomProperty(mapping.IpnProperty,  ipn);
+                    // Only write IPN if we actually received one — avoid blanking the property
+                    // if the plugin timed out.
+                    if (!string.IsNullOrEmpty(ipn))
+                        _propertyService.SetCustomProperty(mapping.IpnProperty, ipn);
                     _propertyService.SetCustomProperty(mapping.NameProperty, name);
+
+                    if (string.IsNullOrEmpty(ipn))
+                        StatusText = "Part created. Part number not yet generated \u2014 refresh manually once the server assigns it.";
+
                     IsBusy = false;
-                    PartCreated?.Invoke(this, part);
+                    PartCreated?.Invoke(this, part ?? new InventreePart { Pk = pk, Name = name });
                 });
             }
             catch (Exception ex)
