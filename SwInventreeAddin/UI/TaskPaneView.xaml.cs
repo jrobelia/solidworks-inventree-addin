@@ -84,6 +84,16 @@ namespace SwInventreeAddin.UI
         private void Fetch_Click(object sender, RoutedEventArgs e) =>
             _ = _vm?.FetchPartAsync();
 
+        private void CreatePart_Click(object sender, RoutedEventArgs e)
+        {
+            _vm?.OpenCreatePartWindow(vm =>
+            {
+                var window = new CreatePartWindow();
+                window.Initialise(vm);
+                window.ShowDialog();
+            });
+        }
+
         private void ApplyName_Click(object sender, RoutedEventArgs e) =>
             _vm?.ApplyNameToDocument();
 

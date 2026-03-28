@@ -86,17 +86,39 @@
                          Focusable="False"
                          Height="26" />
 
-                <!-- Load button -->
-                <Button Style="{StaticResource PrimaryButtonStyle}"
-                        HorizontalAlignment="Stretch"
-                        IsEnabled="{Binding FetchEnabled}"
-                        Click="Fetch_Click">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Load Properties from InvenTree" VerticalAlignment="Center" />
-                        <TextBlock Text="&#xE896;" FontFamily="Segoe MDL2 Assets" FontSize="13"
-                                   VerticalAlignment="Center" Margin="6,0,0,0" />
-                    </StackPanel>
-                </Button>
+                <!-- Load / Create button row -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Button Grid.Column="0"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            HorizontalAlignment="Stretch"
+                            IsEnabled="{Binding FetchEnabled}"
+                            Click="Fetch_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Load Properties from InvenTree" VerticalAlignment="Center" />
+                            <TextBlock Text="&#xE896;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                       VerticalAlignment="Center" Margin="6,0,0,0" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Grid.Column="2"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            IsEnabled="{Binding CreatePartEnabled}"
+                            ToolTip="Create a new part in InvenTree and write the IPN back to this document."
+                            Click="CreatePart_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Create" VerticalAlignment="Center" />
+                            <TextBlock Text="&#xE710;"
+                                       FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                       VerticalAlignment="Center" Margin="5,0,0,0" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
 
                 <!-- Separator -->
                 <Separator Margin="0,8,0,0"
