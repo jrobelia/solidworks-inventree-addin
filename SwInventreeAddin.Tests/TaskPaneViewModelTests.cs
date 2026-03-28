@@ -982,3 +982,118 @@ namespace SwInventreeAddin.Tests
         }
     }
 }
+
+// ============================================================================
+// TaskPaneViewModel — CreatePartEnabled + OpenCreatePartWindow
+// ============================================================================
+
+namespace SwInventreeAddin.Tests
+{
+    using SwInventreeAddin.InvenTree;
+    using SwInventreeAddin.Tests.Stubs;
+    using SwInventreeAddin.UI;
+
+    [TestFixture]
+    public class TaskPaneViewModelCreatePartTests
+    {
+        private StubInventreeClient         _client;
+        private StubDocumentPropertyService _propertyService;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _client          = new StubInventreeClient();
+            _propertyService = new StubDocumentPropertyService();
+            // Seed a populated document so LoadPartNumber doesn't immediately ClearAll.
+            _propertyService.Seed("PartNo", "OA-001");
+        }
+
+        private TaskPaneViewModel CreateVm(bool withClient = true) =>
+            new TaskPaneViewModel(
+                withClient ? _client : null,
+                _propertyService);
+
+        // ── CreatePartEnabled ────────────────────────────────────────────────
+
+        [Test]
+        public void CreatePartEnabled_NoClient_IsFalse()
+        {
+            var vm = CreateVm(withClient: false);
+            Assert.That(vm.CreatePartEnabled, Is.False);
+        }
+
+        [Test]
+        public void CreatePartEnabled_WithClient_IsTrue()
+        {
+            var vm = CreateVm();
+            Assert.That(vm.CreatePartEnabled, Is.True);
+        }
+
+        [Test]
+        public void UpdateClient_ToNull_DisablesCreatePart()
+        {
+            var vm = CreateVm();
+            Assert.That(vm.CreatePartEnabled, Is.True);
+
+            vm.UpdateClient(null);
+
+            Assert.That(vm.CreatePartEnabled, Is.False);
+        }
+
+        [Test]
+        public void ClearAll_DisablesCreatePart()
+        {
+            var vm = CreateVm();
+            vm.ClearAll();
+            Assert.That(vm.CreatePartEnabled, Is.False);
+        }
+
+        // ── OpenCreatePartWindow ─────────────────────────────────────────────
+
+        [Test]
+        public async Task OpenCreatePartWindow_OnPartCreated_FetchesNewPart()
+        {
+            // Part that FetchPartAsync will find after the dialog closes.
+            _client.PartToReturn = new InventreePart
+            {
+                Ipn      = "R-NEW-001",
+                Name     = "New Resistor",
+                Notes    = string.Empty,
+                Revision = string.Empty,
+            };
+
+            var vm             = CreateVm();
+            bool dialogOpened  = false;
+
+            vm.OpenCreatePartWindow(createVm =>
+            {
+                dialogOpened = true;
+
+                // Fire the PartCreated event via its backing field (field-like event).
+                var backingField = typeof(CreatePartViewModel)
+                    .GetField("PartCreated",
+                        System.Reflection.BindingFlags.NonPublic |
+                        System.Reflection.BindingFlags.Instance |
+                        System.Reflection.BindingFlags.Public);
+                var handler = backingField?.GetValue(createVm) as
+                    System.EventHandler<string>;
+                handler?.Invoke(createVm, "R-NEW-001");
+            });
+
+            // Give the async PartCreated handler a moment to complete.
+            await Task.Delay(200);
+
+            Assert.That(dialogOpened,              Is.True);
+            Assert.That(_client.LastIpnRequested,  Is.EqualTo("R-NEW-001"));
+        }
+
+        [Test]
+        public void OpenCreatePartWindow_NullClient_DoesNotOpenDialog()
+        {
+            int callCount = 0;
+            var vm = CreateVm(withClient: false);
+            vm.OpenCreatePartWindow(_ => callCount++);
+            Assert.That(callCount, Is.EqualTo(0));
+        }
+    }
+}

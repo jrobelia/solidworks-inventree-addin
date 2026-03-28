@@ -57,6 +57,7 @@ namespace SwInventreeAddin.UI
         private bool   _pushRevisionVisible;
         private bool   _pushImageVisible;
         private bool   _fetchEnabled;
+        private bool   _createPartEnabled;
         private bool   _propertiesSectionVisible;
         private byte[]? _thumbnailBytes;
         private StatusSeverity _statusSeverity  = StatusSeverity.None;
@@ -202,6 +203,13 @@ namespace SwInventreeAddin.UI
         {
             get => _fetchEnabled;
             private set => Set(ref _fetchEnabled, value);
+        }
+
+        /// <summary>Controls Create Part button enabled state.</summary>
+        public bool CreatePartEnabled
+        {
+            get => _createPartEnabled;
+            private set => Set(ref _createPartEnabled, value);
         }
 
         /// <summary>True once a document is open (shows the comparison grid).</summary>
@@ -352,7 +360,8 @@ namespace SwInventreeAddin.UI
 
             if (_client != null)
             {
-                FetchEnabled = false;
+                FetchEnabled       = false;
+                CreatePartEnabled  = false;
                 SetStatus("Open a part or assembly in SolidWorks to get started.", StatusSeverity.None);
             }
         }
@@ -366,15 +375,41 @@ namespace SwInventreeAddin.UI
 
             if (_client == null)
             {
-                FetchEnabled = false;
+                FetchEnabled      = false;
+                CreatePartEnabled = false;
                 SetStatus("No server configured \u2014 click \u2699 Settings to get started",
                           StatusSeverity.Warning);
             }
             else
             {
-                FetchEnabled = true;
+                FetchEnabled      = true;
+                CreatePartEnabled = true;
                 SetStatus(string.Empty, StatusSeverity.None);
             }
+        }
+
+        /// <summary>
+        /// Creates and opens the Create Part dialog.
+        /// Called from the WPF code-behind on the UI thread.
+        /// The <paramref name="showDialog"/> delegate is responsible for
+        /// constructing and showing the window (keeps this ViewModel free of WPF types).
+        /// </summary>
+        public void OpenCreatePartWindow(Action<CreatePartViewModel> showDialog)
+        {
+            if (_client == null) return;
+
+            var mapping = GetMappingOrDefault();
+            var name    = _propertyService.GetCustomProperty(mapping.NameProperty);
+
+            var vm = new CreatePartViewModel(_client, _propertyService, name, _mappingProvider);
+
+            vm.PartCreated += async (_, ipn) =>
+            {
+                PartNumber = ipn;
+                await FetchPartAsync().ConfigureAwait(false);
+            };
+
+            showDialog(vm);
         }
 
         /// <summary>
@@ -683,13 +718,15 @@ namespace SwInventreeAddin.UI
 
             if (_client == null)
             {
-                FetchEnabled = false;
+                FetchEnabled      = false;
+                CreatePartEnabled = false;
                 SetStatus("No server configured \u2014 click \u2699 Settings to get started",
                           StatusSeverity.Warning);
             }
             else
             {
-                FetchEnabled = true;
+                FetchEnabled      = true;
+                CreatePartEnabled = true;
                 SetStatus(string.Empty, StatusSeverity.None);
             }
         }
