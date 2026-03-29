@@ -121,6 +121,19 @@ When blank, the IPN key is omitted from the POST body entirely — InvenTree plu
 default handles assignment. When filled, it is sent as `"ipn"` in the POST body.
 Never overrides server behaviour when left blank.
 
+## [2026-03-29] PK match indicator added to task pane
+
+The InvenTree PK row in the task pane now displays a `=` / `≠` match indicator,
+consistent with Name, Description, Notes, and Revision rows. The PK value is
+read-only on both sides (no Push button) but the indicator gives the user
+visual confirmation that the SW custom property matches the fetched InvenTree PK.
+
+## [2026-03-29] Local Mapping File section moved above Shared in Settings
+
+Local Mapping File is the default path for all users. Shared Mapping File is
+optional (team use). Presenting Local first matches the default selection state
+and reduces confusion for single-user setups.
+
 ## [2026-03-28] GetMapping() has a first-run file-write side-effect
 
 `PropertyMappingProvider.GetMapping()` writes default JSON to the local path on first call if

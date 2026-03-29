@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-03-28 (tasks 1–3 complete; part creation end-to-end verified)
+Last updated: 2026-03-29 (tasks 6 + 11 complete; Description row + PK storage verified)
 
 ## Project North Star
 
@@ -121,16 +121,20 @@ box for any SolidWorks + InvenTree shop. Lighter lift than originally scoped.
 | 3 | After creation, re-fetch the part to get the plugin-generated IPN and write IPN + name into SW custom properties | 1 | build | done | IPN and name properties are populated in the open SW document using mapped property names from config |
 | 4 | Display read-only InvenTree fields (stock, on order, price, active, default supplier) in the task pane after fetch | 1 | build | open | Fields appear below the existing property comparison when a part is loaded |
 | 5 | Add a name-based search box to the task pane (searches InvenTree, displays results) | 1 | build | open | User can type a partial name, see matching parts, and view their details |
-| 6 | Add Description as a synced property row (same pattern as Name/Notes/Revision) | 1 | cleanup | open | Description row appears in the comparison grid with match indicator and push/apply buttons |
+| 6 | Add Description as a synced property row (same pattern as Name/Notes/Revision) | 1 | cleanup | done | Description row appears in the comparison grid with match indicator and push/apply buttons |
 | 7 | Read the SolidWorks assembly BOM (immediate children with IPN + quantity) | 2 | build | open | When an assembly is open, the add-in can list child components and their quantities |
 | 8 | Fetch the InvenTree BOM for the same part and diff against the SW BOM | 2 | build | open | Side-by-side comparison shows added, updated, matched, and InvenTree-only lines |
 | 9 | Interactive review screen: user selects which BOM lines to push, confirms, add-in writes to InvenTree | 2 | build | open | Only user-selected lines are created/updated; InvenTree-only lines are untouched |
 | 10 | Remove remaining company-specific conventions (part number naming, filename patterns) | 3 | cleanup | open | No company-specific strings remain; add-in works out of the box for any SW + InvenTree shop |
-| 11 | Store InvenTree PK as a SW custom property after fetch and create | 1 | build | open | A configurable `PkProperty` field (default `InventreePK`) is written to the SW document; future fetches can use PK for reliability |
+| 11 | Store InvenTree PK as a SW custom property after fetch and create | 1 | build | done | A configurable `PkProperty` field (default `InvenTree PK`) is written to the SW document; future fetches can use PK for reliability |
 | 12 | Validate that SW custom property names in the mapping config actually exist in the open document before writing | 1 | cleanup | open | If a mapped property name is not found in the document, the add-in warns the user rather than silently creating a new property; prevents typos in Settings from poisoning document properties |
 
 ### Done
 
+- Tasks 6 + 11: Description row + InvenTree PK storage -- Description synced field with
+  match indicator, Push to InvenTree and Apply to SW Doc buttons; PK written to SW doc
+  after every fetch and create; PkMatch indicator in task pane; Settings local/shared
+  section order corrected. Verified 2026-03-29.
 - Tasks 1–3: Create Part in InvenTree from SolidWorks -- category tree dialog, POST new part,
   IPN + Name write-back to SW doc, auto-populate comparison grid. Optional IPN field for
   users without a server-side IPN plugin. Verified 2026-03-28.

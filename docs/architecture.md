@@ -16,9 +16,9 @@ SwInventreeAddin/
     PropertyMappingConfig.cs    -- data class: five SW property-name fields + schema version
     PropertyMappingProvider.cs  -- JSON file I/O; local-file > source-path > first-run-defaults
   InvenTree/
-    IInventreeClient.cs     -- interface: GetPartByIpnAsync / PatchPartRevisionAsync / UploadPartImageAsync
+    IInventreeClient.cs     -- interface: GetPartByIpnAsync / PatchPartRevisionAsync / UpdatePartDescriptionAsync / UploadPartImageAsync
     InventreeHttpClient.cs  -- real HTTP client (System.Net.Http)
-    InventreePart.cs        -- data class: Pk, Name, Notes, Revision, Ipn
+    InventreePart.cs        -- data class: Pk, Name, Notes, Revision, Ipn, Description
   SolidWorks/
     IDocumentPropertyService -- interface: get/set custom properties
     IViewportCaptureService  -- interface: capture viewport as Image

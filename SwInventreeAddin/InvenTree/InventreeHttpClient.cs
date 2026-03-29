@@ -65,6 +65,7 @@ namespace SwInventreeAddin.InvenTree
             {
                 Pk           = pk,
                 Name         = GetString(first, "name"),
+                Description  = GetString(first, "description"),
                 Notes        = GetString(first, "notes"),
                 Revision     = GetString(first, "revision"),
                 Ipn          = GetString(first, "IPN"),
@@ -92,6 +93,7 @@ namespace SwInventreeAddin.InvenTree
             {
                 Pk           = pk,
                 Name         = GetString(detail, "name"),
+                Description  = GetString(detail, "description"),
                 Notes        = GetString(detail, "notes"),
                 Revision     = GetString(detail, "revision"),
                 Ipn          = GetString(detail, "IPN"),
@@ -229,6 +231,27 @@ namespace SwInventreeAddin.InvenTree
         public async Task UpdatePartNotesAsync(int pk, string notes)
         {
             var json = JsonSerializer.Serialize(new { notes });
+            var body = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+            using var request = new HttpRequestMessage(new HttpMethod("PATCH"), $"/api/part/{pk}/")
+            {
+                Content = body
+            };
+
+            var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                throw new HttpRequestException(
+                    "InvenTree rejected the API key (401 Unauthorized).");
+
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException(
+                    $"InvenTree returned {(int)response.StatusCode} {response.StatusCode}");
+        }
+
+        public async Task UpdatePartDescriptionAsync(int pk, string description)
+        {
+            var json = JsonSerializer.Serialize(new { description });
             var body = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 
             using var request = new HttpRequestMessage(new HttpMethod("PATCH"), $"/api/part/{pk}/")

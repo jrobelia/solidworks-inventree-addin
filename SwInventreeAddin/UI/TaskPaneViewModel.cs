@@ -45,15 +45,22 @@ namespace SwInventreeAddin.UI
         private string _namePreview             = string.Empty;
         private string _notesPreview            = string.Empty;
         private string _revisionPreview         = string.Empty;
+        private string _descriptionPreview      = string.Empty;
+        private string _pkPreview               = string.Empty;
         private string _currentName             = string.Empty;
         private string _currentNotes            = string.Empty;
         private string _currentRevision         = string.Empty;
+        private string _currentDescription      = string.Empty;
+        private string _currentPk               = string.Empty;
         private string _statusText              = string.Empty;
         private bool   _applyEnabled;
         private bool   _applyNameEnabled;
         private bool   _applyNotesEnabled;
+        private bool   _applyDescriptionEnabled;
+        private bool   _applyPkEnabled;
         private bool   _pushNameEnabled;
         private bool   _pushNotesEnabled;
+        private bool   _pushDescriptionEnabled;
         private bool   _pushRevisionVisible;
         private bool   _pushImageVisible;
         private bool   _fetchEnabled;
@@ -114,6 +121,28 @@ namespace SwInventreeAddin.UI
             }
         }
 
+        /// <summary>Description fetched from InvenTree.</summary>
+        public string DescriptionPreview
+        {
+            get => _descriptionPreview;
+            set
+            {
+                Set(ref _descriptionPreview, value);
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DescriptionMatch)));
+            }
+        }
+
+        /// <summary>InvenTree PK as a display string.</summary>
+        public string PkPreview
+        {
+            get => _pkPreview;
+            set
+            {
+                Set(ref _pkPreview, value);
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PkMatch)));
+            }
+        }
+
         /// <summary>Current SolidWorks document Name / Description value.</summary>
         public string CurrentName
         {
@@ -144,6 +173,28 @@ namespace SwInventreeAddin.UI
             {
                 Set(ref _currentRevision, value);
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RevisionMatch)));
+            }
+        }
+
+        /// <summary>Current SolidWorks document Description Long value.</summary>
+        public string CurrentDescription
+        {
+            get => _currentDescription;
+            set
+            {
+                Set(ref _currentDescription, value);
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DescriptionMatch)));
+            }
+        }
+
+        /// <summary>Current SolidWorks InvenTree PK property value.</summary>
+        public string CurrentPk
+        {
+            get => _currentPk;
+            set
+            {
+                Set(ref _currentPk, value);
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PkMatch)));
             }
         }
 
@@ -230,6 +281,8 @@ namespace SwInventreeAddin.UI
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NameMatch)));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NotesMatch)));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RevisionMatch)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DescriptionMatch)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PkMatch)));
             }
         }
 
@@ -260,6 +313,24 @@ namespace SwInventreeAddin.UI
                       StringComparison.OrdinalIgnoreCase)
                 : (bool?)null;
 
+        /// <summary>
+        /// Null = not yet fetched. True = SW and InvenTree descriptions match. False = mismatch.
+        /// </summary>
+        public bool? DescriptionMatch =>
+            _propertiesSectionVisible
+                ? string.Equals(_currentDescription?.Trim(), _descriptionPreview?.Trim(),
+                      StringComparison.OrdinalIgnoreCase)
+                : (bool?)null;
+
+        /// <summary>
+        /// Null = not yet fetched. True = SW and InvenTree PK values match. False = mismatch.
+        /// </summary>
+        public bool? PkMatch =>
+            _propertiesSectionVisible
+                ? string.Equals(_currentPk?.Trim(), _pkPreview?.Trim(),
+                      StringComparison.OrdinalIgnoreCase)
+                : (bool?)null;
+
         /// <summary>True when a part has been fetched and pushing Name to InvenTree is meaningful.</summary>
         public bool PushNameEnabled
         {
@@ -272,6 +343,27 @@ namespace SwInventreeAddin.UI
         {
             get => _pushNotesEnabled;
             private set => Set(ref _pushNotesEnabled, value);
+        }
+
+        /// <summary>True when individual Description apply is available.</summary>
+        public bool ApplyDescriptionEnabled
+        {
+            get => _applyDescriptionEnabled;
+            private set => Set(ref _applyDescriptionEnabled, value);
+        }
+
+        /// <summary>True when a part has been fetched and pushing Description to InvenTree is meaningful.</summary>
+        public bool PushDescriptionEnabled
+        {
+            get => _pushDescriptionEnabled;
+            private set => Set(ref _pushDescriptionEnabled, value);
+        }
+
+        /// <summary>True when a part has been fetched and applying PK to SW doc is meaningful.</summary>
+        public bool ApplyPkEnabled
+        {
+            get => _applyPkEnabled;
+            private set => Set(ref _applyPkEnabled, value);
         }
 
         // ── State ─────────────────────────────────────────────────────────────
@@ -377,6 +469,8 @@ namespace SwInventreeAddin.UI
             CurrentName              = string.Empty;
             CurrentNotes             = string.Empty;
             CurrentRevision          = string.Empty;
+            CurrentDescription       = string.Empty;
+            CurrentPk                = string.Empty;
             PropertiesSectionVisible = false;
 
             ResetInvenTreeState();
@@ -433,6 +527,15 @@ namespace SwInventreeAddin.UI
                 FetchEnabled      = !string.IsNullOrEmpty(part.Ipn);
                 CreatePartEnabled = CanCreatePart();
                 ApplyFetchedPart(part);
+
+                // Write PK to SW doc on create (write-on-create only).
+                if (part.Pk > 0)
+                {
+                    var m = GetMappingOrDefault();
+                    _propertyService.SetCustomProperty(m.PkProperty, part.Pk.ToString());
+                    CurrentPk = part.Pk.ToString();
+                }
+
                 SetStatus("Part created in InvenTree.", StatusSeverity.Success);
             };
 
@@ -503,11 +606,13 @@ namespace SwInventreeAddin.UI
             if (_lastFetchedPart == null) return;
 
             var mapping = GetMappingOrDefault();
-            _propertyService.SetCustomProperty(mapping.NameProperty,  _lastFetchedPart.Name);
-            _propertyService.SetCustomProperty(mapping.NotesProperty, _lastFetchedPart.Notes);
+            _propertyService.SetCustomProperty(mapping.NameProperty,        _lastFetchedPart.Name);
+            _propertyService.SetCustomProperty(mapping.NotesProperty,       _lastFetchedPart.Notes);
+            _propertyService.SetCustomProperty(mapping.DescriptionProperty, _lastFetchedPart.Description);
 
-            CurrentName  = _lastFetchedPart.Name;
-            CurrentNotes = _lastFetchedPart.Notes;
+            CurrentName        = _lastFetchedPart.Name;
+            CurrentNotes       = _lastFetchedPart.Notes;
+            CurrentDescription = _lastFetchedPart.Description;
 
             SetStatus("Applied to document.", StatusSeverity.Success);
         }
@@ -532,6 +637,28 @@ namespace SwInventreeAddin.UI
             _propertyService.SetCustomProperty(GetMappingOrDefault().NotesProperty, value);
             CurrentNotes = value;
             SetStatus("Notes applied.", StatusSeverity.Success);
+        }
+
+        /// <summary>Writes only the Description field to the SolidWorks document.</summary>
+        public void ApplyDescriptionToDocument()
+        {
+            if (_lastFetchedPart == null) return;
+
+            var value = DescriptionPreview;
+            _propertyService.SetCustomProperty(GetMappingOrDefault().DescriptionProperty, value);
+            CurrentDescription = value;
+            SetStatus("Description applied.", StatusSeverity.Success);
+        }
+
+        /// <summary>Writes the InvenTree PK property to the SolidWorks document.</summary>
+        public void ApplyPkToDocument()
+        {
+            if (_lastFetchedPart == null) return;
+
+            var value = PkPreview;
+            _propertyService.SetCustomProperty(GetMappingOrDefault().PkProperty, value);
+            CurrentPk = value;
+            SetStatus("InvenTree PK applied.", StatusSeverity.Success);
         }
 
         /// <summary>Pushes the current SolidWorks revision up to InvenTree.</summary>
@@ -634,6 +761,35 @@ namespace SwInventreeAddin.UI
             }
         }
 
+        /// <summary>Pushes the current SolidWorks description up to InvenTree.</summary>
+        public async Task PushDescriptionToInvenTreeAsync()
+        {
+            if (_lastFetchedPart == null || _lastFetchedPart.Pk == 0) return;
+            if (_client == null) return;
+
+            var mapping     = GetMappingOrDefault();
+            var description = _propertyService.GetCustomProperty(mapping.DescriptionProperty);
+            SetStatus("Pushing description to InvenTree\u2026", StatusSeverity.None);
+
+            try
+            {
+                await _client.UpdatePartDescriptionAsync(_lastFetchedPart.Pk, description)
+                              .ConfigureAwait(false);
+
+                RunOnUiThread(() =>
+                {
+                    _lastFetchedPart.Description = description;
+                    DescriptionPreview           = description;
+                    SetStatus("Description pushed to InvenTree.", StatusSeverity.Success);
+                });
+            }
+            catch (Exception ex)
+            {
+                RunOnUiThread(() =>
+                    SetStatus($"Error: {ex.Message}", StatusSeverity.Error));
+            }
+        }
+
         /// <summary>
         /// Captures the viewport (or uses <paramref name="imageOverride"/> for tests),
         /// runs it through <see cref="ImagePipeline"/>, and uploads the PNG to InvenTree.
@@ -712,9 +868,11 @@ namespace SwInventreeAddin.UI
         private void RefreshCurrentProperties()
         {
             var mapping = GetMappingOrDefault();
-            CurrentName     = _propertyService.GetCustomProperty(mapping.NameProperty);
-            CurrentNotes    = _propertyService.GetCustomProperty(mapping.NotesProperty);
-            CurrentRevision = _propertyService.GetCustomProperty(mapping.RevisionProperty);
+            CurrentName        = _propertyService.GetCustomProperty(mapping.NameProperty);
+            CurrentNotes       = _propertyService.GetCustomProperty(mapping.NotesProperty);
+            CurrentRevision    = _propertyService.GetCustomProperty(mapping.RevisionProperty);
+            CurrentDescription = _propertyService.GetCustomProperty(mapping.DescriptionProperty);
+            CurrentPk          = _propertyService.GetCustomProperty(mapping.PkProperty);
         }
 
         /// <summary>
@@ -725,15 +883,20 @@ namespace SwInventreeAddin.UI
         private void ApplyFetchedPart(InventreePart part, byte[]? thumbBytes = null)
         {
             PropertiesSectionVisible = true;
-            NamePreview              = part.Name     ?? string.Empty;
-            NotesPreview             = part.Notes    ?? string.Empty;
-            RevisionPreview          = part.Revision ?? string.Empty;
+            NamePreview              = part.Name        ?? string.Empty;
+            NotesPreview             = part.Notes       ?? string.Empty;
+            RevisionPreview          = part.Revision    ?? string.Empty;
+            DescriptionPreview       = part.Description ?? string.Empty;
+            PkPreview                = part.Pk > 0 ? part.Pk.ToString() : string.Empty;
             ThumbnailBytes           = thumbBytes;
             ApplyEnabled             = true;
             ApplyNameEnabled         = true;
             ApplyNotesEnabled        = true;
+            ApplyDescriptionEnabled  = true;
+            ApplyPkEnabled           = true;
             PushNameEnabled          = true;
             PushNotesEnabled         = true;
+            PushDescriptionEnabled   = true;
             PushRevisionVisible      = true;
             PushImageVisible         = true;
             _lastFetchedPart         = part;
@@ -742,18 +905,23 @@ namespace SwInventreeAddin.UI
 
         private void ResetInvenTreeState()
         {
-            NamePreview      = string.Empty;
-            NotesPreview     = string.Empty;
-            RevisionPreview  = string.Empty;
-            ThumbnailBytes    = null;
-            ApplyEnabled      = false;
-            ApplyNameEnabled  = false;
-            ApplyNotesEnabled = false;
-            PushNameEnabled   = false;
-            PushNotesEnabled  = false;
-            PushRevisionVisible = false;
-            PushImageVisible    = false;
-            _lastFetchedPart    = null;
+            NamePreview          = string.Empty;
+            NotesPreview         = string.Empty;
+            RevisionPreview      = string.Empty;
+            DescriptionPreview   = string.Empty;
+            PkPreview            = string.Empty;
+            ThumbnailBytes       = null;
+            ApplyEnabled         = false;
+            ApplyNameEnabled     = false;
+            ApplyNotesEnabled    = false;
+            ApplyDescriptionEnabled = false;
+            ApplyPkEnabled       = false;
+            PushNameEnabled      = false;
+            PushNotesEnabled     = false;
+            PushDescriptionEnabled = false;
+            PushRevisionVisible  = false;
+            PushImageVisible     = false;
+            _lastFetchedPart     = null;
 
             if (_client == null)
             {

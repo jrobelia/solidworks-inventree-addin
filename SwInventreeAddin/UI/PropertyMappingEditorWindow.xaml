@@ -137,6 +137,20 @@
                          Style="{StaticResource SWFieldStyle}" Height="26" />
             </Grid>
 
+            <!-- InvenTree PK row -->
+            <Grid Margin="0,4,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="150" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="InvenTree PK"
+                           VerticalAlignment="Center"
+                           FontWeight="SemiBold"
+                           Foreground="{StaticResource BrushForeground}" />
+                <TextBox x:Name="PkPropertyBox" Grid.Column="1"
+                         Style="{StaticResource SWFieldStyle}" Height="26" />
+            </Grid>
+
             <!-- Validation error (visible when duplicate names detected) -->
             <TextBlock x:Name="ErrorText"
                        Visibility="Collapsed"

@@ -7,7 +7,7 @@ namespace SwInventreeAddin.Config
     public class PropertyMappingConfig
     {
         /// <summary>Current schema version — bump when adding new required fields.</summary>
-        public const string CurrentSchemaVersion = "1";
+        public const string CurrentSchemaVersion = "2";
 
         /// <summary>Schema version — bump when adding new required fields.</summary>
         public string SchemaVersion { get; set; } = CurrentSchemaVersion;
@@ -26,5 +26,8 @@ namespace SwInventreeAddin.Config
 
         /// <summary>SW custom property mapped to InvenTree Part.description (task 6).</summary>
         public string DescriptionProperty { get; set; } = "Description Long";
+
+        /// <summary>SW custom property that stores the InvenTree primary key (written on create; apply-only).</summary>
+        public string PkProperty { get; set; } = "InvenTree PK";
     }
 }

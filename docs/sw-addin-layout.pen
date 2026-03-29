@@ -505,6 +505,168 @@
             },
             {
               "type": "text",
+              "id": "JhvcG",
+              "name": "descLbl",
+              "fill": "$color-subtle",
+              "content": "Description",
+              "fontFamily": "Inter",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "IiJVX",
+              "name": "descRow",
+              "width": "fill_container",
+              "height": 26,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "tNODT",
+                  "name": "nameSW",
+                  "width": "fill_container",
+                  "height": 26,
+                  "fill": "$color-sw-field",
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "$color-border"
+                  },
+                  "padding": [
+                    0,
+                    3
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "qb1fr",
+                      "name": "nameSWTxt",
+                      "fill": "$color-foreground",
+                      "content": "Zinc-plated front bracket",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "7KSzD",
+                  "name": "nameMatch",
+                  "width": 20,
+                  "height": 26,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "VUphL",
+                      "name": "nameMatchTxt",
+                      "fill": "#F9A825",
+                      "content": "≠",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "9arUL",
+                  "name": "nameIT",
+                  "width": "fill_container",
+                  "height": 26,
+                  "fill": "$color-inventree-field",
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "$color-border"
+                  },
+                  "padding": [
+                    0,
+                    3
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "dJSbV",
+                      "name": "nameITTxt",
+                      "fill": "$color-foreground",
+                      "content": "Zinc-plated bracket, front mount",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "KGhiQ",
+              "name": "descButtons",
+              "width": "fill_container",
+              "height": 28,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "D07lM",
+                  "name": "namePush",
+                  "width": "fill_container",
+                  "height": 28,
+                  "fill": "$color-section-header",
+                  "cornerRadius": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "NUQat",
+                      "name": "namePushTxt",
+                      "fill": "$color-foreground",
+                      "content": "Push to InvenTree →",
+                      "fontFamily": "Inter",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Jw1H9",
+                  "name": "nameBtnGap",
+                  "width": 20,
+                  "height": 28
+                },
+                {
+                  "type": "frame",
+                  "id": "Hgqez",
+                  "name": "nameApply",
+                  "width": "fill_container",
+                  "height": 28,
+                  "fill": "$color-section-header",
+                  "cornerRadius": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "W6lEj",
+                      "name": "nameApplyTxt",
+                      "fill": "$color-foreground",
+                      "content": "← Apply to SW Doc",
+                      "fontFamily": "Inter",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
               "id": "ZI4Yq",
               "name": "notesLbl",
               "fill": "$color-subtle",
@@ -783,6 +945,152 @@
                   "fontFamily": "Inter",
                   "fontSize": 12,
                   "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "Kd7Ju",
+              "name": "pkLbl",
+              "fill": "$color-subtle",
+              "content": "InvenTree PK",
+              "fontFamily": "Inter",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "IMGIL",
+              "name": "pkRow",
+              "width": "fill_container",
+              "height": 26,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "FGQWX",
+                  "name": "revSW",
+                  "width": "fill_container",
+                  "height": 26,
+                  "fill": "$color-sw-field",
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "$color-border"
+                  },
+                  "padding": [
+                    0,
+                    3
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "OkXtn",
+                      "name": "revSWTxt",
+                      "fill": "$color-foreground",
+                      "content": "1247",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "yBu8E",
+                  "name": "pkMatch",
+                  "width": 20,
+                  "height": 26,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "dXxDA",
+                      "name": "pkMatchTxt",
+                      "fill": "#2E7D32",
+                      "content": "=",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "voYPQ",
+                  "name": "revIT",
+                  "width": "fill_container",
+                  "height": 26,
+                  "fill": "$color-inventree-field",
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "$color-border"
+                  },
+                  "padding": [
+                    0,
+                    3
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "PwTPa",
+                      "name": "revITTxt",
+                      "fill": "$color-foreground",
+                      "content": "1247",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "mSNjh",
+              "name": "pkButtons",
+              "width": "fill_container",
+              "height": 28,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "gDTfz",
+                  "name": "pkBtnLeft",
+                  "width": "fill_container",
+                  "height": 28
+                },
+                {
+                  "type": "frame",
+                  "id": "xQHoG",
+                  "name": "pkBtnGap",
+                  "width": 20,
+                  "height": 28
+                },
+                {
+                  "type": "frame",
+                  "id": "FU1v4",
+                  "name": "pkApply",
+                  "width": "fill_container",
+                  "height": 28,
+                  "fill": "$color-section-header",
+                  "cornerRadius": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "WB58c",
+                      "name": "pkApplyTxt",
+                      "fill": "$color-foreground",
+                      "content": "← Apply to SW Doc",
+                      "fontFamily": "Inter",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
                 }
               ]
             }
@@ -1215,117 +1523,6 @@
             },
             {
               "type": "frame",
-              "id": "3TwYD",
-              "name": "sharedLabelRow",
-              "width": "fill_container",
-              "height": 20,
-              "gap": 6,
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "XEsQh",
-                  "name": "sharedRadio",
-                  "fill": "$color-accent-blue",
-                  "content": "●",
-                  "fontFamily": "Inter",
-                  "fontSize": 12,
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "text",
-                  "id": "3DUTU",
-                  "name": "sharedLbl",
-                  "fill": "$color-foreground",
-                  "content": "Shared Mapping File (optional)",
-                  "fontFamily": "Inter",
-                  "fontSize": 12,
-                  "fontWeight": "normal"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "KZC1f",
-              "name": "sharedFileRow",
-              "width": "fill_container",
-              "height": 28,
-              "gap": 8,
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "42oCx",
-                  "name": "sharedFileField",
-                  "width": "fill_container",
-                  "height": 28,
-                  "fill": "$color-sw-field",
-                  "stroke": {
-                    "align": "inside",
-                    "thickness": 1,
-                    "fill": "$color-border"
-                  },
-                  "padding": [
-                    0,
-                    6
-                  ],
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "vl8Sq",
-                      "name": "sharedFileTxt",
-                      "fill": "$color-subtle",
-                      "content": "(not configured)",
-                      "fontFamily": "Inter",
-                      "fontSize": 12,
-                      "fontWeight": "normal"
-                    },
-                    {
-                      "type": "rectangle",
-                      "cornerRadius": 2,
-                      "id": "Tj3zV",
-                      "name": "focusOverlay",
-                      "opacity": 0,
-                      "metadata": {
-                        "type": "focus-indicator"
-                      },
-                      "width": "fill_container",
-                      "height": "fill_container",
-                      "stroke": {
-                        "thickness": 2,
-                        "fill": "$color-accent-blue"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "SEmQm",
-                  "name": "browseBtn",
-                  "width": 120,
-                  "height": 28,
-                  "fill": "$color-section-header",
-                  "cornerRadius": 2,
-                  "justifyContent": "center",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "nIgHv",
-                      "name": "browseLbl",
-                      "fill": "$color-foreground",
-                      "content": "Browse...",
-                      "fontFamily": "Inter",
-                      "fontSize": 12,
-                      "fontWeight": "normal"
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "type": "frame",
               "id": "LbQh7",
               "name": "localLabelRow",
               "width": "fill_container",
@@ -1337,8 +1534,8 @@
                   "type": "text",
                   "id": "RCLDI",
                   "name": "localRadio",
-                  "fill": "$color-subtle",
-                  "content": "○",
+                  "fill": "$color-accent-blue",
+                  "content": "●",
                   "fontFamily": "Inter",
                   "fontSize": 12,
                   "fontWeight": "normal"
@@ -1347,7 +1544,7 @@
                   "type": "text",
                   "id": "pyLoo",
                   "name": "localLbl",
-                  "fill": "$color-subtle",
+                  "fill": "$color-foreground",
                   "content": "Local Mapping File",
                   "fontFamily": "Inter",
                   "fontSize": 12,
@@ -1438,6 +1635,117 @@
                       "name": "mapEditBtnLbl",
                       "fill": "$color-foreground",
                       "content": "Edit Mappings...",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "3TwYD",
+              "name": "sharedLabelRow",
+              "width": "fill_container",
+              "height": 20,
+              "gap": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "XEsQh",
+                  "name": "sharedRadio",
+                  "fill": "$color-subtle",
+                  "content": "○",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "3DUTU",
+                  "name": "sharedLbl",
+                  "fill": "$color-subtle",
+                  "content": "Shared Mapping File (optional)",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "KZC1f",
+              "name": "sharedFileRow",
+              "width": "fill_container",
+              "height": 28,
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "42oCx",
+                  "name": "sharedFileField",
+                  "width": "fill_container",
+                  "height": 28,
+                  "fill": "$color-sw-field",
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "$color-border"
+                  },
+                  "padding": [
+                    0,
+                    6
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "vl8Sq",
+                      "name": "sharedFileTxt",
+                      "fill": "$color-subtle",
+                      "content": "(not configured)",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 2,
+                      "id": "Tj3zV",
+                      "name": "focusOverlay",
+                      "opacity": 0,
+                      "metadata": {
+                        "type": "focus-indicator"
+                      },
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "stroke": {
+                        "thickness": 2,
+                        "fill": "$color-accent-blue"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "SEmQm",
+                  "name": "browseBtn",
+                  "width": 120,
+                  "height": 28,
+                  "fill": "$color-section-header",
+                  "cornerRadius": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "nIgHv",
+                      "name": "browseLbl",
+                      "fill": "$color-foreground",
+                      "content": "Browse...",
                       "fontFamily": "Inter",
                       "fontSize": 12,
                       "fontWeight": "normal"
@@ -2450,6 +2758,60 @@
             },
             {
               "type": "frame",
+              "id": "J201L",
+              "name": "rowNotes",
+              "width": "fill_container",
+              "height": 28,
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "gcvxi",
+                  "name": "r3Role",
+                  "fill": "$color-foreground",
+                  "textGrowth": "fixed-width",
+                  "width": 150,
+                  "content": "Notes",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "fLMoy",
+                  "name": "r3SW",
+                  "width": "fill_container",
+                  "height": 26,
+                  "fill": "$color-sw-field",
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "$color-border"
+                  },
+                  "padding": [
+                    0,
+                    6
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "HNDtl",
+                      "name": "r3SWTxt",
+                      "fill": "$color-subtle",
+                      "content": "(property name)",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal",
+                      "fontStyle": "italic"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
               "id": "YSZ9r",
               "name": "rowRevision",
               "width": "fill_container",
@@ -2504,8 +2866,8 @@
             },
             {
               "type": "frame",
-              "id": "J201L",
-              "name": "rowNotes",
+              "id": "nAZq9",
+              "name": "pkRow",
               "width": "fill_container",
               "height": 28,
               "gap": 8,
@@ -2513,19 +2875,19 @@
               "children": [
                 {
                   "type": "text",
-                  "id": "gcvxi",
+                  "id": "FTfDC",
                   "name": "r3Role",
                   "fill": "$color-foreground",
                   "textGrowth": "fixed-width",
                   "width": 150,
-                  "content": "Notes",
+                  "content": "InvenTree PK",
                   "fontFamily": "Inter",
                   "fontSize": 12,
                   "fontWeight": "600"
                 },
                 {
                   "type": "frame",
-                  "id": "fLMoy",
+                  "id": "XkSwq",
                   "name": "r3SW",
                   "width": "fill_container",
                   "height": 26,
@@ -2543,7 +2905,7 @@
                   "children": [
                     {
                       "type": "text",
-                      "id": "HNDtl",
+                      "id": "I6rp8",
                       "name": "r3SWTxt",
                       "fill": "$color-subtle",
                       "content": "(property name)",

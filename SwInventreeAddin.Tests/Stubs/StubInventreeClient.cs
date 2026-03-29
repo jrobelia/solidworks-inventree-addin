@@ -14,6 +14,7 @@ namespace SwInventreeAddin.Tests.Stubs
         public string         LastPushedRevision  { get; private set; } = string.Empty;
         public string         LastPushedName      { get; private set; } = string.Empty;
         public string         LastPushedNotes     { get; private set; } = string.Empty;
+        public string         LastPushedDescription { get; private set; } = string.Empty;
         public Exception?     ThrowOnUpdate       { get; set; }
         public int            LastUploadedPk        { get; private set; }
         public byte[]?        LastUploadedImageData { get; private set; }
@@ -46,6 +47,14 @@ namespace SwInventreeAddin.Tests.Stubs
             if (ThrowOnUpdate != null) throw ThrowOnUpdate;
             LastPushedPk    = pk;
             LastPushedNotes = notes;
+            return Task.CompletedTask;
+        }
+
+        public Task UpdatePartDescriptionAsync(int pk, string description)
+        {
+            if (ThrowOnUpdate != null) throw ThrowOnUpdate;
+            LastPushedPk          = pk;
+            LastPushedDescription = description;
             return Task.CompletedTask;
         }
 

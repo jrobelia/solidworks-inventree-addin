@@ -21,11 +21,12 @@ namespace SwInventreeAddin.Tests
 
         private static readonly InventreePart SamplePart = new InventreePart
         {
-            Pk       = 42,
-            Name     = "Resistor 10k",
-            Notes    = "SMD 0402",
-            Revision = "A",
-            Ipn      = "R-10K-0402",
+            Pk          = 42,
+            Name        = "Resistor 10k",
+            Description = "10k ohm 1% 0402",
+            Notes       = "SMD 0402",
+            Revision    = "A",
+            Ipn         = "R-10K-0402",
         };
 
         [SetUp]
@@ -349,6 +350,127 @@ namespace SwInventreeAddin.Tests
                 Is.EqualTo("SMD 0402"));
         }
 
+        // ── ApplyDescriptionToDocument ────────────────────────────────────────
+
+        [Test]
+        public async Task ApplyDescriptionToDocument_WritesDescriptionLongProperty()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            _vm.ApplyDescriptionToDocument();
+
+            Assert.That(_propertyService.GetCustomProperty("Description Long"),
+                Is.EqualTo("10k ohm 1% 0402"));
+        }
+
+        [Test]
+        public async Task ApplyDescriptionToDocument_UpdatesCurrentDescription()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            _vm.ApplyDescriptionToDocument();
+
+            Assert.That(_vm.CurrentDescription, Is.EqualTo("10k ohm 1% 0402"));
+        }
+
+        // ── ApplyPkToDocument ─────────────────────────────────────────────────
+
+        [Test]
+        public async Task ApplyPkToDocument_WritesPkProperty()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            _vm.ApplyPkToDocument();
+
+            Assert.That(_propertyService.GetCustomProperty("InvenTree PK"),
+                Is.EqualTo("42"));
+        }
+
+        [Test]
+        public async Task ApplyPkToDocument_UpdatesCurrentPk()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            _vm.ApplyPkToDocument();
+
+            Assert.That(_vm.CurrentPk, Is.EqualTo("42"));
+        }
+
+        // ── ApplyToDocument (Description included) ────────────────────────────
+
+        [Test]
+        public async Task ApplyToDocument_WritesDescriptionLongProperty()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            _vm.ApplyToDocument();
+
+            Assert.That(_propertyService.GetCustomProperty("Description Long"),
+                Is.EqualTo("10k ohm 1% 0402"));
+        }
+
+        // ── PushDescription ───────────────────────────────────────────────────
+
+        [Test]
+        public async Task PushDescription_WhenNoPartFetched_DoesNotCallClient()
+        {
+            CreateVm();
+
+            await _vm.PushDescriptionToInvenTreeAsync();
+
+            Assert.That(_client.LastPushedPk, Is.EqualTo(0));
+        }
+
+        [Test]
+        public async Task PushDescription_WhenPartFetched_CallsClientWithSwValue()
+        {
+            _propertyService.Seed("Description Long", "Custom description");
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            await _vm.PushDescriptionToInvenTreeAsync();
+
+            Assert.That(_client.LastPushedPk,          Is.EqualTo(42));
+            Assert.That(_client.LastPushedDescription, Is.EqualTo("Custom description"));
+        }
+
+        [Test]
+        public async Task PushDescription_OnSuccess_UpdatesDescriptionPreview()
+        {
+            _propertyService.Seed("Description Long", "Updated desc");
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            await _vm.PushDescriptionToInvenTreeAsync();
+
+            Assert.That(_vm.DescriptionPreview, Is.EqualTo("Updated desc"));
+        }
+
+        [Test]
+        public async Task PushDescription_OnHttpError_StatusText_ShowsError()
+        {
+            _client.PartToReturn  = SamplePart;
+            _client.ThrowOnUpdate = new System.Net.Http.HttpRequestException("500");
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            await _vm.PushDescriptionToInvenTreeAsync();
+
+            Assert.That(_vm.StatusText, Does.Contain("Error").IgnoreCase);
+        }
+
         // ── PushRevision ──────────────────────────────────────────────────────
 
         [Test]
@@ -539,7 +661,7 @@ namespace SwInventreeAddin.Tests
         {
             var provider = new StubPropertyMappingProvider
             {
-                Config = new PropertyMappingConfig { SchemaVersion = "1" }
+                Config = new PropertyMappingConfig { SchemaVersion = "2" }
             };
             _propertyService.Seed("PartNo", "");
             _vm = new TaskPaneViewModel(_client, _propertyService, null, provider);
@@ -588,7 +710,7 @@ namespace SwInventreeAddin.Tests
 
             var good = new StubPropertyMappingProvider
             {
-                Config = new PropertyMappingConfig { SchemaVersion = "1" }
+                Config = new PropertyMappingConfig { SchemaVersion = "2" }
             };
             _vm.UpdateMapping(good);
 
@@ -615,7 +737,7 @@ namespace SwInventreeAddin.Tests
             {
                 Config = new PropertyMappingConfig
                 {
-                    SchemaVersion    = "1",
+                    SchemaVersion    = PropertyMappingConfig.CurrentSchemaVersion,
                     IpnProperty      = "PartNo",
                     NameProperty     = "MyName",
                     NotesProperty    = "MyNotes",
@@ -644,6 +766,9 @@ namespace SwInventreeAddin.Tests
             => Task.CompletedTask;
 
         public Task UpdatePartNotesAsync(int pk, string notes)
+            => Task.CompletedTask;
+
+        public Task UpdatePartDescriptionAsync(int pk, string description)
             => Task.CompletedTask;
 
         public Task UploadPartImageAsync(int pk, byte[] pngData)
@@ -1112,6 +1237,7 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.NamePreview,       Is.EqualTo("New Resistor"));
             Assert.That(vm.ApplyEnabled,      Is.True);           // fields unlocked via FetchPartAsync
             Assert.That(vm.CreatePartEnabled, Is.False);          // IPN now set — Create disabled
+            Assert.That(_propertyService.SetCallLog, Does.Contain("InvenTree PK")); // PK written on create
         }
 
         [Test]

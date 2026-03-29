@@ -100,6 +100,26 @@ namespace SwInventreeAddin.UI
         private void ApplyNotes_Click(object sender, RoutedEventArgs e) =>
             _vm?.ApplyNotesToDocument();
 
+        private void ApplyDescription_Click(object sender, RoutedEventArgs e) =>
+            _vm?.ApplyDescriptionToDocument();
+
+        private void ApplyPk_Click(object sender, RoutedEventArgs e) =>
+            _vm?.ApplyPkToDocument();
+
+        private void PushDescription_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new PushRevisionConfirmDialog(
+                "Push the SolidWorks description to InvenTree? This will overwrite the description currently stored in InvenTree.",
+                imageCheckedByDefault: false);
+
+            if (dlg.ShowDialog() != true) return;
+
+            _ = _vm?.PushDescriptionToInvenTreeAsync();
+
+            if (dlg.IncludeImage)
+                _ = _vm?.PushImageAsync();
+        }
+
         private void PushRevision_Click(object sender, RoutedEventArgs e)
         {
             var dlg = new PushRevisionConfirmDialog(

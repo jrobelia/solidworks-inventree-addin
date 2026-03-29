@@ -28,6 +28,7 @@ namespace SwInventreeAddin.UI
             DescriptionPropertyBox.Text = mapping.DescriptionProperty  ?? string.Empty;
             RevisionPropertyBox.Text    = mapping.RevisionProperty     ?? string.Empty;
             NotesPropertyBox.Text       = mapping.NotesProperty        ?? string.Empty;
+            PkPropertyBox.Text          = mapping.PkProperty           ?? string.Empty;
 
             if (_provider.IsReadOnly)
                 ApplyReadOnlyMode();
@@ -77,6 +78,7 @@ namespace SwInventreeAddin.UI
                     DescriptionProperty = DescriptionPropertyBox.Text.Trim(),
                     RevisionProperty    = RevisionPropertyBox.Text.Trim(),
                     NotesProperty       = NotesPropertyBox.Text.Trim(),
+                    PkProperty          = PkPropertyBox.Text.Trim(),
                 });
             }
             catch (Exception ex)
@@ -100,7 +102,7 @@ namespace SwInventreeAddin.UI
 
         private IEnumerable<TextBox> MappingBoxes() =>
             new[] { IpnPropertyBox, NamePropertyBox, DescriptionPropertyBox,
-                    RevisionPropertyBox, NotesPropertyBox };
+                    RevisionPropertyBox, NotesPropertyBox, PkPropertyBox };
 
         /// <summary>
         /// Returns true when any two non-blank names in <paramref name="names"/> are
