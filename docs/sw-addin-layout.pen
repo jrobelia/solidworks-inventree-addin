@@ -6232,18 +6232,18 @@
                   "children": [
                     {
                       "type": "text",
-                      "id": "NWth6",
+                      "id": "WYJxE",
                       "fill": "#202020",
-                      "content": "BRKT-992-04.SLDPRT",
+                      "content": "IPN: BRKT-992",
                       "fontFamily": "Inter",
                       "fontSize": 12,
                       "fontWeight": "bold"
                     },
                     {
                       "type": "text",
-                      "id": "WYJxE",
+                      "id": "NWth6",
                       "fill": "#8B8B8B",
-                      "content": "IPN: BRKT-992-04",
+                      "content": "File: BRKT-992_A.SLDPRT",
                       "fontFamily": "Inter",
                       "fontSize": 11,
                       "fontWeight": "normal"
@@ -6648,7 +6648,7 @@
                           "type": "text",
                           "id": "UWGx5",
                           "fill": "#202020",
-                          "content": "A.02",
+                          "content": "A",
                           "fontFamily": "Inter",
                           "fontSize": 12,
                           "fontWeight": "600"
@@ -6739,7 +6739,7 @@
                           "type": "text",
                           "id": "ohdeF",
                           "fill": "#202020",
-                          "content": "A.02",
+                          "content": "A",
                           "fontFamily": "Inter",
                           "fontSize": 12,
                           "fontWeight": "600"
