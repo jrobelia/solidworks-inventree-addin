@@ -5,6 +5,9 @@
 # --- SECURITY: Server config contains real API keys — NEVER commit ---
 inventree_servers.json
 
+# --- Company-internal reference files — not for public release ---
+docs/reference/
+
 # --- Scratch / debug output — never commit ---
 inventree_debug.log
 .scratch/
