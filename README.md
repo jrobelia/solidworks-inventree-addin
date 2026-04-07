@@ -35,7 +35,9 @@ To get an API key: InvenTree → click your username → **Account Settings** �
 
 ## Configuration
 
-Settings are stored per-user using Windows DPAPI encryption — no plain-text config files. Property name mappings (IPN, revision, description, etc.) are configurable from within the add-in so the tool isn't locked to any one company's naming conventions.
+Settings are stored per-user using Windows DPAPI encryption — no plain-text config files. Property name mappings are configurable from within the add-in — open Settings → Edit Mapping to change which SolidWorks custom property names correspond to IPN, part name, notes, and revision.
+
+**IPN is the link between SolidWorks and InvenTree.** The add-in reads the IPN property from the open document and looks up the matching InvenTree part by IPN. All comparisons and syncs are keyed on IPN — there is no automatic matching by name or description alone.
 
 ## Building from Source
 
@@ -115,7 +117,7 @@ Releases are tagged `vMAJOR.MINOR.0` and published as [GitHub Releases](../../re
 | `v1.2.0` | WPF UI migration, sign-in with username/password, security hardening (HTTPS enforcement, TLS 1.2, header injection fix), installer improvements |
 | `v1.3.0` | Thumbnail display, bidirectional Name/Notes push, revision match indicator, drawing block |
 
-Milestone 1 is currently in progress on the `milestone-1` branch. Already complete on that branch: configurable property mapping (no more hardcoded SolidWorks property names), description row, InvenTree PK storage, and PK match indicator. Part creation from SolidWorks is still in progress.
+Milestone 1 is currently in progress on the `milestone-1` branch. Already complete on that branch: configurable property mapping (no more hardcoded SolidWorks property names), description row, InvenTree PK storage, PK match indicator, and UI refinements (focus rings, icons, status indicators). Part creation from SolidWorks is still in progress.
 
 ## Scope Limits
 
