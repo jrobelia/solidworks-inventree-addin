@@ -12,8 +12,6 @@ A SolidWorks task-pane add-in that bridges SolidWorks parts and assemblies with 
 
 **Push revision** — Sends the current SolidWorks revision to InvenTree, with an optional viewport screenshot attached.
 
-**BOM comparison** *(in progress)* — Side-by-side diff of the SolidWorks assembly BOM against the InvenTree BOM. InvenTree-only lines are never touched.
-
 ## Requirements
 
 - SolidWorks 2022 or newer (2022–2026+ tested)
@@ -112,12 +110,12 @@ Releases are tagged `vMAJOR.MINOR.0` and published as [GitHub Releases](../../re
 
 | Tag | Contents |
 |---|---|
-| `v1.0.0` | Initial working add-in: fetch, compare, apply, push revision |
+| `v1.0.0` | Initial working add-in: fetch, compare, apply, push revision. Encrypted settings panel. Installer and DevRegister scripts. |
 | `v1.1.0` | Push viewport screenshot as part image |
-| `v1.2.0` | Security audit fixes, crop preview background |
-| `v1.3.0` | Description row, InvenTree PK storage, PK match indicator |
+| `v1.2.0` | WPF UI migration, sign-in with username/password, security hardening (HTTPS enforcement, TLS 1.2, header injection fix), installer improvements |
+| `v1.3.0` | Thumbnail display, bidirectional Name/Notes push, revision match indicator, drawing block |
 
-Milestone 1 is currently in progress on the `milestone-1` branch. Configurable property mapping (removing all hardcoded SolidWorks property names) is already complete on that branch. Part creation from SolidWorks and BOM comparison are still in progress.
+Milestone 1 is currently in progress on the `milestone-1` branch. Already complete on that branch: configurable property mapping (no more hardcoded SolidWorks property names), description row, InvenTree PK storage, and PK match indicator. Part creation from SolidWorks is still in progress.
 
 ## Scope Limits
 
