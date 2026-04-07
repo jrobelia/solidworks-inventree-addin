@@ -8,6 +8,9 @@ inventree_servers.json
 # --- Company-internal reference files — not for public release ---
 docs/reference/
 Reference/
+docs/research/
+docs/screenshots/
+docs/superpowers/
 
 # --- Scratch / debug output — never commit ---
 inventree_debug.log
