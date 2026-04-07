@@ -11,6 +11,7 @@ Reference/
 docs/research/
 docs/screenshots/
 docs/superpowers/
+docs/archive/
 
 # --- Scratch / debug output — never commit ---
 inventree_debug.log
