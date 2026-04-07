@@ -1,16 +1,16 @@
 ﻿# Package.ps1  Run this (no admin needed) to build and zip the installer.
-# Output: Installer\OA-SWInvenTree-Addin-<version>.zip
+# Output: Installer\SwInventreeAddin-<version>.zip
 # Version is derived from the nearest git tag (e.g. v1.0.0, or v1.0.0-3-gabcd123 if not on a tag).
 
 $repoRoot   = Split-Path $PSScriptRoot -Parent
 $buildOut   = "$repoRoot\SwInventreeAddin\bin\Release\net48"
 $distDir    = "$repoRoot\Installer\dist"
 
-# Derive version from git — falls back to commit hash if no tags exist
+# Derive version from git -- falls back to commit hash if no tags exist
 $version    = & git -C $repoRoot describe --tags --always 2>$null
 if (-not $version) { $version = "unknown" }
 
-$zipPath    = "$repoRoot\Installer\OA-SWInvenTree-Addin-$version.zip"
+$zipPath    = "$repoRoot\Installer\SwInventreeAddin-$version.zip"
 
 Write-Host "Building add-in..." -ForegroundColor Cyan
 Push-Location $repoRoot

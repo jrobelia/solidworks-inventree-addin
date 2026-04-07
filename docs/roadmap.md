@@ -66,6 +66,9 @@ keeping the inventory system in sync while designing.
   named IPN_rev. Company-specific; would need configurable filename pattern.
 - Status bar showing connection health (green/red dot).
 - Per-document-type enable/disable switches in Settings.
+- Auto part-number wait toggle -- configurable setting to enable/disable the
+  10-second IPN generation poll after Create Part. Useful for servers without
+  the auto-numbering plugin installed.
 - BOM snapshot on revision push -- snapshot the InvenTree BOM before applying
   an update. Write a dated JSON file to a configurable archive path.
 - Nightly TLA snapshot script -- standalone script that fetches the full

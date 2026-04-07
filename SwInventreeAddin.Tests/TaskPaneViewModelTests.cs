@@ -1130,7 +1130,7 @@ namespace SwInventreeAddin.Tests
             _client          = new StubInventreeClient();
             _propertyService = new StubDocumentPropertyService();
             // Seed a populated document so LoadPartNumber doesn't immediately ClearAll.
-            _propertyService.Seed("PartNo", "OA-001");
+            _propertyService.Seed("PartNo", "TST-001");
         }
 
         private TaskPaneViewModel CreateVm(bool withClient = true) =>
@@ -1160,7 +1160,7 @@ namespace SwInventreeAddin.Tests
         public void CreatePartEnabled_WithNonEmptyIpn_IsFalse()
         {
             // Part already has an IPN — Create would overwrite it.
-            var vm = CreateVm();   // SetUp seeds PartNo="OA-001"
+            var vm = CreateVm();   // SetUp seeds PartNo="TST-001"
             Assert.That(vm.CreatePartEnabled, Is.False);
         }
 

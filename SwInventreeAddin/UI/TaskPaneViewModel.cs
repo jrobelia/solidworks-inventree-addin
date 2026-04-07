@@ -417,7 +417,7 @@ namespace SwInventreeAddin.UI
         // ── Behaviour ─────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Reads the OA Part Number from the open document and prepares
+        /// Reads the IPN from the open document and prepares
         /// the panel for the user to fetch from InvenTree.
         /// </summary>
         public void LoadPartNumber()
