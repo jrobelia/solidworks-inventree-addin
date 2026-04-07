@@ -23,7 +23,7 @@ Write-Host "Deleting add-in files..."
 Remove-Item $installDir -Recurse -Force -ErrorAction SilentlyContinue
 
 # Remove the Add/Remove Programs entry
-$regPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\OAInvenTreeAddin"
+$regPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\SwInventreeAddin"
 if (Test-Path $regPath) {
     Remove-Item $regPath -Force
     Write-Host "Removed from Add/Remove Programs."

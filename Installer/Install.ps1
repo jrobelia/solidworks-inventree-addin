@@ -78,7 +78,7 @@ $versionFile = Join-Path $scriptDir "version.txt"
 if (Test-Path $versionFile) { $version = (Get-Content $versionFile -Raw).Trim() }
 
 $uninstallBat = Join-Path $installDir "Uninstall (Run as Administrator).bat"
-$regPath      = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\OAInvenTreeAddin"
+$regPath      = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\SwInventreeAddin"
 New-Item -Path $regPath -Force | Out-Null
 Set-ItemProperty -Path $regPath -Name "DisplayName"     -Value "SwInventreeAddin"
 Set-ItemProperty -Path $regPath -Name "DisplayVersion"  -Value $version
