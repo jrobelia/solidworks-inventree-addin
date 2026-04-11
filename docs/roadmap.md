@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-03-29 (tasks 6 + 11 complete; Description row + PK storage verified)
+Last updated: 2026-04-11 (task 13 added — SW property refresh on Apply)
 
 ## Project North Star
 
@@ -53,11 +53,6 @@ keeping the inventory system in sync while designing.
 
 ### Future Vision / Parking Lot
 
-- Refresh the SW properties when a user presses "apply" button in the custom properties
-  side bar or when the system appplies them when they've changed and the user 
-  prompted "do you wan tto save custom property changes"  this way if they delete or
-  change something in custom properties we aren't relying on a part open/switch action
-  to get the refresh
 - Revision history / PDM-like behavior -- real pain point, unclear if it belongs
   in this add-in or a separate tool.
 - Drawing support -- drawings don't get InvenTree part numbers today, probably
@@ -136,6 +131,8 @@ box for any SolidWorks + InvenTree shop. Lighter lift than originally scoped.
 | 10 | Remove remaining company-specific conventions (part number naming, filename patterns) | 3 | cleanup | open | No company-specific strings remain; add-in works out of the box for any SW + InvenTree shop |
 | 11 | Store InvenTree PK as a SW custom property after fetch and create | 1 | build | done | A configurable `PkProperty` field (default `InvenTree PK`) is written to the SW document; future fetches can use PK for reliability |
 | 12 | Validate that SW custom property names in the mapping config actually exist in the open document before writing | 1 | cleanup | open | If a mapped property name is not found in the document, the add-in warns the user rather than silently creating a new property; prevents typos in Settings from poisoning document properties |
+| 13 | Refresh the task pane comparison grid when SW custom properties are applied (user clicks Apply in the SW sidebar, or confirms the save-changes prompt) | 1 | build | open | After the user applies SW custom property changes, the task pane re-reads SW properties and updates the comparison grid without requiring a document switch or reopen |
+| 14 | Remap task pane UI layout in the Pencil design file (`docs/sw-addin-layout.pen`) to reflect current and planned Milestone 1 screens | 1 | design | in-progress | Pencil file has up-to-date frames for all Milestone 1 views (task pane, create part dialog, read-only info panel, name search) |
 
 ### Done
 
@@ -198,21 +195,31 @@ When Milestone 1 is built, `docs/architecture.md` will need:
 These changes will be reflected in `docs/architecture.md` by the build pipeline
 debrief as each feature is completed.
 
+**Custom property refresh (task 13):**
+- Three document-level events on `PartDoc` and `AssemblyDoc` cover all cases:
+  `AddCustomPropertyNotify`, `ChangeCustomPropertyNotify`,
+  `DeleteCustomPropertyNotify`.
+- Signatures (all return `int`): Add/Delete take `(string propName, string
+  Configuration, string Value, int valueType)`; Change adds `string oldValue`
+  before the new value.
+- The `Configuration` parameter is `""` for document-level (Custom tab)
+  properties — ignore events where it is non-empty (config-specific properties
+  the add-in does not read).
+- These are **document-level** events (on `PartDoc`/`AssemblyDoc` concrete
+  classes, not on `SldWorks`). `SwAddin.cs` must track the currently subscribed
+  document object and swap subscriptions on every `ActiveDocChangeNotify` /
+  `DocumentLoadNotify2` / disconnect.
+- On any of the three events (filtered to `Configuration == ""`), call
+  `_taskPaneControl?.RefreshCurrentProperties()`. The ViewModel method already
+  exists; no ViewModel changes needed.
+
 ---
 
 ## Next Action
 
-Tasks 0a–0c are complete. Move to **task #1** (fetch and display the InvenTree
-category tree in a dialog) — the first step of actual part creation.
+Tasks 1–3, 6, 11 complete. Active work: **task 14** (UI remap in Pencil).
+After design is locked, move to **task 4** (read-only InvenTree info panel)
+then **task 5** (name search), **task 12** (property-name validation), and
+**task 13** (SW custom property change refresh).
 
-## Call to Action
 
-**Most critical gap:** The add-in cannot create new parts. Every new part
-requires leaving SolidWorks, switching to a browser, creating the part
-manually, and copying data back. This is the highest-frequency,
-highest-friction task the add-in was built to eliminate.
-
-**Risk of leaving it unaddressed:** The add-in remains useful only for existing
-parts -- which means the most common starting point of an engineer's workflow
-(creating something new) is completely unsupported. The tool stays a nice-to-have
-instead of becoming essential.
