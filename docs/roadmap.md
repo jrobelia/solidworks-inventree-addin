@@ -53,6 +53,11 @@ keeping the inventory system in sync while designing.
 
 ### Future Vision / Parking Lot
 
+- Refresh the SW properties when a user presses "apply" button in the custom properties
+  side bar or when the system appplies them when they've changed and the user 
+  prompted "do you wan tto save custom property changes"  this way if they delete or
+  change something in custom properties we aren't relying on a part open/switch action
+  to get the refresh
 - Revision history / PDM-like behavior -- real pain point, unclear if it belongs
   in this add-in or a separate tool.
 - Drawing support -- drawings don't get InvenTree part numbers today, probably
