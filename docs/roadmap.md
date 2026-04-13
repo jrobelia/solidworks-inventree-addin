@@ -86,7 +86,7 @@ keeping the inventory system in sync while designing.
 
 ## Iterative Milestones
 
-### Milestone 1 -- Part Creation (status: next)
+### Milestone 1 -- Part Creation (status: in progress)
 
 The add-in can create a new part in InvenTree without leaving SolidWorks,
 including category selection and IPN write-back. The task pane also shows
@@ -97,11 +97,17 @@ no hardcoded property name strings ever accumulate. Every feature built in
 this milestone reads SW custom property names from a user-configurable JSON
 file rather than constants in code.
 
-### Milestone 2 -- Assembly BOM Sync (status: future)
+### Milestone 2 -- Assembly BOM Sync (status: in parallel)
 
 The add-in can compare a SolidWorks assembly BOM against InvenTree and push
 selected lines through an interactive review screen. Replaces the manual
 CSV export workflow.
+
+Developed on a `feature/bom` branch cut from `milestone-1`. The task pane
+assembly state shows a "Compare BOM" button and a one-line BOM status
+indicator (e.g. "2 differences"); the full comparison lives in its own
+dialog. Task 14 reserves these two elements in the task pane layout so the
+branch has a known wiring target at merge time.
 
 ### Milestone 3 -- Open-Source Ready (status: future)
 
@@ -116,23 +122,15 @@ box for any SolidWorks + InvenTree shop. Lighter lift than originally scoped.
 
 | # | Task | Milestone | Type | Status | Pass / fail condition |
 |---|------|-----------|------|--------|-----------------------|
-| 0a | Add `GetServerInfoAsync()` to `IInventreeClient`, implement it in `InventreeHttpClient`, and add the stub method to `StubInventreeClient` in the test project | 1 | build | done | Returns InvenTree server version string and API version int from the live server; test project compiles |
-| 0b | Build `PropertyMappingConfig`, `IPropertyMappingProvider`, `PropertyMappingProvider` with file I/O, source path resolution, and copy-to-local flow | 1 | build | done | Config loads from local or configured path; first-run defaults write correctly; copy-to-local works |
-| 0c | Settings panel mapping row and `PropertyMappingEditorWindow` dialog | 1 | build | done | User can view and edit field mappings; read-only when loaded from configured path; version mismatch shows amber warning in the task pane (not the editor) |
-| 1 | Fetch and display the InvenTree category tree in a dialog | 1 | build | done | User sees a browsable list of categories from their InvenTree server |
-| 2 | Create a new InvenTree part (category + name) from the dialog | 1 | build | done | POST to /api/part/ succeeds; new part appears in InvenTree |
-| 3 | After creation, re-fetch the part to get the plugin-generated IPN and write IPN + name into SW custom properties | 1 | build | done | IPN and name properties are populated in the open SW document using mapped property names from config |
+| 14 | Remap task pane UI layout in the Pencil design file (`docs/sw-addin-layout.pen`) to reflect current and planned Milestone 1 screens | 1 | design | paused | Pencil file has up-to-date frames for all Milestone 1 views (task pane, create part dialog, read-only info panel, name search) |
 | 4 | Display read-only InvenTree fields (stock, on order, price, active, default supplier) in the task pane after fetch | 1 | build | open | Fields appear below the existing property comparison when a part is loaded |
 | 5 | Add a name-based search box to the task pane (searches InvenTree, displays results) | 1 | build | open | User can type a partial name, see matching parts, and view their details |
-| 6 | Add Description as a synced property row (same pattern as Name/Notes/Revision) | 1 | cleanup | done | Description row appears in the comparison grid with match indicator and push/apply buttons |
+| 13 | Refresh the task pane comparison grid when SW custom properties are applied (user clicks Apply in the SW sidebar, or confirms the save-changes prompt) | 1 | build | open | After the user applies SW custom property changes, the task pane re-reads SW properties and updates the comparison grid without requiring a document switch or reopen |
+| 12 | Validate that SW custom property names in the mapping config actually exist in the open document before writing | 1 | cleanup | open | If a mapped property name does not exist in the document, a dialog shows the missing name(s) with OK (skip write) and Cancel (abort operation); no new properties are silently created |
 | 7 | Read the SolidWorks assembly BOM (immediate children with IPN + quantity) | 2 | build | open | When an assembly is open, the add-in can list child components and their quantities |
 | 8 | Fetch the InvenTree BOM for the same part and diff against the SW BOM | 2 | build | open | Side-by-side comparison shows added, updated, matched, and InvenTree-only lines |
 | 9 | Interactive review screen: user selects which BOM lines to push, confirms, add-in writes to InvenTree | 2 | build | open | Only user-selected lines are created/updated; InvenTree-only lines are untouched |
 | 10 | Remove remaining company-specific conventions (part number naming, filename patterns) | 3 | cleanup | open | No company-specific strings remain; add-in works out of the box for any SW + InvenTree shop |
-| 11 | Store InvenTree PK as a SW custom property after fetch and create | 1 | build | done | A configurable `PkProperty` field (default `InvenTree PK`) is written to the SW document; future fetches can use PK for reliability |
-| 12 | Validate that SW custom property names in the mapping config actually exist in the open document before writing | 1 | cleanup | open | If a mapped property name is not found in the document, the add-in warns the user rather than silently creating a new property; prevents typos in Settings from poisoning document properties |
-| 13 | Refresh the task pane comparison grid when SW custom properties are applied (user clicks Apply in the SW sidebar, or confirms the save-changes prompt) | 1 | build | open | After the user applies SW custom property changes, the task pane re-reads SW properties and updates the comparison grid without requiring a document switch or reopen |
-| 14 | Remap task pane UI layout in the Pencil design file (`docs/sw-addin-layout.pen`) to reflect current and planned Milestone 1 screens | 1 | design | in-progress | Pencil file has up-to-date frames for all Milestone 1 views (task pane, create part dialog, read-only info panel, name search) |
 
 ### Done
 
@@ -217,9 +215,6 @@ debrief as each feature is completed.
 
 ## Next Action
 
-Tasks 1–3, 6, 11 complete. Active work: **task 14** (UI remap in Pencil).
-After design is locked, move to **task 4** (read-only InvenTree info panel)
-then **task 5** (name search), **task 12** (property-name validation), and
-**task 13** (SW custom property change refresh).
+Tasks 1–3, 6, 11 complete. Next: **task 12** (property-name validation with OK/Cancel dialog) and **task 13** (SW custom property change refresh), then **task 4**, **task 5**, and **task 14** (Pencil UI remap).
 
 
