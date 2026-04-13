@@ -24,5 +24,7 @@ namespace SwInventreeAddin.Tests.Stubs
             _properties[name] = value;
             SetCallLog.Add(name);
         }
+
+        public bool PropertyExists(string name) => _properties.ContainsKey(name);
     }
 }
