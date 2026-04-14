@@ -1,6 +1,8 @@
 # Roadmap
 
-Last updated: 2026-04-13 (tasks 4, 12, 13 complete)
+Last updated: 2026-04-14 (M1 complete; feature/bom branch next)
+
+Next action: `git checkout -b feature/bom` from `milestone-1`, then begin Task 7 (read SW assembly BOM).
 
 ## Project North Star
 
@@ -86,7 +88,7 @@ keeping the inventory system in sync while designing.
 
 ## Iterative Milestones
 
-### Milestone 1 -- Part Creation (status: in progress)
+### Milestone 1 -- Part Creation (status: complete)
 
 The add-in can create a new part in InvenTree without leaving SolidWorks,
 including category selection and IPN write-back. The task pane also shows
@@ -122,15 +124,17 @@ box for any SolidWorks + InvenTree shop. Lighter lift than originally scoped.
 
 | # | Task | Milestone | Type | Status | Pass / fail condition |
 |---|------|-----------|------|--------|-----------------------|
-| 14 | Remap task pane UI layout in the Pencil design file (`docs/sw-addin-layout.pen`) to reflect current and planned Milestone 1 screens | 1 | design | paused | Pencil file has up-to-date frames for all Milestone 1 views (task pane, create part dialog, read-only info panel, name search) |
+| 14 | Remap task pane UI layout in the Pencil design file (`docs/sw-addin-layout.pen`) to reflect current and planned screens | 3 | design | open | Pencil file has up-to-date frames for all task pane views (part, assembly, create part dialog, info panel, name search) |
 | 4 | Display read-only InvenTree fields (stock, on order, price, active) in the task pane after fetch | 1 | build | done | Fields appear below the existing property comparison when a part is loaded; default supplier deferred (API changed in recent InvenTree versions) |
-| 5 | Add a name-based search box to the task pane (searches InvenTree, displays results) | 1 | build | open | User can type a partial name, see matching parts, and view their details |
+| 5 | Add a name-based search box to the task pane (searches InvenTree, displays results) | 3 | build | open | User can type a partial name, see matching parts, and view their details |
 | 13 | Refresh the task pane comparison grid when SW custom properties are applied (user clicks Apply in the SW sidebar, or confirms the save-changes prompt) | 1 | build | done | After the user applies SW custom property changes, the task pane re-reads SW properties and updates the comparison grid without requiring a document switch or reopen |
 | 12 | Validate that SW custom property names in the mapping config actually exist in the open document before writing | 1 | cleanup | done | If a mapped property name does not exist in the document, a dialog shows the missing name(s) with OK (skip write) and Cancel (abort operation); no new properties are silently created |
 | 7 | Read the SolidWorks assembly BOM (immediate children with IPN + quantity) | 2 | build | open | When an assembly is open, the add-in can list child components and their quantities |
 | 8 | Fetch the InvenTree BOM for the same part and diff against the SW BOM | 2 | build | open | Side-by-side comparison shows added, updated, matched, and InvenTree-only lines |
 | 9 | Interactive review screen: user selects which BOM lines to push, confirms, add-in writes to InvenTree | 2 | build | open | Only user-selected lines are created/updated; InvenTree-only lines are untouched |
 | 10 | Remove remaining company-specific conventions (part number naming, filename patterns) | 3 | cleanup | open | No company-specific strings remain; add-in works out of the box for any SW + InvenTree shop |
+| 5 | Add a name-based search box to the task pane (searches InvenTree, displays results) | 3 | build | open | User can type a partial name, see matching parts, and view their details |
+| 14 | Remap task pane UI layout in the Pencil design file (`docs/sw-addin-layout.pen`) to reflect current and planned screens | 3 | design | open | Pencil file has up-to-date frames for all task pane views (part, assembly, create part dialog, info panel, name search) |
 
 ### Done
 
