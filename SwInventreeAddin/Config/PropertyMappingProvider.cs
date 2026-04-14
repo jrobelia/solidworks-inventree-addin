@@ -77,9 +77,21 @@ namespace SwInventreeAddin.Config
 
         private static PropertyMappingConfig Load(string path)
         {
-            var json = File.ReadAllText(path, Encoding.UTF8);
-            return JsonSerializer.Deserialize<PropertyMappingConfig>(json)
+            var json   = File.ReadAllText(path, Encoding.UTF8);
+            var config = JsonSerializer.Deserialize<PropertyMappingConfig>(json)
                 ?? new PropertyMappingConfig();
+
+            if (string.Compare(config.SchemaVersion, "3", StringComparison.Ordinal) < 0)
+            {
+                var defaults = new PropertyMappingConfig();
+                if (string.IsNullOrEmpty(config.BomColumnIpn))       config.BomColumnIpn       = defaults.BomColumnIpn;
+                if (string.IsNullOrEmpty(config.BomColumnQty))       config.BomColumnQty       = defaults.BomColumnQty;
+                if (string.IsNullOrEmpty(config.BomColumnReference)) config.BomColumnReference = defaults.BomColumnReference;
+                if (string.IsNullOrEmpty(config.BomColumnNote))      config.BomColumnNote      = defaults.BomColumnNote;
+                config.SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion;
+            }
+
+            return config;
         }
 
         private static void EnsureDirectory(string filePath)

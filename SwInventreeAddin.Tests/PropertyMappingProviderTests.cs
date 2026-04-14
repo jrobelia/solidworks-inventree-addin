@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using NUnit.Framework;
 using SwInventreeAddin.Config;
@@ -194,6 +195,56 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(() => provider.CopyToLocal(),
                 Throws.TypeOf<InvalidOperationException>());
+        }
+
+        // ── BOM column migration ──────────────────────────────────────────────
+
+        [Test]
+        public void GetMapping_SchemaV1File_ReceivesBomColumnDefaults()
+        {
+            var v1Json = @"{
+                ""SchemaVersion"": ""1"",
+                ""IpnProperty"": ""PartNo"",
+                ""NameProperty"": ""Description"",
+                ""NotesProperty"": ""Notes"",
+                ""RevisionProperty"": ""Revision""
+            }";
+            File.WriteAllText(_localPath, v1Json);
+            var config = new PropertyMappingProvider(_localPath, null).GetMapping();
+            Assert.That(config.BomColumnIpn,       Is.EqualTo("IPN, Internal Part Number, Part Number"));
+            Assert.That(config.BomColumnQty,       Is.EqualTo("Qty, Quantity"));
+            Assert.That(config.BomColumnReference, Is.EqualTo("Reference"));
+            Assert.That(config.BomColumnNote,      Is.EqualTo("Note, Notes"));
+        }
+
+        [Test]
+        public void GetMapping_SchemaV2File_ReceivesBomColumnDefaults()
+        {
+            var v2Json = @"{
+                ""SchemaVersion"": ""2"",
+                ""IpnProperty"": ""PartNo"",
+                ""NameProperty"": ""Description"",
+                ""NotesProperty"": ""Notes"",
+                ""RevisionProperty"": ""Revision"",
+                ""DescriptionProperty"": ""Description Long"",
+                ""PkProperty"": ""InvenTree PK""
+            }";
+            File.WriteAllText(_localPath, v2Json);
+            var config = new PropertyMappingProvider(_localPath, null).GetMapping();
+            Assert.That(config.BomColumnIpn, Is.EqualTo("IPN, Internal Part Number, Part Number"));
+            Assert.That(config.BomColumnQty, Is.EqualTo("Qty, Quantity"));
+        }
+
+        [Test]
+        public void GetMapping_BomColumnAliasCsv_IsSplitCaseInsensitively()
+        {
+            var config = new PropertyMappingConfig();
+            var aliases = config.BomColumnQty
+                .Split(',')
+                .Select(s => s.Trim())
+                .ToList();
+            Assert.That(aliases, Does.Contain("Qty"));
+            Assert.That(aliases, Does.Contain("Quantity"));
         }
 
         // ── Helpers ───────────────────────────────────────────────────────────
