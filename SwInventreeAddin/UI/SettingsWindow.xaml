@@ -195,6 +195,25 @@
                 </Grid>
             </Border>
 
+            <!-- ── Separator ────────────────────────────────────────────────── -->
+            <Separator Background="{StaticResource BrushBorder}" Margin="0,8,0,0" />
+
+            <!-- ── BOM sync section ────────────────────────────────────────── -->
+
+            <TextBlock Text="BOM Sync"
+                       FontWeight="SemiBold"
+                       Foreground="{StaticResource BrushForeground}"
+                       Margin="0,8,0,0" />
+
+            <TextBlock Text="BOM Table Keyword"
+                       Style="{StaticResource FieldLabelStyle}"
+                       Margin="0,8,0,2" />
+            <TextBlock Text="Name fragment of the BOM table in SolidWorks that contains InvenTree data"
+                       Style="{StaticResource FieldLabelStyle}"
+                       FontSize="11" Opacity="0.6" Margin="0,0,0,4"
+                       TextWrapping="Wrap" />
+            <TextBox x:Name="BomKeywordBox" Style="{StaticResource SWFieldStyle}" />
+
             <!-- Apply / Save / Cancel buttons -->
             <Grid Margin="0,8,0,0">
                 <Grid.ColumnDefinitions>

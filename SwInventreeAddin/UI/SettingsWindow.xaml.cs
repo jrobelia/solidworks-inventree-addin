@@ -56,6 +56,8 @@ namespace SwInventreeAddin.UI
 
                     if (!string.IsNullOrEmpty(config.MappingSourcePath))
                         SharedPathBox.Text = config.MappingSourcePath;
+
+                    BomKeywordBox.Text = config.BomKeyword ?? "inventree";
                 }
             }
             catch { /* corrupt settings — user can re-enter */ }
@@ -248,6 +250,9 @@ namespace SwInventreeAddin.UI
                     Url               = UrlBox.Text.Trim(),
                     ApiKey            = apiKey,
                     MappingSourcePath = sharedPath,
+                    BomKeyword        = string.IsNullOrWhiteSpace(BomKeywordBox.Text)
+                                            ? "inventree"
+                                            : BomKeywordBox.Text.Trim(),
                 });
 
                 _mappingProvider = new PropertyMappingProvider(sharedPath);

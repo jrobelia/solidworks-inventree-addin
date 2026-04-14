@@ -10,5 +10,11 @@
         /// Stored alongside credentials in the DPAPI-encrypted settings file.
         /// </summary>
         public string? MappingSourcePath { get; set; }
+
+        /// <summary>
+        /// Keyword used to identify the InvenTree BOM table in a SolidWorks assembly.
+        /// Case-insensitive. Defaults to "inventree".
+        /// </summary>
+        public string BomKeyword { get; set; } = "inventree";
     }
 }
