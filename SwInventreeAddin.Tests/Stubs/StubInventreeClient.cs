@@ -150,8 +150,8 @@ namespace SwInventreeAddin.Tests.Stubs
 
         public IReadOnlyList<InventreeBomLine> BomLinesToReturn { get; set; } = new List<InventreeBomLine>();
         public List<InventreeBomLine> CreatedBomLines { get; } = new List<InventreeBomLine>();
-        public List<(int Pk, decimal Qty, string Ref, string Note)> UpdatedBomLines { get; }
-            = new List<(int, decimal, string, string)>();
+        public List<(int Pk, decimal Qty, string Ref, string Note, bool Consumable, bool Optional)> UpdatedBomLines { get; }
+            = new List<(int, decimal, string, string, bool, bool)>();
         public IReadOnlyList<InventreePart> PartsByIpnToReturn { get; set; } = new List<InventreePart>();
         public bool ThrowOnGetBom    { get; set; }
         public bool ThrowOnCreateBom { get; set; }
@@ -180,7 +180,7 @@ namespace SwInventreeAddin.Tests.Stubs
             string reference, string note, bool consumable, bool optional)
         {
             if (ThrowOnUpdateBom) throw new HttpRequestException("Stub: UpdateBomLine failed");
-            UpdatedBomLines.Add((bomLinePk, quantity, reference, note));
+            UpdatedBomLines.Add((bomLinePk, quantity, reference, note, consumable, optional));
             return Task.CompletedTask;
         }
 
