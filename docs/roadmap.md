@@ -2,7 +2,7 @@
 
 Last updated: 2026-04-14 (M1 complete; feature/bom branch next)
 
-Next action: `git checkout -b feature/bom` from `milestone-1`, then begin Task 7 (read SW assembly BOM).
+Next action: On `milestone-2` branch — begin Task 7 (read SW assembly BOM).
 
 ## Project North Star
 
@@ -105,7 +105,7 @@ The add-in can compare a SolidWorks assembly BOM against InvenTree and push
 selected lines through an interactive review screen. Replaces the manual
 CSV export workflow.
 
-Developed on a `feature/bom` branch cut from `milestone-1`. The task pane
+Developed on the `milestone-2` branch cut from `milestone-1`. The task pane
 assembly state shows a "Compare BOM" button and a one-line BOM status
 indicator (e.g. "2 differences"); the full comparison lives in its own
 dialog. Task 14 reserves these two elements in the task pane layout so the
