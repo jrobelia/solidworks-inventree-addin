@@ -661,7 +661,7 @@ namespace SwInventreeAddin.Tests
         {
             var provider = new StubPropertyMappingProvider
             {
-                Config = new PropertyMappingConfig { SchemaVersion = "2" }
+                Config = new PropertyMappingConfig { SchemaVersion = "3" }
             };
             _propertyService.Seed("PartNo", "");
             _vm = new TaskPaneViewModel(_client, _propertyService, null, provider);
@@ -710,7 +710,7 @@ namespace SwInventreeAddin.Tests
 
             var good = new StubPropertyMappingProvider
             {
-                Config = new PropertyMappingConfig { SchemaVersion = "2" }
+                Config = new PropertyMappingConfig { SchemaVersion = "3" }
             };
             _vm.UpdateMapping(good);
 
