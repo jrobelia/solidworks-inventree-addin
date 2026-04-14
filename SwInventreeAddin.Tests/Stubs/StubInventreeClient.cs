@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
+using SwInventreeAddin.Bom;
 using SwInventreeAddin.InvenTree;
 
 namespace SwInventreeAddin.Tests.Stubs
@@ -144,5 +145,46 @@ namespace SwInventreeAddin.Tests.Stubs
                 return Task.FromResult(_partByPkQueue.Dequeue());
             return Task.FromResult(PartByPkToReturn);
         }
+
+        // ── BOM stubs ──────────────────────────────────────────────────────────
+
+        public IReadOnlyList<InventreeBomLine> BomLinesToReturn { get; set; } = new List<InventreeBomLine>();
+        public List<InventreeBomLine> CreatedBomLines { get; } = new List<InventreeBomLine>();
+        public List<(int Pk, decimal Qty, string Ref, string Note)> UpdatedBomLines { get; }
+            = new List<(int, decimal, string, string)>();
+        public IReadOnlyList<InventreePart> PartsByIpnToReturn { get; set; } = new List<InventreePart>();
+        public bool ThrowOnGetBom    { get; set; }
+        public bool ThrowOnCreateBom { get; set; }
+        public bool ThrowOnUpdateBom { get; set; }
+
+        public Task<IReadOnlyList<InventreeBomLine>> GetBomAsync(int assemblyPk)
+        {
+            if (ThrowOnGetBom) throw new HttpRequestException("Stub: GetBom failed");
+            return Task.FromResult(BomLinesToReturn);
+        }
+
+        public Task<int> CreateBomLineAsync(int assemblyPk, int subPartPk, decimal quantity,
+            string reference, string note, bool consumable, bool optional)
+        {
+            if (ThrowOnCreateBom) throw new HttpRequestException("Stub: CreateBomLine failed");
+            CreatedBomLines.Add(new InventreeBomLine
+            {
+                SubPartPk  = subPartPk, Quantity  = quantity,
+                Reference  = reference, Note      = note,
+                Consumable = consumable, Optional = optional,
+            });
+            return Task.FromResult(CreatedBomLines.Count);
+        }
+
+        public Task UpdateBomLineAsync(int bomLinePk, decimal quantity,
+            string reference, string note, bool consumable, bool optional)
+        {
+            if (ThrowOnUpdateBom) throw new HttpRequestException("Stub: UpdateBomLine failed");
+            UpdatedBomLines.Add((bomLinePk, quantity, reference, note));
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyList<InventreePart>> GetPartsByIpnAsync(string ipn) =>
+            Task.FromResult(PartsByIpnToReturn);
     }
 }

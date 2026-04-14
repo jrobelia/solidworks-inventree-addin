@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using SwInventreeAddin.Bom;
 
 namespace SwInventreeAddin.InvenTree
 {
@@ -25,5 +26,22 @@ namespace SwInventreeAddin.InvenTree
 
         /// <summary>Fetches a single part by its primary key. Returns null when not found.</summary>
         Task<InventreePart?> GetPartByPkAsync(int pk);
+
+        /// <summary>Returns all BOM lines for the given assembly part PK.
+        /// Populates Validated and HasSubstitutes from the response.</summary>
+        Task<IReadOnlyList<InventreeBomLine>> GetBomAsync(int assemblyPk);
+
+        /// <summary>Creates a new BOM line. Returns the server-assigned line PK.</summary>
+        Task<int> CreateBomLineAsync(int assemblyPk, int subPartPk, decimal quantity,
+            string reference, string note, bool consumable, bool optional);
+
+        /// <summary>Updates Qty/Reference/Note/Consumable/Optional on an existing BOM line (PATCH).
+        /// Must NOT include the substitutes field in the request body.</summary>
+        Task UpdateBomLineAsync(int bomLinePk, decimal quantity,
+            string reference, string note, bool consumable, bool optional);
+
+        /// <summary>Returns ALL parts matching the given IPN. May return 0, 1, or many.
+        /// Never truncates. Callers handle the multi-result case explicitly.</summary>
+        Task<IReadOnlyList<InventreePart>> GetPartsByIpnAsync(string ipn);
     }
 }

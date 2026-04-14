@@ -102,7 +102,7 @@ namespace SwInventreeAddin.Tests
             await CreateClient(handler).GetPartByIpnAsync("R-10K-0402");
 
             Assert.That(handler.LastRequest.RequestUri.PathAndQuery,
-                Is.EqualTo("/api/part/?IPN=R-10K-0402"));
+                Is.EqualTo("/api/part/?IPN=R-10K-0402&limit=0"));
         }
 
         // --- GetServerInfoAsync ---

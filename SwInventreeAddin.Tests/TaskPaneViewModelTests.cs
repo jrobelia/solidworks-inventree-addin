@@ -895,6 +895,22 @@ namespace SwInventreeAddin.Tests
 
         public Task<InventreePart?> GetPartByPkAsync(int pk)
             => Task.FromResult<InventreePart?>(null);
+
+        public Task<System.Collections.Generic.IReadOnlyList<SwInventreeAddin.Bom.InventreeBomLine>> GetBomAsync(int assemblyPk)
+            => Task.FromResult<System.Collections.Generic.IReadOnlyList<SwInventreeAddin.Bom.InventreeBomLine>>(
+                new System.Collections.Generic.List<SwInventreeAddin.Bom.InventreeBomLine>());
+
+        public Task<int> CreateBomLineAsync(int assemblyPk, int subPartPk, decimal quantity,
+            string reference, string note, bool consumable, bool optional)
+            => Task.FromResult(0);
+
+        public Task UpdateBomLineAsync(int bomLinePk, decimal quantity,
+            string reference, string note, bool consumable, bool optional)
+            => Task.CompletedTask;
+
+        public Task<System.Collections.Generic.IReadOnlyList<InventreePart>> GetPartsByIpnAsync(string ipn)
+            => Task.FromResult<System.Collections.Generic.IReadOnlyList<InventreePart>>(
+                new System.Collections.Generic.List<InventreePart>());
     }
 }
 
