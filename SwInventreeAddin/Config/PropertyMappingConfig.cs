@@ -31,7 +31,7 @@ namespace SwInventreeAddin.Config
         public string PkProperty { get; set; } = "InvenTree PK";
 
         // BOM column header mappings (comma-separated aliases, case-insensitive)
-        public string BomColumnIpn       { get; set; } = "IPN, Internal Part Number, Part Number";
+        public string BomColumnIpn       { get; set; } = "IPN, Part IPN, Internal Part Number, Part Number";
         public string BomColumnQty       { get; set; } = "Qty, Quantity";
         public string BomColumnReference { get; set; } = "Reference";
         public string BomColumnNote      { get; set; } = "Note, Notes";

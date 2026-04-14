@@ -211,7 +211,7 @@ namespace SwInventreeAddin.Tests
             }";
             File.WriteAllText(_localPath, v1Json);
             var config = new PropertyMappingProvider(_localPath, null).GetMapping();
-            Assert.That(config.BomColumnIpn,       Is.EqualTo("IPN, Internal Part Number, Part Number"));
+            Assert.That(config.BomColumnIpn,       Is.EqualTo("IPN, Part IPN, Internal Part Number, Part Number"));
             Assert.That(config.BomColumnQty,       Is.EqualTo("Qty, Quantity"));
             Assert.That(config.BomColumnReference, Is.EqualTo("Reference"));
             Assert.That(config.BomColumnNote,      Is.EqualTo("Note, Notes"));
@@ -231,7 +231,7 @@ namespace SwInventreeAddin.Tests
             }";
             File.WriteAllText(_localPath, v2Json);
             var config = new PropertyMappingProvider(_localPath, null).GetMapping();
-            Assert.That(config.BomColumnIpn, Is.EqualTo("IPN, Internal Part Number, Part Number"));
+            Assert.That(config.BomColumnIpn, Is.EqualTo("IPN, Part IPN, Internal Part Number, Part Number"));
             Assert.That(config.BomColumnQty, Is.EqualTo("Qty, Quantity"));
         }
 
