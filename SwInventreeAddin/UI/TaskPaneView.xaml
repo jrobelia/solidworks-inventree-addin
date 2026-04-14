@@ -614,6 +614,45 @@
                 </StackPanel>
                 <!-- end InvenTree info panel -->
 
+                <!-- ── BOM Comparison section ────────────────────────────── -->
+                <StackPanel Visibility="{Binding BomSectionVisible,
+                                         Converter={StaticResource BoolToVis}}"
+                            Margin="0,8,0,0">
+
+                    <Grid Margin="{StaticResource SectionSpacing}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="3" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0"
+                                Background="{StaticResource BrushAccentBlue}" />
+                        <Border Grid.Column="1"
+                                Background="{StaticResource BrushSectionHeader}"
+                                Padding="6,4">
+                            <TextBlock Text="BOM Comparison"
+                                       FontWeight="SemiBold"
+                                       FontSize="{StaticResource FontSizeHeading}" />
+                        </Border>
+                    </Grid>
+
+                    <TextBlock Text="{Binding BomStatusText}"
+                               Style="{StaticResource FieldLabelStyle}"
+                               Margin="0,4,0,4" />
+
+                    <Button Style="{StaticResource PrimaryButtonStyle}"
+                            HorizontalAlignment="Stretch"
+                            IsEnabled="{Binding BomButtonEnabled}"
+                            Click="CompareBom_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Compare BOM with InvenTree" VerticalAlignment="Center" />
+                            <TextBlock Text="&#xE8C8;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                       VerticalAlignment="Center" Margin="6,0,0,0" />
+                        </StackPanel>
+                    </Button>
+
+                </StackPanel>
+                <!-- end BOM section -->
+
             </StackPanel>
         </ScrollViewer>
 

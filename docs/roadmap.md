@@ -31,6 +31,11 @@ keeping the inventory system in sync while designing.
 
 ## The Feature Lab
 
+### Bugs
+
+- when importing images from inventree they are not scaled properly in the add-in, fit
+  and scale issue
+
 ### Immediate Gaps
 
 - **Create new InvenTree part from SolidWorks** -- Browse/search the category
@@ -50,33 +55,44 @@ keeping the inventory system in sync while designing.
   (immediate children), compare against the InvenTree BOM, show a side-by-side
   diff (added / updated / InvenTree-only), let the user select which lines to
   push. Never delete InvenTree-only lines.
-- ~~**Configurable property mapping**~~ -- Moved to Milestone 1 as a prerequisite.
-  Ships before part creation so hardcoded property names never accumulate.
 
-### Future Vision / Parking Lot
+### Future Vision
 
-- Revision history / PDM-like behavior -- real pain point, unclear if it belongs
-  in this add-in or a separate tool.
+#### Parking Lot
+
+- If a part is maked as made from automatically mark it as an assembly in 
+  SW we could add made form PN in SW properties and qty and add-in could
+  auto-populate BOM for us
+- Add a link to the invnetree part so you can press the image or something
+  similar and it will open the part in a web page.
+- How much overhead is it to load the icons from the catagories menu into solidworks?
 - Drawing support -- drawings don't get InvenTree part numbers today, probably
   not applicable.
-- Notes field -- works but rarely used. Keep but deprioritize.
-- Part number naming convention (Coml/Fab/Assy) -- company-specific, needs
-  thought before open-sourcing.
-- Bulk / recursive BOM comparison: compare the full assembly tree (not just
-  immediate children) against InvenTree in one operation.
-- Verify IPN and revision against filename -- detect mismatches when the file is
-  named IPN_rev. Company-specific; would need configurable filename pattern.
 - Status bar showing connection health (green/red dot).
 - Per-document-type enable/disable switches in Settings.
 - Auto part-number wait toggle -- configurable setting to enable/disable the
   10-second IPN generation poll after Create Part. Useful for servers without
   the auto-numbering plugin installed.
+
+#### Company Specific
+
+- Verify IPN and revision against filename -- detect mismatches when the file is
+  named IPN_rev. Company-specific; would need configurable filename pattern.
+- Part number naming convention (Coml/Fab/Assy) -- company-specific, needs
+  thought before open-sourcing.
+
+#### Considering
+
+- Revision history / PDM-like behavior -- real pain point, unclear if it belongs
+  in this add-in or a separate tool.
 - BOM snapshot on revision push -- snapshot the InvenTree BOM before applying
   an update. Write a dated JSON file to a configurable archive path.
 - Nightly TLA snapshot script -- standalone script that fetches the full
   InvenTree BOM for each TLA on a schedule. Catches InvenTree-only edits.
 - BOM line validation -- validate individual InvenTree BOM lines that match
-  their SolidWorks counterpart using InvenTree's per-line validated flag.
+  their SolidWorks counterpart using InvenTree's per-line validated flag?
+- Bulk / recursive BOM comparison: compare the full assembly tree (not just
+  immediate children) against InvenTree in one operation.
 
 ### Not Pursuing
 
@@ -160,6 +176,8 @@ box for any SolidWorks + InvenTree shop. Lighter lift than originally scoped.
 - Property mapping configuration (tasks 0a–0c) -- configurable field name
   mapping between SolidWorks and InvenTree; shared or local JSON file;
   `PropertyMappingEditorWindow` dialog; `GetServerInfoAsync()` for version check
+- Configurable property mapping -- Moved to Milestone 1 as a prerequisite.
+  Ships before part creation so hardcoded property names never accumulate.
 
 ---
 

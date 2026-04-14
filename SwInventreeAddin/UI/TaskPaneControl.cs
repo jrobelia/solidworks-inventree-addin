@@ -1,6 +1,7 @@
 using System;
 using System.Windows.Forms;
 using System.Windows.Forms.Integration;
+using SwInventreeAddin.Bom;
 using SwInventreeAddin.Config;
 using SwInventreeAddin.InvenTree;
 using SwInventreeAddin.SolidWorks;
@@ -14,7 +15,11 @@ namespace SwInventreeAddin.UI
     /// </summary>
     public class TaskPaneControl : UserControl
     {
-        private readonly TaskPaneViewModel _vm;
+        private readonly TaskPaneViewModel    _vm;
+        private IInventreeClient?             _client;
+        private IPropertyMappingProvider?     _mappingProvider;
+        private IAssemblyBomService?          _assemblyBomService;
+        private string                        _bomKeyword = "inventree";
 
         public event EventHandler? SettingsRequested;
 
@@ -35,8 +40,12 @@ namespace SwInventreeAddin.UI
             IViewportCaptureService?  viewportService,
             IPropertyMappingProvider? mappingProvider = null)
         {
+            _client          = client;
+            _mappingProvider = mappingProvider;
+
             _vm = new TaskPaneViewModel(client, propertyService, viewportService, mappingProvider);
-            _vm.SettingsRequested += (s, e) => SettingsRequested?.Invoke(this, e);
+            _vm.SettingsRequested   += (s, e) => SettingsRequested?.Invoke(this, e);
+            _vm.CompareBomRequested += OnCompareBomRequested;
             _vm.ConfirmMissingProperties = missing =>
             {
                 var bullet = string.Join(System.Environment.NewLine + "  \u2022 ", missing);
@@ -57,13 +66,56 @@ namespace SwInventreeAddin.UI
             Dock = DockStyle.Fill;
         }
 
+        // -- BOM event handler -------------------------------------------------
+
+        private async void OnCompareBomRequested(object? sender, EventArgs e)
+        {
+            if (_client == null || _assemblyBomService == null) return;
+
+            int pk = _vm.CurrentInvenTreePk;
+            if (pk == 0)
+            {
+                System.Windows.MessageBox.Show(
+                    "Load the assembly from InvenTree before comparing BOM.",
+                    "BOM Compare",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Information);
+                return;
+            }
+
+            var mapping = _mappingProvider?.GetMapping() ?? new PropertyMappingConfig();
+            var bomVm   = new BomCompareViewModel(
+                _client, _assemblyBomService, mapping, pk, _bomKeyword);
+
+            bomVm.BomSynced += (_, diffCount) => _vm.UpdateBomStatus(diffCount);
+
+            var window = new BomCompareWindow(bomVm, _vm.PartNumber);
+            window.Show();
+        }
+
         // -- Delegation to ViewModel -------------------------------------------
 
         public void LoadPartNumber()    => _vm.LoadPartNumber();
         public void RefreshProperties() => _vm.RefreshCurrentProperties();
         public void ClearAll()          => _vm.ClearAll();
-        public void UpdateClient(IInventreeClient? client) => _vm.UpdateClient(client);
-        public void UpdateMapping(IPropertyMappingProvider provider) =>
+
+        public void UpdateClient(IInventreeClient? client)
+        {
+            _client = client;
+            _vm.UpdateClient(client);
+        }
+
+        public void UpdateMapping(IPropertyMappingProvider provider)
+        {
+            _mappingProvider = provider;
             _vm.UpdateMapping(provider);
+        }
+
+        public void UpdateBomState(IAssemblyBomService bomService, string keyword)
+        {
+            _assemblyBomService = bomService;
+            _bomKeyword         = keyword;
+        }
     }
 }
+

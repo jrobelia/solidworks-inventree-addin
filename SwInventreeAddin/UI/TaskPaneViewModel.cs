@@ -40,6 +40,9 @@ namespace SwInventreeAddin.UI
         /// <summary>Raised when the user triggers the Settings action.</summary>
         public event EventHandler? SettingsRequested;
 
+        /// <summary>Raised when the user clicks Compare BOM.</summary>
+        public event EventHandler? CompareBomRequested;
+
         /// <summary>
         /// Called before any write to SW when one or more mapped property names don't already
         /// exist in the document. Return true to proceed (property will be created), false to
@@ -80,6 +83,7 @@ namespace SwInventreeAddin.UI
         private string  _orderingDisplay   = string.Empty;
         private string  _activeDisplay     = string.Empty;
         private StatusSeverity _statusSeverity  = StatusSeverity.None;
+        private string _bomStatusText = "BOM: Not checked";
 
         /// <summary>
         /// The type of the currently active SolidWorks document.
@@ -303,6 +307,24 @@ namespace SwInventreeAddin.UI
         private bool CanCreatePart() =>
             _client != null && string.IsNullOrEmpty(_partNumber) && _isDocumentOpen;
 
+        /// <summary>BOM status summary text shown in the task pane BOM section.</summary>
+        public string BomStatusText
+        {
+            get => _bomStatusText;
+            private set => Set(ref _bomStatusText, value);
+        }
+
+        /// <summary>True when an assembly is open — shows the BOM section.</summary>
+        public bool BomSectionVisible =>
+            _isDocumentOpen && _currentDocumentType == DocumentType.Assembly;
+
+        /// <summary>True when BOM compare button should be enabled.</summary>
+        public bool BomButtonEnabled =>
+            _isDocumentOpen && _currentDocumentType == DocumentType.Assembly && _client != null;
+
+        /// <summary>The InvenTree PK of the currently fetched part. Zero when none fetched.</summary>
+        public int CurrentInvenTreePk => _lastFetchedPart?.Pk ?? 0;
+
         /// <summary>True once a document is open (shows the comparison grid).</summary>
         public bool PropertiesSectionVisible
         {
@@ -446,6 +468,10 @@ namespace SwInventreeAddin.UI
         public void RequestSettings() =>
             SettingsRequested?.Invoke(this, EventArgs.Empty);
 
+        /// <summary>Compare BOM button — raises the CompareBomRequested event.</summary>
+        public void RequestCompareBom() =>
+            CompareBomRequested?.Invoke(this, EventArgs.Empty);
+
         // ── Behaviour ─────────────────────────────────────────────────────────
 
         /// <summary>
@@ -479,6 +505,7 @@ namespace SwInventreeAddin.UI
                 ClearAll();
                 _isDocumentOpen   = true;   // blank part: doc IS open, Create should be enabled
                 CreatePartEnabled = CanCreatePart();
+                NotifyBomVisibility();
                 return;
             }
 
@@ -491,6 +518,8 @@ namespace SwInventreeAddin.UI
             // stay in POPULATED state — don't blow away the previews and button state.
             if (_lastFetchedPart == null || _lastFetchedPart.Ipn != partNo)
                 ResetInvenTreeState();
+
+            NotifyBomVisibility();
         }
 
         /// <summary>Resets the entire panel. Called when no document is active.</summary>
@@ -514,6 +543,8 @@ namespace SwInventreeAddin.UI
                 // PartNumber setter above — no explicit set needed here.
                 SetStatus("Open a part or assembly in SolidWorks to get started.", StatusSeverity.None);
             }
+
+            NotifyBomVisibility();
         }
 
         /// <summary>
@@ -536,6 +567,8 @@ namespace SwInventreeAddin.UI
                 CreatePartEnabled = CanCreatePart();
                 SetStatus(string.Empty, StatusSeverity.None);
             }
+
+            NotifyBomVisibility();
         }
 
         /// <summary>
@@ -1042,6 +1075,22 @@ namespace SwInventreeAddin.UI
         {
             StatusText     = text;
             StatusSeverity = severity;
+        }
+
+        /// <summary>
+        /// Updates the BOM status text after a BOM sync.
+        /// Called by the code-behind (via subscription to BomSynced).
+        /// </summary>
+        public void UpdateBomStatus(int diffCount)
+        {
+            BomStatusText = diffCount == 0 ? "BOM: In sync" : $"BOM: {diffCount} difference(s)";
+        }
+
+        /// <summary>Fires PropertyChanged for BOM visibility properties.</summary>
+        private void NotifyBomVisibility()
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(BomSectionVisible)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(BomButtonEnabled)));
         }
 
         /// <summary>

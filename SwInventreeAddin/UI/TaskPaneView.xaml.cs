@@ -164,5 +164,8 @@ namespace SwInventreeAddin.UI
 
         private void PushImage_Click(object sender, RoutedEventArgs e) =>
             _ = _vm?.PushImageAsync();
+
+        private void CompareBom_Click(object sender, RoutedEventArgs e) =>
+            _vm?.RequestCompareBom();
     }
 }

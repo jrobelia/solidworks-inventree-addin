@@ -138,6 +138,9 @@ namespace SwInventreeAddin.AddIn
                     inventreeClient, propertyService, viewportService, _mappingProvider);
                 _taskPaneControl.SettingsRequested += OnSettingsRequested;
 
+                var assemblyBomService = new SwAssemblyBomService(_swApp);
+                _taskPaneControl.UpdateBomState(assemblyBomService, config?.BomKeyword ?? "inventree");
+
                 // Refresh the PartNo field whenever the user opens or switches documents.
                 // OnIdleNotify detects when the last document is closed (ActiveDoc becomes null).
                 _swEvents = (SldWorks)thisSW;
