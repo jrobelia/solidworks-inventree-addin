@@ -118,11 +118,13 @@ namespace SwInventreeAddin.UI
 
         public async Task LoadAsync()
         {
+            StatusText = "Loading…";
             var swLines = _bomService.GetBomLines(_bomKeyword, _mapping);
-            var itLines = await _client.GetBomAsync(_assemblyPk).ConfigureAwait(false);
-            var lookup  = await BuildIpnLookupAsync(swLines).ConfigureAwait(false);
+            var itLines = await _client.GetBomAsync(_assemblyPk);
+            var lookup  = await BuildIpnLookupAsync(swLines);
             var diff    = BomDiffEngine.Diff(swLines, itLines, lookup);
             RebindLines(diff);
+            StatusText = string.Empty;
             if (!string.IsNullOrEmpty(_sortColumn)) ApplySort();
         }
 
@@ -151,7 +153,7 @@ namespace SwInventreeAddin.UI
                         await _client.CreateBomLineAsync(
                             _assemblyPk, line.SubPartPk,
                             line.SwLine!.Quantity, line.SwLine.Reference, line.SwLine.Note,
-                            false, false).ConfigureAwait(false);
+                            false, false);
                         created++;
                     }
                     else if (line.State == BomDiffState.Conflict)
@@ -159,7 +161,7 @@ namespace SwInventreeAddin.UI
                         await _client.UpdateBomLineAsync(
                             line.ItLine!.Pk,
                             line.SwLine!.Quantity, line.SwLine.Reference, line.SwLine.Note,
-                            line.ItLine.Consumable, line.ItLine.Optional).ConfigureAwait(false);
+                            line.ItLine.Consumable, line.ItLine.Optional);
                         updated++;
                     }
                 }
@@ -170,7 +172,7 @@ namespace SwInventreeAddin.UI
                 }
             }
 
-            await LoadAsync().ConfigureAwait(false);
+            await LoadAsync();
             IsApplying = false;
 
             var parts = new List<string>();
@@ -207,7 +209,7 @@ namespace SwInventreeAddin.UI
                 .Distinct(StringComparer.OrdinalIgnoreCase);
 
             foreach (var ipn in toFetch)
-                result[ipn] = await _client.GetPartsByIpnAsync(ipn).ConfigureAwait(false);
+                result[ipn] = await _client.GetPartsByIpnAsync(ipn);
 
             return result;
         }

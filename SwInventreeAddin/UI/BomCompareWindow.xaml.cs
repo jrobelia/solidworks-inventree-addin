@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Windows;
 
@@ -25,7 +26,16 @@ namespace SwInventreeAddin.UI
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            await _vm.LoadAsync();
+            try
+            {
+                await _vm.LoadAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Failed to load BOM data:{System.Environment.NewLine}{ex.Message}",
+                    "BOM Load Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void SelectAll_Click(object sender, RoutedEventArgs e)
@@ -54,7 +64,16 @@ namespace SwInventreeAddin.UI
 
         private async void Apply_Click(object sender, RoutedEventArgs e)
         {
-            await _vm.ApplyAsync();
+            try
+            {
+                await _vm.ApplyAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Failed to push BOM:{System.Environment.NewLine}{ex.Message}",
+                    "BOM Push Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void Close_Click(object sender, RoutedEventArgs e)

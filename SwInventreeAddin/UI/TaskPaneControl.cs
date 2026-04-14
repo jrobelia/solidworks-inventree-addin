@@ -72,11 +72,15 @@ namespace SwInventreeAddin.UI
         {
             if (_client == null || _assemblyBomService == null) return;
 
+            // Prefer the in-memory fetched PK; fall back to the SW custom-property value.
             int pk = _vm.CurrentInvenTreePk;
+            if (pk == 0 && int.TryParse(_vm.CurrentPk, out var docPk))
+                pk = docPk;
+
             if (pk == 0)
             {
                 System.Windows.MessageBox.Show(
-                    "Load the assembly from InvenTree before comparing BOM.",
+                    "No InvenTree PK found for this assembly.\n\nLoad the assembly from InvenTree first, or ensure the PK property is written to the SolidWorks document.",
                     "BOM Compare",
                     System.Windows.MessageBoxButton.OK,
                     System.Windows.MessageBoxImage.Information);
@@ -90,7 +94,18 @@ namespace SwInventreeAddin.UI
             bomVm.BomSynced += (_, diffCount) => _vm.UpdateBomStatus(diffCount);
 
             var window = new BomCompareWindow(bomVm, _vm.PartNumber);
-            window.Show();
+            try
+            {
+                window.Show();
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(
+                    $"Failed to open BOM comparison:{System.Environment.NewLine}{ex.Message}",
+                    "BOM Compare Error",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Error);
+            }
         }
 
         // -- Delegation to ViewModel -------------------------------------------
