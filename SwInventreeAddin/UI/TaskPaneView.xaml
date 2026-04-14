@@ -563,7 +563,7 @@
                             Margin="0,8,0,0">
 
                     <TextBlock Text="InvenTree Info"
-                               Style="{StaticResource SectionHeaderStyle}"
+                               Style="{StaticResource ColumnHeaderStyle}"
                                Margin="0,0,0,4" />
 
                     <!-- In Stock row -->
@@ -574,7 +574,7 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="In Stock"
                                    VerticalAlignment="Center"
-                                   Style="{StaticResource LabelStyle}" />
+                                   Style="{StaticResource FieldLabelStyle}" />
                         <TextBox Grid.Column="1"
                                  Text="{Binding InStockDisplay, Mode=OneWay}"
                                  Style="{StaticResource InvenTreeFieldStyle}"
@@ -589,7 +589,7 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="On Order"
                                    VerticalAlignment="Center"
-                                   Style="{StaticResource LabelStyle}" />
+                                   Style="{StaticResource FieldLabelStyle}" />
                         <TextBox Grid.Column="1"
                                  Text="{Binding OrderingDisplay, Mode=OneWay}"
                                  Style="{StaticResource InvenTreeFieldStyle}"
@@ -604,7 +604,7 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="Status"
                                    VerticalAlignment="Center"
-                                   Style="{StaticResource LabelStyle}" />
+                                   Style="{StaticResource FieldLabelStyle}" />
                         <TextBox Grid.Column="1"
                                  Text="{Binding ActiveDisplay, Mode=OneWay}"
                                  Style="{StaticResource InvenTreeFieldStyle}"

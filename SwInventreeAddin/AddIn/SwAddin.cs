@@ -285,19 +285,19 @@ namespace SwInventreeAddin.AddIn
 
         private int OnDocCustomPropertyAdd(string propName, string configuration, string value, int valueType)
         {
-            _taskPaneControl?.RefreshProperties();
+            _taskPaneControl?.LoadPartNumber();
             return 0;
         }
 
         private int OnDocCustomPropertyChange(string propName, string configuration, string oldValue, string newValue, int valueType)
         {
-            _taskPaneControl?.RefreshProperties();
+            _taskPaneControl?.LoadPartNumber();
             return 0;
         }
 
         private int OnDocCustomPropertyDelete(string propName, string configuration, string value, int valueType)
         {
-            _taskPaneControl?.RefreshProperties();
+            _taskPaneControl?.LoadPartNumber();
             return 0;
         }
 
