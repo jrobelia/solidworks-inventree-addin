@@ -141,6 +141,76 @@ namespace SwInventreeAddin.Tests
     }
 
     // ---------------------------------------------------------------------------
+    // Task 4-A: FetchDetailAsync parses in_stock / ordering / active
+    // ---------------------------------------------------------------------------
+    [TestFixture]
+    public class InventreeHttpClientStockFieldTests
+    {
+        private const string BaseUrl = "http://inventree.example.com";
+        private const string ApiKey  = "test-api-key";
+
+        // List response — just enough to get a PK back
+        private const string ListJson = @"[{ ""pk"": 42, ""IPN"": ""R-10K-0402"" }]";
+
+        private static InventreeHttpClient CreateClient(MultiResponseStubHttpHandler handler)
+        {
+            var http = new HttpClient(handler) { BaseAddress = new Uri(BaseUrl) };
+            return new InventreeHttpClient(http, ApiKey);
+        }
+
+        [Test]
+        public async Task GetPartByIpnAsync_ParsesInStock()
+        {
+            var detailJson = @"{ ""pk"": 42, ""name"": ""R"", ""description"": """", ""notes"": """", ""revision"": """", ""IPN"": ""R-10K-0402"", ""in_stock"": 15.5, ""ordering"": 0, ""active"": true }";
+            var handler = new MultiResponseStubHttpHandler(ListJson, detailJson);
+            var part = await CreateClient(handler).GetPartByIpnAsync("R-10K-0402");
+            Assert.That(part!.InStock, Is.EqualTo(15.5m));
+        }
+
+        [Test]
+        public async Task GetPartByIpnAsync_ParsesOrdering()
+        {
+            var detailJson = @"{ ""pk"": 42, ""name"": ""R"", ""description"": """", ""notes"": """", ""revision"": """", ""IPN"": ""R-10K-0402"", ""in_stock"": 0, ""ordering"": 100, ""active"": true }";
+            var handler = new MultiResponseStubHttpHandler(ListJson, detailJson);
+            var part = await CreateClient(handler).GetPartByIpnAsync("R-10K-0402");
+            Assert.That(part!.Ordering, Is.EqualTo(100m));
+        }
+
+        [Test]
+        public async Task GetPartByIpnAsync_ParsesActive()
+        {
+            var detailJson = @"{ ""pk"": 42, ""name"": ""R"", ""description"": """", ""notes"": """", ""revision"": """", ""IPN"": ""R-10K-0402"", ""in_stock"": 0, ""ordering"": 0, ""active"": false }";
+            var handler = new MultiResponseStubHttpHandler(ListJson, detailJson);
+            var part = await CreateClient(handler).GetPartByIpnAsync("R-10K-0402");
+            Assert.That(part!.Active, Is.False);
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Stub that returns responses from a queue — first call gets responses[0], etc.
+    // ---------------------------------------------------------------------------
+    internal sealed class MultiResponseStubHttpHandler : HttpMessageHandler
+    {
+        private readonly System.Collections.Generic.Queue<string> _bodies;
+
+        public MultiResponseStubHttpHandler(params string[] bodies)
+        {
+            _bodies = new System.Collections.Generic.Queue<string>(bodies);
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var body = _bodies.Count > 0 ? _bodies.Dequeue() : "{}";
+            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(body, Encoding.UTF8, "application/json")
+            };
+            return Task.FromResult(response);
+        }
+    }
+
+    // ---------------------------------------------------------------------------
     // Stub HTTP handler  returns a fixed status code and body, records the request
     // ---------------------------------------------------------------------------
     internal sealed class StubHttpMessageHandler : HttpMessageHandler

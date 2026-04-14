@@ -97,6 +97,8 @@ namespace SwInventreeAddin.AddIn
 
         private ISldWorks?               _swApp;
         private SldWorks?               _swEvents;   // concrete class needed to subscribe to COM events
+        private PartDoc?                _partDocEvents;
+        private AssemblyDoc?            _assemblyDocEvents;
         private bool                    _hasActiveDoc;  // tracks whether a document was open on last check
         private TaskPaneControl?        _taskPaneControl;
         private ITaskpaneView?          _taskPaneView;
@@ -174,6 +176,7 @@ namespace SwInventreeAddin.AddIn
                 _swEvents = null;
             }
 
+            UnsubscribeFromDocumentEvents();
             _taskPaneView?.DeleteView();
             if (_taskPaneView != null)
             {
@@ -203,6 +206,7 @@ namespace SwInventreeAddin.AddIn
         private int OnActiveDocChange()
         {
             _hasActiveDoc = (_swApp?.ActiveDoc != null);
+            SubscribeToDocumentEvents();
             _taskPaneControl?.LoadPartNumber();
             return 0;
         }
@@ -210,6 +214,7 @@ namespace SwInventreeAddin.AddIn
         private int OnDocumentLoad(string title, string path)
         {
             _hasActiveDoc = true;
+            SubscribeToDocumentEvents();
             _taskPaneControl?.LoadPartNumber();
             return 0;
         }
@@ -229,8 +234,74 @@ namespace SwInventreeAddin.AddIn
             return 0;
         }
 
-        private void OnSettingsRequested(object sender, EventArgs e)
+        private void SubscribeToDocumentEvents()
         {
+            UnsubscribeFromDocumentEvents();
+            var doc = _swApp?.ActiveDoc;
+            if (doc == null) return;
+
+            try
+            {
+                if (doc is PartDoc part)
+                {
+                    _partDocEvents = part;
+                    _partDocEvents.AddCustomPropertyNotify    += OnDocCustomPropertyAdd;
+                    _partDocEvents.ChangeCustomPropertyNotify += OnDocCustomPropertyChange;
+                    _partDocEvents.DeleteCustomPropertyNotify += OnDocCustomPropertyDelete;
+                }
+                else if (doc is AssemblyDoc asm)
+                {
+                    _assemblyDocEvents = asm;
+                    _assemblyDocEvents.AddCustomPropertyNotify    += OnDocCustomPropertyAdd;
+                    _assemblyDocEvents.ChangeCustomPropertyNotify += OnDocCustomPropertyChange;
+                    _assemblyDocEvents.DeleteCustomPropertyNotify += OnDocCustomPropertyDelete;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.WriteLine(
+                    $"[SwInventreeAddin] SubscribeToDocumentEvents failed: {ex.Message}");
+            }
+        }
+
+        private void UnsubscribeFromDocumentEvents()
+        {
+            if (_partDocEvents != null)
+            {
+                _partDocEvents.AddCustomPropertyNotify    -= OnDocCustomPropertyAdd;
+                _partDocEvents.ChangeCustomPropertyNotify -= OnDocCustomPropertyChange;
+                _partDocEvents.DeleteCustomPropertyNotify -= OnDocCustomPropertyDelete;
+                _partDocEvents = null;
+            }
+
+            if (_assemblyDocEvents != null)
+            {
+                _assemblyDocEvents.AddCustomPropertyNotify    -= OnDocCustomPropertyAdd;
+                _assemblyDocEvents.ChangeCustomPropertyNotify -= OnDocCustomPropertyChange;
+                _assemblyDocEvents.DeleteCustomPropertyNotify -= OnDocCustomPropertyDelete;
+                _assemblyDocEvents = null;
+            }
+        }
+
+        private int OnDocCustomPropertyAdd(string propName, string configuration, string value, int valueType)
+        {
+            _taskPaneControl?.RefreshProperties();
+            return 0;
+        }
+
+        private int OnDocCustomPropertyChange(string propName, string configuration, string oldValue, string newValue, int valueType)
+        {
+            _taskPaneControl?.RefreshProperties();
+            return 0;
+        }
+
+        private int OnDocCustomPropertyDelete(string propName, string configuration, string value, int valueType)
+        {
+            _taskPaneControl?.RefreshProperties();
+            return 0;
+        }
+
+        private void OnSettingsRequested(object sender, EventArgs e)        {
             if (_configProvider == null || _mappingProvider == null)
             {
                 System.Diagnostics.Trace.WriteLine("[SwInventreeAddin] OnSettingsRequested: provider not initialised — settings dialog suppressed.");

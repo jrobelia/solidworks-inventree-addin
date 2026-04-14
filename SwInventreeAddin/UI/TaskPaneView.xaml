@@ -557,6 +557,63 @@
                 </StackPanel>
                 <!-- end properties section -->
 
+                <!-- ── InvenTree info panel (read-only stock/status) ──────────── -->
+                <StackPanel Visibility="{Binding PropertiesSectionVisible,
+                                         Converter={StaticResource BoolToVis}}"
+                            Margin="0,8,0,0">
+
+                    <TextBlock Text="InvenTree Info"
+                               Style="{StaticResource SectionHeaderStyle}"
+                               Margin="0,0,0,4" />
+
+                    <!-- In Stock row -->
+                    <Grid Margin="0,2,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="90" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="In Stock"
+                                   VerticalAlignment="Center"
+                                   Style="{StaticResource LabelStyle}" />
+                        <TextBox Grid.Column="1"
+                                 Text="{Binding InStockDisplay, Mode=OneWay}"
+                                 Style="{StaticResource InvenTreeFieldStyle}"
+                                 IsReadOnly="True" Height="26" />
+                    </Grid>
+
+                    <!-- Ordering row -->
+                    <Grid Margin="0,2,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="90" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="On Order"
+                                   VerticalAlignment="Center"
+                                   Style="{StaticResource LabelStyle}" />
+                        <TextBox Grid.Column="1"
+                                 Text="{Binding OrderingDisplay, Mode=OneWay}"
+                                 Style="{StaticResource InvenTreeFieldStyle}"
+                                 IsReadOnly="True" Height="26" />
+                    </Grid>
+
+                    <!-- Status row -->
+                    <Grid Margin="0,2,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="90" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Status"
+                                   VerticalAlignment="Center"
+                                   Style="{StaticResource LabelStyle}" />
+                        <TextBox Grid.Column="1"
+                                 Text="{Binding ActiveDisplay, Mode=OneWay}"
+                                 Style="{StaticResource InvenTreeFieldStyle}"
+                                 IsReadOnly="True" Height="26" />
+                    </Grid>
+
+                </StackPanel>
+                <!-- end InvenTree info panel -->
+
             </StackPanel>
         </ScrollViewer>
 

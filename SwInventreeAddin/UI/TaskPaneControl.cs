@@ -37,6 +37,19 @@ namespace SwInventreeAddin.UI
         {
             _vm = new TaskPaneViewModel(client, propertyService, viewportService, mappingProvider);
             _vm.SettingsRequested += (s, e) => SettingsRequested?.Invoke(this, e);
+            _vm.ConfirmMissingProperties = missing =>
+            {
+                var bullet = string.Join(System.Environment.NewLine + "  \u2022 ", missing);
+                var result = System.Windows.MessageBox.Show(
+                    "The following mapped property names don\u2019t exist in this document:"
+                    + System.Environment.NewLine + "  \u2022 " + bullet
+                    + System.Environment.NewLine + System.Environment.NewLine
+                    + "The property will be created. Write anyway?",
+                    "Property Not Found",
+                    System.Windows.MessageBoxButton.OKCancel,
+                    System.Windows.MessageBoxImage.Warning);
+                return result == System.Windows.MessageBoxResult.OK;
+            };
 
             var view = new TaskPaneView { DataContext = _vm };
             var host = new ElementHost { Dock = DockStyle.Fill, Child = view };
@@ -47,6 +60,7 @@ namespace SwInventreeAddin.UI
         // -- Delegation to ViewModel -------------------------------------------
 
         public void LoadPartNumber()    => _vm.LoadPartNumber();
+        public void RefreshProperties() => _vm.RefreshCurrentProperties();
         public void ClearAll()          => _vm.ClearAll();
         public void UpdateClient(IInventreeClient? client) => _vm.UpdateClient(client);
         public void UpdateMapping(IPropertyMappingProvider provider) =>

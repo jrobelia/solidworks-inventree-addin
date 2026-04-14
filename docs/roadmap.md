@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-04-11 (task 13 added — SW property refresh on Apply)
+Last updated: 2026-04-13 (tasks 4, 12, 13 complete)
 
 ## Project North Star
 
@@ -123,10 +123,10 @@ box for any SolidWorks + InvenTree shop. Lighter lift than originally scoped.
 | # | Task | Milestone | Type | Status | Pass / fail condition |
 |---|------|-----------|------|--------|-----------------------|
 | 14 | Remap task pane UI layout in the Pencil design file (`docs/sw-addin-layout.pen`) to reflect current and planned Milestone 1 screens | 1 | design | paused | Pencil file has up-to-date frames for all Milestone 1 views (task pane, create part dialog, read-only info panel, name search) |
-| 4 | Display read-only InvenTree fields (stock, on order, price, active, default supplier) in the task pane after fetch | 1 | build | open | Fields appear below the existing property comparison when a part is loaded |
+| 4 | Display read-only InvenTree fields (stock, on order, price, active) in the task pane after fetch | 1 | build | done | Fields appear below the existing property comparison when a part is loaded; default supplier deferred (API changed in recent InvenTree versions) |
 | 5 | Add a name-based search box to the task pane (searches InvenTree, displays results) | 1 | build | open | User can type a partial name, see matching parts, and view their details |
-| 13 | Refresh the task pane comparison grid when SW custom properties are applied (user clicks Apply in the SW sidebar, or confirms the save-changes prompt) | 1 | build | open | After the user applies SW custom property changes, the task pane re-reads SW properties and updates the comparison grid without requiring a document switch or reopen |
-| 12 | Validate that SW custom property names in the mapping config actually exist in the open document before writing | 1 | cleanup | open | If a mapped property name does not exist in the document, a dialog shows the missing name(s) with OK (skip write) and Cancel (abort operation); no new properties are silently created |
+| 13 | Refresh the task pane comparison grid when SW custom properties are applied (user clicks Apply in the SW sidebar, or confirms the save-changes prompt) | 1 | build | done | After the user applies SW custom property changes, the task pane re-reads SW properties and updates the comparison grid without requiring a document switch or reopen |
+| 12 | Validate that SW custom property names in the mapping config actually exist in the open document before writing | 1 | cleanup | done | If a mapped property name does not exist in the document, a dialog shows the missing name(s) with OK (skip write) and Cancel (abort operation); no new properties are silently created |
 | 7 | Read the SolidWorks assembly BOM (immediate children with IPN + quantity) | 2 | build | open | When an assembly is open, the add-in can list child components and their quantities |
 | 8 | Fetch the InvenTree BOM for the same part and diff against the SW BOM | 2 | build | open | Side-by-side comparison shows added, updated, matched, and InvenTree-only lines |
 | 9 | Interactive review screen: user selects which BOM lines to push, confirms, add-in writes to InvenTree | 2 | build | open | Only user-selected lines are created/updated; InvenTree-only lines are untouched |
@@ -215,6 +215,6 @@ debrief as each feature is completed.
 
 ## Next Action
 
-Tasks 1–3, 6, 11 complete. Next: **task 12** (property-name validation with OK/Cancel dialog) and **task 13** (SW custom property change refresh), then **task 4**, **task 5**, and **task 14** (Pencil UI remap).
+Tasks 1–4, 6, 11–13 complete. Next: **task 5** (name-based search) and **task 14** (Pencil UI remap).
 
 

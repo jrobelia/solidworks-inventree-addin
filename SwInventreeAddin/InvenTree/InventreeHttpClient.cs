@@ -98,6 +98,9 @@ namespace SwInventreeAddin.InvenTree
                 Revision     = GetString(detail, "revision"),
                 Ipn          = GetString(detail, "IPN"),
                 ThumbnailUrl = GetString(detail, "thumbnail") is var t && t.Length > 0 ? t : null,
+                InStock      = GetDecimal(detail, "in_stock"),
+                Ordering     = GetDecimal(detail, "ordering"),
+                Active       = GetBool(detail, "active"),
             };
         }
 
@@ -274,6 +277,24 @@ namespace SwInventreeAddin.InvenTree
             element.TryGetProperty(propertyName, out var prop)
                 ? prop.GetString() ?? string.Empty
                 : string.Empty;
+
+        private static decimal GetDecimal(JsonElement element, string propertyName)
+        {
+            if (!element.TryGetProperty(propertyName, out var prop)) return 0m;
+            if (prop.ValueKind == JsonValueKind.Number && prop.TryGetDecimal(out var d)) return d;
+            if (prop.ValueKind == JsonValueKind.String &&
+                decimal.TryParse(prop.GetString(), System.Globalization.NumberStyles.Any,
+                                 System.Globalization.CultureInfo.InvariantCulture, out var ds)) return ds;
+            return 0m;
+        }
+
+        private static bool GetBool(JsonElement element, string propertyName)
+        {
+            if (!element.TryGetProperty(propertyName, out var prop)) return false;
+            if (prop.ValueKind == JsonValueKind.True)  return true;
+            if (prop.ValueKind == JsonValueKind.False) return false;
+            return false;
+        }
 
         public async Task<byte[]?> DownloadImageAsync(string url)
         {

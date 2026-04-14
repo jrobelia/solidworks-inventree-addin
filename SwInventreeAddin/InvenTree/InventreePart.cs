@@ -9,5 +9,8 @@
         public string  Revision     { get; set; } = string.Empty;
         public string  Ipn          { get; set; } = string.Empty;
         public string? ThumbnailUrl { get; set; }
+        public decimal InStock      { get; set; }
+        public decimal Ordering     { get; set; }
+        public bool    Active       { get; set; }
     }
 }

@@ -751,6 +751,112 @@ namespace SwInventreeAddin.Tests
             Assert.That(_vm.CurrentNotes,    Is.EqualTo("New notes"));
             Assert.That(_vm.CurrentRevision, Is.EqualTo("B"));
         }
+
+        // ── Task 4-B: Info panel display properties ────────────────────────────
+
+        [Test]
+        public async Task AfterFetch_InStockDisplay_IsPopulated()
+        {
+            _client.PartToReturn = new InventreePart { Pk = 1, InStock = 15.5m };
+            CreateVm();
+            await _vm.FetchPartAsync();
+            Assert.That(_vm.InStockDisplay, Is.EqualTo("15.5"));
+        }
+
+        [Test]
+        public async Task AfterFetch_OrderingDisplay_IsPopulated()
+        {
+            _client.PartToReturn = new InventreePart { Pk = 1, Ordering = 100m };
+            CreateVm();
+            await _vm.FetchPartAsync();
+            Assert.That(_vm.OrderingDisplay, Is.EqualTo("100"));
+        }
+
+        [Test]
+        public async Task AfterFetch_ActiveDisplay_WhenTrue_IsActive()
+        {
+            _client.PartToReturn = new InventreePart { Pk = 1, Active = true };
+            CreateVm();
+            await _vm.FetchPartAsync();
+            Assert.That(_vm.ActiveDisplay, Is.EqualTo("Active"));
+        }
+
+        [Test]
+        public async Task AfterFetch_ActiveDisplay_WhenFalse_IsInactive()
+        {
+            _client.PartToReturn = new InventreePart { Pk = 1, Active = false };
+            CreateVm();
+            await _vm.FetchPartAsync();
+            Assert.That(_vm.ActiveDisplay, Is.EqualTo("Inactive"));
+        }
+
+        [Test]
+        public async Task AfterFetchThenClear_InStockDisplay_IsEmpty()
+        {
+            _client.PartToReturn = new InventreePart { Pk = 1, InStock = 5m };
+            CreateVm();
+            await _vm.FetchPartAsync();
+            _vm.ClearAll();
+            Assert.That(_vm.InStockDisplay, Is.Empty);
+        }
+
+        // ── Task 12: Property Validation ───────────────────────────────────────
+
+        [Test]
+        public void FindMissingProperties_WhenPropertySeeded_ReturnsEmptyList()
+        {
+            _propertyService.Seed("PartNo",      "R-10K-0402");
+            _propertyService.Seed("Description", "");
+            _vm = new TaskPaneViewModel(_client, _propertyService);
+
+            var missing = _vm.FindMissingProperties(new[] { "Description" });
+
+            Assert.That(missing, Is.Empty);
+        }
+
+        [Test]
+        public void FindMissingProperties_WhenPropertyNotSeeded_ReturnsMissingName()
+        {
+            _propertyService.Seed("PartNo", "R-10K-0402");
+            _vm = new TaskPaneViewModel(_client, _propertyService);
+
+            var missing = _vm.FindMissingProperties(new[] { "MissingProp" });
+
+            Assert.That(missing, Has.Count.EqualTo(1));
+            Assert.That(missing[0], Is.EqualTo("MissingProp"));
+        }
+
+        [Test]
+        public async Task ApplyNameToDocument_WhenPropertyMissingAndUserCancels_DoesNotWrite()
+        {
+            _propertyService.Seed("PartNo", "R-10K-0402");
+            // "Description" (the NameProperty default) is NOT seeded — PropertyExists returns false
+            _client.PartToReturn = SamplePart;
+            _vm = new TaskPaneViewModel(_client, _propertyService);
+            await _vm.FetchPartAsync();
+
+            _vm.ConfirmMissingProperties = _ => false;   // simulate Cancel
+
+            _vm.ApplyNameToDocument();
+
+            Assert.That(_propertyService.SetCallLog, Does.Not.Contain("Description"));
+        }
+
+        [Test]
+        public async Task ApplyNameToDocument_WhenPropertyMissingAndUserConfirms_Writes()
+        {
+            _propertyService.Seed("PartNo", "R-10K-0402");
+            // "Description" (the NameProperty default) is NOT seeded — PropertyExists returns false
+            _client.PartToReturn = SamplePart;
+            _vm = new TaskPaneViewModel(_client, _propertyService);
+            await _vm.FetchPartAsync();
+
+            _vm.ConfirmMissingProperties = _ => true;    // simulate Write Anyway
+
+            _vm.ApplyNameToDocument();
+
+            Assert.That(_propertyService.SetCallLog, Contains.Item("Description"));
+        }
     }
 
     /// <summary>Stub client that throws on GetPartByIpnAsync — used to test the fetch error path.</summary>

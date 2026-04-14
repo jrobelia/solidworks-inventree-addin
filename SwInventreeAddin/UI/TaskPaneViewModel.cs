@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Runtime.CompilerServices;
@@ -39,6 +40,13 @@ namespace SwInventreeAddin.UI
         /// <summary>Raised when the user triggers the Settings action.</summary>
         public event EventHandler? SettingsRequested;
 
+        /// <summary>
+        /// Called before any write to SW when one or more mapped property names don't already
+        /// exist in the document. Return true to proceed (property will be created), false to
+        /// abort. Default always proceeds.
+        /// </summary>
+        public Func<IReadOnlyList<string>, bool> ConfirmMissingProperties { get; set; } = _ => true;
+
         // ── Bindable properties ───────────────────────────────────────────────
 
         private string _partNumber              = string.Empty;
@@ -68,6 +76,9 @@ namespace SwInventreeAddin.UI
         private bool   _isDocumentOpen;
         private bool   _propertiesSectionVisible;
         private byte[]? _thumbnailBytes;
+        private string  _inStockDisplay    = string.Empty;
+        private string  _orderingDisplay   = string.Empty;
+        private string  _activeDisplay     = string.Empty;
         private StatusSeverity _statusSeverity  = StatusSeverity.None;
 
         /// <summary>
@@ -252,6 +263,27 @@ namespace SwInventreeAddin.UI
         {
             get => _thumbnailBytes;
             private set => Set(ref _thumbnailBytes, value);
+        }
+
+        /// <summary>In-stock quantity display string (e.g. "15.5").</summary>
+        public string InStockDisplay
+        {
+            get => _inStockDisplay;
+            private set => Set(ref _inStockDisplay, value);
+        }
+
+        /// <summary>On-order quantity display string (e.g. "100").</summary>
+        public string OrderingDisplay
+        {
+            get => _orderingDisplay;
+            private set => Set(ref _orderingDisplay, value);
+        }
+
+        /// <summary>"Active" or "Inactive".</summary>
+        public string ActiveDisplay
+        {
+            get => _activeDisplay;
+            private set => Set(ref _activeDisplay, value);
         }
 
         /// <summary>Controls Load button enabled state.</summary>
@@ -600,6 +632,19 @@ namespace SwInventreeAddin.UI
             });
         }
 
+        /// <summary>
+        /// Returns property names from <paramref name="names"/> that don't exist in the
+        /// SolidWorks document. Empty list means all exist.
+        /// </summary>
+        internal List<string> FindMissingProperties(IEnumerable<string> names)
+        {
+            var missing = new List<string>();
+            foreach (var n in names)
+                if (!string.IsNullOrEmpty(n) && !_propertyService.PropertyExists(n))
+                    missing.Add(n);
+            return missing;
+        }
+
         /// <summary>Writes Name and Notes from InvenTree to the SolidWorks document.</summary>
         public void ApplyToDocument()
         {
@@ -622,8 +667,12 @@ namespace SwInventreeAddin.UI
         {
             if (_lastFetchedPart == null) return;
 
+            var mapping = GetMappingOrDefault();
+            var missing = FindMissingProperties(new[] { mapping.NameProperty });
+            if (missing.Count > 0 && !ConfirmMissingProperties(missing)) return;
+
             var value = NamePreview;
-            _propertyService.SetCustomProperty(GetMappingOrDefault().NameProperty, value);
+            _propertyService.SetCustomProperty(mapping.NameProperty, value);
             CurrentName = value;
             SetStatus("Name applied.", StatusSeverity.Success);
         }
@@ -633,8 +682,12 @@ namespace SwInventreeAddin.UI
         {
             if (_lastFetchedPart == null) return;
 
+            var mapping = GetMappingOrDefault();
+            var missing = FindMissingProperties(new[] { mapping.NotesProperty });
+            if (missing.Count > 0 && !ConfirmMissingProperties(missing)) return;
+
             var value = NotesPreview;
-            _propertyService.SetCustomProperty(GetMappingOrDefault().NotesProperty, value);
+            _propertyService.SetCustomProperty(mapping.NotesProperty, value);
             CurrentNotes = value;
             SetStatus("Notes applied.", StatusSeverity.Success);
         }
@@ -644,8 +697,12 @@ namespace SwInventreeAddin.UI
         {
             if (_lastFetchedPart == null) return;
 
+            var mapping = GetMappingOrDefault();
+            var missing = FindMissingProperties(new[] { mapping.DescriptionProperty });
+            if (missing.Count > 0 && !ConfirmMissingProperties(missing)) return;
+
             var value = DescriptionPreview;
-            _propertyService.SetCustomProperty(GetMappingOrDefault().DescriptionProperty, value);
+            _propertyService.SetCustomProperty(mapping.DescriptionProperty, value);
             CurrentDescription = value;
             SetStatus("Description applied.", StatusSeverity.Success);
         }
@@ -655,8 +712,12 @@ namespace SwInventreeAddin.UI
         {
             if (_lastFetchedPart == null) return;
 
+            var mapping = GetMappingOrDefault();
+            var missing = FindMissingProperties(new[] { mapping.PkProperty });
+            if (missing.Count > 0 && !ConfirmMissingProperties(missing)) return;
+
             var value = PkPreview;
-            _propertyService.SetCustomProperty(GetMappingOrDefault().PkProperty, value);
+            _propertyService.SetCustomProperty(mapping.PkProperty, value);
             CurrentPk = value;
             SetStatus("InvenTree PK applied.", StatusSeverity.Success);
         }
@@ -865,7 +926,7 @@ namespace SwInventreeAddin.UI
 
         // ── Helpers ───────────────────────────────────────────────────────────
 
-        private void RefreshCurrentProperties()
+        public void RefreshCurrentProperties()
         {
             var mapping = GetMappingOrDefault();
             CurrentName        = _propertyService.GetCustomProperty(mapping.NameProperty);
@@ -889,6 +950,9 @@ namespace SwInventreeAddin.UI
             DescriptionPreview       = part.Description ?? string.Empty;
             PkPreview                = part.Pk > 0 ? part.Pk.ToString() : string.Empty;
             ThumbnailBytes           = thumbBytes;
+            InStockDisplay           = part.InStock.ToString("G29");
+            OrderingDisplay          = part.Ordering.ToString("G29");
+            ActiveDisplay            = part.Active ? "Active" : "Inactive";
             ApplyEnabled             = true;
             ApplyNameEnabled         = true;
             ApplyNotesEnabled        = true;
@@ -911,6 +975,9 @@ namespace SwInventreeAddin.UI
             DescriptionPreview   = string.Empty;
             PkPreview            = string.Empty;
             ThumbnailBytes       = null;
+            InStockDisplay       = string.Empty;
+            OrderingDisplay      = string.Empty;
+            ActiveDisplay        = string.Empty;
             ApplyEnabled         = false;
             ApplyNameEnabled     = false;
             ApplyNotesEnabled    = false;
