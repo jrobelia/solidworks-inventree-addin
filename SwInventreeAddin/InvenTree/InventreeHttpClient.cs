@@ -279,72 +279,14 @@ namespace SwInventreeAddin.InvenTree
                     $"InvenTree API returned {(int)response.StatusCode} {response.StatusCode}");
         }
 
-        public async Task UpdatePartRevisionAsync(int pk, string revision)
+        public Task UpdatePartRevisionAsync(int pk, string revision)    => PatchPartAsync(pk, new { revision });
+        public Task UpdatePartNameAsync(int pk, string name)            => PatchPartAsync(pk, new { name });
+        public Task UpdatePartNotesAsync(int pk, string notes)          => PatchPartAsync(pk, new { notes });
+        public Task UpdatePartDescriptionAsync(int pk, string description) => PatchPartAsync(pk, new { description });
+
+        private async Task PatchPartAsync(int pk, object payload)
         {
-            var json = JsonSerializer.Serialize(new { revision });
-            var body = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
-
-            using var request = new HttpRequestMessage(new HttpMethod("PATCH"), $"/api/part/{pk}/")
-            {
-                Content = body
-            };
-
-            var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
-
-            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-                throw new HttpRequestException(
-                    "InvenTree rejected the API key (401 Unauthorized).");
-
-            if (!response.IsSuccessStatusCode)
-                throw new HttpRequestException(
-                    $"InvenTree returned {(int)response.StatusCode} {response.StatusCode}");
-        }
-
-        public async Task UpdatePartNameAsync(int pk, string name)
-        {
-            var json = JsonSerializer.Serialize(new { name });
-            var body = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
-
-            using var request = new HttpRequestMessage(new HttpMethod("PATCH"), $"/api/part/{pk}/")
-            {
-                Content = body
-            };
-
-            var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
-
-            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-                throw new HttpRequestException(
-                    "InvenTree rejected the API key (401 Unauthorized).");
-
-            if (!response.IsSuccessStatusCode)
-                throw new HttpRequestException(
-                    $"InvenTree returned {(int)response.StatusCode} {response.StatusCode}");
-        }
-
-        public async Task UpdatePartNotesAsync(int pk, string notes)
-        {
-            var json = JsonSerializer.Serialize(new { notes });
-            var body = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
-
-            using var request = new HttpRequestMessage(new HttpMethod("PATCH"), $"/api/part/{pk}/")
-            {
-                Content = body
-            };
-
-            var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
-
-            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-                throw new HttpRequestException(
-                    "InvenTree rejected the API key (401 Unauthorized).");
-
-            if (!response.IsSuccessStatusCode)
-                throw new HttpRequestException(
-                    $"InvenTree returned {(int)response.StatusCode} {response.StatusCode}");
-        }
-
-        public async Task UpdatePartDescriptionAsync(int pk, string description)
-        {
-            var json = JsonSerializer.Serialize(new { description });
+            var json = JsonSerializer.Serialize(payload);
             var body = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 
             using var request = new HttpRequestMessage(new HttpMethod("PATCH"), $"/api/part/{pk}/")

@@ -287,22 +287,15 @@ namespace SwInventreeAddin.AddIn
         }
 
         private int OnDocCustomPropertyAdd(string propName, string configuration, string value, int valueType)
-        {
-            _taskPaneControl?.LoadPartNumber();
-            return 0;
-        }
+            { OnDocCustomPropertyChanged(); return 0; }
 
         private int OnDocCustomPropertyChange(string propName, string configuration, string oldValue, string newValue, int valueType)
-        {
-            _taskPaneControl?.LoadPartNumber();
-            return 0;
-        }
+            { OnDocCustomPropertyChanged(); return 0; }
 
         private int OnDocCustomPropertyDelete(string propName, string configuration, string value, int valueType)
-        {
-            _taskPaneControl?.LoadPartNumber();
-            return 0;
-        }
+            { OnDocCustomPropertyChanged(); return 0; }
+
+        private void OnDocCustomPropertyChanged() => _taskPaneControl?.LoadPartNumber();
 
         private void OnSettingsRequested(object sender, EventArgs e)        {
             if (_configProvider == null || _mappingProvider == null)

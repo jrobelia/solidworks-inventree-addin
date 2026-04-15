@@ -74,7 +74,7 @@ namespace SwInventreeAddin.SolidWorks
                         }
                     }
                 }
-                catch { /* COM unavailable — leave SubPartPk = 0 */ }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] GetBomLines: COM error reading SubPartPk — {ex.Message}"); }
 
                 lines.Add(line);
             }

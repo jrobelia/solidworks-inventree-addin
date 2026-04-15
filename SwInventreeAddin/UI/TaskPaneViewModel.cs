@@ -749,191 +749,108 @@ namespace SwInventreeAddin.UI
         }
 
         /// <summary>Writes only the Name field to the SolidWorks document.</summary>
-        public void ApplyNameToDocument()
-        {
-            if (_lastFetchedPart == null) return;
-
-            var mapping = GetMappingOrDefault();
-            var missing = FindMissingProperties(new[] { mapping.NameProperty });
-            if (missing.Count > 0 && !ConfirmMissingProperties(missing)) return;
-
-            var value = NamePreview;
-            _propertyService.SetCustomProperty(mapping.NameProperty, value);
-            CurrentName = value;
-            SetStatus("Name applied.", StatusSeverity.Success);
-        }
+        public void ApplyNameToDocument() =>
+            ApplySingleProperty(GetMappingOrDefault().NameProperty, NamePreview, v => CurrentName = v, "Name applied.");
 
         /// <summary>Writes only the Notes field to the SolidWorks document.</summary>
-        public void ApplyNotesToDocument()
-        {
-            if (_lastFetchedPart == null) return;
-
-            var mapping = GetMappingOrDefault();
-            var missing = FindMissingProperties(new[] { mapping.NotesProperty });
-            if (missing.Count > 0 && !ConfirmMissingProperties(missing)) return;
-
-            var value = NotesPreview;
-            _propertyService.SetCustomProperty(mapping.NotesProperty, value);
-            CurrentNotes = value;
-            SetStatus("Notes applied.", StatusSeverity.Success);
-        }
+        public void ApplyNotesToDocument() =>
+            ApplySingleProperty(GetMappingOrDefault().NotesProperty, NotesPreview, v => CurrentNotes = v, "Notes applied.");
 
         /// <summary>Writes only the Description field to the SolidWorks document.</summary>
-        public void ApplyDescriptionToDocument()
-        {
-            if (_lastFetchedPart == null) return;
-
-            var mapping = GetMappingOrDefault();
-            var missing = FindMissingProperties(new[] { mapping.DescriptionProperty });
-            if (missing.Count > 0 && !ConfirmMissingProperties(missing)) return;
-
-            var value = DescriptionPreview;
-            _propertyService.SetCustomProperty(mapping.DescriptionProperty, value);
-            CurrentDescription = value;
-            SetStatus("Description applied.", StatusSeverity.Success);
-        }
+        public void ApplyDescriptionToDocument() =>
+            ApplySingleProperty(GetMappingOrDefault().DescriptionProperty, DescriptionPreview, v => CurrentDescription = v, "Description applied.");
 
         /// <summary>Writes the InvenTree PK property to the SolidWorks document.</summary>
-        public void ApplyPkToDocument()
+        public void ApplyPkToDocument() =>
+            ApplySingleProperty(GetMappingOrDefault().PkProperty, PkPreview, v => CurrentPk = v, "InvenTree PK applied.");
+
+        private void ApplySingleProperty(string mappedPropertyName, string value, Action<string> updateCurrentField, string successMessage)
         {
             if (_lastFetchedPart == null) return;
-
-            var mapping = GetMappingOrDefault();
-            var missing = FindMissingProperties(new[] { mapping.PkProperty });
+            var missing = FindMissingProperties(new[] { mappedPropertyName });
             if (missing.Count > 0 && !ConfirmMissingProperties(missing)) return;
-
-            var value = PkPreview;
-            _propertyService.SetCustomProperty(mapping.PkProperty, value);
-            CurrentPk = value;
-            SetStatus("InvenTree PK applied.", StatusSeverity.Success);
+            _propertyService.SetCustomProperty(mappedPropertyName, value);
+            updateCurrentField(value);
+            SetStatus(successMessage, StatusSeverity.Success);
         }
 
         /// <summary>Pushes the current SolidWorks revision up to InvenTree.</summary>
         public async Task PushRevisionToInventreeAsync()
         {
             if (_lastFetchedPart == null) return;
-
             if (_lastFetchedPart.Pk == 0)
             {
                 SetStatus("Error: cannot push revision \u2014 InvenTree part ID is missing.",
                           StatusSeverity.Error);
                 return;
             }
-
             var mapping  = GetMappingOrDefault();
             var revision = _propertyService.GetCustomProperty(mapping.RevisionProperty);
-            SetStatus("Pushing revision to InvenTree\u2026", StatusSeverity.None);
-
-            if (_client == null)
-            {
-                SetStatus("No server configured \u2014 click \u2699 Settings to get started",
-                          StatusSeverity.Warning);
-                return;
-            }
-
-            try
-            {
-                await _client.UpdatePartRevisionAsync(_lastFetchedPart.Pk, revision)
-                              .ConfigureAwait(false);
-
-                RunOnUiThread(() =>
-                {
-                    _lastFetchedPart.Revision = revision;
-                    RevisionPreview           = revision;
-                    SetStatus("Revision pushed to InvenTree.", StatusSeverity.Success);
-                });
-            }
-            catch (Exception ex)
-            {
-                RunOnUiThread(() =>
-                    SetStatus($"Error: {ex.Message}", StatusSeverity.Error));
-            }
+            await PushToInventreeAsync(
+                revision,
+                (c, pk, v) => c.UpdatePartRevisionAsync(pk, v),
+                v => { _lastFetchedPart!.Revision = v; RevisionPreview = v; },
+                "Pushing revision to InvenTree\u2026",
+                "Revision pushed to InvenTree.");
         }
 
         /// <summary>Pushes the current SolidWorks name/description up to InvenTree.</summary>
-        public async Task PushNameToInvenTreeAsync()
+        public Task PushNameToInvenTreeAsync()
         {
-            if (_lastFetchedPart == null || _lastFetchedPart.Pk == 0) return;
-            if (_client == null) return;
-
             var mapping = GetMappingOrDefault();
             var name    = _propertyService.GetCustomProperty(mapping.NameProperty);
-            SetStatus("Pushing name to InvenTree\u2026", StatusSeverity.None);
-
-            try
-            {
-                await _client.UpdatePartNameAsync(_lastFetchedPart.Pk, name)
-                              .ConfigureAwait(false);
-
-                RunOnUiThread(() =>
-                {
-                    _lastFetchedPart.Name = name;
-                    NamePreview           = name;
-                    SetStatus("Name pushed to InvenTree.", StatusSeverity.Success);
-                });
-            }
-            catch (Exception ex)
-            {
-                RunOnUiThread(() =>
-                    SetStatus($"Error: {ex.Message}", StatusSeverity.Error));
-            }
+            return PushToInventreeAsync(
+                name,
+                (c, pk, v) => c.UpdatePartNameAsync(pk, v),
+                v => { _lastFetchedPart!.Name = v; NamePreview = v; },
+                "Pushing name to InvenTree\u2026",
+                "Name pushed to InvenTree.");
         }
 
         /// <summary>Pushes the current SolidWorks notes up to InvenTree.</summary>
-        public async Task PushNotesToInvenTreeAsync()
+        public Task PushNotesToInvenTreeAsync()
         {
-            if (_lastFetchedPart == null || _lastFetchedPart.Pk == 0) return;
-            if (_client == null) return;
-
             var mapping = GetMappingOrDefault();
             var notes   = _propertyService.GetCustomProperty(mapping.NotesProperty);
-            SetStatus("Pushing notes to InvenTree\u2026", StatusSeverity.None);
-
-            try
-            {
-                await _client.UpdatePartNotesAsync(_lastFetchedPart.Pk, notes)
-                              .ConfigureAwait(false);
-
-                RunOnUiThread(() =>
-                {
-                    _lastFetchedPart.Notes = notes;
-                    NotesPreview           = notes;
-                    SetStatus("Notes pushed to InvenTree.", StatusSeverity.Success);
-                });
-            }
-            catch (Exception ex)
-            {
-                RunOnUiThread(() =>
-                    SetStatus($"Error: {ex.Message}", StatusSeverity.Error));
-            }
+            return PushToInventreeAsync(
+                notes,
+                (c, pk, v) => c.UpdatePartNotesAsync(pk, v),
+                v => { _lastFetchedPart!.Notes = v; NotesPreview = v; },
+                "Pushing notes to InvenTree\u2026",
+                "Notes pushed to InvenTree.");
         }
 
         /// <summary>Pushes the current SolidWorks description up to InvenTree.</summary>
-        public async Task PushDescriptionToInvenTreeAsync()
+        public Task PushDescriptionToInvenTreeAsync()
+        {
+            var mapping     = GetMappingOrDefault();
+            var description = _propertyService.GetCustomProperty(mapping.DescriptionProperty);
+            return PushToInventreeAsync(
+                description,
+                (c, pk, v) => c.UpdatePartDescriptionAsync(pk, v),
+                v => { _lastFetchedPart!.Description = v; DescriptionPreview = v; },
+                "Pushing description to InvenTree\u2026",
+                "Description pushed to InvenTree.");
+        }
+
+        private async Task PushToInventreeAsync(
+            string value,
+            Func<IInventreeClient, int, string, Task> clientCall,
+            Action<string> onSuccess,
+            string pushingMessage,
+            string successMessage)
         {
             if (_lastFetchedPart == null || _lastFetchedPart.Pk == 0) return;
             if (_client == null) return;
-
-            var mapping     = GetMappingOrDefault();
-            var description = _propertyService.GetCustomProperty(mapping.DescriptionProperty);
-            SetStatus("Pushing description to InvenTree\u2026", StatusSeverity.None);
-
+            SetStatus(pushingMessage, StatusSeverity.None);
             try
             {
-                await _client.UpdatePartDescriptionAsync(_lastFetchedPart.Pk, description)
-                              .ConfigureAwait(false);
-
-                RunOnUiThread(() =>
-                {
-                    _lastFetchedPart.Description = description;
-                    DescriptionPreview           = description;
-                    SetStatus("Description pushed to InvenTree.", StatusSeverity.Success);
-                });
+                await clientCall(_client, _lastFetchedPart.Pk, value).ConfigureAwait(false);
+                RunOnUiThread(() => { onSuccess(value); SetStatus(successMessage, StatusSeverity.Success); });
             }
             catch (Exception ex)
             {
-                RunOnUiThread(() =>
-                    SetStatus($"Error: {ex.Message}", StatusSeverity.Error));
+                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error));
             }
         }
 
