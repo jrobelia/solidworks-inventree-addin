@@ -857,6 +857,77 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(_propertyService.SetCallLog, Contains.Item("Description"));
         }
+
+        // ── FetchPartAsync — duplicate IPN handling ───────────────────────────────────
+
+        [Test]
+        public async Task FetchPartAsync_DuplicateIpn_NoRevMatch_SetsErrorStatus()
+        {
+            _client.PartsByIpnToReturn = new System.Collections.Generic.List<InventreePart>
+            {
+                new InventreePart { Pk = 10, Ipn = "OA-001", Revision = "A" },
+                new InventreePart { Pk = 11, Ipn = "OA-001", Revision = "C" },
+            };
+            _propertyService.Seed("Revision", "B");
+            CreateVm("OA-001");
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.StatusText, Does.Contain("none match").IgnoreCase);
+        }
+
+        [Test]
+        public async Task FetchPartAsync_DuplicateIpn_MultipleRevMatch_SetsErrorStatus()
+        {
+            _client.PartsByIpnToReturn = new System.Collections.Generic.List<InventreePart>
+            {
+                new InventreePart { Pk = 10, Ipn = "OA-001", Revision = "B" },
+                new InventreePart { Pk = 11, Ipn = "OA-001", Revision = "B" },
+            };
+            _propertyService.Seed("Revision", "B");
+            CreateVm("OA-001");
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.StatusText, Does.Contain("Resolve duplicates").IgnoreCase);
+        }
+
+        [Test]
+        public async Task FetchPartAsync_DuplicateIpn_OneRevMatch_UserConfirms_AppliesPart()
+        {
+            var matched = new InventreePart { Pk = 11, Ipn = "OA-001", Revision = "B", Name = "Panel" };
+            _client.PartsByIpnToReturn = new System.Collections.Generic.List<InventreePart>
+            {
+                new InventreePart { Pk = 10, Ipn = "OA-001", Revision = "A" },
+                matched,
+            };
+            _propertyService.Seed("Revision", "B");
+            CreateVm("OA-001");
+            _vm.ConfirmDuplicateIpn = (_, __) => true;
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.CurrentInvenTreePk, Is.EqualTo(11));
+            Assert.That(_vm.NamePreview, Is.EqualTo("Panel"));
+        }
+
+        [Test]
+        public async Task FetchPartAsync_DuplicateIpn_OneRevMatch_UserCancels_DoesNotApply()
+        {
+            var matched = new InventreePart { Pk = 11, Ipn = "OA-001", Revision = "B", Name = "Panel" };
+            _client.PartsByIpnToReturn = new System.Collections.Generic.List<InventreePart>
+            {
+                new InventreePart { Pk = 10, Ipn = "OA-001", Revision = "A" },
+                matched,
+            };
+            _propertyService.Seed("Revision", "B");
+            CreateVm("OA-001");
+            _vm.ConfirmDuplicateIpn = (_, __) => false;
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.CurrentInvenTreePk, Is.EqualTo(0));
+        }
     }
 
     /// <summary>Stub client that throws on GetPartByIpnAsync — used to test the fetch error path.</summary>
@@ -909,8 +980,7 @@ namespace SwInventreeAddin.Tests
             => Task.CompletedTask;
 
         public Task<System.Collections.Generic.IReadOnlyList<InventreePart>> GetPartsByIpnAsync(string ipn)
-            => Task.FromResult<System.Collections.Generic.IReadOnlyList<InventreePart>>(
-                new System.Collections.Generic.List<InventreePart>());
+            => throw new System.Net.Http.HttpRequestException("simulated network error");
     }
 }
 

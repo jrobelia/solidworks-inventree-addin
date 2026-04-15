@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Windows.Forms;
 using System.Windows.Forms.Integration;
 using SwInventreeAddin.Bom;
@@ -58,6 +59,26 @@ namespace SwInventreeAddin.UI
                     System.Windows.MessageBoxButton.OKCancel,
                     System.Windows.MessageBoxImage.Warning);
                 return result == System.Windows.MessageBoxResult.OK;
+            };
+
+            _vm.ConfirmDuplicateIpn = (allParts, matched) =>
+            {
+                var nl      = System.Environment.NewLine;
+                var lines   = string.Join(nl, System.Linq.Enumerable.Select(allParts, p =>
+                {
+                    var rev = string.IsNullOrEmpty(p.Revision) ? "(no revision)" : p.Revision;
+                    var tag = p.Pk == matched.Pk ? "  \u2190 matches this file" : "";
+                    return $"  PK {p.Pk,6}   Rev {rev}{tag}";
+                }));
+                var matchRev = string.IsNullOrEmpty(matched.Revision) ? "(no revision)" : matched.Revision;
+                var answer   = System.Windows.MessageBox.Show(
+                    $"IPN \u201c{matched.Ipn}\u201d has {allParts.Count} parts in InvenTree:{nl}{nl}"
+                    + lines + nl + nl
+                    + $"Loading PK {matched.Pk} (Rev {matchRev}). Proceed?",
+                    "Duplicate IPN \u2014 Revision Matched",
+                    System.Windows.MessageBoxButton.OKCancel,
+                    System.Windows.MessageBoxImage.Warning);
+                return answer == System.Windows.MessageBoxResult.OK;
             };
 
             var view = new TaskPaneView { DataContext = _vm };

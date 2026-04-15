@@ -50,6 +50,13 @@ namespace SwInventreeAddin.UI
         /// </summary>
         public Func<IReadOnlyList<string>, bool> ConfirmMissingProperties { get; set; } = _ => true;
 
+        /// <summary>
+        /// Called when an IPN resolves to multiple parts and exactly one revision matches SW.
+        /// Receives (allCandidates, matchedPart). Return true to load the matched part, false to cancel.
+        /// Default always proceeds.
+        /// </summary>
+        public Func<IReadOnlyList<InventreePart>, InventreePart, bool> ConfirmDuplicateIpn { get; set; } = (_, __) => true;
+
         // ── Bindable properties ───────────────────────────────────────────────
 
         private string _partNumber              = string.Empty;
@@ -633,16 +640,17 @@ namespace SwInventreeAddin.UI
                 return;
             }
 
-            InventreePart? part       = null;
-            byte[]?        thumbBytes  = null;
-            Exception?     fetchError  = null;
+            IReadOnlyList<InventreePart>? parts      = null;
+            byte[]?                        thumbBytes  = null;
+            Exception?                     fetchError  = null;
 
-            try   { part = await _client.GetPartByIpnAsync(ipn).ConfigureAwait(false); }
+            try   { parts = await _client.GetPartsByIpnAsync(ipn).ConfigureAwait(false); }
             catch (Exception ex) { fetchError = ex; }
 
-            if (part != null && !string.IsNullOrEmpty(part.ThumbnailUrl))
+            // Only pre-fetch thumbnail when there is exactly one unambiguous result.
+            if (parts?.Count == 1 && !string.IsNullOrEmpty(parts[0].ThumbnailUrl))
             {
-                try   { thumbBytes = await _client.DownloadImageAsync(part.ThumbnailUrl!).ConfigureAwait(false); }
+                try   { thumbBytes = await _client.DownloadImageAsync(parts[0].ThumbnailUrl!).ConfigureAwait(false); }
                 catch { /* silent — placeholder will show */ }
             }
 
@@ -654,13 +662,58 @@ namespace SwInventreeAddin.UI
                     return;
                 }
 
-                if (part == null)
+                if (parts == null || parts.Count == 0)
                 {
                     SetStatus($"No part found in InvenTree for: {ipn}", StatusSeverity.Warning);
                     return;
                 }
 
-                ApplyFetchedPart(part, thumbBytes);
+                InventreePart resolvedPart;
+                byte[]?       resolvedThumb = thumbBytes;
+
+                if (parts.Count == 1)
+                {
+                    resolvedPart = parts[0];
+                }
+                else
+                {
+                    // Multiple parts share this IPN — resolve by revision.
+                    var swRev   = _currentRevision?.Trim() ?? string.Empty;
+                    var matches = new System.Collections.Generic.List<InventreePart>();
+                    foreach (var p in parts)
+                    {
+                        if (RevisionComparer.Compare(swRev, p.Revision?.Trim() ?? string.Empty)
+                            == RevisionOrder.Equal)
+                            matches.Add(p);
+                    }
+
+                    if (matches.Count == 0)
+                    {
+                        var revLabel = string.IsNullOrEmpty(swRev) ? "(blank)" : swRev;
+                        SetStatus(
+                            $"{parts.Count} parts share IPN \u2018{ipn}\u2019 but none match "
+                            + $"SW revision {revLabel}. Resolve in InvenTree.",
+                            StatusSeverity.Error);
+                        return;
+                    }
+
+                    if (matches.Count > 1)
+                    {
+                        var revLabel = string.IsNullOrEmpty(swRev) ? "(blank)" : swRev;
+                        SetStatus(
+                            $"{parts.Count} parts share IPN \u2018{ipn}\u2019 and revision {revLabel}. "
+                            + "Resolve duplicates in InvenTree.",
+                            StatusSeverity.Error);
+                        return;
+                    }
+
+                    // Exactly one revision match — confirm with user.
+                    if (!ConfirmDuplicateIpn(parts, matches[0])) return;
+                    resolvedPart  = matches[0];
+                    resolvedThumb = null; // thumbnail not pre-fetched on the duplicate path
+                }
+
+                ApplyFetchedPart(resolvedPart, resolvedThumb);
                 SetStatus(string.Empty, StatusSeverity.None);
             });
         }

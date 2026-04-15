@@ -184,7 +184,17 @@ namespace SwInventreeAddin.Tests.Stubs
             return Task.CompletedTask;
         }
 
-        public Task<IReadOnlyList<InventreePart>> GetPartsByIpnAsync(string ipn) =>
-            Task.FromResult(PartsByIpnToReturn);
+        public Task<IReadOnlyList<InventreePart>> GetPartsByIpnAsync(string ipn)
+        {
+            // If a specific list was configured, return it.
+            if (PartsByIpnToReturn.Count > 0)
+                return Task.FromResult(PartsByIpnToReturn);
+
+            // Fall back to PartToReturn so existing single-part tests need no changes.
+            IReadOnlyList<InventreePart> result = PartToReturn != null
+                ? new List<InventreePart> { PartToReturn }
+                : new List<InventreePart>();
+            return Task.FromResult(result);
+        }
     }
 }
