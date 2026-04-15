@@ -27,6 +27,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
@@ -53,51 +54,157 @@
                         Width="110" Style="{StaticResource SecondaryButtonStyle}"/>
             </StackPanel>
 
+            <!-- Column group header -->
+            <Grid Grid.Row="2" Margin="0,0,17,0" Height="22">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="209"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Background="#D7D7D7"/>
+                <Border Grid.Column="1" Background="#C8E6FF">
+                    <TextBlock Text="SolidWorks" FontWeight="SemiBold" FontSize="11"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <Border Grid.Column="2" Background="#FFF9C4"
+                        BorderBrush="#AAAAAA" BorderThickness="1,0,0,0">
+                    <TextBlock Text="InvenTree" FontWeight="SemiBold" FontSize="11"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+            </Grid>
+
             <!-- DataGrid -->
-            <DataGrid Grid.Row="2"
+            <DataGrid Grid.Row="3"
                       x:Name="BomGrid"
                       ItemsSource="{Binding Lines}"
                       AutoGenerateColumns="False"
                       CanUserAddRows="False" CanUserDeleteRows="False"
                       IsReadOnly="False" SelectionMode="Single"
+                      RowHeaderWidth="0"
                       Margin="0,0,0,8">
+                <DataGrid.RowStyle>
+                    <Style TargetType="DataGridRow">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding State}" Value="New">
+                                <Setter Property="Background" Value="#F0FFF0"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding State}" Value="Conflict">
+                                <Setter Property="Background" Value="#FFFDE7"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding State}" Value="InvenTreeOnly">
+                                <Setter Property="Background" Value="#FFFFFEF0"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding State}" Value="NoIpn">
+                                <Setter Property="Background" Value="#F5F5F5"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding State}" Value="IpnNotFound">
+                                <Setter Property="Background" Value="#FFF0EE"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding State}" Value="Ambiguous">
+                                <Setter Property="Background" Value="#FFF8EE"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </DataGrid.RowStyle>
                 <DataGrid.Columns>
                     <DataGridCheckBoxColumn Binding="{Binding IsChecked, UpdateSourceTrigger=PropertyChanged}"
-                                            Header="" Width="28"/>
-                    <DataGridTextColumn Header="State"     Binding="{Binding StateLabel}"   Width="80"  IsReadOnly="True"/>
-                    <DataGridTextColumn Header="IPN"       Binding="{Binding DisplayIpn}"   Width="100" IsReadOnly="True"/>
-                    <DataGridTextColumn Header="SW Qty"    Binding="{Binding SwQty}"        Width="55"  IsReadOnly="True"/>
-                    <DataGridTextColumn Header="SW Ref."   Binding="{Binding SwReference}"  Width="*"   IsReadOnly="True"/>
-                    <DataGridTextColumn Header="SW Note"   Binding="{Binding SwNote}"       Width="*"   IsReadOnly="True"/>
-                    <DataGridTextColumn Header="IT Qty"    Binding="{Binding ItQty}"        Width="55"  IsReadOnly="True"/>
-                    <DataGridTextColumn Header="IT Ref."   Binding="{Binding ItReference}"  Width="*"   IsReadOnly="True"/>
-                    <DataGridTextColumn Header="IT Note"   Binding="{Binding ItNote}"       Width="*"   IsReadOnly="True"/>
-                    <DataGridTextColumn Header="Subs."     Binding="{Binding HasSubstitutes}" Width="44" IsReadOnly="True"/>
+                                            Header="" Width="28">
+                        <DataGridCheckBoxColumn.HeaderStyle>
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="Background" Value="#D7D7D7"/>
+                            </Style>
+                        </DataGridCheckBoxColumn.HeaderStyle>
+                    </DataGridCheckBoxColumn>
+                    <DataGridTextColumn Header="State"   Binding="{Binding StateLabel}"  Width="80"  IsReadOnly="True">
+                        <DataGridTextColumn.HeaderStyle>
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="Background" Value="#D7D7D7"/>
+                            </Style>
+                        </DataGridTextColumn.HeaderStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="IPN"     Binding="{Binding DisplayIpn}"  Width="100" IsReadOnly="True">
+                        <DataGridTextColumn.HeaderStyle>
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="Background" Value="#D7D7D7"/>
+                            </Style>
+                        </DataGridTextColumn.HeaderStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="SW Qty"  Binding="{Binding SwQty}"       Width="55"  IsReadOnly="True">
+                        <DataGridTextColumn.HeaderStyle>
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="Background" Value="#E3F2FF"/>
+                            </Style>
+                        </DataGridTextColumn.HeaderStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="SW Ref." Binding="{Binding SwReference}" Width="*"   IsReadOnly="True">
+                        <DataGridTextColumn.HeaderStyle>
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="Background" Value="#E3F2FF"/>
+                            </Style>
+                        </DataGridTextColumn.HeaderStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="SW Note" Binding="{Binding SwNote}"      Width="*"   IsReadOnly="True">
+                        <DataGridTextColumn.HeaderStyle>
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="Background" Value="#E3F2FF"/>
+                            </Style>
+                        </DataGridTextColumn.HeaderStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="IT Qty"  Binding="{Binding ItQty}"       Width="55"  IsReadOnly="True">
+                        <DataGridTextColumn.HeaderStyle>
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="Background" Value="#FFFDE7"/>
+                            </Style>
+                        </DataGridTextColumn.HeaderStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="IT Ref." Binding="{Binding ItReference}" Width="*"   IsReadOnly="True">
+                        <DataGridTextColumn.HeaderStyle>
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="Background" Value="#FFFDE7"/>
+                            </Style>
+                        </DataGridTextColumn.HeaderStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="IT Note" Binding="{Binding ItNote}"      Width="*"   IsReadOnly="True">
+                        <DataGridTextColumn.HeaderStyle>
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="Background" Value="#FFFDE7"/>
+                            </Style>
+                        </DataGridTextColumn.HeaderStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Substitute Parts" Binding="{Binding HasSubstitutesLabel}" Width="96" IsReadOnly="True">
+                        <DataGridTextColumn.HeaderStyle>
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="Background" Value="#FFFDE7"/>
+                            </Style>
+                        </DataGridTextColumn.HeaderStyle>
+                    </DataGridTextColumn>
                 </DataGrid.Columns>
             </DataGrid>
 
             <!-- Footer -->
-            <Grid Grid.Row="3">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0"
-                           Text="{Binding StatusText}"
-                           Style="{StaticResource FieldLabelStyle}"
-                           VerticalAlignment="Center"/>
-                <Button Grid.Column="1"
-                        Content="Push Selected to InvenTree"
-                        IsEnabled="{Binding ApplyEnabled}"
-                        Style="{StaticResource PrimaryButtonStyle}"
-                        Click="Apply_Click"
-                        Width="195" Margin="0,0,4,0"/>
-                <Button Grid.Column="2"
-                        Content="Close"
-                        Style="{StaticResource SecondaryButtonStyle}"
-                        Click="Close_Click"/>
-            </Grid>
+            <Border Grid.Row="4" BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,1,0,0" Padding="0,6,0,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding StatusText}"
+                               Style="{StaticResource FieldLabelStyle}"
+                               VerticalAlignment="Center"/>
+                    <Button Grid.Column="1"
+                            Content="Push Selected to InvenTree"
+                            IsEnabled="{Binding ApplyEnabled}"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Click="Apply_Click"
+                            Width="195" Margin="0,0,4,0"/>
+                    <Button Grid.Column="2"
+                            Content="Close"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Click="Close_Click"/>
+                </Grid>
+            </Border>
         </Grid>
     </DockPanel>
 </Window>

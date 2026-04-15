@@ -52,6 +52,7 @@ namespace SwInventreeAddin.UI
         public bool   ItOptional    => DiffLine.ItLine?.Optional       ?? false;
         public bool   ItValidated   => DiffLine.ItLine?.Validated      ?? false;
         public bool   HasSubstitutes => DiffLine.ItLine?.HasSubstitutes ?? false;
+        public string HasSubstitutesLabel => HasSubstitutes ? "Yes" : "\u2014";
 
         public bool IsProblemState => State == BomDiffState.NoIpn
                                    || State == BomDiffState.IpnNotFound
