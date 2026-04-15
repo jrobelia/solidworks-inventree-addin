@@ -656,7 +656,7 @@
                             IsEnabled="{Binding BomButtonEnabled}"
                             Click="CompareBom_Click">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Compare BOM with InvenTree" VerticalAlignment="Center" />
+                            <TextBlock Text="Compare BOM Table with InvenTree" VerticalAlignment="Center" />
                             <TextBlock Text="&#xE8C8;" FontFamily="Segoe MDL2 Assets" FontSize="13"
                                        VerticalAlignment="Center" Margin="6,0,0,0" />
                         </StackPanel>

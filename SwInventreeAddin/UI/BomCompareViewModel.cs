@@ -34,7 +34,7 @@ namespace SwInventreeAddin.UI
             BomDiffState.Match         => "Match",
             BomDiffState.Conflict      => "Conflict",
             BomDiffState.New           => "New",
-            BomDiffState.InvenTreeOnly => "IT Only",
+            BomDiffState.InvenTreeOnly => "Inv Only",
             BomDiffState.NoIpn         => "No IPN",
             BomDiffState.IpnNotFound   => "Not Found",
             BomDiffState.Ambiguous     => "Ambiguous",
@@ -53,7 +53,10 @@ namespace SwInventreeAddin.UI
         public bool   ItValidated   => DiffLine.ItLine?.Validated      ?? false;
         public bool   HasSubstitutes => DiffLine.ItLine?.HasSubstitutes ?? false;
         public string HasSubstitutesLabel => HasSubstitutes ? "Yes" : "\u2014";
-
+        // Per-cell conflict flags — true only on Conflict rows where that specific field differs.
+        public bool QtyConflict       => State == BomDiffState.Conflict && SwQty       != ItQty;
+        public bool ReferenceConflict => State == BomDiffState.Conflict && SwReference != ItReference;
+        public bool NoteConflict      => State == BomDiffState.Conflict && SwNote      != ItNote;
         public bool IsProblemState => State == BomDiffState.NoIpn
                                    || State == BomDiffState.IpnNotFound
                                    || State == BomDiffState.Ambiguous;
