@@ -101,6 +101,79 @@ namespace SwInventreeAddin.UI
                 return;
             }
 
+            // Gate 1: PK must be stamped in this document's custom properties.
+            // Without it we can't confirm this file has ever been explicitly linked to its InvenTree record.
+            _vm.RefreshCurrentProperties();
+            if (string.IsNullOrWhiteSpace(_vm.CurrentPk))
+            {
+                System.Windows.MessageBox.Show(
+                    "No InvenTree PK is stored in this assembly\u2019s custom properties.\n\n"
+                    + "Sync the part with InvenTree first to stamp the PK, then try again.",
+                    "BOM Compare \u2014 PK Missing",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Warning);
+                return;
+            }
+
+            // Gate 2: Revision must be resolvable and SW must not be behind InvenTree.
+            var swRev    = _vm.CurrentRevision?.Trim()  ?? string.Empty;
+            var itRev    = _vm.RevisionPreview?.Trim()  ?? string.Empty;
+            var revOrder = RevisionComparer.Compare(swRev, itRev);
+
+            if (revOrder == RevisionOrder.ItIsNewer)
+            {
+                // SW is behind InvenTree — user has an old file open. Hard block.
+                System.Windows.MessageBox.Show(
+                    $"InvenTree is at revision \u201c{itRev}\u201d but this file is revision \u201c{swRev}\u201d.\n\n"
+                    + "You have an older file open. Close it — do not push its BOM to InvenTree.",
+                    "BOM Compare \u2014 Old Revision",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Stop);
+                return;
+            }
+
+            if (revOrder == RevisionOrder.Ambiguous)
+            {
+                var swLabel = string.IsNullOrEmpty(swRev) ? "(blank)" : swRev;
+                var itLabel = string.IsNullOrEmpty(itRev) ? "(blank)" : itRev;
+                System.Windows.MessageBox.Show(
+                    $"Revision mismatch (SolidWorks: {swLabel} / InvenTree: {itLabel}).\n\n"
+                    + "The order cannot be determined automatically. Resolve the revision manually before comparing the BOM.",
+                    "BOM Compare \u2014 Revision Ambiguous",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Warning);
+                return;
+            }
+
+            if (revOrder == RevisionOrder.SwIsNewer)
+            {
+                // SW is ahead of InvenTree — offer to push the revision before proceeding.
+                var swLabel = string.IsNullOrEmpty(swRev) ? "(blank)" : swRev;
+                var itLabel = string.IsNullOrEmpty(itRev) ? "(blank)" : itRev;
+                var answer  = System.Windows.MessageBox.Show(
+                    $"Revision mismatch:\n  SolidWorks:  {swLabel}\n  InvenTree:   {itLabel}\n\n"
+                    + $"Update InvenTree to revision \u201c{swLabel}\u201d and proceed?",
+                    "BOM Compare \u2014 Revision Mismatch",
+                    System.Windows.MessageBoxButton.OKCancel,
+                    System.Windows.MessageBoxImage.Question);
+
+                if (answer != System.Windows.MessageBoxResult.OK) return;
+
+                try
+                {
+                    await _vm.PushRevisionToInventreeAsync().ConfigureAwait(true);
+                }
+                catch (Exception ex)
+                {
+                    System.Windows.MessageBox.Show(
+                        $"Failed to update revision in InvenTree:{System.Environment.NewLine}{ex.Message}",
+                        "BOM Compare \u2014 Revision Update Failed",
+                        System.Windows.MessageBoxButton.OK,
+                        System.Windows.MessageBoxImage.Error);
+                    return;
+                }
+            }
+
             var mapping = _mappingProvider?.GetMapping() ?? new PropertyMappingConfig();
             var bomVm   = new BomCompareViewModel(
                 _client, _assemblyBomService, mapping, pk, _bomKeyword);
