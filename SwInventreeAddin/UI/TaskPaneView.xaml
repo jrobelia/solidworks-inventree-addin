@@ -579,7 +579,7 @@
                     </Grid>
 
                     <!-- In Stock row -->
-                    <Grid Margin="0,2,0,0">
+                    <Grid Margin="0,8,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="90" />
                             <ColumnDefinition Width="*" />
