@@ -31,11 +31,6 @@ keeping the inventory system in sync while designing.
 
 ## The Feature Lab
 
-### Bugs
-
-- when importing images from inventree they are not scaled properly in the add-in, fit
-  and scale issue
-
 ### Immediate Gaps
 
 - **Create new InvenTree part from SolidWorks** -- Browse/search the category
@@ -149,6 +144,7 @@ box for any SolidWorks + InvenTree shop. Lighter lift than originally scoped.
 | 8 | Fetch the InvenTree BOM for the same part and diff against the SW BOM | 2 | build | open | Side-by-side comparison shows added, updated, matched, and InvenTree-only lines |
 | 9 | Interactive review screen: user selects which BOM lines to push, confirms, add-in writes to InvenTree | 2 | build | open | Only user-selected lines are created/updated; InvenTree-only lines are untouched |
 | 10 | Remove remaining company-specific conventions (part number naming, filename patterns) | 3 | cleanup | open | No company-specific strings remain; add-in works out of the box for any SW + InvenTree shop |
+| 15 | Allow setting the Assembly flag when creating a part via the add-in | 1 | build | open | Create Part dialog has an "Assembly" checkbox; when checked, `assembly: true` is sent to InvenTree; part is immediately usable as a BOM parent |
 | 5 | Add a name-based search box to the task pane (searches InvenTree, displays results) | 3 | build | open | User can type a partial name, see matching parts, and view their details |
 | 14 | Remap task pane UI layout in the Pencil design file (`docs/sw-addin-layout.pen`) to reflect current and planned screens | 3 | design | open | Pencil file has up-to-date frames for all task pane views (part, assembly, create part dialog, info panel, name search) |
 

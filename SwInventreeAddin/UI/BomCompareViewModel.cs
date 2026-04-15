@@ -63,6 +63,10 @@ namespace SwInventreeAddin.UI
             CanCheck = diffLine.State == BomDiffState.New
                     || diffLine.State == BomDiffState.Conflict;
         }
+
+        /// <summary>Called after DiffLine.State is mutated externally to refresh bound properties.</summary>
+        public void NotifyStateChanged() =>
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
     }
 
     public class BomCompareViewModel : INotifyPropertyChanged
@@ -120,9 +124,13 @@ namespace SwInventreeAddin.UI
         {
             StatusText = "Loading…";
             var swLines = _bomService.GetBomLines(_bomKeyword, _mapping);
-            var itLines = await _client.GetBomAsync(_assemblyPk);
-            var lookup  = await BuildIpnLookupAsync(swLines);
-            var diff    = BomDiffEngine.Diff(swLines, itLines, lookup);
+            var (itLines, lookup) = await Task.Run(async () =>
+            {
+                var it  = await _client.GetBomAsync(_assemblyPk).ConfigureAwait(false);
+                var lup = await BuildIpnLookupAsync(swLines).ConfigureAwait(false);
+                return (it, lup);
+            });
+            var diff = BomDiffEngine.Diff(swLines, itLines, lookup);
             RebindLines(diff);
             StatusText = string.Empty;
             if (!string.IsNullOrEmpty(_sortColumn)) ApplySort();
@@ -140,9 +148,21 @@ namespace SwInventreeAddin.UI
 
             if (!ConfirmPush(newCount, updateCount)) return;
 
+            // Verify the assembly part is flagged as Assembly in InvenTree before writing.
+            var assemblyPart = await Task.Run(() => _client.GetPartByPkAsync(_assemblyPk));
+            if (assemblyPart == null || !assemblyPart.IsAssembly)
+            {
+                StatusText = $"Cannot push — InvenTree part {_assemblyPk} is not flagged as Assembly. Edit it in InvenTree first.";
+                return;
+            }
+
             IsApplying = true;
             int created = 0, updated = 0, failed = 0;
-            var failedIpns = new List<string>();
+            var failedIpns   = new List<string>();
+            var succeededVms = new List<BomDiffLineViewModel>();
+
+            // Build a lookup so we can update the ViewModel in-place on success.
+            var vmByDiffLine = Lines.ToDictionary(vm => vm.DiffLine);
 
             foreach (var line in toProcess)
             {
@@ -150,10 +170,12 @@ namespace SwInventreeAddin.UI
                 {
                     if (line.State == BomDiffState.New)
                     {
-                        await _client.CreateBomLineAsync(
+                        int newPk = await _client.CreateBomLineAsync(
                             _assemblyPk, line.SubPartPk,
                             line.SwLine!.Quantity, line.SwLine.Reference, line.SwLine.Note,
                             false, false);
+                        // Store the server-assigned PK so a subsequent update can reference it.
+                        line.NewBomLinePk = newPk;
                         created++;
                     }
                     else if (line.State == BomDiffState.Conflict)
@@ -164,15 +186,47 @@ namespace SwInventreeAddin.UI
                             line.ItLine.Consumable, line.ItLine.Optional);
                         updated++;
                     }
+                    succeededVms.Add(vmByDiffLine[line]);
                 }
-                catch
+                catch (Exception ex)
                 {
                     failed++;
-                    failedIpns.Add(line.DisplayIpn);
+                    failedIpns.Add($"{line.DisplayIpn} ({ex.Message})");
                 }
             }
 
-            await LoadAsync();
+            // Update pushed rows in-place — no full reload needed.
+            foreach (var vm in succeededVms)
+            {
+                var sw = vm.DiffLine.SwLine!;
+
+                if (vm.DiffLine.ItLine == null)
+                {
+                    // New line: create a stub ItLine from the values we just pushed.
+                    vm.DiffLine.ItLine = new InventreeBomLine
+                    {
+                        Pk         = vm.DiffLine.NewBomLinePk,
+                        SubPartPk  = vm.DiffLine.SubPartPk,
+                        SubPartIpn = vm.DiffLine.DisplayIpn,
+                        Quantity   = sw.Quantity,
+                        Reference  = sw.Reference,
+                        Note       = sw.Note,
+                    };
+                }
+                else
+                {
+                    // Conflict: update the IT fields to match what we pushed.
+                    vm.DiffLine.ItLine.Quantity  = sw.Quantity;
+                    vm.DiffLine.ItLine.Reference = sw.Reference;
+                    vm.DiffLine.ItLine.Note      = sw.Note;
+                }
+
+                vm.DiffLine.State = BomDiffState.Match;
+                vm.IsChecked      = false;
+                vm.NotifyStateChanged();
+            }
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ApplyEnabled)));
+
             IsApplying = false;
 
             var parts = new List<string>();
@@ -202,15 +256,19 @@ namespace SwInventreeAddin.UI
         private async Task<IDictionary<string, IReadOnlyList<InventreePart>>> BuildIpnLookupAsync(
             IReadOnlyList<SwBomLine> swLines)
         {
-            var result = new Dictionary<string, IReadOnlyList<InventreePart>>(StringComparer.OrdinalIgnoreCase);
             var toFetch = swLines
                 .Where(l => l.SubPartPk == 0 && !string.IsNullOrWhiteSpace(l.Ipn))
                 .Select(l => l.Ipn)
-                .Distinct(StringComparer.OrdinalIgnoreCase);
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
 
-            foreach (var ipn in toFetch)
-                result[ipn] = await _client.GetPartsByIpnAsync(ipn);
+            var tasks   = toFetch.Select(ipn => _client.GetPartsByIpnAsync(ipn).ContinueWith(
+                t => (ipn, parts: t.Result), TaskContinuationOptions.ExecuteSynchronously));
+            var results = await Task.WhenAll(tasks).ConfigureAwait(false);
 
+            var result = new Dictionary<string, IReadOnlyList<InventreePart>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (ipn, parts) in results)
+                result[ipn] = parts;
             return result;
         }
 
@@ -218,8 +276,18 @@ namespace SwInventreeAddin.UI
         {
             Lines.Clear();
             foreach (var line in diff)
-                Lines.Add(new BomDiffLineViewModel(line));
+            {
+                var vm = new BomDiffLineViewModel(line);
+                vm.PropertyChanged += OnLineCheckedChanged;
+                Lines.Add(vm);
+            }
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ApplyEnabled)));
+        }
+
+        private void OnLineCheckedChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(BomDiffLineViewModel.IsChecked))
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ApplyEnabled)));
         }
 
         private void ApplySort()

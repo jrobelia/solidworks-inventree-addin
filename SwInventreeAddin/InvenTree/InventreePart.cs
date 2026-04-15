@@ -12,5 +12,6 @@
         public decimal InStock      { get; set; }
         public decimal Ordering     { get; set; }
         public bool    Active       { get; set; }
+        public bool    IsAssembly   { get; set; }
     }
 }

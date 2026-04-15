@@ -72,9 +72,6 @@
                     <DataGridTextColumn Header="IT Qty"    Binding="{Binding ItQty}"        Width="55"  IsReadOnly="True"/>
                     <DataGridTextColumn Header="IT Ref."   Binding="{Binding ItReference}"  Width="*"   IsReadOnly="True"/>
                     <DataGridTextColumn Header="IT Note"   Binding="{Binding ItNote}"       Width="*"   IsReadOnly="True"/>
-                    <DataGridTextColumn Header="Valid."    Binding="{Binding ItValidated}"  Width="44"  IsReadOnly="True"/>
-                    <DataGridTextColumn Header="Cons."     Binding="{Binding ItConsumable}" Width="50"  IsReadOnly="True"/>
-                    <DataGridTextColumn Header="Opt."      Binding="{Binding ItOptional}"   Width="44"  IsReadOnly="True"/>
                     <DataGridTextColumn Header="Subs."     Binding="{Binding HasSubstitutes}" Width="44" IsReadOnly="True"/>
                 </DataGrid.Columns>
             </DataGrid>

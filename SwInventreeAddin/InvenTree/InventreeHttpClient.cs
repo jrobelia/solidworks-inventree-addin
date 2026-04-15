@@ -102,6 +102,7 @@ namespace SwInventreeAddin.InvenTree
                 InStock      = GetDecimal(detail, "in_stock"),
                 Ordering     = GetDecimal(detail, "ordering"),
                 Active       = GetBool(detail, "active"),
+                IsAssembly   = GetBool(detail, "assembly"),
             };
         }
 
@@ -249,8 +250,11 @@ namespace SwInventreeAddin.InvenTree
             };
             var response = await _httpClient.SendAsync(req).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
+            {
+                var detail = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                 throw new HttpRequestException(
-                    $"InvenTree API returned {(int)response.StatusCode} {response.StatusCode}");
+                    $"InvenTree API returned {(int)response.StatusCode}: {detail}");
+            }
 
             var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
             using var respDoc = JsonDocument.Parse(json);

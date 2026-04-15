@@ -195,7 +195,7 @@
                                        Visibility="{Binding PushImageVisible, Converter={StaticResource BoolToVis}}" />
                             <!-- Actual thumbnail paints over placeholder when loaded -->
                             <Image Source="{Binding ThumbnailBytes, Converter={StaticResource ThumbConverter}}"
-                                   Stretch="UniformToFill"
+                                   Stretch="Uniform"
                                    RenderOptions.BitmapScalingMode="HighQuality" />
                         </Grid>
                     </Grid>

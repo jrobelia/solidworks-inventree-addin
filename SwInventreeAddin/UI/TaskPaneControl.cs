@@ -72,18 +72,32 @@ namespace SwInventreeAddin.UI
         {
             if (_client == null || _assemblyBomService == null) return;
 
-            // Prefer the in-memory fetched PK; fall back to the SW custom-property value.
-            int pk = _vm.CurrentInvenTreePk;
-            if (pk == 0 && int.TryParse(_vm.CurrentPk, out var docPk))
-                pk = docPk;
+            // Auto-fetch from InvenTree if we don't already have the PK in memory.
+            if (_vm.CurrentInvenTreePk == 0)
+            {
+                try
+                {
+                    await _vm.FetchPartAsync();
+                }
+                catch (Exception ex)
+                {
+                    System.Windows.MessageBox.Show(
+                        $"Could not load part from InvenTree:{System.Environment.NewLine}{ex.Message}",
+                        "BOM Compare",
+                        System.Windows.MessageBoxButton.OK,
+                        System.Windows.MessageBoxImage.Error);
+                    return;
+                }
+            }
 
+            int pk = _vm.CurrentInvenTreePk;
             if (pk == 0)
             {
                 System.Windows.MessageBox.Show(
-                    "No InvenTree PK found for this assembly.\n\nLoad the assembly from InvenTree first, or ensure the PK property is written to the SolidWorks document.",
+                    $"'{_vm.PartNumber}' was not found in InvenTree.\n\nCreate the part in InvenTree first, then try again.",
                     "BOM Compare",
                     System.Windows.MessageBoxButton.OK,
-                    System.Windows.MessageBoxImage.Information);
+                    System.Windows.MessageBoxImage.Warning);
                 return;
             }
 
@@ -96,7 +110,7 @@ namespace SwInventreeAddin.UI
             var window = new BomCompareWindow(bomVm, _vm.PartNumber);
             try
             {
-                window.Show();
+                window.ShowDialog();
             }
             catch (Exception ex)
             {

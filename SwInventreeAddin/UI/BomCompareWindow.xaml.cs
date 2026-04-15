@@ -13,6 +13,13 @@ namespace SwInventreeAddin.UI
             InitializeComponent();
             _vm = vm;
 
+            try
+            {
+                var helper = new System.Windows.Interop.WindowInteropHelper(this);
+                helper.Owner = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
+            }
+            catch { /* cosmetic */ }
+
             _vm.ConfirmPush = (newCount, conflictCount) =>
                 MessageBox.Show(
                     $"Push {newCount} new line(s) and update {conflictCount} conflict(s) to InvenTree?",
