@@ -148,7 +148,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public async Task StateLabel_InventreeOnly_IsItOnly()
+        public async Task StateLabel_InventreeOnly_IsInvOnly()
         {
             _bomService.LinesToReturn = new List<SwBomLine>();
             _client.BomLinesToReturn = new List<InventreeBomLine>
@@ -157,7 +157,7 @@ namespace SwInventreeAddin.Tests
             var vm = CreateVm();
             await vm.LoadAsync();
 
-            Assert.That(vm.Lines[0].StateLabel, Is.EqualTo("IT Only"));
+            Assert.That(vm.Lines[0].StateLabel, Is.EqualTo("Inv Only"));
         }
 
         // ── ApplyAsync ────────────────────────────────────────────────────────
