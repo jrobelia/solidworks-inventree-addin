@@ -113,6 +113,21 @@
                         </Style.Triggers>
                     </Style>
                 </DataGrid.RowStyle>
+                <!-- Suppress the default blue/grey cell selection highlight.
+                     Row colour comes from RowStyle above; checkbox shows selection. -->
+                <DataGrid.CellStyle>
+                    <Style TargetType="DataGridCell">
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                        <Style.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="BorderBrush"  Value="Transparent"/>
+                                <Setter Property="Foreground"   Value="{StaticResource BrushForeground}"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </DataGrid.CellStyle>
                 <DataGrid.Columns>
                     <DataGridCheckBoxColumn Binding="{Binding IsChecked, UpdateSourceTrigger=PropertyChanged}"
                                             Header="" Width="28">
