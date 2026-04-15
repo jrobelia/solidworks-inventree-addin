@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 
 namespace SwInventreeAddin.UI
 {
@@ -86,6 +87,26 @@ namespace SwInventreeAddin.UI
         private void Close_Click(object sender, RoutedEventArgs e)
         {
             Close();
+        }
+
+        // Synchronise the group-header overlay widths with the DataGrid's actual column widths.
+        // Columns: 0-2 = left zone (grey), 3-5 = SolidWorks (blue), 6-9 = InvenTree (yellow).
+        private void BomGrid_LayoutUpdated(object sender, EventArgs e)
+        {
+            var cols = BomGrid.Columns;
+            if (cols.Count < 10) return;
+
+            double left = cols[0].ActualWidth + cols[1].ActualWidth + cols[2].ActualWidth;
+            double sw   = cols[3].ActualWidth + cols[4].ActualWidth + cols[5].ActualWidth;
+            double it   = cols[6].ActualWidth + cols[7].ActualWidth + cols[8].ActualWidth + cols[9].ActualWidth;
+
+            if (left <= 0 || sw <= 0 || it <= 0) return;
+
+            GhColLeft.Width = new GridLength(left);
+            GhColSw.Width   = new GridLength(sw);
+            GhColIt.Width   = new GridLength(it);
+
+            GroupHeaderGrid.Width = left + sw + it;
         }
     }
 }

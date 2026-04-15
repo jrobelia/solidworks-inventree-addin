@@ -54,12 +54,12 @@
                         Width="110" Style="{StaticResource SecondaryButtonStyle}"/>
             </StackPanel>
 
-            <!-- Column group header -->
-            <Grid Grid.Row="2" Margin="0,0,17,0" Height="22">
+            <!-- Column group header — widths set in code-behind via BomGrid_LayoutUpdated -->
+            <Grid x:Name="GroupHeaderGrid" Grid.Row="2" Height="22" HorizontalAlignment="Left">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="209"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition x:Name="GhColLeft" Width="208"/>
+                    <ColumnDefinition x:Name="GhColSw"   Width="165"/>
+                    <ColumnDefinition x:Name="GhColIt"   Width="1"/>
                 </Grid.ColumnDefinitions>
                 <Border Grid.Column="0" Background="#D7D7D7"/>
                 <Border Grid.Column="1" Background="#C8E6FF">
@@ -81,6 +81,7 @@
                       CanUserAddRows="False" CanUserDeleteRows="False"
                       IsReadOnly="False" SelectionMode="Single"
                       RowHeaderWidth="0"
+                      LayoutUpdated="BomGrid_LayoutUpdated"
                       Margin="0,0,0,8">
                 <DataGrid.RowStyle>
                     <Style TargetType="DataGridRow">
@@ -194,11 +195,16 @@
                                Style="{StaticResource FieldLabelStyle}"
                                VerticalAlignment="Center"/>
                     <Button Grid.Column="1"
-                            Content="Push Selected to InvenTree"
                             IsEnabled="{Binding ApplyEnabled}"
                             Style="{StaticResource PrimaryButtonStyle}"
                             Click="Apply_Click"
-                            Width="195" Margin="0,0,4,0"/>
+                            Width="210" Margin="0,0,4,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Push Selected to InvenTree" VerticalAlignment="Center"/>
+                            <TextBlock Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                       VerticalAlignment="Center" Margin="6,0,0,0"/>
+                        </StackPanel>
+                    </Button>
                     <Button Grid.Column="2"
                             Content="Close"
                             Style="{StaticResource SecondaryButtonStyle}"
