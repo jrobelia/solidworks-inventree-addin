@@ -23,6 +23,9 @@ namespace SwInventreeAddin.Tests
             _client     = new StubInventreeClient();
             _bomService = new StubAssemblyBomService();
             _mapping    = new PropertyMappingConfig();
+
+            // Default: assembly part exists and is flagged as Assembly so ApplyAsync guard passes.
+            _client.PartByPkToReturn = new InventreePart { IsAssembly = true };
         }
 
         private BomCompareViewModel CreateVm(int assemblyPk = 42) =>

@@ -16,6 +16,17 @@ namespace SwInventreeAddin.SolidWorks
         public bool HasBomTable(string keyword) =>
             FindBomTableAnnotation(keyword) != null;
 
+        public (string TableName, bool NeedsRebuild) GetBomInfo(string keyword)
+        {
+            var doc = _swApp.IActiveDoc2 as IModelDoc2;
+            bool needsRebuild = doc?.Extension?.NeedsRebuild ?? false;
+
+            var feature = FindBomFeature(keyword);
+            string tableName = feature?.Name ?? keyword;
+
+            return (tableName, needsRebuild);
+        }
+
         public IReadOnlyList<SwBomLine> GetBomLines(string keyword, PropertyMappingConfig mapping)
         {
             var bomTable = FindBomTableAnnotation(keyword)
@@ -70,7 +81,7 @@ namespace SwInventreeAddin.SolidWorks
             return lines;
         }
 
-        private IBomTableAnnotation? FindBomTableAnnotation(string keyword)
+        private IFeature? FindBomFeature(string keyword)
         {
             var doc = _swApp.IActiveDoc2 as IModelDoc2;
             if (doc == null) return null;
@@ -82,12 +93,18 @@ namespace SwInventreeAddin.SolidWorks
                 if (!(featureObj is IFeature feature)) continue;
                 if (feature.GetTypeName2() != "BomFeat") continue;
                 if (feature.Name.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) < 0) continue;
-
-                var bomFeature  = feature.GetSpecificFeature2() as IBomFeature;
-                var annotations = (object[])bomFeature?.GetTableAnnotations();
-                if (annotations?.Length > 0)
-                    return annotations[0] as IBomTableAnnotation;
+                return feature;
             }
+            return null;
+        }
+
+        private IBomTableAnnotation? FindBomTableAnnotation(string keyword)
+        {
+            var feature    = FindBomFeature(keyword);
+            var bomFeature = feature?.GetSpecificFeature2() as IBomFeature;
+            var annotations = (object[])bomFeature?.GetTableAnnotations();
+            if (annotations?.Length > 0)
+                return annotations[0] as IBomTableAnnotation;
             return null;
         }
 

@@ -28,12 +28,13 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <!-- Assembly label -->
-            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,4">
                 <TextBlock x:Name="AssemblyIpn"
                            FontWeight="Bold" FontSize="14"
                            Foreground="{StaticResource BrushForeground}"/>
@@ -44,8 +45,24 @@
                            Margin="8,0,0,1"/>
             </StackPanel>
 
-            <!-- Bulk-select toolbar -->
+            <!-- BOM table info row -->
             <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,6">
+                <TextBlock x:Name="BomTableName"
+                           FontSize="11"
+                           Foreground="#FF666666"
+                           VerticalAlignment="Center"/>
+                <TextBlock x:Name="RebuildDot"
+                           Text="&#x25CF;"
+                           FontSize="9"
+                           VerticalAlignment="Center"
+                           Margin="12,0,4,0"/>
+                <TextBlock x:Name="RebuildStatus"
+                           FontSize="11"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- Bulk-select toolbar -->
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,6">
                 <Button Content="Select All"
                         Click="SelectAll_Click"
                         Width="90" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,4,0"/>
@@ -61,7 +78,7 @@
             </StackPanel>
 
             <!-- Column group header — widths set in code-behind via BomGrid_LayoutUpdated -->
-            <Grid x:Name="GroupHeaderGrid" Grid.Row="2" Height="22" HorizontalAlignment="Left">
+            <Grid x:Name="GroupHeaderGrid" Grid.Row="3" Height="22" HorizontalAlignment="Left">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition x:Name="GhColLeft" Width="208"/>
                     <ColumnDefinition x:Name="GhColSw"   Width="165"/>
@@ -80,7 +97,7 @@
             </Grid>
 
             <!-- DataGrid -->
-            <DataGrid Grid.Row="3"
+            <DataGrid Grid.Row="4"
                       x:Name="BomGrid"
                       ItemsSource="{Binding Lines}"
                       AutoGenerateColumns="False"
@@ -204,7 +221,7 @@
             </DataGrid>
 
             <!-- Footer -->
-            <Border Grid.Row="4" BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,1,0,0" Padding="0,6,0,0">
+            <Border Grid.Row="5" BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,1,0,0" Padding="0,6,0,0">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>

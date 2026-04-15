@@ -9,7 +9,8 @@ namespace SwInventreeAddin.UI
     {
         private readonly BomCompareViewModel _vm;
 
-        public BomCompareWindow(BomCompareViewModel vm, string assemblyIpn, string partName = "")
+        public BomCompareWindow(BomCompareViewModel vm, string assemblyIpn, string partName = "",
+                                 string bomTableName = "", bool needsRebuild = false)
         {
             InitializeComponent();
             _vm = vm;
@@ -31,6 +32,15 @@ namespace SwInventreeAddin.UI
             DataContext = _vm;
             AssemblyIpn.Text  = assemblyIpn;
             AssemblyName.Text = partName;
+
+            BomTableName.Text    = string.IsNullOrEmpty(bomTableName) ? "" : $"BOM Table: {bomTableName}";
+            RebuildDot.Foreground = needsRebuild
+                ? new System.Windows.Media.SolidColorBrush(
+                      System.Windows.Media.Color.FromRgb(0xE6, 0x7E, 0x00))
+                : new System.Windows.Media.SolidColorBrush(
+                      System.Windows.Media.Color.FromRgb(0x2E, 0x7D, 0x32));
+            RebuildStatus.Text    = needsRebuild ? "Needs Rebuild" : "Up to date";
+            RebuildStatus.Foreground = RebuildDot.Foreground;
         }
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
