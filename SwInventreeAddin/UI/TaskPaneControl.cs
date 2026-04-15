@@ -107,7 +107,7 @@ namespace SwInventreeAddin.UI
 
             bomVm.BomSynced += (_, diffCount) => _vm.UpdateBomStatus(diffCount);
 
-            var window = new BomCompareWindow(bomVm, _vm.PartNumber);
+            var window = new BomCompareWindow(bomVm, _vm.PartNumber, _vm.NamePreview);
             try
             {
                 window.ShowDialog();

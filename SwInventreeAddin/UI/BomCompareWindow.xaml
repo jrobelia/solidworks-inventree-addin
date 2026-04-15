@@ -33,10 +33,16 @@
             </Grid.RowDefinitions>
 
             <!-- Assembly label -->
-            <TextBlock Grid.Row="0" x:Name="AssemblyLabel"
-                       FontWeight="SemiBold"
-                       Foreground="{StaticResource BrushForeground}"
-                       Margin="0,0,0,8"/>
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                <TextBlock x:Name="AssemblyIpn"
+                           FontWeight="Bold" FontSize="14"
+                           Foreground="{StaticResource BrushForeground}"/>
+                <TextBlock x:Name="AssemblyName"
+                           FontSize="13"
+                           Foreground="#FF666666"
+                           VerticalAlignment="Bottom"
+                           Margin="8,0,0,1"/>
+            </StackPanel>
 
             <!-- Bulk-select toolbar -->
             <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,6">
@@ -51,7 +57,7 @@
                         Width="90" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,4,0"/>
                 <Button Content="Select Conflicts"
                         Click="SelectConflicts_Click"
-                        Width="110" Style="{StaticResource SecondaryButtonStyle}"/>
+                        Width="110" Style="{StaticResource SecondaryButtonStyle}" Margin="0"/>
             </StackPanel>
 
             <!-- Column group header — widths set in code-behind via BomGrid_LayoutUpdated -->
@@ -198,17 +204,18 @@
                             IsEnabled="{Binding ApplyEnabled}"
                             Style="{StaticResource PrimaryButtonStyle}"
                             Click="Apply_Click"
-                            Width="210" Margin="0,0,4,0">
+                            Width="220" Margin="0,0,4,0">
                         <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE898;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                       VerticalAlignment="Center" Margin="0,0,6,0"/>
                             <TextBlock Text="Push Selected to InvenTree" VerticalAlignment="Center"/>
-                            <TextBlock Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="13"
-                                       VerticalAlignment="Center" Margin="6,0,0,0"/>
                         </StackPanel>
                     </Button>
                     <Button Grid.Column="2"
                             Content="Close"
                             Style="{StaticResource SecondaryButtonStyle}"
-                            Click="Close_Click"/>
+                            Click="Close_Click"
+                            Margin="0"/>
                 </Grid>
             </Border>
         </Grid>

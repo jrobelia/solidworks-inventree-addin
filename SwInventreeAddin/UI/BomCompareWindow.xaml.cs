@@ -9,7 +9,7 @@ namespace SwInventreeAddin.UI
     {
         private readonly BomCompareViewModel _vm;
 
-        public BomCompareWindow(BomCompareViewModel vm, string assemblyLabel)
+        public BomCompareWindow(BomCompareViewModel vm, string assemblyIpn, string partName = "")
         {
             InitializeComponent();
             _vm = vm;
@@ -29,7 +29,8 @@ namespace SwInventreeAddin.UI
                     MessageBoxImage.Question) == MessageBoxResult.Yes;
 
             DataContext = _vm;
-            AssemblyLabel.Text = assemblyLabel;
+            AssemblyIpn.Text  = assemblyIpn;
+            AssemblyName.Text = partName;
         }
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
