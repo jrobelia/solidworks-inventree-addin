@@ -42,7 +42,9 @@ keeping the inventory system in sync while designing.
 
 #### Parking Lot
 
-- If a part is maked as made from automatically mark it as an assembly in 
+- add part catagory to inventree info maybe add it under the Prt number for
+  UI redesign along with assy status also look at other part properties to display
+- If a part is marked as made from automatically mark it as an assembly in 
   SW we could add made form PN in SW properties and qty and add-in could
   auto-populate BOM for us
 - Add a link to the invnetree part so you can press the image or something
