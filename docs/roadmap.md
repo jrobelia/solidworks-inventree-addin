@@ -1,8 +1,8 @@
 # Roadmap
 
-Last updated: 2026-04-15 (M2 complete; on `milestone-2` branch, PR pending)
+Last updated: 2026-05-18 (M2 complete; milestone-2 pushed; M3 backlog expanded)
 
-Next action: Open PR for `milestone-2` → merge → start M3 planning.
+Next action: Open PR for `milestone-2` → merge → start M3 work.
 
 ## Project North Star
 
@@ -33,30 +33,20 @@ keeping the inventory system in sync while designing.
 
 ### Immediate Gaps
 
-- **Search InvenTree by name** -- Look up parts by name (not just IPN) for
-  reference -- e.g. checking naming conventions before creating a new part.
 - **Assembly flag on Create Part** -- Add an "Assembly" checkbox to the Create
-  Part dialog so the part is immediately usable as a BOM parent.
+  Part dialog so the part is immediately usable as a BOM parent (task 15, expanded to full flags in task 16).
 
 ### Future Vision
 
 #### Parking Lot
 
-- add part catagory to inventree info maybe add it under the Prt number for
-  UI redesign along with assy status also look at other part properties to display
-- If a part is marked as made from automatically mark it as an assembly in 
-  SW we could add made form PN in SW properties and qty and add-in could
-  auto-populate BOM for us
-- Add a link to the invnetree part so you can press the image or something
-  similar and it will open the part in a web page.
-- How much overhead is it to load the icons from the catagories menu into solidworks?
 - Drawing support -- drawings don't get InvenTree part numbers today, probably
-  not applicable.
-- Status bar showing connection health (green/red dot).
-- Per-document-type enable/disable switches in Settings.
-- Auto part-number wait toggle -- configurable setting to enable/disable the
-  10-second IPN generation poll after Create Part. Useful for servers without
-  the auto-numbering plugin installed.
+  not applicable. #longterm
+- Per-document-type enable/disable switches in Settings. #longterm
+- If a part is marked as made from automatically mark it as an assembly in
+  SW we could add made form PN in SW properties and qty and add-in could
+  auto-populate BOM for us #longterm
+- Add a name-based search box to the task pane (searches InvenTree, displays results). User can type a partial name, see matching parts, and view their details. #longterm
 
 #### Company Specific
 
@@ -64,8 +54,11 @@ keeping the inventory system in sync while designing.
   named IPN_rev. Company-specific; would need configurable filename pattern.
 - Part number naming convention (Coml/Fab/Assy) -- company-specific, needs
   thought before open-sourcing.
+- If a part is marked as made from automatically mark it as an assembly in 
+  SW we could add made form PN in SW properties and qty and add-in could
+  auto-populate BOM for us #longterm
 
-#### Considering
+#### More thought Needed
 
 - Revision history / PDM-like behavior -- real pain point, unclear if it belongs
   in this add-in or a separate tool.
@@ -132,10 +125,13 @@ Two architectural clean-ups also deferred to M3:
 
 | # | Task | Milestone | Type | Status | Pass / fail condition |
 |---|------|-----------|------|--------|-----------------------|
-| 5 | Add a name-based search box to the task pane (searches InvenTree, displays results) | 3 | build | open | User can type a partial name, see matching parts, and view their details |
 | 10 | Remove remaining company-specific conventions (part number naming, filename patterns) | 3 | cleanup | open | No company-specific strings remain; add-in works out of the box for any SW + InvenTree shop |
-| 14 | Remap task pane UI layout in the Pencil design file (`docs/sw-addin-layout.pen`) to reflect current and planned screens | 3 | design | open | Pencil file has up-to-date frames for all task pane views (part, assembly, create part dialog, info panel, name search) |
-| 15 | Allow setting the Assembly flag when creating a part via the add-in | 3 | build | open | Create Part dialog has an "Assembly" checkbox; when checked, `assembly: true` is sent to InvenTree; part is immediately usable as a BOM parent |
+| 14 | Remap task pane UI layout in the Pencil design file (`docs/sw-addin-layout.pen`) to reflect current and planned screens | 3 | design | open | Pencil file has up-to-date frames for all task pane views (part, assembly, create part dialog, info panel) |
+| 15 | Expand Create Part flags — Assembly, Testable, Trackable, Purchaseable, Salable, Copy Category Parameters | 3 | build | open | Create Part dialog exposes applicable flags; Component always true; Assembly auto-set for SW assemblies; toggleable flags persist and POST correctly |
+| 16 | Auto part-number wait toggle | 3 | build | open | Settings has a checkbox to disable the 10-second IPN generation poll; useful for servers without the auto-numbering plugin |
+| 17 | Link from task pane to InvenTree part in browser | 3 | build | open | Clicking the thumbnail (or a dedicated link) opens the InvenTree part URL in the default browser |
+| 18 | Connection health indicator in status bar | 3 | build | open | Needs exploration: determine ping strategy (reuse GetServerInfoAsync?); green/red dot visible in task pane status bar at all times showing live server reachability |
+| 19 | Category icons in category picker | 3 | build | open | Needs exploration: spike overhead of fetching and rendering InvenTree category icons in the SW category tree dialog; go/no-go decision before implementation |
 
 ### Done
 
@@ -176,7 +172,7 @@ Two architectural clean-ups also deferred to M3:
 
 ## Next Action
 
-M1 and M2 complete. Open PR for `milestone-2` → merge to `main` → start M3 planning.
-First M3 candidates: task 10 (company-specific cleanup), task 5 (name search), task 15 (Assembly flag).
+M1 and M2 complete. Open PR for `milestone-2` → merge to `main` → start M3 work.
+M3 backlog: tasks 10, 14–19. Quick wins: 16 (auto-number toggle), 17 (part link). Exploration spikes needed for 18 (connection health) and 19 (category icons).
 
 

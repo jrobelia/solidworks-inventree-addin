@@ -1,6 +1,6 @@
 # SolidWorks InvenTree Add-In
 
-> **Use at your own risk.** This add-in is personal/work-adjacent software, not a commercial product. It writes data to both SolidWorks documents and your InvenTree server. Test against a non-production InvenTree instance before using it on real data. No warranty is provided — see [LICENSE](LICENSE).
+> **Use at your own risk.** This add-in is personal/work-adjacent software. It writes data to both SolidWorks documents and your InvenTree server. Test against a non-production InvenTree instance before using it on real data. No warranty is provided — see [LICENSE](LICENSE).
 
 A SolidWorks task-pane add-in that bridges SolidWorks parts and assemblies with an [InvenTree](https://inventree.org) inventory server. Stay in SolidWorks — the add-in handles creating parts, syncing properties, and comparing BOMs.
 
@@ -11,6 +11,8 @@ A SolidWorks task-pane add-in that bridges SolidWorks parts and assemblies with 
 **Existing parts** — Shows a live comparison of SolidWorks vs InvenTree data (name, description, notes, revision, image). Sync any field in either direction with one click.
 
 **Push revision** — Sends the current SolidWorks revision to InvenTree, with an optional viewport screenshot attached.
+
+**Assemblies** -- Reads the SolidWorks assembly BOM (immediate children, IPN + quantity), fetches the corresponding InvenTree BOM, and shows a side-by-side diff: added, updated, matched, and InvenTree-only lines. Select which lines to push. InvenTree-only lines are never touched. Duplicate IPNs are resolved by revision match.
 
 ## Requirements
 
@@ -35,9 +37,14 @@ To get an API key: InvenTree → click your username → **Account Settings** �
 
 ## Configuration
 
-Settings are stored per-user using Windows DPAPI encryption — no plain-text config files. Property name mappings are configurable from within the add-in — open Settings → Edit Mapping to change which SolidWorks custom property names correspond to IPN, part name, notes, and revision.
+Settings are stored per-user using Windows DPAPI encryption — no plain-text config files.
 
-**IPN is the link between SolidWorks and InvenTree.** The add-in reads the IPN property from the open document and looks up the matching InvenTree part by IPN. All comparisons and syncs are keyed on IPN — there is no automatic matching by name or description alone.
+**Property name mapping** — SolidWorks custom property names vary by company. Open Settings → Edit Mapping to configure which custom property names correspond to IPN, part name, description, notes, and revision, plus the BOM table keyword used to locate the assembly BOM. The mapping can be stored in two ways:
+
+- **Local file** — saved in `%AppData%\SwInventreeAddin\` on the current machine. Good for personal use.
+- **Shared file** — a path to a JSON file on a network share. All machines pointing at the same file stay in sync automatically. Set the shared path in Settings; the add-in falls back to a local copy if the share is unreachable.
+
+**How parts are looked up** — IPN is the primary link between SolidWorks and InvenTree. On first fetch the add-in queries InvenTree by IPN and stores the InvenTree part PK (primary key) back into the SolidWorks document. Subsequent operations use the stored PK directly, which is faster and handles edge cases where an IPN search might return multiple candidates (resolved by revision match). If the PK property is missing or stale, the add-in falls back to an IPN search.
 
 ## Building from Source
 
@@ -102,7 +109,8 @@ Installer/
 | Branch | Purpose |
 |---|---|
 | `main` | Latest stable release. Matches the most recent tag. |
-| `milestone-1` | Current active development. Work in progress — may be incomplete or broken. |
+| `milestone-1` | M1 complete (part creation, property mapping, bidirectional sync). Merged into `main`. |
+| `milestone-2` | M2 complete (assembly BOM sync). Merged into `main`. |
 
 Never run a milestone branch in production.
 
@@ -116,8 +124,9 @@ Releases are tagged `vMAJOR.MINOR.0` and published as [GitHub Releases](../../re
 | `v1.1.0` | Push viewport screenshot as part image |
 | `v1.2.0` | WPF UI migration, sign-in with username/password, security hardening (HTTPS enforcement, TLS 1.2, header injection fix), installer improvements |
 | `v1.3.0` | Thumbnail display, bidirectional Name/Notes push, revision match indicator, drawing block |
+| `v2.0.0` | Assembly BOM sync: side-by-side diff, per-line push, InvenTree-only line protection, duplicate IPN resolution by revision, BOM status indicator in task pane |
 
-Milestone 1 is currently in progress on the `milestone-1` branch. Already complete on that branch: configurable property mapping (no more hardcoded SolidWorks property names), description row, InvenTree PK storage, PK match indicator, and UI refinements (focus rings, icons, status indicators). Part creation from SolidWorks is still in progress.
+Milestone 1 (part creation, property sync) and Milestone 2 (assembly BOM sync) are complete. See [`docs/roadmap.md`](docs/roadmap.md) for M3 plans.
 
 ## Scope Limits
 
@@ -125,4 +134,4 @@ This add-in does **not** replace the InvenTree web UI for purchasing, build orde
 
 ## License
 
-[MIT](LICENSE). Copyright (c) 2026 OpenRespirator.
+[MIT](LICENSE). Copyright (c) 2026 Jon Robelia.
