@@ -6,5 +6,6 @@
         DocumentType GetDocumentType();
         string GetCustomProperty(string name);
         void SetCustomProperty(string name, string value);
+        bool PropertyExists(string name);
     }
 }

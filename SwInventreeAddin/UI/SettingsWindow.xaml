@@ -25,24 +25,26 @@
 
         <StackPanel Margin="16,14,16,16">
 
-            <TextBlock Text="Server URL" Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,4" />
+            <!-- ── Server Connection section ──────────────────────────────── -->
+
+            <TextBlock Text="Inventree Server Connection"
+                       FontWeight="SemiBold"
+                       Foreground="{StaticResource BrushForeground}" />
+
+            <TextBlock Text="Server URL" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
             <TextBox x:Name="UrlBox" Style="{StaticResource SWFieldStyle}" Height="28" />
 
-            <TextBlock Text="Username" Style="{StaticResource FieldLabelStyle}" Margin="0,10,0,4" />
+            <TextBlock Text="Username" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
             <TextBox x:Name="UsernameBox" Style="{StaticResource SWFieldStyle}" Height="28" />
 
-            <TextBlock Text="Password" Style="{StaticResource FieldLabelStyle}" Margin="0,10,0,4" />
+            <TextBlock Text="Password" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
             <PasswordBox x:Name="PasswordBox" Height="28"
-                         Padding="6,0"
-                         VerticalContentAlignment="Center"
-                         BorderBrush="{StaticResource BrushBorder}"
-                         BorderThickness="1"
-                         Background="White" />
+                         Style="{StaticResource SWPasswordBoxStyle}" />
 
-            <!-- Advanced: raw API key for manual override or diagnostics -->
+            <!-- Advanced expander: raw API key -->
             <Expander x:Name="AdvancedExpander"
                       Header="Advanced — paste API key directly"
-                      Margin="0,12,0,0"
+                      Margin="0,10,0,0"
                       Foreground="{StaticResource BrushSubtle}"
                       FontSize="{StaticResource FontSizeBody}">
                 <StackPanel Margin="0,6,0,0">
@@ -56,40 +58,204 @@
                 </StackPanel>
             </Expander>
 
-            <!-- Status message -->
-            <TextBlock x:Name="StatusText"
-                       Height="24"
-                       Margin="0,10,0,0"
-                       TextTrimming="CharacterEllipsis"
-                       Foreground="{StaticResource BrushSubtle}"
-                       FontSize="{StaticResource FontSizeBody}" />
-
-            <!-- Buttons -->
-            <Grid Margin="0,4,0,0">
+            <!-- Test Connection + inline status message -->
+            <Grid Margin="0,10,0,0">
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="8" />
                     <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="StatusText"
+                           Grid.Column="0"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           Foreground="{StaticResource BrushSubtle}"
+                           FontSize="{StaticResource FontSizeBody}" />
+                <Button Grid.Column="2"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Width="140" Margin="0"
+                        Click="Test_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Test Connection" VerticalAlignment="Center" />
+                        <TextBlock Text="&#xE703;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                   VerticalAlignment="Center" Margin="6,0,0,0" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <!-- ── Separator ────────────────────────────────────────────────── -->
+            <Separator Background="{StaticResource BrushBorder}" Margin="0,8,0,0" />
+
+            <!-- ── Property Mappings section ──────────────────────────────── -->
+
+            <TextBlock Text="Inventree to Solidworks Property Mappings"
+                       FontWeight="SemiBold"
+                       Foreground="{StaticResource BrushForeground}"
+                       Margin="0,8,0,0" />
+
+            <TextBlock Text="Map InvenTree field names to SolidWorks custom property names. A shared team file keeps everyone in sync."
+                       Style="{StaticResource FieldLabelStyle}"
+                       Margin="0,4,0,0"
+                       TextWrapping="Wrap" />
+
+            <!-- Local radio + label -->
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,2" VerticalAlignment="Center">
+                <RadioButton x:Name="LocalRadio"
+                             GroupName="MappingSource"
+                             IsChecked="True"
+                             VerticalAlignment="Center"
+                             Margin="0,0,6,0"
+                             Checked="LocalRadio_Checked" />
+                <TextBlock x:Name="LocalRadioLabel"
+                           Text="Local mapping file"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource BrushForeground}" />
+            </StackPanel>
+
+            <!-- Local file path (read-only) + Edit Mappings button -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="120" />
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="LocalPathBox"
+                         Grid.Column="0"
+                         Style="{StaticResource SWFieldStyle}"
+                         Background="{StaticResource BrushSectionHeader}"
+                         IsReadOnly="True"
+                         Height="28" />
+                <Button x:Name="EditMappingsButton"
+                        Grid.Column="2"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Height="28" Width="120" Margin="0"
+                        Click="EditMappings_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Edit Mappings&#x2026;" VerticalAlignment="Center" />
+                        <TextBlock Text="&#xE70F;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                   VerticalAlignment="Center" Margin="6,0,0,0" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <!-- Shared radio + label -->
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,2" VerticalAlignment="Center">
+                <RadioButton x:Name="SharedRadio"
+                             GroupName="MappingSource"
+                             VerticalAlignment="Center"
+                             Margin="0,0,6,0"
+                             Checked="SharedRadio_Checked" />
+                <TextBlock Text="Shared mapping file (optional)"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource BrushSubtle}" />
+            </StackPanel>
+
+            <!-- Shared file path + Browse button -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="120" />
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="SharedPathBox"
+                         Grid.Column="0"
+                         Style="{StaticResource SWFieldStyle}"
+                         Height="28" />
+                <Button Grid.Column="2"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Height="28" Width="120" Margin="0"
+                        Click="Browse_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Browse&#x2026;" VerticalAlignment="Center" />
+                        <TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                   VerticalAlignment="Center" Margin="6,0,0,0" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <!-- Mapping status bar -->
+            <Border x:Name="MappingStatusBar"
+                    Height="32" Margin="0,8,0,0"
+                    Background="#FFF0F0F0"
+                    BorderBrush="#FFD0D0D0" BorderThickness="0,1,0,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="4" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Border x:Name="MappingStatusStripe" Grid.Column="0"
+                            Background="{StaticResource BrushSectionHeader}" />
+                    <TextBlock x:Name="MappingStatusText"
+                               Grid.Column="1"
+                               VerticalAlignment="Center"
+                               Margin="8,0,4,0"
+                               FontSize="{StaticResource FontSizeBody}"
+                               TextTrimming="CharacterEllipsis"
+                               Foreground="{StaticResource BrushForeground}" />
+                </Grid>
+            </Border>
+
+            <!-- ── Separator ────────────────────────────────────────────────── -->
+            <Separator Background="{StaticResource BrushBorder}" Margin="0,8,0,0" />
+
+            <!-- ── BOM sync section ────────────────────────────────────────── -->
+
+            <TextBlock Text="BOM Sync"
+                       FontWeight="SemiBold"
+                       Foreground="{StaticResource BrushForeground}"
+                       Margin="0,8,0,0" />
+
+            <TextBlock Text="BOM Table Keyword"
+                       Style="{StaticResource FieldLabelStyle}"
+                       Margin="0,8,0,2" />
+            <TextBlock Text="Name fragment of the BOM table in SolidWorks that contains InvenTree data"
+                       Style="{StaticResource FieldLabelStyle}"
+                       FontSize="11" Opacity="0.6" Margin="0,0,0,4"
+                       TextWrapping="Wrap" />
+            <TextBox x:Name="BomKeywordBox" Style="{StaticResource SWFieldStyle}" />
+
+            <!-- Apply / Save / Cancel buttons -->
+            <Grid Margin="0,8,0,0">
+                <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="8" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-
-                <Button Grid.Column="0" Content="Test Connection"
+                <Button Grid.Column="1"
                         Style="{StaticResource SecondaryButtonStyle}"
-                        Width="140" Margin="0"
-                        Click="Test_Click" />
-
-                <Button Grid.Column="2" Content="Save"
+                        Width="80" Margin="0"
+                        Click="Apply_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Apply" VerticalAlignment="Center" />
+                        <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                   VerticalAlignment="Center" Margin="6,0,0,0" />
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="3"
                         Style="{StaticResource PrimaryButtonStyle}"
-                        Width="70" Margin="0"
+                        Width="80" Margin="0"
                         IsDefault="True"
-                        Click="Save_Click" />
-
-                <Button Grid.Column="4" Content="Cancel"
+                        Click="Save_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Save" VerticalAlignment="Center" />
+                        <TextBlock Text="&#xE74E;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                   VerticalAlignment="Center" Margin="6,0,0,0" />
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="5"
                         Style="{StaticResource SecondaryButtonStyle}"
-                        Width="70" Margin="0"
+                        Width="80" Margin="0"
                         IsCancel="True"
-                        Click="Cancel_Click" />
+                        Click="Cancel_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Cancel" VerticalAlignment="Center" />
+                        <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                   VerticalAlignment="Center" Margin="6,0,0,0" />
+                    </StackPanel>
+                </Button>
             </Grid>
 
         </StackPanel>

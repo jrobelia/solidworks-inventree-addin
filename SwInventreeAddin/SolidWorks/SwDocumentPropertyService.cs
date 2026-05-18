@@ -55,6 +55,20 @@ namespace SwInventreeAddin.SolidWorks
                 value,
                 (int)swCustomPropertyAddOption_e.swCustomPropertyReplaceValue);
         }
+
+        public bool PropertyExists(string name)
+        {
+            var modelDoc = _swApp.ActiveDoc as IModelDoc2;
+            if (modelDoc == null) return false;
+
+            var mgr = modelDoc.Extension.CustomPropertyManager[""];
+            var namesRaw = mgr.GetNames();
+            if (namesRaw == null) return false;
+            var names = namesRaw as string[];
+            if (names == null) return false;
+
+            return System.Array.IndexOf(names, name) >= 0;
+        }
     }
 }
 

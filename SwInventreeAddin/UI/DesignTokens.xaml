@@ -120,6 +120,12 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Padding"      Value="3,2" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Style.Triggers>
+            <Trigger Property="IsFocused" Value="True">
+                <Setter Property="BorderBrush"     Value="{StaticResource BrushAccentBlue}" />
+                <Setter Property="BorderThickness" Value="2" />
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <Style x:Key="InvenTreeFieldStyle" TargetType="TextBox"
@@ -127,6 +133,25 @@
         <Setter Property="Background"  Value="{StaticResource BrushInventreeField}" />
         <Setter Property="IsReadOnly"  Value="True" />
         <Setter Property="Focusable"   Value="False" />
+        <Setter Property="ToolTip"     Value="Read-only &#x2014; value from InvenTree" />
+    </Style>
+
+    <!-- ── Password box style ────────────────────────────────────────────── -->
+
+    <Style x:Key="SWPasswordBoxStyle" TargetType="PasswordBox">
+        <Setter Property="FontFamily"       Value="{StaticResource FontBody}" />
+        <Setter Property="FontSize"         Value="{StaticResource FontSizeBody}" />
+        <Setter Property="Background"       Value="White" />
+        <Setter Property="BorderBrush"      Value="{StaticResource BrushBorder}" />
+        <Setter Property="BorderThickness"  Value="1" />
+        <Setter Property="Padding"          Value="6,0" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Style.Triggers>
+            <Trigger Property="IsFocused" Value="True">
+                <Setter Property="BorderBrush"     Value="{StaticResource BrushAccentBlue}" />
+                <Setter Property="BorderThickness" Value="2" />
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <!-- ── Label style ────────────────────────────────────────────────────── -->

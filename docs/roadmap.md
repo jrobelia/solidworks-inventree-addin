@@ -1,6 +1,8 @@
 # Roadmap
 
-Last updated: 2026-03-10 (Iteration 0 — property mapping design session)
+Last updated: 2026-05-18 (M2 complete; milestone-2 pushed; M3 backlog expanded)
+
+Next action: Open PR for `milestone-2` → merge → start M3 work.
 
 ## Project North Star
 
@@ -31,50 +33,43 @@ keeping the inventory system in sync while designing.
 
 ### Immediate Gaps
 
-- **Create new InvenTree part from SolidWorks** -- Browse/search the category
-  tree, type a name, create the part, wait for IPN generation, write IPN + name
-  back into SW custom properties. Eliminates the #1 daily pain point.
-- **Read-only InvenTree info panel** -- Display stock on hand, on order, price,
-  active status, and default supplier for the fetched part. Data is already in
-  the API response -- just needs to be shown.
-- **Search InvenTree by name** -- Look up parts by name (not just IPN) for
-  reference -- e.g. checking naming conventions before creating a new part.
-- **Description field sync** -- Add InvenTree's description as a synced field
-  alongside name, notes, and revision.
+- **Assembly flag on Create Part** -- Add an "Assembly" checkbox to the Create
+  Part dialog so the part is immediately usable as a BOM parent (task 15, expanded to full flags in task 16).
 
-### Strategic Expansions
+### Future Vision
 
-- **BOM export with interactive review** -- Read the SolidWorks assembly BOM
-  (immediate children), compare against the InvenTree BOM, show a side-by-side
-  diff (added / updated / InvenTree-only), let the user select which lines to
-  push. Never delete InvenTree-only lines.
-- ~~**Configurable property mapping**~~ -- Moved to Milestone 1 as a prerequisite.
-  Ships before part creation so hardcoded property names never accumulate.
+#### Parking Lot
 
-### Future Vision / Parking Lot
+- Drawing support -- drawings don't get InvenTree part numbers today, probably
+  not applicable. #longterm
+- Per-document-type enable/disable switches in Settings. #longterm
+- If a part is marked as made from automatically mark it as an assembly in
+  SW we could add made form PN in SW properties and qty and add-in could
+  auto-populate BOM for us #longterm
+- Add a name-based search box to the task pane (searches InvenTree, displays results). User can type a partial name, see matching parts, and view their details. #longterm
+
+#### Company Specific
+
+- Verify IPN and revision against filename -- detect mismatches when the file is
+  named IPN_rev. Company-specific; would need configurable filename pattern.
+- Part number naming convention (Coml/Fab/Assy) -- company-specific, needs
+  thought before open-sourcing.
+- If a part is marked as made from automatically mark it as an assembly in 
+  SW we could add made form PN in SW properties and qty and add-in could
+  auto-populate BOM for us #longterm
+
+#### More thought Needed
 
 - Revision history / PDM-like behavior -- real pain point, unclear if it belongs
   in this add-in or a separate tool.
-- Drawing support -- drawings don't get InvenTree part numbers today, probably
-  not applicable.
-- Notes field -- works but rarely used. Keep but deprioritize.
-- Part number naming convention (Coml/Fab/Assy) -- company-specific, needs
-  thought before open-sourcing.
-- Bulk / recursive BOM comparison: compare the full assembly tree (not just
-  immediate children) against InvenTree in one operation.
-- Verify IPN and revision against filename -- detect mismatches when the file is
-  named IPN_rev. Company-specific; would need configurable filename pattern.
-- Status bar showing connection health (green/red dot).
-- Per-document-type enable/disable switches in Settings.
-- Auto part-number wait toggle -- configurable setting to enable/disable the
-  10-second IPN generation poll after Create Part. Useful for servers without
-  the auto-numbering plugin installed.
 - BOM snapshot on revision push -- snapshot the InvenTree BOM before applying
   an update. Write a dated JSON file to a configurable archive path.
 - Nightly TLA snapshot script -- standalone script that fetches the full
   InvenTree BOM for each TLA on a schedule. Catches InvenTree-only edits.
 - BOM line validation -- validate individual InvenTree BOM lines that match
-  their SolidWorks counterpart using InvenTree's per-line validated flag.
+  their SolidWorks counterpart using InvenTree's per-line validated flag?
+- Bulk / recursive BOM comparison: compare the full assembly tree (not just
+  immediate children) against InvenTree in one operation.
 
 ### Not Pursuing
 
@@ -86,7 +81,7 @@ keeping the inventory system in sync while designing.
 
 ## Iterative Milestones
 
-### Milestone 1 -- Part Creation (status: next)
+### Milestone 1 -- Part Creation (status: complete)
 
 The add-in can create a new part in InvenTree without leaving SolidWorks,
 including category selection and IPN write-back. The task pane also shows
@@ -97,11 +92,15 @@ no hardcoded property name strings ever accumulate. Every feature built in
 this milestone reads SW custom property names from a user-configurable JSON
 file rather than constants in code.
 
-### Milestone 2 -- Assembly BOM Sync (status: future)
+### Milestone 2 -- Assembly BOM Sync (status: complete)
 
-The add-in can compare a SolidWorks assembly BOM against InvenTree and push
-selected lines through an interactive review screen. Replaces the manual
-CSV export workflow.
+The add-in reads the SolidWorks assembly BOM, compares it against the
+InvenTree BOM, and lets the user push selected lines through an interactive
+review screen. InvenTree-only lines are never touched. The task pane shows
+a live "BOM: N difference(s)" status indicator and the BOM table name.
+Duplicate IPN resolution uses revision matching to pick the correct part
+when InvenTree returns multiple candidates. Revision ordering and PK-match
+gates prevent the compare from running on stale or uncreated assemblies.
 
 ### Milestone 3 -- Open-Source Ready (status: future)
 
@@ -110,28 +109,47 @@ milestone focuses on removing remaining company-specific conventions (part
 number naming, filename patterns) and verifying the add-in works out of the
 box for any SolidWorks + InvenTree shop. Lighter lift than originally scoped.
 
+Two architectural clean-ups also deferred to M3:
+
+- **`TaskPaneViewModel` split** -- At ~1000 lines it has 7 distinct
+  responsibilities. Refactor into focused classes (`PartFetchViewModel`,
+  `PartPushViewModel`, etc.) with thin orchestration in `TaskPaneViewModel`.
+  Requires XAML and code-behind changes.
+- **n+1 HTTP queries** -- `GetBomAsync` and `GetPartsByIpnAsync` each fetch
+  sub-part details one request at a time. Investigate whether InvenTree offers
+  a batch/filter endpoint before implementing a fix.
+
 ---
 
 ## Actionable Backlog
 
 | # | Task | Milestone | Type | Status | Pass / fail condition |
 |---|------|-----------|------|--------|-----------------------|
-| 0a | Add `GetServerInfoAsync()` to `IInventreeClient`, implement it in `InventreeHttpClient`, and add the stub method to `StubInventreeClient` in the test project | 1 | build | open | Returns InvenTree server version string and API version int from the live server; test project compiles |
-| 0b | Build `PropertyMappingConfig`, `IPropertyMappingProvider`, `PropertyMappingProvider` with file I/O, source path resolution, and copy-to-local flow | 1 | build | open | Config loads from local or configured path; first-run defaults write correctly; copy-to-local works |
-| 0c | Settings panel mapping row and `PropertyMappingEditorWindow` dialog | 1 | build | open | User can view and edit field mappings; read-only when loaded from configured path; version mismatch shows amber warning in the task pane (not the editor) |
-| 1 | Fetch and display the InvenTree category tree in a dialog | 1 | build | open | User sees a browsable list of categories from their InvenTree server |
-| 2 | Create a new InvenTree part (category + name) from the dialog | 1 | build | open | POST to /api/part/ succeeds; new part appears in InvenTree |
-| 3 | After creation, re-fetch the part to get the plugin-generated IPN and write IPN + name into SW custom properties | 1 | build | open | IPN and name properties are populated in the open SW document using mapped property names from config |
-| 4 | Display read-only InvenTree fields (stock, on order, price, active, default supplier) in the task pane after fetch | 1 | build | open | Fields appear below the existing property comparison when a part is loaded |
-| 5 | Add a name-based search box to the task pane (searches InvenTree, displays results) | 1 | build | open | User can type a partial name, see matching parts, and view their details |
-| 6 | Add Description as a synced property row (same pattern as Name/Notes/Revision) | 1 | cleanup | open | Description row appears in the comparison grid with match indicator and push/apply buttons |
-| 7 | Read the SolidWorks assembly BOM (immediate children with IPN + quantity) | 2 | build | open | When an assembly is open, the add-in can list child components and their quantities |
-| 8 | Fetch the InvenTree BOM for the same part and diff against the SW BOM | 2 | build | open | Side-by-side comparison shows added, updated, matched, and InvenTree-only lines |
-| 9 | Interactive review screen: user selects which BOM lines to push, confirms, add-in writes to InvenTree | 2 | build | open | Only user-selected lines are created/updated; InvenTree-only lines are untouched |
 | 10 | Remove remaining company-specific conventions (part number naming, filename patterns) | 3 | cleanup | open | No company-specific strings remain; add-in works out of the box for any SW + InvenTree shop |
+| 14 | Remap task pane UI layout in the Pencil design file (`docs/sw-addin-layout.pen`) to reflect current and planned screens | 3 | design | open | Pencil file has up-to-date frames for all task pane views (part, assembly, create part dialog, info panel) |
+| 15 | Expand Create Part flags — Assembly, Testable, Trackable, Purchaseable, Salable, Copy Category Parameters | 3 | build | open | Create Part dialog exposes applicable flags; Component always true; Assembly auto-set for SW assemblies; toggleable flags persist and POST correctly |
+| 16 | Auto part-number wait toggle | 3 | build | open | Settings has a checkbox to disable the 10-second IPN generation poll; useful for servers without the auto-numbering plugin |
+| 17 | Link from task pane to InvenTree part in browser | 3 | build | open | Clicking the thumbnail (or a dedicated link) opens the InvenTree part URL in the default browser |
+| 18 | Connection health indicator in status bar | 3 | build | open | Needs exploration: determine ping strategy (reuse GetServerInfoAsync?); green/red dot visible in task pane status bar at all times showing live server reachability |
+| 19 | Category icons in category picker | 3 | build | open | Needs exploration: spike overhead of fetching and rendering InvenTree category icons in the SW category tree dialog; go/no-go decision before implementation |
 
 ### Done
 
+- Tasks 7–9: Assembly BOM sync -- `SwAssemblyBomService` reads SW BOM (immediate children,
+  IPN + quantity); `BomCompareViewModel` fetches InvenTree BOM and diffs; `BomCompareWindow`
+  shows added / updated / matched / InvenTree-only lines with per-line push selection.
+  InvenTree-only lines untouched. BOM status indicator ("BOM: N difference(s)") + BOM table
+  name shown in task pane. Duplicate IPN resolution via revision match. Revision ordering
+  and PK-match gates guard the compare. Verified 2026-04-15.
+- Tasks 4, 12, 13: Read-only InvenTree info panel; property name validation; task pane
+  refresh on SW custom property changes. Verified 2026-04-15.
+- Tasks 6 + 11: Description row + InvenTree PK storage -- Description synced field with
+  match indicator, Push to InvenTree and Apply to SW Doc buttons; PK written to SW doc
+  after every fetch and create; PkMatch indicator in task pane; Settings local/shared
+  section order corrected. Verified 2026-03-29.
+- Tasks 1–3: Create Part in InvenTree from SolidWorks -- category tree dialog, POST new part,
+  IPN + Name write-back to SW doc, auto-populate comparison grid. Optional IPN field for
+  users without a server-side IPN plugin. Verified 2026-03-28.
 - v1.0.0 -- Encrypted settings panel, push revision, fetch part data
 - Push part image to InvenTree -- viewport capture via SaveBMP API, crop dialog
   with square-lock and move-drag, 800x800 PNG resize pipeline, "Also push
@@ -142,59 +160,19 @@ box for any SolidWorks + InvenTree shop. Lighter lift than originally scoped.
   buttons; RevisionMatch indicator; confirmation dialog with image checkbox
 - InvenTree thumbnail display + capture-push button -- 120x120 thumbnail, grey
   placeholder, detail endpoint fetch for full fields
-
----
-
-## Architectural Impact (Milestone 1)
-
-When Milestone 1 is built, `docs/architecture.md` will need:
-
-**Property mapping config (tasks 0a–0c):**
-- `PropertyMappingConfig` data class and `IPropertyMappingProvider` interface
-  in `Config/`.
-- `PropertyMappingProvider` concrete implementation handling file I/O, source
-  path resolution, and copy-to-local flow.
-- `ServerConfig` gains a nullable `MappingSourcePath` string field to persist
-  the configured source path alongside existing credentials (stays DPAPI-
-  encrypted since it lives in the same file).
-- `IInventreeClient` grows: `GetServerInfoAsync()` returning server version
-  string and API version int.
-- `PropertyMappingEditorWindow` dialog in `UI/`.
-- Module boundary note: `PropertyMappingProvider` does not call
-  `IInventreeClient` directly -- version strings are passed in by the UI
-  ViewModel.
-
-**Part creation (tasks 1–6):**
-- A new **InvenTree category service** (or methods on the existing client) for
-  `GET /api/part/category/` and `POST /api/part/`.
-- A new **Create Part dialog** (WPF window) with category browser and name
-  entry.
-- The `InventreePart` data class will need additional fields (`in_stock`,
-  `ordering`, `default_supplier`, etc.) or a companion read-only display model.
-- `IInventreeClient` also grows: `GetCategoriesAsync()`, `CreatePartAsync()`,
-  `SearchPartsByNameAsync()`.
-- A new "InvenTree info" section in the task pane XAML below the properties
-  grid.
-
-These changes will be reflected in `docs/architecture.md` by the build pipeline
-debrief as each feature is completed.
+- Visual polish -- focus rings on all inputs, Segoe MDL2 Assets icons on all
+  buttons, status bar icon, lock tooltip on InvenTree read-only fields
+- Property mapping configuration (tasks 0a–0c) -- configurable field name
+  mapping between SolidWorks and InvenTree; shared or local JSON file;
+  `PropertyMappingEditorWindow` dialog; `GetServerInfoAsync()` for version check
+- Configurable property mapping -- Moved to Milestone 1 as a prerequisite.
+  Ships before part creation so hardcoded property names never accumulate.
 
 ---
 
 ## Next Action
 
-Run the build pipeline on **task #0a** (add `GetServerInfoAsync()`) first.
-It is a small, self-contained change that unblocks task #0b, which in turn
-unblocks all of Milestone 1.
+M1 and M2 complete. Open PR for `milestone-2` → merge to `main` → start M3 work.
+M3 backlog: tasks 10, 14–19. Quick wins: 16 (auto-number toggle), 17 (part link). Exploration spikes needed for 18 (connection health) and 19 (category icons).
 
-## Call to Action
 
-**Most critical gap:** The add-in cannot create new parts. Every new part
-requires leaving SolidWorks, switching to a browser, creating the part
-manually, and copying data back. This is the highest-frequency,
-highest-friction task the add-in was built to eliminate.
-
-**Risk of leaving it unaddressed:** The add-in remains useful only for existing
-parts -- which means the most common starting point of an engineer's workflow
-(creating something new) is completely unsupported. The tool stays a nice-to-have
-instead of becoming essential.

@@ -56,6 +56,34 @@ namespace SwInventreeAddin.Tests
             Assert.That(() => _provider.GetServerConfig(),
                 Throws.TypeOf<InvalidOperationException>());
         }
+
+        [Test]
+        public void SaveThenGet_RoundTripsMappingSourcePath()
+        {
+            var config = new ServerConfig
+            {
+                Url               = "http://example.com",
+                ApiKey            = "key",
+                MappingSourcePath = @"\\server\share\mapping.json",
+            };
+
+            _provider.SaveServerConfig(config);
+            var result = _provider.GetServerConfig();
+
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result!.MappingSourcePath, Is.EqualTo(@"\\server\share\mapping.json"));
+        }
+
+        [Test]
+        public void SaveThenGet_WhenMappingSourcePathIsNull_RoundTripsAsNull()
+        {
+            var config = new ServerConfig { Url = "http://example.com", ApiKey = "key" };
+
+            _provider.SaveServerConfig(config);
+            var result = _provider.GetServerConfig();
+
+            Assert.That(result!.MappingSourcePath, Is.Null);
+        }
     }
 }
 

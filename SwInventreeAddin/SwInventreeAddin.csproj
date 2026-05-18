@@ -12,18 +12,25 @@
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Security" />
-    <!-- SolidWorks API interop DLLs - must NOT be copied to output, SolidWorks provides them at runtime -->
+    <!-- SolidWorks API interop DLLs.
+         Private=False: not copied to output; SolidWorks provides them at runtime.
+         EmbedInteropTypes=True: COM interface definitions baked into our DLL at compile time,
+         making the built package version-independent (works on SW2022 through SW2026+).
+         Path auto-detected via Directory.Build.props. -->
     <Reference Include="SolidWorks.Interop.sldworks">
-      <HintPath>C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\api\redist\SolidWorks.Interop.sldworks.dll</HintPath>
-      <Private>True</Private>
+      <HintPath>$(SolidWorksApiRedist)\SolidWorks.Interop.sldworks.dll</HintPath>
+      <Private>False</Private>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
     </Reference>
     <Reference Include="SolidWorks.Interop.swconst">
-      <HintPath>C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\api\redist\SolidWorks.Interop.swconst.dll</HintPath>
-      <Private>True</Private>
+      <HintPath>$(SolidWorksApiRedist)\SolidWorks.Interop.swconst.dll</HintPath>
+      <Private>False</Private>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
     </Reference>
     <Reference Include="SolidWorks.Interop.swpublished">
-      <HintPath>C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\api\redist\SolidWorks.Interop.swpublished.dll</HintPath>
-      <Private>True</Private>
+      <HintPath>$(SolidWorksApiRedist)\SolidWorks.Interop.swpublished.dll</HintPath>
+      <Private>False</Private>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
     </Reference>
   </ItemGroup>
   <ItemGroup>

@@ -47,13 +47,33 @@ namespace SwInventreeAddin.UI
         {
             if (StatusStripe == null || _vm == null) return;
 
-            StatusStripe.Background = _vm.StatusSeverity switch
+            var brushKey = _vm.StatusSeverity switch
             {
-                StatusSeverity.Success => (Brush)FindResource("BrushStatusSuccess"),
-                StatusSeverity.Warning => (Brush)FindResource("BrushStatusWarning"),
-                StatusSeverity.Error   => (Brush)FindResource("BrushStatusError"),
-                _                      => (Brush)FindResource("BrushStatusNone"),
+                StatusSeverity.Success => "BrushStatusSuccess",
+                StatusSeverity.Warning => "BrushStatusWarning",
+                StatusSeverity.Error   => "BrushStatusError",
+                _                      => "BrushStatusNone",
             };
+
+            var iconGlyph = _vm.StatusSeverity switch
+            {
+                StatusSeverity.Success => "\uE73E",
+                StatusSeverity.Warning => "\uE7BA",
+                StatusSeverity.Error   => "\uE783",
+                _                      => "",
+            };
+
+            var brush = (Brush)FindResource(brushKey);
+            StatusStripe.Background = brush;
+
+            if (StatusIcon != null)
+            {
+                StatusIcon.Text       = iconGlyph;
+                StatusIcon.Foreground = brush;
+                StatusIcon.Visibility = iconGlyph.Length > 0
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+            }
         }
 
         // ── Button click handlers ──────────────────────────────────────────
@@ -64,11 +84,41 @@ namespace SwInventreeAddin.UI
         private void Fetch_Click(object sender, RoutedEventArgs e) =>
             _ = _vm?.FetchPartAsync();
 
+        private void CreatePart_Click(object sender, RoutedEventArgs e)
+        {
+            _vm?.OpenCreatePartWindow(vm =>
+            {
+                var window = new CreatePartWindow();
+                window.Initialise(vm);
+                window.ShowDialog();
+            });
+        }
+
         private void ApplyName_Click(object sender, RoutedEventArgs e) =>
             _vm?.ApplyNameToDocument();
 
         private void ApplyNotes_Click(object sender, RoutedEventArgs e) =>
             _vm?.ApplyNotesToDocument();
+
+        private void ApplyDescription_Click(object sender, RoutedEventArgs e) =>
+            _vm?.ApplyDescriptionToDocument();
+
+        private void ApplyPk_Click(object sender, RoutedEventArgs e) =>
+            _vm?.ApplyPkToDocument();
+
+        private void PushDescription_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new PushRevisionConfirmDialog(
+                "Push the SolidWorks description to InvenTree? This will overwrite the description currently stored in InvenTree.",
+                imageCheckedByDefault: false);
+
+            if (dlg.ShowDialog() != true) return;
+
+            _ = _vm?.PushDescriptionToInvenTreeAsync();
+
+            if (dlg.IncludeImage)
+                _ = _vm?.PushImageAsync();
+        }
 
         private void PushRevision_Click(object sender, RoutedEventArgs e)
         {
@@ -114,5 +164,8 @@ namespace SwInventreeAddin.UI
 
         private void PushImage_Click(object sender, RoutedEventArgs e) =>
             _ = _vm?.PushImageAsync();
+
+        private void CompareBom_Click(object sender, RoutedEventArgs e) =>
+            _vm?.RequestCompareBom();
     }
 }

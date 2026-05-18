@@ -1,0 +1,28 @@
+<Project>
+  <!--
+    SolidWorks API interop DLL location.
+
+    Auto-detected from common install paths (newest first).
+    No configuration needed for standard installs.
+
+    Two installs? The newest version wins automatically.
+    Need to override? Copy Directory.Build.props.user.template to
+    Directory.Build.props.user and set your path. That file is gitignored.
+  -->
+  <PropertyGroup>
+    <!-- SW 3DEXPERIENCE R2026x -->
+    <SolidWorksApiRedist Condition="'$(SolidWorksApiRedist)' == '' AND Exists('C:\Program Files\Dassault Systemes\SOLIDWORKS 3DEXPERIENCE R2026x\SOLIDWORKS\api\redist')">C:\Program Files\Dassault Systemes\SOLIDWORKS 3DEXPERIENCE R2026x\SOLIDWORKS\api\redist</SolidWorksApiRedist>
+    <!-- SW 2025 -->
+    <SolidWorksApiRedist Condition="'$(SolidWorksApiRedist)' == '' AND Exists('C:\Program Files\Dassault Systemes\SOLIDWORKS 2025\SOLIDWORKS\api\redist')">C:\Program Files\Dassault Systemes\SOLIDWORKS 2025\SOLIDWORKS\api\redist</SolidWorksApiRedist>
+    <!-- SW 2024 -->
+    <SolidWorksApiRedist Condition="'$(SolidWorksApiRedist)' == '' AND Exists('C:\Program Files\Dassault Systemes\SOLIDWORKS 2024\SOLIDWORKS\api\redist')">C:\Program Files\Dassault Systemes\SOLIDWORKS 2024\SOLIDWORKS\api\redist</SolidWorksApiRedist>
+    <!-- SW 2023 -->
+    <SolidWorksApiRedist Condition="'$(SolidWorksApiRedist)' == '' AND Exists('C:\Program Files\Dassault Systemes\SOLIDWORKS 2023\SOLIDWORKS\api\redist')">C:\Program Files\Dassault Systemes\SOLIDWORKS 2023\SOLIDWORKS\api\redist</SolidWorksApiRedist>
+    <!-- SW 2022 and earlier -->
+    <SolidWorksApiRedist Condition="'$(SolidWorksApiRedist)' == '' AND Exists('C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\api\redist')">C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\api\redist</SolidWorksApiRedist>
+  </PropertyGroup>
+
+  <!-- Optional override for unusual installs or to pick a specific version -->
+  <Import Project="$(MSBuildThisFileDirectory)Directory.Build.props.user"
+          Condition="Exists('$(MSBuildThisFileDirectory)Directory.Build.props.user')" />
+</Project>

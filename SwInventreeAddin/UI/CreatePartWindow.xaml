@@ -1,0 +1,212 @@
+<Window
+    x:Class="SwInventreeAddin.UI.CreatePartWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Create Part in InvenTree"
+    Width="360"
+    Height="490"
+    ResizeMode="NoResize"
+    WindowStartupLocation="CenterScreen"
+    FontFamily="Segoe UI"
+    FontSize="12">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="DesignTokens.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <DockPanel>
+
+        <!-- Blue header stripe -->
+        <Border DockPanel.Dock="Top" Height="4"
+                Background="{StaticResource BrushAccentBlue}" />
+
+        <!-- Status bar at bottom -->
+        <Border DockPanel.Dock="Bottom" Height="26"
+                Background="{StaticResource BrushSectionHeader}"
+                Padding="8,0">
+            <TextBlock x:Name="StatusTextBlock"
+                       VerticalAlignment="Center"
+                       FontSize="{StaticResource FontSizeBody}"
+                       Foreground="{StaticResource BrushSubtle}"
+                       TextTrimming="CharacterEllipsis" />
+        </Border>
+
+        <!-- Main content -->
+        <Grid Margin="16,12,16,12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Part Name label + TextBox -->
+            <TextBlock Grid.Row="0"
+                       Text="Part Name"
+                       Foreground="{StaticResource BrushSubtle}"
+                       FontSize="{StaticResource FontSizeBody}"
+                       Margin="0,0,0,4" />
+
+            <TextBox Grid.Row="1"
+                     x:Name="PartNameBox"
+                     Height="26"
+                     Padding="4,4"
+                     FontSize="{StaticResource FontSizeBody}"
+                     BorderBrush="{StaticResource BrushBorder}"
+                     BorderThickness="1"
+                     Margin="0,0,0,8" />
+
+            <!-- Part Number (optional) label + TextBox -->
+            <TextBlock Grid.Row="2"
+                       Text="Part Number (optional)"
+                       Foreground="{StaticResource BrushSubtle}"
+                       FontSize="{StaticResource FontSizeBody}"
+                       Margin="0,0,0,4" />
+
+            <Grid Grid.Row="3" Margin="0,0,0,12">
+                <TextBox x:Name="IpnEntryBox"
+                         Height="26"
+                         Padding="4,4"
+                         FontSize="{StaticResource FontSizeBody}"
+                         BorderBrush="{StaticResource BrushBorder}"
+                         BorderThickness="1"
+                         Background="Transparent" />
+                <TextBlock Text="leave blank for InvenTree auto-assign"
+                           Foreground="{StaticResource BrushSubtle}"
+                           FontSize="{StaticResource FontSizeBody}"
+                           Padding="6,4"
+                           IsHitTestVisible="False"
+                           VerticalAlignment="Center">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Text, ElementName=IpnEntryBox}" Value="">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
+
+            <!-- Category label -->
+            <TextBlock Grid.Row="4"
+                       Text="Category"
+                       Foreground="{StaticResource BrushSubtle}"
+                       FontSize="{StaticResource FontSizeBody}"
+                       Margin="0,0,0,4" />
+
+            <!-- Category TreeView -->
+            <Border Grid.Row="5"
+                    BorderBrush="{StaticResource BrushBorder}"
+                    BorderThickness="1"
+                    Margin="0,0,0,12">
+
+                <Grid>
+                    <!-- Loading overlay -->
+                    <TextBlock Text="Loading categories…"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Foreground="{StaticResource BrushSubtle}"
+                               Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}" />
+
+                    <TreeView x:Name="CategoryTree"
+                              ItemsSource="{Binding RootCategories}"
+                              SelectedItemChanged="CategoryTree_SelectedItemChanged"
+                              BorderThickness="0"
+                              Background="Transparent">
+                        <TreeView.ItemContainerStyle>
+                            <Style TargetType="TreeViewItem">
+                                <EventSetter Event="Expanded"
+                                             Handler="TreeViewItem_Expanded" />
+                                <Setter Property="IsExpanded"
+                                        Value="{Binding IsExpanded, Mode=TwoWay}" />
+                                <Setter Property="IsSelected"
+                                        Value="{Binding IsSelected, Mode=TwoWay}" />
+                            </Style>
+                        </TreeView.ItemContainerStyle>
+                        <TreeView.ItemTemplate>
+                            <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE8B7;"
+                                               FontFamily="Segoe MDL2 Assets"
+                                               FontSize="12"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource BrushAccentBlue}"
+                                               Margin="0,0,5,0" />
+                                    <TextBlock Text="{Binding Category.Name}"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource BrushForeground}" />
+                                </StackPanel>
+                            </HierarchicalDataTemplate>
+                        </TreeView.ItemTemplate>
+                    </TreeView>
+                </Grid>
+            </Border>
+
+            <!-- Selected category indicator -->
+            <Border Grid.Row="6"
+                    BorderBrush="{StaticResource BrushBorder}"
+                    BorderThickness="1"
+                    Background="{StaticResource BrushSectionHeader}"
+                    Padding="6,4"
+                    Margin="0,0,0,8">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Selected: "
+                               Foreground="{StaticResource BrushSubtle}"
+                               FontSize="{StaticResource FontSizeBody}" />
+                    <TextBlock x:Name="SelectedCategoryLabel"
+                               Text="(none)"
+                               Foreground="{StaticResource BrushForeground}"
+                               FontSize="{StaticResource FontSizeBody}"
+                               TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Border>
+
+            <!-- Button row -->
+            <Grid Grid.Row="7">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition />
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0"
+                        x:Name="CreateButton"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Margin="0"
+                        IsEnabled="{Binding CreateEnabled}"
+                        Click="Create_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Create" VerticalAlignment="Center" />
+                        <TextBlock Text="&#xE710;"
+                                   FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                   VerticalAlignment="Center" Margin="6,0,0,0" />
+                    </StackPanel>
+                </Button>
+
+                <Button Grid.Column="2"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Margin="0"
+                        Click="Cancel_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Cancel" VerticalAlignment="Center" />
+                        <TextBlock Text="&#xE711;"
+                                   FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                   VerticalAlignment="Center" Margin="6,0,0,0" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </Grid>
+    </DockPanel>
+</Window>

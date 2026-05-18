@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Threading.Tasks;
+using SwInventreeAddin.Bom;
 
 namespace SwInventreeAddin.InvenTree
 {
@@ -20,10 +22,20 @@ namespace SwInventreeAddin.InvenTree
 
         public async Task<InventreePart?> GetPartByIpnAsync(string ipn)
         {
+            var parts = await GetPartsByIpnAsync(ipn).ConfigureAwait(false);
+            if (parts.Count == 0) return null;
+            if (parts.Count  > 1)
+                throw new InvalidOperationException(
+                    $"Duplicate IPN '{ipn}': {parts.Count} parts found. Resolve duplicates in InvenTree.");
+            return parts[0];
+        }
+
+        public async Task<IReadOnlyList<InventreePart>> GetPartsByIpnAsync(string ipn)
+        {
             // IPN comes from SolidWorks custom properties (user-controlled) — must be encoded
             // to prevent query-string injection (e.g. "ABC&limit=0").
             using var listRequest = new HttpRequestMessage(
-                HttpMethod.Get, $"/api/part/?IPN={Uri.EscapeDataString(ipn)}");
+                HttpMethod.Get, $"/api/part/?IPN={Uri.EscapeDataString(ipn)}&limit=0");
 
             var listResponse = await _httpClient.SendAsync(listRequest).ConfigureAwait(false);
 
@@ -36,104 +48,245 @@ namespace SwInventreeAddin.InvenTree
             using var listDocument = JsonDocument.Parse(listJson);
             var root = listDocument.RootElement;
 
-            // InvenTree list endpoints return a paginated envelope:
-            // { "count": N, "results": [ {...}, ... ] }
-            // Fall back to treating the root itself as an array for future-proofing.
             var array = root.ValueKind == JsonValueKind.Object &&
                         root.TryGetProperty("results", out var resultsElement)
                 ? resultsElement
                 : root;
 
-            if (array.GetArrayLength() == 0)
+            var parts = new List<InventreePart>();
+            foreach (var el in array.EnumerateArray())
+            {
+                int pk = el.TryGetProperty("pk", out var pkProp) ? pkProp.GetInt32() : 0;
+                if (pk > 0)
+                {
+                    var detail = await FetchDetailAsync(pk).ConfigureAwait(false);
+                    if (detail != null) { parts.Add(detail); continue; }
+                }
+                parts.Add(new InventreePart
+                {
+                    Pk       = pk,
+                    Ipn      = GetString(el, "IPN"),
+                    Name     = GetString(el, "name"),
+                    Revision = GetString(el, "revision"),
+                    Notes    = GetString(el, "notes"),
+                });
+            }
+            return parts;
+        }
+
+        /// <summary>
+        /// Fetches a single part record from /api/part/{pk}/.
+        /// Returns null when the server returns a non-success status.
+        /// </summary>
+        private async Task<InventreePart?> FetchDetailAsync(int pk)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/part/{pk}/");
+            var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
                 return null;
 
-            var first = array[0];
-            int pk = first.TryGetProperty("pk", out var pkProp) ? pkProp.GetInt32() : 0;
+            var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            using var doc = JsonDocument.Parse(json);
+            var detail = doc.RootElement;
 
-            // The list endpoint omits some fields (e.g. notes). Fetch the full
-            // record from the detail endpoint so we get every field we need.
-            if (pk > 0)
-            {
-                using var detailRequest = new HttpRequestMessage(
-                    HttpMethod.Get, $"/api/part/{pk}/");
-
-                var detailResponse = await _httpClient.SendAsync(detailRequest).ConfigureAwait(false);
-
-                if (detailResponse.IsSuccessStatusCode)
-                {
-                    var detailJson = await detailResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
-                    using var detailDocument = JsonDocument.Parse(detailJson);
-                    var detail = detailDocument.RootElement;
-
-                    return new InventreePart
-                    {
-                        Pk           = pk,
-                        Name         = GetString(detail, "name"),
-                        Notes        = GetString(detail, "notes"),
-                        Revision     = GetString(detail, "revision"),
-                        Ipn          = GetString(detail, "IPN"),
-                        ThumbnailUrl = GetString(detail, "thumbnail") is var t && t.Length > 0 ? t : null,
-                    };
-                }
-            }
-
-            // Fallback: build from list data (notes may be absent)
             return new InventreePart
             {
                 Pk           = pk,
-                Name         = GetString(first, "name"),
-                Notes        = GetString(first, "notes"),
-                Revision     = GetString(first, "revision"),
-                Ipn          = GetString(first, "IPN"),
-                ThumbnailUrl = GetString(first, "thumbnail") is var t2 && t2.Length > 0 ? t2 : null,
+                Name         = GetString(detail, "name"),
+                Description  = GetString(detail, "description"),
+                Notes        = GetString(detail, "notes"),
+                Revision     = GetString(detail, "revision"),
+                Ipn          = GetString(detail, "IPN"),
+                ThumbnailUrl = GetString(detail, "thumbnail") is var t && t.Length > 0 ? t : null,
+                InStock      = GetDecimal(detail, "in_stock"),
+                Ordering     = GetDecimal(detail, "ordering"),
+                Active       = GetBool(detail, "active"),
+                IsAssembly   = GetBool(detail, "assembly"),
             };
         }
 
-        public async Task UpdatePartRevisionAsync(int pk, string revision)
+        public async Task<IReadOnlyList<InventreeCategory>> GetCategoriesAsync(int? parentId)
         {
-            var json = JsonSerializer.Serialize(new { revision });
-            var body = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            // When fetching children of a known parent, filter server-side.
+            // When fetching root categories, fetch all and filter client-side for
+            // items with no parent — avoids relying on ?parent=null which some
+            // InvenTree versions reject with 400.
+            var query = parentId.HasValue
+                ? $"/api/part/category/?parent={parentId.Value}&limit=0"
+                : "/api/part/category/?limit=0";
 
-            using var request = new HttpRequestMessage(new HttpMethod("PATCH"), $"/api/part/{pk}/")
+            using var request = new HttpRequestMessage(HttpMethod.Get, query);
+            var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException(
+                    $"InvenTree API returned {(int)response.StatusCode} {response.StatusCode}");
+
+            var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            var array = root.ValueKind == JsonValueKind.Object &&
+                        root.TryGetProperty("results", out var results)
+                ? results
+                : root;
+
+            var list = new List<InventreeCategory>(array.GetArrayLength());
+            foreach (var item in array.EnumerateArray())
+            {
+                var parentPk = item.TryGetProperty("parent", out var parP) && parP.ValueKind == JsonValueKind.Number
+                                ? parP.GetInt32() : (int?)null;
+
+                // When loading root categories (no parentId given), skip any item
+                // that actually has a parent — they belong lower in the tree.
+                if (!parentId.HasValue && parentPk.HasValue)
+                    continue;
+
+                list.Add(new InventreeCategory
+                {
+                    Pk          = item.TryGetProperty("pk",            out var pkP)   ? pkP.GetInt32()              : 0,
+                    Name        = item.TryGetProperty("name",          out var nameP) ? nameP.GetString() ?? string.Empty : string.Empty,
+                    ParentPk    = parentPk,
+                    HasChildren = item.TryGetProperty("subcategories", out var subP)  && subP.ValueKind == JsonValueKind.Number
+                                    ? subP.GetInt32() > 0 : false,
+                });
+            }
+            return list;
+        }
+
+        public async Task<int> CreatePartAsync(int categoryPk, string name, string? ipn = null)
+        {
+            var payloadDict = new System.Collections.Generic.Dictionary<string, object>
+            {
+                ["category"] = categoryPk,
+                ["name"]     = name
+            };
+            if (!string.IsNullOrWhiteSpace(ipn))
+                payloadDict["ipn"] = ipn.Trim();
+
+            var payload = JsonSerializer.Serialize(payloadDict);
+            var body    = new StringContent(payload, System.Text.Encoding.UTF8, "application/json");
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/part/")
             {
                 Content = body
             };
 
             var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
 
-            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-                throw new HttpRequestException(
-                    "InvenTree rejected the API key (401 Unauthorized).");
-
             if (!response.IsSuccessStatusCode)
                 throw new HttpRequestException(
-                    $"InvenTree returned {(int)response.StatusCode} {response.StatusCode}");
+                    $"InvenTree API returned {(int)response.StatusCode} {response.StatusCode}");
+
+            var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            using var doc = JsonDocument.Parse(json);
+
+            if (doc.RootElement.TryGetProperty("pk", out var pkProp))
+                return pkProp.GetInt32();
+
+            throw new InvalidOperationException("InvenTree did not return a pk for the new part.");
         }
 
-        public async Task UpdatePartNameAsync(int pk, string name)
-        {
-            var json = JsonSerializer.Serialize(new { name });
-            var body = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+        public Task<InventreePart?> GetPartByPkAsync(int pk) =>
+            FetchDetailAsync(pk);
 
-            using var request = new HttpRequestMessage(new HttpMethod("PATCH"), $"/api/part/{pk}/")
+        public async Task<IReadOnlyList<InventreeBomLine>> GetBomAsync(int assemblyPk)
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Get,
+                $"/api/bom/?part={assemblyPk}&limit=0");
+            var response = await _httpClient.SendAsync(req).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException(
+                    $"InvenTree API returned {(int)response.StatusCode} {response.StatusCode}");
+
+            var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            var array = root.ValueKind == JsonValueKind.Object &&
+                        root.TryGetProperty("results", out var r) ? r : root;
+
+            var lines = new List<InventreeBomLine>();
+            foreach (var el in array.EnumerateArray())
             {
-                Content = body
-            };
+                bool hasSubs = el.TryGetProperty("substitutes", out var subs) &&
+                               subs.ValueKind == JsonValueKind.Array &&
+                               subs.GetArrayLength() > 0;
 
-            var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
+                var line = new InventreeBomLine
+                {
+                    Pk             = GetInt(el, "pk"),
+                    SubPartPk      = GetInt(el, "sub_part"),
+                    Quantity       = GetDecimal(el, "quantity"),
+                    Reference      = GetString(el, "reference"),
+                    Note           = GetString(el, "note"),
+                    Consumable     = GetBool(el, "consumable"),
+                    Optional       = GetBool(el, "optional"),
+                    Validated      = GetBool(el, "validated"),
+                    HasSubstitutes = hasSubs,
+                };
 
-            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-                throw new HttpRequestException(
-                    "InvenTree rejected the API key (401 Unauthorized).");
-
-            if (!response.IsSuccessStatusCode)
-                throw new HttpRequestException(
-                    $"InvenTree returned {(int)response.StatusCode} {response.StatusCode}");
+                if (line.SubPartPk > 0)
+                {
+                    var part = await FetchDetailAsync(line.SubPartPk).ConfigureAwait(false);
+                    if (part != null) line.SubPartIpn = part.Ipn;
+                }
+                lines.Add(line);
+            }
+            return lines;
         }
 
-        public async Task UpdatePartNotesAsync(int pk, string notes)
+        public async Task<int> CreateBomLineAsync(int assemblyPk, int subPartPk, decimal quantity,
+            string reference, string note, bool consumable, bool optional)
         {
-            var json = JsonSerializer.Serialize(new { notes });
+            var body = JsonSerializer.Serialize(new
+            {
+                part = assemblyPk, sub_part = subPartPk, quantity,
+                reference, note, consumable, optional,
+            });
+            using var req = new HttpRequestMessage(HttpMethod.Post, "/api/bom/")
+            {
+                Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json")
+            };
+            var response = await _httpClient.SendAsync(req).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                var detail = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                throw new HttpRequestException(
+                    $"InvenTree API returned {(int)response.StatusCode}: {detail}");
+            }
+
+            var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            using var respDoc = JsonDocument.Parse(json);
+            return GetInt(respDoc.RootElement, "pk");
+        }
+
+        public async Task UpdateBomLineAsync(int bomLinePk, decimal quantity,
+            string reference, string note, bool consumable, bool optional)
+        {
+            var body = JsonSerializer.Serialize(new
+            {
+                quantity, reference, note, consumable, optional,
+                // substitutes intentionally omitted — PATCH is partial; omitting preserves server value
+            });
+            using var req = new HttpRequestMessage(new HttpMethod("PATCH"), $"/api/bom/{bomLinePk}/")
+            {
+                Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json")
+            };
+            var response = await _httpClient.SendAsync(req).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException(
+                    $"InvenTree API returned {(int)response.StatusCode} {response.StatusCode}");
+        }
+
+        public Task UpdatePartRevisionAsync(int pk, string revision)    => PatchPartAsync(pk, new { revision });
+        public Task UpdatePartNameAsync(int pk, string name)            => PatchPartAsync(pk, new { name });
+        public Task UpdatePartNotesAsync(int pk, string notes)          => PatchPartAsync(pk, new { notes });
+        public Task UpdatePartDescriptionAsync(int pk, string description) => PatchPartAsync(pk, new { description });
+
+        private async Task PatchPartAsync(int pk, object payload)
+        {
+            var json = JsonSerializer.Serialize(payload);
             var body = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 
             using var request = new HttpRequestMessage(new HttpMethod("PATCH"), $"/api/part/{pk}/")
@@ -156,6 +309,28 @@ namespace SwInventreeAddin.InvenTree
             element.TryGetProperty(propertyName, out var prop)
                 ? prop.GetString() ?? string.Empty
                 : string.Empty;
+
+        private static int GetInt(JsonElement element, string propertyName) =>
+            element.TryGetProperty(propertyName, out var v) && v.ValueKind == JsonValueKind.Number
+                ? v.GetInt32() : 0;
+
+        private static decimal GetDecimal(JsonElement element, string propertyName)
+        {
+            if (!element.TryGetProperty(propertyName, out var prop)) return 0m;
+            if (prop.ValueKind == JsonValueKind.Number && prop.TryGetDecimal(out var d)) return d;
+            if (prop.ValueKind == JsonValueKind.String &&
+                decimal.TryParse(prop.GetString(), System.Globalization.NumberStyles.Any,
+                                 System.Globalization.CultureInfo.InvariantCulture, out var ds)) return ds;
+            return 0m;
+        }
+
+        private static bool GetBool(JsonElement element, string propertyName)
+        {
+            if (!element.TryGetProperty(propertyName, out var prop)) return false;
+            if (prop.ValueKind == JsonValueKind.True)  return true;
+            if (prop.ValueKind == JsonValueKind.False) return false;
+            return false;
+        }
 
         public async Task<byte[]?> DownloadImageAsync(string url)
         {
@@ -203,6 +378,26 @@ namespace SwInventreeAddin.InvenTree
             if (!response.IsSuccessStatusCode)
                 throw new HttpRequestException(
                     $"InvenTree returned {(int)response.StatusCode} {response.StatusCode}");
+        }
+
+        public async Task<InventreeServerInfo> GetServerInfoAsync()
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, "/api/");
+            var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException(
+                    $"InvenTree API returned {(int)response.StatusCode} {response.StatusCode}");
+
+            var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            return new InventreeServerInfo
+            {
+                ServerVersion = GetString(root, "version"),
+                ApiVersion    = root.TryGetProperty("apiVersion", out var v) ? v.GetInt32() : 0,
+            };
         }
     }
 }
