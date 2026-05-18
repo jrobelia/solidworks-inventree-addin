@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using SwInventreeAddin.Bom;
 using SwInventreeAddin.Config;
 using SwInventreeAddin.InvenTree;
 using SwInventreeAddin.SolidWorks;
@@ -16,7 +17,7 @@ namespace SwInventreeAddin.UI
     /// Pure C# — no WinForms or WPF types so it is fully unit-testable
     /// without an STA thread or UI handle.
     /// </summary>
-    public class TaskPaneViewModel : INotifyPropertyChanged
+    public class TaskPaneViewModel : INotifyPropertyChanged, IBomReadinessSource
     {
         // ── INotifyPropertyChanged ─────────────────────────────────────────────
 
@@ -855,75 +856,33 @@ namespace SwInventreeAddin.UI
         }
 
         /// <summary>
-        /// Captures the viewport (or uses <paramref name="imageOverride"/> for tests),
-        /// runs it through <see cref="ImagePipeline"/>, and uploads the PNG to InvenTree.
+        /// Runs the Viewport Capture workflow: capture, crop, upload, and refresh the
+        /// thumbnail. Delegates to <see cref="PartThumbnailService"/>.
+        /// Must be called on the UI thread.
         /// </summary>
         public async Task PushImageAsync(Image? imageOverride = null)
         {
             if (_lastFetchedPart == null || _lastFetchedPart.Pk == 0) return;
             if (_client == null) return;
 
-            Image?    image     = null;
-            bool      ownImage  = false;
-            Rectangle cropRect  = Rectangle.Empty;
-
+            var service = new PartThumbnailService(_client, _viewportService);
             try
             {
-                if (imageOverride != null)
-                {
-                    image = imageOverride;
-                }
-                else if (_viewportService != null)
-                {
-                    image    = _viewportService.CaptureViewportImage();
-                    ownImage = true;
-
-                    var cropWindow = new ImageCropWindow(image);
-                    if (cropWindow.ShowDialog() != true)
-                        return;
-                    cropRect = cropWindow.CropRectangle;
-                }
-                else
-                {
-                    return;
-                }
-
-                byte[] pngData = ImagePipeline.Process(image, cropRect);
-                SetStatus("Uploading image to InvenTree\u2026", StatusSeverity.None);
-
-                await _client.UploadPartImageAsync(_lastFetchedPart.Pk, pngData)
-                              .ConfigureAwait(false);
-
-                // Re-fetch the part to get the updated thumbnail URL (the old
-                // URL may be null if the part previously had no image).
-                byte[]? newThumb = null;
-                try
-                {
-                    var refreshed = await _client.GetPartByIpnAsync(_lastFetchedPart.Ipn)
-                                                  .ConfigureAwait(false);
-                    if (refreshed != null && !string.IsNullOrEmpty(refreshed.ThumbnailUrl))
-                    {
-                        _lastFetchedPart.ThumbnailUrl = refreshed.ThumbnailUrl;
-                        newThumb = await _client.DownloadImageAsync(refreshed.ThumbnailUrl!)
-                                                 .ConfigureAwait(false);
-                    }
-                }
-                catch { /* silent — stale thumbnail stays until next fetch */ }
+                var thumb = await service.PushAsync(
+                    _lastFetchedPart.Pk,
+                    _lastFetchedPart.Ipn,
+                    (text, severity) => SetStatus(text, severity),
+                    imageOverride).ConfigureAwait(true);
 
                 RunOnUiThread(() =>
                 {
-                    if (newThumb != null) ThumbnailBytes = newThumb;
+                    if (thumb != null) ThumbnailBytes = thumb;
                     SetStatus("Image pushed to InvenTree.", StatusSeverity.Success);
                 });
             }
             catch (Exception ex)
             {
-                RunOnUiThread(() =>
-                    SetStatus($"Error: {ex.Message}", StatusSeverity.Error));
-            }
-            finally
-            {
-                if (ownImage) image?.Dispose();
+                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error));
             }
         }
 
