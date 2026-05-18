@@ -176,7 +176,7 @@ namespace SwInventreeAddin.Tests
             await vm.LoadAsync();
             vm.Lines[0].IsChecked = true;
             vm.Lines[1].IsChecked = false;
-            await vm.ApplyAsync();
+            await vm.PushAsync();
 
             Assert.That(_client.CreatedBomLines.Count,       Is.EqualTo(1));
             Assert.That(_client.CreatedBomLines[0].SubPartPk, Is.EqualTo(10));
@@ -191,7 +191,7 @@ namespace SwInventreeAddin.Tests
             var vm = CreateVm();
             await vm.LoadAsync();
             vm.Lines[0].IsChecked = true;
-            await vm.ApplyAsync();
+            await vm.PushAsync();
 
             Assert.That(_client.CreatedBomLines[0].Consumable, Is.False);
             Assert.That(_client.CreatedBomLines[0].Optional,   Is.False);
@@ -210,7 +210,7 @@ namespace SwInventreeAddin.Tests
             var vm = CreateVm();
             await vm.LoadAsync();
             vm.Lines[0].IsChecked = true;
-            await vm.ApplyAsync();
+            await vm.PushAsync();
 
             Assert.That(_client.UpdatedBomLines.Count, Is.EqualTo(1));
             var call = _client.UpdatedBomLines[0];
@@ -228,7 +228,7 @@ namespace SwInventreeAddin.Tests
             var vm = CreateVm();
             await vm.LoadAsync();
             vm.Lines[0].IsChecked = true;
-            await vm.ApplyAsync();
+            await vm.PushAsync();
 
             Assert.That(_client.CreatedBomLines[0].SubPartPk, Is.EqualTo(99));
         }
@@ -247,7 +247,7 @@ namespace SwInventreeAddin.Tests
             var vm = CreateVm();
             await vm.LoadAsync();
             foreach (var line in vm.Lines) line.IsChecked = true;
-            await vm.ApplyAsync();
+            await vm.PushAsync();
 
             Assert.That(vm.StatusText, Does.Contain("failed"));
         }
@@ -261,7 +261,7 @@ namespace SwInventreeAddin.Tests
             var vm = CreateVm();
             await vm.LoadAsync();
             vm.Lines[0].IsChecked = true;
-            await vm.ApplyAsync();
+            await vm.PushAsync();
 
             Assert.That(vm.Lines, Is.Not.Null);
         }
@@ -276,7 +276,7 @@ namespace SwInventreeAddin.Tests
             await vm.LoadAsync();
             vm.Lines[0].IsChecked = true;
             vm.ConfirmPush = (created, updated) => false;
-            await vm.ApplyAsync();
+            await vm.PushAsync();
 
             Assert.That(_client.CreatedBomLines.Count, Is.EqualTo(0));
         }

@@ -81,11 +81,11 @@ namespace SwInventreeAddin.UI
                 line.IsChecked = line.CanCheck && line.State == SwInventreeAddin.Bom.BomDiffState.Conflict;
         }
 
-        private async void Apply_Click(object sender, RoutedEventArgs e)
+        private async void Push_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                await _vm.ApplyAsync();
+                await _vm.PushAsync();
             }
             catch (Exception ex)
             {
