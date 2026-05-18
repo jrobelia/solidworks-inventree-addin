@@ -28,3 +28,17 @@ or anything outside the SolidWorks design workflow.
 
 ## be concise
  - use consise language when communicatng with the user
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default label vocabulary (needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context repo. Domain glossary in `CONTEXT.md`; architectural decisions in `docs/adr/`. See `docs/agents/domain.md`.
