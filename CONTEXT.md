@@ -9,7 +9,7 @@ The user-supplied string that identifies a part in InvenTree; stored as a SolidW
 _Avoid_: part number, PN
 
 **InvenTree Part PK**:
-The server-assigned integer primary key for an InvenTree part; stamped into a SolidWorks Document Property after first sync or creation so subsequent operations can address the part directly without an IPN lookup. Distinct from PKs on other InvenTree objects (supplier parts, purchase orders, build orders, etc.).
+The server-assigned integer primary key for an InvenTree part. Stored as a SolidWorks Document Property in two cases: automatically on Create Part, or manually when the engineer clicks "Apply to SW Doc" on the PK field after a Fetch. Used to address the part directly in subsequent API calls without an IPN lookup. Distinct from PKs on other InvenTree objects (supplier parts, purchase orders, build orders, etc.).
 _Avoid_: PK, InvenTree PK
 
 **SolidWorks Document Property**:
@@ -68,9 +68,9 @@ _Avoid_: file type, SW type
 
 - An **IPN** links exactly one SolidWorks document to one InvenTree part (duplicate IPNs are a data error; Part Sync resolves them via revision matching)
 - A **Property Mapping** governs which **SolidWorks Document Properties** are read or written during **Fetch**, **Apply**, and **Push**
-- **Fetch** transitions the Task Pane from LINKED → POPULATED and stamps the **InvenTree Part PK** into the document
+- **Fetch** transitions the Task Pane from LINKED → POPULATED; the **InvenTree Part PK** is shown as a preview but is only written to the document when the engineer explicitly applies it
 - **Apply** and **Push** are only available when the Task Pane is POPULATED
-- **Create Part** is available when the Task Pane is UNLINKED (IPN entered but not yet found in InvenTree); it stamps the **InvenTree Part PK** on success
+- **Create Part** is available when the Task Pane is UNLINKED (document open, no IPN assigned); it automatically stamps the **InvenTree Part PK** into the document on success
 - **BOM Compare** requires both POPULATED state and an Assembly **Document Type**
 - The **BOM Keyword** selects which SolidWorks BOM table feeds a **BOM Compare**
 - **BOM Diff State** Conflict and New lines are user-selectable for pushing; InvenTreeOnly lines are never touched
