@@ -60,11 +60,19 @@ The workflow of creating a new InvenTree part record from the active SolidWorks 
 **Viewport Capture**:
 Rendering the active SolidWorks 3D viewport to an image file for upload to InvenTree as a part thumbnail.
 
+**Document Type**:
+The type of the active SolidWorks document: Part, Assembly, Drawing, or Unknown. Determines which workflows are available. Drawing is unsupported — the Task Pane shows a warning and disables all operations. BOM Compare is only available for Assembly documents.
+_Avoid_: file type, SW type
+
 ## Relationships
 
 - An **IPN** links exactly one SolidWorks document to one InvenTree part (duplicate IPNs are a data error; Part Sync resolves them via revision matching)
-- A **Property Mapping** governs which **SolidWorks Document Properties** are read and written during **Part Sync**
-- A **BOM Compare** requires the Task Pane to be in POPULATED state (IPN resolved, InvenTree part fetched)
+- A **Property Mapping** governs which **SolidWorks Document Properties** are read or written during **Fetch**, **Apply**, and **Push**
+- **Fetch** transitions the Task Pane from LINKED → POPULATED and stamps the **InvenTree Part PK** into the document
+- **Apply** and **Push** are only available when the Task Pane is POPULATED
+- **Create Part** is available when the Task Pane is UNLINKED (IPN entered but not yet found in InvenTree); it stamps the **InvenTree Part PK** on success
+- **BOM Compare** requires both POPULATED state and an Assembly **Document Type**
+- The **BOM Keyword** selects which SolidWorks BOM table feeds a **BOM Compare**
 - **BOM Diff State** Conflict and New lines are user-selectable for pushing; InvenTreeOnly lines are never touched
 
 ## Example dialogue
