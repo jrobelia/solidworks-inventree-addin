@@ -26,8 +26,9 @@ syncing properties, and comparing BOMs.
 Does not replace InvenTree's web UI for purchasing, build orders, supplier management,
 or anything outside the SolidWorks design workflow.
 
-## be concise
- - use consise language when communicatng with the user
+## User Preferences
+ - use concise language when communicating with the user
+ - the user is a domain expert not a coding expert, frame questions and suggestions in terms of the domain, not code
 
 ## Agent skills
 
