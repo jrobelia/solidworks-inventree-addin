@@ -65,8 +65,8 @@ namespace SwInventreeAddin.UI
         private string _currentNotes       = string.Empty;
         private string _currentRevision    = string.Empty;
         private string _currentDescription = string.Empty;
-        private string _currentPk         = string.Empty;
-        private string _statusText        = string.Empty;
+        private string _currentPk          = string.Empty;
+        private string _statusText         = string.Empty;
         private bool   _fetchEnabled;
         private bool   _createPartEnabled;
         private bool   _isDocumentOpen;
