@@ -60,37 +60,18 @@ namespace SwInventreeAddin.UI
 
         // ── Bindable properties ───────────────────────────────────────────────
 
-        private string _partNumber              = string.Empty;
-        private string _namePreview             = string.Empty;
-        private string _notesPreview            = string.Empty;
-        private string _revisionPreview         = string.Empty;
-        private string _descriptionPreview      = string.Empty;
-        private string _pkPreview               = string.Empty;
-        private string _currentName             = string.Empty;
-        private string _currentNotes            = string.Empty;
-        private string _currentRevision         = string.Empty;
-        private string _currentDescription      = string.Empty;
-        private string _currentPk               = string.Empty;
-        private string _statusText              = string.Empty;
-        private bool   _applyEnabled;
-        private bool   _applyNameEnabled;
-        private bool   _applyNotesEnabled;
-        private bool   _applyDescriptionEnabled;
-        private bool   _applyPkEnabled;
-        private bool   _pushNameEnabled;
-        private bool   _pushNotesEnabled;
-        private bool   _pushDescriptionEnabled;
-        private bool   _pushRevisionVisible;
-        private bool   _pushImageVisible;
+        private string _partNumber         = string.Empty;
+        private string _currentName        = string.Empty;
+        private string _currentNotes       = string.Empty;
+        private string _currentRevision    = string.Empty;
+        private string _currentDescription = string.Empty;
+        private string _currentPk         = string.Empty;
+        private string _statusText        = string.Empty;
         private bool   _fetchEnabled;
         private bool   _createPartEnabled;
         private bool   _isDocumentOpen;
         private bool   _propertiesSectionVisible;
-        private byte[]? _thumbnailBytes;
-        private string  _inStockDisplay    = string.Empty;
-        private string  _orderingDisplay   = string.Empty;
-        private string  _activeDisplay     = string.Empty;
-        private StatusSeverity _statusSeverity  = StatusSeverity.None;
+        private StatusSeverity _statusSeverity = StatusSeverity.None;
         private string _bomStatusText = "BOM: Not checked";
 
         /// <summary>
@@ -111,60 +92,66 @@ namespace SwInventreeAddin.UI
             }
         }
 
+        // ── Preview properties (computed from session) ────────────────────────
+
         /// <summary>Name fetched from InvenTree.</summary>
-        public string NamePreview
-        {
-            get => _namePreview;
-            set
-            {
-                Set(ref _namePreview, value);
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NameMatch)));
-            }
-        }
+        public string NamePreview        => _session?.Part.Name        ?? string.Empty;
 
         /// <summary>Notes fetched from InvenTree.</summary>
-        public string NotesPreview
-        {
-            get => _notesPreview;
-            set
-            {
-                Set(ref _notesPreview, value);
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NotesMatch)));
-            }
-        }
+        public string NotesPreview       => _session?.Part.Notes       ?? string.Empty;
 
         /// <summary>Revision fetched from InvenTree (or pushed).</summary>
-        public string RevisionPreview
-        {
-            get => _revisionPreview;
-            set
-            {
-                Set(ref _revisionPreview, value);
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RevisionMatch)));
-            }
-        }
+        public string RevisionPreview    => _session?.Part.Revision    ?? string.Empty;
 
         /// <summary>Description fetched from InvenTree.</summary>
-        public string DescriptionPreview
-        {
-            get => _descriptionPreview;
-            set
-            {
-                Set(ref _descriptionPreview, value);
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DescriptionMatch)));
-            }
-        }
+        public string DescriptionPreview => _session?.Part.Description ?? string.Empty;
 
         /// <summary>InvenTree PK as a display string.</summary>
-        public string PkPreview
-        {
-            get => _pkPreview;
-            set
-            {
-                Set(ref _pkPreview, value);
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PkMatch)));
-            }
-        }
+        public string PkPreview          => _session?.Part.Pk > 0 ? _session!.Part.Pk.ToString() : string.Empty;
+
+        /// <summary>Raw PNG/JPEG bytes of the InvenTree part thumbnail. Null when none fetched.</summary>
+        public byte[]? ThumbnailBytes    => _session?.ThumbnailBytes;
+
+        /// <summary>In-stock quantity display string (e.g. "15.5").</summary>
+        public string InStockDisplay     => _session?.Part.InStock.ToString("G29") ?? string.Empty;
+
+        /// <summary>On-order quantity display string (e.g. "100").</summary>
+        public string OrderingDisplay    => _session?.Part.Ordering.ToString("G29") ?? string.Empty;
+
+        /// <summary>"Active" or "Inactive".</summary>
+        public string ActiveDisplay      => _session == null ? string.Empty : (_session.Part.Active ? "Active" : "Inactive");
+
+        // ── Enabled / visible flags (computed from session) ───────────────────
+
+        /// <summary>True when a part has been fetched and Apply is meaningful.</summary>
+        public bool ApplyEnabled            => _session != null;
+
+        /// <summary>True when individual Name apply is available.</summary>
+        public bool ApplyNameEnabled        => _session != null;
+
+        /// <summary>True when individual Notes apply is available.</summary>
+        public bool ApplyNotesEnabled       => _session != null;
+
+        /// <summary>True when individual Description apply is available.</summary>
+        public bool ApplyDescriptionEnabled => _session != null;
+
+        /// <summary>True when a part has been fetched and applying PK to SW doc is meaningful.</summary>
+        public bool ApplyPkEnabled          => _session != null;
+
+        /// <summary>True when a part has been fetched and pushing Name to InvenTree is meaningful.</summary>
+        public bool PushNameEnabled         => _session != null;
+
+        /// <summary>True when a part has been fetched and pushing Notes to InvenTree is meaningful.</summary>
+        public bool PushNotesEnabled        => _session != null;
+
+        /// <summary>True when a part has been fetched and pushing Description to InvenTree is meaningful.</summary>
+        public bool PushDescriptionEnabled  => _session != null;
+
+        /// <summary>Controls Push Revision button visibility.</summary>
+        public bool PushRevisionVisible     => _session != null;
+
+        /// <summary>Controls Push Image button visibility.</summary>
+        public bool PushImageVisible        => _session != null;
 
         /// <summary>Current SolidWorks document Name / Description value.</summary>
         public string CurrentName
@@ -235,69 +222,6 @@ namespace SwInventreeAddin.UI
             private set => Set(ref _statusSeverity, value);
         }
 
-        /// <summary>True when a part has been fetched and Apply is meaningful.</summary>
-        public bool ApplyEnabled
-        {
-            get => _applyEnabled;
-            private set => Set(ref _applyEnabled, value);
-        }
-
-        /// <summary>True when individual Name apply is available.</summary>
-        public bool ApplyNameEnabled
-        {
-            get => _applyNameEnabled;
-            private set => Set(ref _applyNameEnabled, value);
-        }
-
-        /// <summary>True when individual Notes apply is available.</summary>
-        public bool ApplyNotesEnabled
-        {
-            get => _applyNotesEnabled;
-            private set => Set(ref _applyNotesEnabled, value);
-        }
-
-        /// <summary>Controls Push Revision button visibility.</summary>
-        public bool PushRevisionVisible
-        {
-            get => _pushRevisionVisible;
-            private set => Set(ref _pushRevisionVisible, value);
-        }
-
-        /// <summary>Controls Push Image button visibility.</summary>
-        public bool PushImageVisible
-        {
-            get => _pushImageVisible;
-            private set => Set(ref _pushImageVisible, value);
-        }
-
-        /// <summary>Raw PNG/JPEG bytes of the InvenTree part thumbnail. Null when none fetched.</summary>
-        public byte[]? ThumbnailBytes
-        {
-            get => _thumbnailBytes;
-            private set => Set(ref _thumbnailBytes, value);
-        }
-
-        /// <summary>In-stock quantity display string (e.g. "15.5").</summary>
-        public string InStockDisplay
-        {
-            get => _inStockDisplay;
-            private set => Set(ref _inStockDisplay, value);
-        }
-
-        /// <summary>On-order quantity display string (e.g. "100").</summary>
-        public string OrderingDisplay
-        {
-            get => _orderingDisplay;
-            private set => Set(ref _orderingDisplay, value);
-        }
-
-        /// <summary>"Active" or "Inactive".</summary>
-        public string ActiveDisplay
-        {
-            get => _activeDisplay;
-            private set => Set(ref _activeDisplay, value);
-        }
-
         /// <summary>Controls Load button enabled state.</summary>
         public bool FetchEnabled
         {
@@ -331,7 +255,7 @@ namespace SwInventreeAddin.UI
             _isDocumentOpen && _currentDocumentType == DocumentType.Assembly && _client != null;
 
         /// <summary>The InvenTree PK of the currently fetched part. Zero when none fetched.</summary>
-        public int CurrentInvenTreePk => _lastFetchedPart?.Pk ?? 0;
+        public int CurrentInvenTreePk => _session?.Part.Pk ?? 0;
 
         /// <summary>True once a document is open (shows the comparison grid).</summary>
         public bool PropertiesSectionVisible
@@ -353,7 +277,7 @@ namespace SwInventreeAddin.UI
         /// </summary>
         public bool? NameMatch =>
             _propertiesSectionVisible
-                ? string.Equals(_currentName?.Trim(), _namePreview?.Trim(),
+                ? string.Equals(_currentName?.Trim(), _session?.Part.Name?.Trim() ?? string.Empty,
                       StringComparison.OrdinalIgnoreCase)
                 : (bool?)null;
 
@@ -362,7 +286,7 @@ namespace SwInventreeAddin.UI
         /// </summary>
         public bool? NotesMatch =>
             _propertiesSectionVisible
-                ? string.Equals(_currentNotes?.Trim(), _notesPreview?.Trim(),
+                ? string.Equals(_currentNotes?.Trim(), _session?.Part.Notes?.Trim() ?? string.Empty,
                       StringComparison.OrdinalIgnoreCase)
                 : (bool?)null;
 
@@ -371,7 +295,7 @@ namespace SwInventreeAddin.UI
         /// </summary>
         public bool? RevisionMatch =>
             _propertiesSectionVisible
-                ? string.Equals(_currentRevision?.Trim(), _revisionPreview?.Trim(),
+                ? string.Equals(_currentRevision?.Trim(), _session?.Part.Revision?.Trim() ?? string.Empty,
                       StringComparison.OrdinalIgnoreCase)
                 : (bool?)null;
 
@@ -380,7 +304,7 @@ namespace SwInventreeAddin.UI
         /// </summary>
         public bool? DescriptionMatch =>
             _propertiesSectionVisible
-                ? string.Equals(_currentDescription?.Trim(), _descriptionPreview?.Trim(),
+                ? string.Equals(_currentDescription?.Trim(), _session?.Part.Description?.Trim() ?? string.Empty,
                       StringComparison.OrdinalIgnoreCase)
                 : (bool?)null;
 
@@ -389,48 +313,13 @@ namespace SwInventreeAddin.UI
         /// </summary>
         public bool? PkMatch =>
             _propertiesSectionVisible
-                ? string.Equals(_currentPk?.Trim(), _pkPreview?.Trim(),
+                ? string.Equals(_currentPk?.Trim(), PkPreview?.Trim(),
                       StringComparison.OrdinalIgnoreCase)
                 : (bool?)null;
 
-        /// <summary>True when a part has been fetched and pushing Name to InvenTree is meaningful.</summary>
-        public bool PushNameEnabled
-        {
-            get => _pushNameEnabled;
-            private set => Set(ref _pushNameEnabled, value);
-        }
-
-        /// <summary>True when a part has been fetched and pushing Notes to InvenTree is meaningful.</summary>
-        public bool PushNotesEnabled
-        {
-            get => _pushNotesEnabled;
-            private set => Set(ref _pushNotesEnabled, value);
-        }
-
-        /// <summary>True when individual Description apply is available.</summary>
-        public bool ApplyDescriptionEnabled
-        {
-            get => _applyDescriptionEnabled;
-            private set => Set(ref _applyDescriptionEnabled, value);
-        }
-
-        /// <summary>True when a part has been fetched and pushing Description to InvenTree is meaningful.</summary>
-        public bool PushDescriptionEnabled
-        {
-            get => _pushDescriptionEnabled;
-            private set => Set(ref _pushDescriptionEnabled, value);
-        }
-
-        /// <summary>True when a part has been fetched and applying PK to SW doc is meaningful.</summary>
-        public bool ApplyPkEnabled
-        {
-            get => _applyPkEnabled;
-            private set => Set(ref _applyPkEnabled, value);
-        }
-
         // ── State ─────────────────────────────────────────────────────────────
 
-        private InventreePart? _lastFetchedPart;
+        private PartSyncSession? _session;
         private bool _schemaMismatchActive;
 
         /// <summary>
@@ -522,10 +411,24 @@ namespace SwInventreeAddin.UI
             PropertiesSectionVisible = true;
             RefreshCurrentProperties();
 
-            // If we already have fetched data for this IPN (e.g. just created the part),
-            // stay in POPULATED state — don't blow away the previews and button state.
-            if (_lastFetchedPart == null || _lastFetchedPart.Ipn != partNo)
-                ResetInvenTreeState();
+            // If IPN changed, clear the session so we return to LINKED state.
+            if (_session == null || _session.Part.Ipn != partNo)
+                ClearSession();
+
+            // Restore FetchEnabled / CreatePartEnabled / status after ClearSession.
+            if (_client == null)
+            {
+                FetchEnabled      = false;
+                CreatePartEnabled = false;
+                SetStatus("No server configured \u2014 click \u2699 Settings to get started",
+                          StatusSeverity.Warning);
+            }
+            else
+            {
+                FetchEnabled      = true;
+                CreatePartEnabled = CanCreatePart();
+                SetStatus(string.Empty, StatusSeverity.None);
+            }
 
             NotifyBomVisibility();
         }
@@ -542,13 +445,18 @@ namespace SwInventreeAddin.UI
             CurrentPk                = string.Empty;
             PropertiesSectionVisible = false;
 
-            ResetInvenTreeState();
+            ClearSession();
 
-            if (_client != null)
+            if (_client == null)
             {
                 FetchEnabled      = false;
-                // CreatePartEnabled is recomputed from CanCreatePart() via the
-                // PartNumber setter above — no explicit set needed here.
+                CreatePartEnabled = false;
+                SetStatus("No server configured \u2014 click \u2699 Settings to get started",
+                          StatusSeverity.Warning);
+            }
+            else
+            {
+                FetchEnabled      = false;
                 SetStatus("Open a part or assembly in SolidWorks to get started.", StatusSeverity.None);
             }
 
@@ -561,6 +469,7 @@ namespace SwInventreeAddin.UI
         public void UpdateClient(IInventreeClient? newClient)
         {
             _client = newClient;
+            ClearSession();
 
             if (_client == null)
             {
@@ -599,7 +508,10 @@ namespace SwInventreeAddin.UI
                 PartNumber        = part.Ipn ?? string.Empty;
                 FetchEnabled      = !string.IsNullOrEmpty(part.Ipn);
                 CreatePartEnabled = CanCreatePart();
-                ApplyFetchedPart(part);
+                _session = new PartSyncSession(part, _client!, _propertyService, GetMappingOrDefault());
+                PropertiesSectionVisible = true;
+                RefreshCurrentProperties();
+                NotifySessionProperties();
 
                 // Write PK to SW doc on create (write-on-create only).
                 if (part.Pk > 0)
@@ -630,9 +542,7 @@ namespace SwInventreeAddin.UI
             }
 
             SetStatus("Fetching from InvenTree\u2026", StatusSeverity.None);
-            ApplyEnabled      = false;
-            ApplyNameEnabled  = false;
-            ApplyNotesEnabled = false;
+            ClearSession();
 
             if (_client == null)
             {
@@ -714,7 +624,10 @@ namespace SwInventreeAddin.UI
                     resolvedThumb = null; // thumbnail not pre-fetched on the duplicate path
                 }
 
-                ApplyFetchedPart(resolvedPart, resolvedThumb);
+                _session = new PartSyncSession(resolvedPart, _client!, _propertyService, GetMappingOrDefault(), resolvedThumb);
+                PropertiesSectionVisible = true;
+                RefreshCurrentProperties();
+                NotifySessionProperties();
                 SetStatus(string.Empty, StatusSeverity.None);
             });
         }
@@ -732,122 +645,142 @@ namespace SwInventreeAddin.UI
             return missing;
         }
 
-        /// <summary>Writes Name and Notes from InvenTree to the SolidWorks document.</summary>
+        /// <summary>Writes Name, Notes, and Description from InvenTree to the SolidWorks document.</summary>
         public void ApplyToDocument()
         {
-            if (_lastFetchedPart == null) return;
-
-            var mapping = GetMappingOrDefault();
-            _propertyService.SetCustomProperty(mapping.NameProperty,        _lastFetchedPart.Name);
-            _propertyService.SetCustomProperty(mapping.NotesProperty,       _lastFetchedPart.Notes);
-            _propertyService.SetCustomProperty(mapping.DescriptionProperty, _lastFetchedPart.Description);
-
-            CurrentName        = _lastFetchedPart.Name;
-            CurrentNotes       = _lastFetchedPart.Notes;
-            CurrentDescription = _lastFetchedPart.Description;
-
+            if (_session == null) return;
+            _session.Apply();
+            RefreshCurrentProperties();
             SetStatus("Applied to document.", StatusSeverity.Success);
         }
 
         /// <summary>Writes only the Name field to the SolidWorks document.</summary>
-        public void ApplyNameToDocument() =>
-            ApplySingleProperty(GetMappingOrDefault().NameProperty, NamePreview, v => CurrentName = v, "Name applied.");
+        public void ApplyNameToDocument()
+        {
+            if (_session == null) return;
+            var missing = FindMissingProperties(new[] { GetMappingOrDefault().NameProperty });
+            if (missing.Count > 0 && !ConfirmMissingProperties(missing)) return;
+            _session.ApplyName();
+            RefreshCurrentProperties();
+            SetStatus("Name applied.", StatusSeverity.Success);
+        }
 
         /// <summary>Writes only the Notes field to the SolidWorks document.</summary>
-        public void ApplyNotesToDocument() =>
-            ApplySingleProperty(GetMappingOrDefault().NotesProperty, NotesPreview, v => CurrentNotes = v, "Notes applied.");
+        public void ApplyNotesToDocument()
+        {
+            if (_session == null) return;
+            var missing = FindMissingProperties(new[] { GetMappingOrDefault().NotesProperty });
+            if (missing.Count > 0 && !ConfirmMissingProperties(missing)) return;
+            _session.ApplyNotes();
+            RefreshCurrentProperties();
+            SetStatus("Notes applied.", StatusSeverity.Success);
+        }
 
         /// <summary>Writes only the Description field to the SolidWorks document.</summary>
-        public void ApplyDescriptionToDocument() =>
-            ApplySingleProperty(GetMappingOrDefault().DescriptionProperty, DescriptionPreview, v => CurrentDescription = v, "Description applied.");
+        public void ApplyDescriptionToDocument()
+        {
+            if (_session == null) return;
+            var missing = FindMissingProperties(new[] { GetMappingOrDefault().DescriptionProperty });
+            if (missing.Count > 0 && !ConfirmMissingProperties(missing)) return;
+            _session.ApplyDescription();
+            RefreshCurrentProperties();
+            SetStatus("Description applied.", StatusSeverity.Success);
+        }
 
         /// <summary>Writes the InvenTree PK property to the SolidWorks document.</summary>
-        public void ApplyPkToDocument() =>
-            ApplySingleProperty(GetMappingOrDefault().PkProperty, PkPreview, v => CurrentPk = v, "InvenTree PK applied.");
-
-        private void ApplySingleProperty(string mappedPropertyName, string value, Action<string> updateCurrentField, string successMessage)
+        public void ApplyPkToDocument()
         {
-            if (_lastFetchedPart == null) return;
-            var missing = FindMissingProperties(new[] { mappedPropertyName });
+            if (_session == null) return;
+            var missing = FindMissingProperties(new[] { GetMappingOrDefault().PkProperty });
             if (missing.Count > 0 && !ConfirmMissingProperties(missing)) return;
-            _propertyService.SetCustomProperty(mappedPropertyName, value);
-            updateCurrentField(value);
-            SetStatus(successMessage, StatusSeverity.Success);
+            _session.ApplyPk();
+            RefreshCurrentProperties();
+            SetStatus("InvenTree PK applied.", StatusSeverity.Success);
         }
 
         /// <summary>Pushes the current SolidWorks revision up to InvenTree.</summary>
         public async Task PushRevisionToInventreeAsync()
         {
-            if (_lastFetchedPart == null) return;
-            if (_lastFetchedPart.Pk == 0)
+            if (_session == null) return;
+            if (_session.Part.Pk == 0)
             {
                 SetStatus("Error: cannot push revision \u2014 InvenTree part ID is missing.",
                           StatusSeverity.Error);
                 return;
             }
-            var mapping  = GetMappingOrDefault();
-            var revision = _propertyService.GetCustomProperty(mapping.RevisionProperty);
-            await PushToInventreeAsync(
-                revision,
-                (c, pk, v) => c.UpdatePartRevisionAsync(pk, v),
-                v => { _lastFetchedPart!.Revision = v; RevisionPreview = v; },
-                "Pushing revision to InvenTree\u2026",
-                "Revision pushed to InvenTree.");
+            SetStatus("Pushing revision to InvenTree\u2026", StatusSeverity.None);
+            try
+            {
+                await _session.PushRevisionAsync().ConfigureAwait(false);
+                RunOnUiThread(() =>
+                {
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RevisionPreview)));
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RevisionMatch)));
+                    SetStatus("Revision pushed to InvenTree.", StatusSeverity.Success);
+                });
+            }
+            catch (Exception ex)
+            {
+                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error));
+            }
         }
 
         /// <summary>Pushes the current SolidWorks name/description up to InvenTree.</summary>
-        public Task PushNameToInvenTreeAsync()
+        public async Task PushNameToInvenTreeAsync()
         {
-            var mapping = GetMappingOrDefault();
-            var name    = _propertyService.GetCustomProperty(mapping.NameProperty);
-            return PushToInventreeAsync(
-                name,
-                (c, pk, v) => c.UpdatePartNameAsync(pk, v),
-                v => { _lastFetchedPart!.Name = v; NamePreview = v; },
-                "Pushing name to InvenTree\u2026",
-                "Name pushed to InvenTree.");
+            if (_session == null || _client == null) return;
+            SetStatus("Pushing name to InvenTree\u2026", StatusSeverity.None);
+            try
+            {
+                await _session.PushNameAsync().ConfigureAwait(false);
+                RunOnUiThread(() =>
+                {
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NamePreview)));
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NameMatch)));
+                    SetStatus("Name pushed to InvenTree.", StatusSeverity.Success);
+                });
+            }
+            catch (Exception ex)
+            {
+                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error));
+            }
         }
 
         /// <summary>Pushes the current SolidWorks notes up to InvenTree.</summary>
-        public Task PushNotesToInvenTreeAsync()
+        public async Task PushNotesToInvenTreeAsync()
         {
-            var mapping = GetMappingOrDefault();
-            var notes   = _propertyService.GetCustomProperty(mapping.NotesProperty);
-            return PushToInventreeAsync(
-                notes,
-                (c, pk, v) => c.UpdatePartNotesAsync(pk, v),
-                v => { _lastFetchedPart!.Notes = v; NotesPreview = v; },
-                "Pushing notes to InvenTree\u2026",
-                "Notes pushed to InvenTree.");
+            if (_session == null || _client == null) return;
+            SetStatus("Pushing notes to InvenTree\u2026", StatusSeverity.None);
+            try
+            {
+                await _session.PushNotesAsync().ConfigureAwait(false);
+                RunOnUiThread(() =>
+                {
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NotesPreview)));
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NotesMatch)));
+                    SetStatus("Notes pushed to InvenTree.", StatusSeverity.Success);
+                });
+            }
+            catch (Exception ex)
+            {
+                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error));
+            }
         }
 
         /// <summary>Pushes the current SolidWorks description up to InvenTree.</summary>
-        public Task PushDescriptionToInvenTreeAsync()
+        public async Task PushDescriptionToInvenTreeAsync()
         {
-            var mapping     = GetMappingOrDefault();
-            var description = _propertyService.GetCustomProperty(mapping.DescriptionProperty);
-            return PushToInventreeAsync(
-                description,
-                (c, pk, v) => c.UpdatePartDescriptionAsync(pk, v),
-                v => { _lastFetchedPart!.Description = v; DescriptionPreview = v; },
-                "Pushing description to InvenTree\u2026",
-                "Description pushed to InvenTree.");
-        }
-
-        private async Task PushToInventreeAsync(
-            string value,
-            Func<IInventreeClient, int, string, Task> clientCall,
-            Action<string> onSuccess,
-            string pushingMessage,
-            string successMessage)
-        {
-            if (_lastFetchedPart == null || _lastFetchedPart.Pk == 0) return;
-            if (_client == null) return;
-            SetStatus(pushingMessage, StatusSeverity.None);
+            if (_session == null || _client == null) return;
+            SetStatus("Pushing description to InvenTree\u2026", StatusSeverity.None);
             try
             {
-                await clientCall(_client, _lastFetchedPart.Pk, value).ConfigureAwait(false);
-                RunOnUiThread(() => { onSuccess(value); SetStatus(successMessage, StatusSeverity.Success); });
+                await _session.PushDescriptionAsync().ConfigureAwait(false);
+                RunOnUiThread(() =>
+                {
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DescriptionPreview)));
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DescriptionMatch)));
+                    SetStatus("Description pushed to InvenTree.", StatusSeverity.Success);
+                });
             }
             catch (Exception ex)
             {
@@ -862,21 +795,21 @@ namespace SwInventreeAddin.UI
         /// </summary>
         public async Task PushImageAsync(Image? imageOverride = null)
         {
-            if (_lastFetchedPart == null || _lastFetchedPart.Pk == 0) return;
-            if (_client == null) return;
+            if (_session == null || _client == null) return;
 
             var service = new PartThumbnailService(_client, _viewportService);
             try
             {
                 var thumb = await service.PushAsync(
-                    _lastFetchedPart.Pk,
-                    _lastFetchedPart.Ipn,
+                    _session.Part.Pk,
+                    _session.Part.Ipn,
                     (text, severity) => SetStatus(text, severity),
                     imageOverride).ConfigureAwait(true);
 
                 RunOnUiThread(() =>
                 {
-                    if (thumb != null) ThumbnailBytes = thumb;
+                    if (thumb != null) _session.SetThumbnail(thumb);
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ThumbnailBytes)));
                     SetStatus("Image pushed to InvenTree.", StatusSeverity.Success);
                 });
             }
@@ -898,73 +831,39 @@ namespace SwInventreeAddin.UI
             CurrentPk          = _propertyService.GetCustomProperty(mapping.PkProperty);
         }
 
-        /// <summary>
-        /// Applies a fetched InvenTree part to the task pane, entering POPULATED state.
-        /// Called from both FetchPartAsync (after a Load) and the PartCreated handler
-        /// (after a create — the part was already fetched inside CreateAsync).
-        /// </summary>
-        private void ApplyFetchedPart(InventreePart part, byte[]? thumbBytes = null)
+        private void ClearSession()
         {
-            PropertiesSectionVisible = true;
-            NamePreview              = part.Name        ?? string.Empty;
-            NotesPreview             = part.Notes       ?? string.Empty;
-            RevisionPreview          = part.Revision    ?? string.Empty;
-            DescriptionPreview       = part.Description ?? string.Empty;
-            PkPreview                = part.Pk > 0 ? part.Pk.ToString() : string.Empty;
-            ThumbnailBytes           = thumbBytes;
-            InStockDisplay           = part.InStock.ToString("G29");
-            OrderingDisplay          = part.Ordering.ToString("G29");
-            ActiveDisplay            = part.Active ? "Active" : "Inactive";
-            ApplyEnabled             = true;
-            ApplyNameEnabled         = true;
-            ApplyNotesEnabled        = true;
-            ApplyDescriptionEnabled  = true;
-            ApplyPkEnabled           = true;
-            PushNameEnabled          = true;
-            PushNotesEnabled         = true;
-            PushDescriptionEnabled   = true;
-            PushRevisionVisible      = true;
-            PushImageVisible         = true;
-            _lastFetchedPart         = part;
-            RefreshCurrentProperties();
+            _session = null;
+            NotifySessionProperties();
         }
 
-        private void ResetInvenTreeState()
+        private void NotifySessionProperties()
         {
-            NamePreview          = string.Empty;
-            NotesPreview         = string.Empty;
-            RevisionPreview      = string.Empty;
-            DescriptionPreview   = string.Empty;
-            PkPreview            = string.Empty;
-            ThumbnailBytes       = null;
-            InStockDisplay       = string.Empty;
-            OrderingDisplay      = string.Empty;
-            ActiveDisplay        = string.Empty;
-            ApplyEnabled         = false;
-            ApplyNameEnabled     = false;
-            ApplyNotesEnabled    = false;
-            ApplyDescriptionEnabled = false;
-            ApplyPkEnabled       = false;
-            PushNameEnabled      = false;
-            PushNotesEnabled     = false;
-            PushDescriptionEnabled = false;
-            PushRevisionVisible  = false;
-            PushImageVisible     = false;
-            _lastFetchedPart     = null;
-
-            if (_client == null)
-            {
-                FetchEnabled      = false;
-                CreatePartEnabled = false;
-                SetStatus("No server configured \u2014 click \u2699 Settings to get started",
-                          StatusSeverity.Warning);
-            }
-            else
-            {
-                FetchEnabled      = true;
-                CreatePartEnabled = CanCreatePart();
-                SetStatus(string.Empty, StatusSeverity.None);
-            }
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NamePreview)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NotesPreview)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RevisionPreview)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DescriptionPreview)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PkPreview)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ThumbnailBytes)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(InStockDisplay)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(OrderingDisplay)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActiveDisplay)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ApplyEnabled)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ApplyNameEnabled)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ApplyNotesEnabled)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ApplyDescriptionEnabled)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ApplyPkEnabled)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PushNameEnabled)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PushNotesEnabled)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PushDescriptionEnabled)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PushRevisionVisible)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PushImageVisible)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NameMatch)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NotesMatch)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RevisionMatch)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DescriptionMatch)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PkMatch)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CurrentInvenTreePk)));
         }
 
         /// <summary>
