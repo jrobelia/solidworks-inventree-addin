@@ -252,7 +252,8 @@ namespace SwInventreeAddin.UI
 
         /// <summary>True when BOM compare button should be enabled.</summary>
         public bool BomButtonEnabled =>
-            _isDocumentOpen && _currentDocumentType == DocumentType.Assembly && _client != null;
+            _isDocumentOpen && _currentDocumentType == DocumentType.Assembly
+            && _client != null && _session != null;
 
         /// <summary>The InvenTree PK of the currently fetched part. Zero when none fetched.</summary>
         public int CurrentInvenTreePk => _session?.Part.Pk ?? 0;
@@ -864,6 +865,7 @@ namespace SwInventreeAddin.UI
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DescriptionMatch)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PkMatch)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CurrentInvenTreePk)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(BomButtonEnabled)));
         }
 
         /// <summary>
