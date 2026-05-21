@@ -275,56 +275,6 @@ namespace SwInventreeAddin.Tests
         // ── Apply ─────────────────────────────────────────────────────────────
 
         [Test]
-        public async Task ApplyToDocument_SetsDescriptionToPartName()
-        {
-            _client.PartToReturn = SamplePart;
-            CreateVm();
-            await _vm.FetchPartAsync();
-
-            _vm.ApplyToDocument();
-
-            Assert.That(_propertyService.GetCustomProperty("Description"),
-                Is.EqualTo("Resistor 10k"));
-        }
-
-        [Test]
-        public async Task ApplyToDocument_SetsNotesToPartNotes()
-        {
-            _client.PartToReturn = SamplePart;
-            CreateVm();
-            await _vm.FetchPartAsync();
-
-            _vm.ApplyToDocument();
-
-            Assert.That(_propertyService.GetCustomProperty("Notes"),
-                Is.EqualTo("SMD 0402"));
-        }
-
-        [Test]
-        public async Task ApplyToDocument_NeverWritesPartNoProperty()
-        {
-            _client.PartToReturn = SamplePart;
-            CreateVm();
-            await _vm.FetchPartAsync();
-
-            _vm.ApplyToDocument();
-
-            Assert.That(_propertyService.SetCallLog, Does.Not.Contain("PartNo"));
-        }
-
-        [Test]
-        public async Task ApplyToDocument_NeverWritesRevisionProperty()
-        {
-            _client.PartToReturn = SamplePart;
-            CreateVm();
-            await _vm.FetchPartAsync();
-
-            _vm.ApplyToDocument();
-
-            Assert.That(_propertyService.SetCallLog, Does.Not.Contain("Revision"));
-        }
-
-        [Test]
         public async Task ApplyNameToDocument_SetsDescription()
         {
             _client.PartToReturn = SamplePart;
@@ -402,21 +352,6 @@ namespace SwInventreeAddin.Tests
             _vm.ApplyPkToDocument();
 
             Assert.That(_vm.CurrentPk, Is.EqualTo("42"));
-        }
-
-        // ── ApplyToDocument (Description included) ────────────────────────────
-
-        [Test]
-        public async Task ApplyToDocument_WritesDescriptionLongProperty()
-        {
-            _client.PartToReturn = SamplePart;
-            CreateVm();
-            await _vm.FetchPartAsync();
-
-            _vm.ApplyToDocument();
-
-            Assert.That(_propertyService.GetCustomProperty("Description Long"),
-                Is.EqualTo("10k ohm 1% 0402"));
         }
 
         // ── PushDescription ───────────────────────────────────────────────────

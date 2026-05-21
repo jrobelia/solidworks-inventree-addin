@@ -646,15 +646,6 @@ namespace SwInventreeAddin.UI
             return missing;
         }
 
-        /// <summary>Writes Name, Notes, and Description from InvenTree to the SolidWorks document.</summary>
-        public void ApplyToDocument()
-        {
-            if (_session == null) return;
-            _session.Apply();
-            RefreshCurrentProperties();
-            SetStatus("Applied to document.", StatusSeverity.Success);
-        }
-
         /// <summary>Writes only the Name field to the SolidWorks document.</summary>
         public void ApplyNameToDocument()
         {
