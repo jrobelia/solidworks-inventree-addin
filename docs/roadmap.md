@@ -121,11 +121,18 @@ One architectural clean-up done in M3; one still open:
   deleted; properties are now computed from the session. Full sub-VM split
   (`PartFetchViewModel`, `PartPushViewModel`, etc.) was not implemented and is
   no longer planned.
-- **n+1 HTTP queries** *(open)* -- `GetBomAsync` fetches sub-part detail one
-  request at a time; `GetPartsByIpnAsync` does the same. `BomCompareViewModel`
-  parallelizes across distinct IPNs via `Task.WhenAll` but does not batch
-  detail fetches within each call. Investigate whether InvenTree offers a
-  batch/filter endpoint before implementing a fix.
+- **n+1 HTTP queries** *(done, 2026-05-23)* -- `GetBomAsync` now fans out all
+  `FetchDetailAsync` calls via `Task.WhenAll` (one request per unique PK in
+  parallel). `BomCompareViewModel.LoadAsync` now starts `GetBomAsync` and
+  `BuildIpnLookupAsync` concurrently. `GetPartsByIpnAsync` still fetches detail
+  sequentially per IPN but `BuildIpnLookupAsync` already parallelizes across
+  distinct IPNs via `Task.WhenAll`, making this a second-order problem.
+  Batch fetch via `?pk__in=` filter not investigated; deferred to parking lot.
+- **`IBomReadinessSource` coupling** *(reviewed, not pursuing)* -- `BomCompareReadinessCheck`
+  calls back into `TaskPaneViewModel` via this interface, mixing state queries
+  with action methods. The .NET dependency direction is correct; the only gain
+  from refactoring to a pure evaluator is code purity, with no user-visible
+  improvement. Not worth the effort given open M3 tasks.
 
 ---
 
