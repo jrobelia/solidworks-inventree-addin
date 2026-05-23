@@ -130,9 +130,10 @@ namespace SwInventreeAddin.UI
             var swLines = _bomService.GetBomLines(_bomKeyword, _mapping);
             var (itLines, lookup) = await Task.Run(async () =>
             {
-                var it  = await _client.GetBomAsync(_assemblyPk).ConfigureAwait(false);
-                var lup = await BuildIpnLookupAsync(swLines).ConfigureAwait(false);
-                return (it, lup);
+                var itTask  = _client.GetBomAsync(_assemblyPk);
+                var lupTask = BuildIpnLookupAsync(swLines);
+                await Task.WhenAll(itTask, lupTask).ConfigureAwait(false);
+                return (itTask.Result, lupTask.Result);
             });
             var diff = BomDiffEngine.Diff(swLines, itLines, lookup);
             RebindLines(diff);

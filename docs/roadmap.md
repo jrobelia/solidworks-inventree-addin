@@ -1,8 +1,8 @@
 # Roadmap
 
-Last updated: 2026-05-18 (M2 complete; milestone-2 pushed; M3 backlog expanded)
+Last updated: 2026-05-23 (M3 in progress: tasks 10, 16, 17 active; task 15 stretch)
 
-Next action: Open PR for `milestone-2` → merge → start M3 work.
+Next action: Work through tasks 10, 16, 17 on `milestone-3`.
 
 ## Project North Star
 
@@ -46,7 +46,10 @@ keeping the inventory system in sync while designing.
 - If a part is marked as made from automatically mark it as an assembly in
   SW we could add made form PN in SW properties and qty and add-in could
   auto-populate BOM for us #longterm
-- Add a name-based search box to the task pane (searches InvenTree, displays results). User can type a partial name, see matching parts, and view their details. #longterm
+- Add a name-based search box to the task pane (searches InvenTree, displays results). User can type a partial name, see matching parts, and view their details. #longterm (deferred -- duplicates InvenTree web UI)
+- Remap task pane UI layout in the Pencil design file (`docs/sw-addin-layout.pen`) to reflect current screens. #longterm
+- Connection health indicator in status bar -- green/red dot showing live server reachability; reuse `GetServerInfoAsync`. #longterm
+- Category icons in category picker -- spike overhead of fetching/rendering InvenTree category icons in the SW category tree dialog. #longterm
 
 #### Company Specific
 
@@ -109,15 +112,20 @@ milestone focuses on removing remaining company-specific conventions (part
 number naming, filename patterns) and verifying the add-in works out of the
 box for any SolidWorks + InvenTree shop. Lighter lift than originally scoped.
 
-Two architectural clean-ups also deferred to M3:
+One architectural clean-up done in M3; one still open:
 
-- **`TaskPaneViewModel` split** -- At ~1000 lines it has 7 distinct
-  responsibilities. Refactor into focused classes (`PartFetchViewModel`,
-  `PartPushViewModel`, etc.) with thin orchestration in `TaskPaneViewModel`.
-  Requires XAML and code-behind changes.
-- **n+1 HTTP queries** -- `GetBomAsync` and `GetPartsByIpnAsync` each fetch
-  sub-part details one request at a time. Investigate whether InvenTree offers
-  a batch/filter endpoint before implementing a fix.
+- **`TaskPaneViewModel` refactor** *(done, issues #5/#6/#9)* -- `PartSyncSession`
+  extracted as a standalone module owning all Apply/Push domain logic and
+  thumbnail state. The VM is now an orchestrator: session lifetime, status
+  messaging, and UI events only. All preview and enabled/visible backing fields
+  deleted; properties are now computed from the session. Full sub-VM split
+  (`PartFetchViewModel`, `PartPushViewModel`, etc.) was not implemented and is
+  no longer planned.
+- **n+1 HTTP queries** *(open)* -- `GetBomAsync` fetches sub-part detail one
+  request at a time; `GetPartsByIpnAsync` does the same. `BomCompareViewModel`
+  parallelizes across distinct IPNs via `Task.WhenAll` but does not batch
+  detail fetches within each call. Investigate whether InvenTree offers a
+  batch/filter endpoint before implementing a fix.
 
 ---
 
@@ -126,12 +134,9 @@ Two architectural clean-ups also deferred to M3:
 | # | Task | Milestone | Type | Status | Pass / fail condition |
 |---|------|-----------|------|--------|-----------------------|
 | 10 | Remove remaining company-specific conventions (part number naming, filename patterns) | 3 | cleanup | open | No company-specific strings remain; add-in works out of the box for any SW + InvenTree shop |
-| 14 | Remap task pane UI layout in the Pencil design file (`docs/sw-addin-layout.pen`) to reflect current and planned screens | 3 | design | open | Pencil file has up-to-date frames for all task pane views (part, assembly, create part dialog, info panel) |
-| 15 | Expand Create Part flags — Assembly, Testable, Trackable, Purchaseable, Salable, Copy Category Parameters | 3 | build | open | Create Part dialog exposes applicable flags; Component always true; Assembly auto-set for SW assemblies; toggleable flags persist and POST correctly |
 | 16 | Auto part-number wait toggle | 3 | build | open | Settings has a checkbox to disable the 10-second IPN generation poll; useful for servers without the auto-numbering plugin |
 | 17 | Link from task pane to InvenTree part in browser | 3 | build | open | Clicking the thumbnail (or a dedicated link) opens the InvenTree part URL in the default browser |
-| 18 | Connection health indicator in status bar | 3 | build | open | Needs exploration: determine ping strategy (reuse GetServerInfoAsync?); green/red dot visible in task pane status bar at all times showing live server reachability |
-| 19 | Category icons in category picker | 3 | build | open | Needs exploration: spike overhead of fetching and rendering InvenTree category icons in the SW category tree dialog; go/no-go decision before implementation |
+| 15 | *(stretch)* Expand Create Part flags — Assembly, Testable, Trackable, Purchaseable, Salable, Copy Category Parameters | 3 | build | open | Create Part dialog exposes applicable flags; Component always true; Assembly auto-set for SW assemblies; toggleable flags persist and POST correctly |
 
 ### Done
 
@@ -172,7 +177,8 @@ Two architectural clean-ups also deferred to M3:
 
 ## Next Action
 
-M1 and M2 complete. Open PR for `milestone-2` → merge to `main` → start M3 work.
-M3 backlog: tasks 10, 14–19. Quick wins: 16 (auto-number toggle), 17 (part link). Exploration spikes needed for 18 (connection health) and 19 (category icons).
+M1 and M2 complete. M3 in progress (PR #10 merged).
+Active: task 10 (company-specific cleanup), task 16 (auto-number toggle), task 17 (browser link).
+Stretch: task 15 (Create Part flags). Tasks 14, 18, 19 moved to parking lot.
 
 

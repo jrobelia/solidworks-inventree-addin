@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
@@ -213,7 +214,7 @@ namespace SwInventreeAddin.InvenTree
                                subs.ValueKind == JsonValueKind.Array &&
                                subs.GetArrayLength() > 0;
 
-                var line = new InventreeBomLine
+                lines.Add(new InventreeBomLine
                 {
                     Pk             = GetInt(el, "pk"),
                     SubPartPk      = GetInt(el, "sub_part"),
@@ -224,15 +225,24 @@ namespace SwInventreeAddin.InvenTree
                     Optional       = GetBool(el, "optional"),
                     Validated      = GetBool(el, "validated"),
                     HasSubstitutes = hasSubs,
-                };
-
-                if (line.SubPartPk > 0)
-                {
-                    var part = await FetchDetailAsync(line.SubPartPk).ConfigureAwait(false);
-                    if (part != null) line.SubPartIpn = part.Ipn;
-                }
-                lines.Add(line);
+                });
             }
+
+            // Fan-out: fetch all sub-part details in parallel (one request per unique PK).
+            var detailTasks = lines
+                .Where(l => l.SubPartPk > 0)
+                .Select(l => l.SubPartPk)
+                .Distinct()
+                .ToDictionary(pk => pk, pk => FetchDetailAsync(pk));
+
+            await Task.WhenAll(detailTasks.Values).ConfigureAwait(false);
+
+            foreach (var line in lines.Where(l => l.SubPartPk > 0))
+            {
+                var part = detailTasks[line.SubPartPk].Result;
+                if (part != null) line.SubPartIpn = part.Ipn;
+            }
+
             return lines;
         }
 
