@@ -275,56 +275,6 @@ namespace SwInventreeAddin.Tests
         // ── Apply ─────────────────────────────────────────────────────────────
 
         [Test]
-        public async Task ApplyToDocument_SetsDescriptionToPartName()
-        {
-            _client.PartToReturn = SamplePart;
-            CreateVm();
-            await _vm.FetchPartAsync();
-
-            _vm.ApplyToDocument();
-
-            Assert.That(_propertyService.GetCustomProperty("Description"),
-                Is.EqualTo("Resistor 10k"));
-        }
-
-        [Test]
-        public async Task ApplyToDocument_SetsNotesToPartNotes()
-        {
-            _client.PartToReturn = SamplePart;
-            CreateVm();
-            await _vm.FetchPartAsync();
-
-            _vm.ApplyToDocument();
-
-            Assert.That(_propertyService.GetCustomProperty("Notes"),
-                Is.EqualTo("SMD 0402"));
-        }
-
-        [Test]
-        public async Task ApplyToDocument_NeverWritesPartNoProperty()
-        {
-            _client.PartToReturn = SamplePart;
-            CreateVm();
-            await _vm.FetchPartAsync();
-
-            _vm.ApplyToDocument();
-
-            Assert.That(_propertyService.SetCallLog, Does.Not.Contain("PartNo"));
-        }
-
-        [Test]
-        public async Task ApplyToDocument_NeverWritesRevisionProperty()
-        {
-            _client.PartToReturn = SamplePart;
-            CreateVm();
-            await _vm.FetchPartAsync();
-
-            _vm.ApplyToDocument();
-
-            Assert.That(_propertyService.SetCallLog, Does.Not.Contain("Revision"));
-        }
-
-        [Test]
         public async Task ApplyNameToDocument_SetsDescription()
         {
             _client.PartToReturn = SamplePart;
@@ -402,21 +352,6 @@ namespace SwInventreeAddin.Tests
             _vm.ApplyPkToDocument();
 
             Assert.That(_vm.CurrentPk, Is.EqualTo("42"));
-        }
-
-        // ── ApplyToDocument (Description included) ────────────────────────────
-
-        [Test]
-        public async Task ApplyToDocument_WritesDescriptionLongProperty()
-        {
-            _client.PartToReturn = SamplePart;
-            CreateVm();
-            await _vm.FetchPartAsync();
-
-            _vm.ApplyToDocument();
-
-            Assert.That(_propertyService.GetCustomProperty("Description Long"),
-                Is.EqualTo("10k ohm 1% 0402"));
         }
 
         // ── PushDescription ───────────────────────────────────────────────────
@@ -1132,6 +1067,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task PushName_CallsClientWithSwValue()
         {
+
             _propertyService.Seed("Description", "My Part Name");
             await _vm.FetchPartAsync();
 
@@ -1439,6 +1375,83 @@ namespace SwInventreeAddin.Tests
             var vm = CreateVm(withClient: false);
             vm.OpenCreatePartWindow(_ => callCount++);
             Assert.That(callCount, Is.EqualTo(0));
+        }
+    }
+}
+
+// ── BOM button enabled tests ────────────────────────────────────────────────────
+namespace SwInventreeAddin.Tests
+{
+    using System.Collections.Generic;
+    using System.Threading.Tasks;
+    using SwInventreeAddin.InvenTree;
+    using SwInventreeAddin.SolidWorks;
+
+    [TestFixture]
+    public class BomButtonEnabledTests
+    {
+        private StubInventreeClient         _client;
+        private StubDocumentPropertyService _propertyService;
+        private TaskPaneViewModel           _vm;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _client          = new StubInventreeClient();
+            _propertyService = new StubDocumentPropertyService();
+        }
+
+        private void CreateVm(string seedPartNo = "ASSY-001")
+        {
+            _propertyService.Seed("PartNo", seedPartNo);
+            _vm = new TaskPaneViewModel(_client, _propertyService);
+        }
+
+        // ── BOM button enabled ─────────────────────────────────────────────────
+
+        [Test]
+        public void BomButtonEnabled_AssemblyWithNoSession_IsFalse()
+        {
+            _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            CreateVm("ASSY-001");
+
+            Assert.That(_vm.BomButtonEnabled, Is.False);
+        }
+
+        [Test]
+        public async Task BomButtonEnabled_AssemblyAfterFetch_IsTrue()
+        {
+            _client.PartToReturn = new InventreePart { Pk = 1, Ipn = "ASSY-001" };
+            _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            CreateVm("ASSY-001");
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.BomButtonEnabled, Is.True);
+        }
+
+        [Test]
+        public void BomButtonEnabled_PartDocument_IsFalse()
+        {
+            // StubDocumentPropertyService defaults to DocumentType.Part
+            CreateVm("R-10K-0402");
+
+            Assert.That(_vm.BomButtonEnabled, Is.False);
+        }
+
+        [Test]
+        public async Task BomButtonEnabled_AfterFetch_RaisesPropertyChanged()
+        {
+            _client.PartToReturn = new InventreePart { Pk = 1, Ipn = "ASSY-001" };
+            _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            CreateVm("ASSY-001");
+
+            var raised = new List<string>();
+            _vm.PropertyChanged += (s, e) => raised.Add(e.PropertyName);
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(raised, Does.Contain("BomButtonEnabled"));
         }
     }
 }

@@ -26,5 +26,20 @@ syncing properties, and comparing BOMs.
 Does not replace InvenTree's web UI for purchasing, build orders, supplier management,
 or anything outside the SolidWorks design workflow.
 
-## be concise
- - use consise language when communicatng with the user
+## User Preferences
+ - use concise language when communicating with the user
+ - the user is a domain expert not a coding expert, frame questions and suggestions in terms of the domain, not code
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default label vocabulary (needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context repo. Domain glossary in `CONTEXT.md`; architectural decisions in `docs/adr/`. See `docs/agents/domain.md`.

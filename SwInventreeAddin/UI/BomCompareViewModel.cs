@@ -91,17 +91,17 @@ namespace SwInventreeAddin.UI
             new ObservableCollection<BomDiffLineViewModel>();
 
         private string _statusText    = string.Empty;
-        private bool   _isApplying;
+        private bool   _isPushing;
         private string _sortColumn    = string.Empty;
         private bool   _sortAscending = true;
 
         public string StatusText    { get => _statusText;    set => Set(ref _statusText,    value); }
-        public bool   IsApplying    { get => _isApplying;    set => Set(ref _isApplying,    value); }
+        public bool   IsPushing    { get => _isPushing;    set => Set(ref _isPushing,    value); }
         public string SortColumn    { get => _sortColumn;    set => Set(ref _sortColumn,    value); }
         public bool   SortAscending { get => _sortAscending; set => Set(ref _sortAscending, value); }
 
-        public bool ApplyEnabled =>
-            !IsApplying && Lines.Any(l => l.CanCheck && l.IsChecked);
+        public bool PushEnabled =>
+            !IsPushing && Lines.Any(l => l.CanCheck && l.IsChecked);
 
         /// <summary>
         /// Inject to override confirmation logic in tests.
@@ -140,7 +140,7 @@ namespace SwInventreeAddin.UI
             if (!string.IsNullOrEmpty(_sortColumn)) ApplySort();
         }
 
-        public async Task ApplyAsync()
+        public async Task PushAsync()
         {
             var toProcess = Lines
                 .Where(l => l.IsChecked && l.CanCheck)
@@ -160,7 +160,7 @@ namespace SwInventreeAddin.UI
                 return;
             }
 
-            IsApplying = true;
+            IsPushing = true;
             int created = 0, updated = 0, failed = 0;
             var failedIpns   = new List<string>();
             var succeededVms = new List<BomDiffLineViewModel>();
@@ -229,9 +229,9 @@ namespace SwInventreeAddin.UI
                 vm.IsChecked      = false;
                 vm.NotifyStateChanged();
             }
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ApplyEnabled)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PushEnabled)));
 
-            IsApplying = false;
+            IsPushing = false;
 
             var parts = new List<string>();
             if (created > 0) parts.Add($"{created} created");
@@ -285,13 +285,13 @@ namespace SwInventreeAddin.UI
                 vm.PropertyChanged += OnLineCheckedChanged;
                 Lines.Add(vm);
             }
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ApplyEnabled)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PushEnabled)));
         }
 
         private void OnLineCheckedChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(BomDiffLineViewModel.IsChecked))
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ApplyEnabled)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PushEnabled)));
         }
 
         private void ApplySort()

@@ -17,6 +17,9 @@ namespace SwInventreeAddin.UI
         private readonly IInventreeTokenService   _tokenService;
         private IPropertyMappingProvider _mappingProvider;
 
+        private (string Url, string ApiKey, string Username, string Password,
+                 string SharedPath, string BomKeyword, bool UseLocalMapping) _savedSnapshot;
+
         /// <summary>
         /// Raised after Apply successfully saves settings, so the caller can update
         /// the live mapping provider without waiting for the dialog to close.
@@ -36,6 +39,15 @@ namespace SwInventreeAddin.UI
             _mappingProvider = mappingProvider;
             _tokenService    = tokenService;
             InitializeComponent();
+
+            UrlBox.TextChanged          += (_, __) => RefreshButtonStates();
+            UsernameBox.TextChanged     += (_, __) => RefreshButtonStates();
+            PasswordBox.PasswordChanged += (_, __) => RefreshButtonStates();
+            ApiBox.TextChanged          += (_, __) => RefreshButtonStates();
+            SharedPathBox.TextChanged   += (_, __) => RefreshButtonStates();
+            BomKeywordBox.TextChanged   += (_, __) => RefreshButtonStates();
+            LocalRadio.Checked          += (_, __) => RefreshButtonStates();
+            SharedRadio.Checked         += (_, __) => RefreshButtonStates();
 
             // Centre over SolidWorks main window
             try
@@ -67,6 +79,23 @@ namespace SwInventreeAddin.UI
 
             // Set Edit Mappings button state and mapping status bar
             RefreshMappingStatus();
+
+            _savedSnapshot = CaptureSnapshot();
+            RefreshButtonStates();
+        }
+
+        // ── Dirty-state tracking ───────────────────────────────────────────────
+
+        private (string, string, string, string, string, string, bool) CaptureSnapshot() =>
+            (UrlBox.Text.Trim(), ApiBox.Text.Trim(), UsernameBox.Text.Trim(), PasswordBox.Password,
+             SharedPathBox.Text.Trim(), BomKeywordBox.Text.Trim(), LocalRadio.IsChecked == true);
+
+        private void RefreshButtonStates()
+        {
+            bool isDirty          = CaptureSnapshot() != _savedSnapshot;
+            ApplyButton.IsEnabled = isDirty;
+            SaveButton.IsEnabled  = isDirty;
+            CancelButtonText.Text = isDirty ? "Cancel" : "Close";
         }
 
         // ── Radio button handlers ──────────────────────────────────────────────
@@ -258,6 +287,8 @@ namespace SwInventreeAddin.UI
                 _mappingProvider = new PropertyMappingProvider(sharedPath);
                 RefreshMappingStatus();
                 MappingApplied?.Invoke(this, _mappingProvider);
+                _savedSnapshot = CaptureSnapshot();
+                RefreshButtonStates();
                 return true;
             }
             catch (Exception ex)

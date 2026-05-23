@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [ "**" ]
+
+jobs:
+  build-and-test:
+    runs-on: self-hosted
+
+    steps:
+      - name: Check SolidWorks is not running
+        shell: pwsh
+        run: |
+          $sw = Get-Process -Name SLDWORKS -ErrorAction SilentlyContinue
+          if ($sw) {
+            Write-Error "SolidWorks is running. Close SolidWorks before CI can build (it holds a lock on the add-in DLL)."
+            exit 1
+          }
+          Write-Host "SolidWorks is not running. Proceeding."
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: dotnet build --configuration Release --no-incremental
+
+      - name: Test
+        run: dotnet test --configuration Release --no-build --verbosity normal

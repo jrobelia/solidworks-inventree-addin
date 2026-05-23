@@ -293,9 +293,9 @@
                                Style="{StaticResource FieldLabelStyle}"
                                VerticalAlignment="Center"/>
                     <Button Grid.Column="1"
-                            IsEnabled="{Binding ApplyEnabled}"
+                            IsEnabled="{Binding PushEnabled}"
                             Style="{StaticResource PrimaryButtonStyle}"
-                            Click="Apply_Click"
+                            Click="Push_Click"
                             Width="220" Margin="0,0,4,0">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE898;" FontFamily="Segoe MDL2 Assets" FontSize="13"
