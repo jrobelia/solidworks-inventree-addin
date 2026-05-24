@@ -800,11 +800,11 @@ namespace SwInventreeAddin.Tests
         {
             _client.PartsByIpnToReturn = new System.Collections.Generic.List<InventreePart>
             {
-                new InventreePart { Pk = 10, Ipn = "OA-001", Revision = "A" },
-                new InventreePart { Pk = 11, Ipn = "OA-001", Revision = "C" },
+                new InventreePart { Pk = 10, Ipn = "PART-001", Revision = "A" },
+                new InventreePart { Pk = 11, Ipn = "PART-001", Revision = "C" },
             };
             _propertyService.Seed("Revision", "B");
-            CreateVm("OA-001");
+            CreateVm("PART-001");
 
             await _vm.FetchPartAsync();
 
@@ -816,11 +816,11 @@ namespace SwInventreeAddin.Tests
         {
             _client.PartsByIpnToReturn = new System.Collections.Generic.List<InventreePart>
             {
-                new InventreePart { Pk = 10, Ipn = "OA-001", Revision = "B" },
-                new InventreePart { Pk = 11, Ipn = "OA-001", Revision = "B" },
+                new InventreePart { Pk = 10, Ipn = "PART-001", Revision = "B" },
+                new InventreePart { Pk = 11, Ipn = "PART-001", Revision = "B" },
             };
             _propertyService.Seed("Revision", "B");
-            CreateVm("OA-001");
+            CreateVm("PART-001");
 
             await _vm.FetchPartAsync();
 
@@ -830,14 +830,14 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task FetchPartAsync_DuplicateIpn_OneRevMatch_UserConfirms_AppliesPart()
         {
-            var matched = new InventreePart { Pk = 11, Ipn = "OA-001", Revision = "B", Name = "Panel" };
+            var matched = new InventreePart { Pk = 11, Ipn = "PART-001", Revision = "B", Name = "Panel" };
             _client.PartsByIpnToReturn = new System.Collections.Generic.List<InventreePart>
             {
-                new InventreePart { Pk = 10, Ipn = "OA-001", Revision = "A" },
+                new InventreePart { Pk = 10, Ipn = "PART-001", Revision = "A" },
                 matched,
             };
             _propertyService.Seed("Revision", "B");
-            CreateVm("OA-001");
+            CreateVm("PART-001");
             _vm.ConfirmDuplicateIpn = (_, __) => true;
 
             await _vm.FetchPartAsync();
@@ -849,14 +849,14 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task FetchPartAsync_DuplicateIpn_OneRevMatch_UserCancels_DoesNotApply()
         {
-            var matched = new InventreePart { Pk = 11, Ipn = "OA-001", Revision = "B", Name = "Panel" };
+            var matched = new InventreePart { Pk = 11, Ipn = "PART-001", Revision = "B", Name = "Panel" };
             _client.PartsByIpnToReturn = new System.Collections.Generic.List<InventreePart>
             {
-                new InventreePart { Pk = 10, Ipn = "OA-001", Revision = "A" },
+                new InventreePart { Pk = 10, Ipn = "PART-001", Revision = "A" },
                 matched,
             };
             _propertyService.Seed("Revision", "B");
-            CreateVm("OA-001");
+            CreateVm("PART-001");
             _vm.ConfirmDuplicateIpn = (_, __) => false;
 
             await _vm.FetchPartAsync();

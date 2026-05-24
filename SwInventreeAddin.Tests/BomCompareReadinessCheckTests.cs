@@ -13,7 +13,7 @@ namespace SwInventreeAddin.Tests
         private sealed class StubSource : IBomReadinessSource
         {
             public int    CurrentInvenTreePk { get; set; }
-            public string PartNumber         { get; set; } = "OA-001";
+            public string PartNumber         { get; set; } = "PART-001";
             public string CurrentPk          { get; set; } = string.Empty;
             public string CurrentRevision    { get; set; } = string.Empty;
             public string RevisionPreview    { get; set; } = string.Empty;

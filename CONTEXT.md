@@ -25,7 +25,7 @@ The persistent SolidWorks side panel that hosts the add-in UI.
 _Avoid_: sidebar, panel, control
 
 **Task Pane State**:
-One of four states: EMPTY (no document open), UNLINKED (document open but no IPN), LINKED (IPN present, not yet fetched), POPULATED (InvenTree data in hand).
+One of four states: EMPTY (no document open), UNLINKED (document open, no IPN and no InvenTree Part PK), LINKED (IPN or InvenTree Part PK present, not yet fetched), POPULATED (InvenTree data in hand).
 
 **Fetch**:
 Retrieve an InvenTree part by IPN (or InvenTree Part PK) from the server and display its field values as a preview in the Task Pane.
