@@ -71,6 +71,7 @@ namespace SwInventreeAddin.UI
         private bool   _createPartEnabled;
         private bool   _isDocumentOpen;
         private bool   _documentPkPresent;
+        private int    _documentPk;
         private bool   _propertiesSectionVisible;
         private StatusSeverity _statusSeverity = StatusSeverity.None;
         private string _bomStatusText = "BOM: Not checked";
@@ -414,6 +415,7 @@ namespace SwInventreeAddin.UI
                 ClearAll();
                 _isDocumentOpen    = true;
                 _documentPkPresent = pkPresent;
+                _documentPk        = pkPresent ? pkVal : 0;
 
                 if (pkPresent)
                 {
@@ -467,6 +469,7 @@ namespace SwInventreeAddin.UI
         {
             _isDocumentOpen          = false;
             _documentPkPresent       = false;
+            _documentPk              = 0;
             PartNumber               = string.Empty;
             CurrentName              = string.Empty;
             CurrentNotes             = string.Empty;
@@ -565,6 +568,58 @@ namespace SwInventreeAddin.UI
         {
             RefreshCurrentProperties();
 
+            // ── LINKED-by-PK path ─────────────────────────────────────────────
+            if (_documentPkPresent && _documentPk > 0)
+            {
+                SetStatus("Fetching from InvenTree\u2026", StatusSeverity.None);
+                ClearSession();
+
+                if (_client == null)
+                {
+                    SetStatus("No server configured \u2014 click \u2699 Settings to get started",
+                              StatusSeverity.Warning);
+                    return;
+                }
+
+                InventreePart? pkPart  = null;
+                Exception?     pkError = null;
+
+                try   { pkPart = await _client.GetPartByPkAsync(_documentPk).ConfigureAwait(false); }
+                catch (Exception ex) { pkError = ex; }
+
+                RunOnUiThread(() =>
+                {
+                    if (pkError != null)
+                    {
+                        SetStatus($"Error: {pkError.Message}", StatusSeverity.Error);
+                        return;
+                    }
+
+                    if (pkPart == null)
+                    {
+                        SetStatus($"No part found in InvenTree for PK: {_documentPk}", StatusSeverity.Warning);
+                        return;
+                    }
+
+                    // Auto-write IPN to SW document when the server has one and the document doesn't.
+                    var m      = GetMappingOrDefault();
+                    var docIpn = _propertyService.GetCustomProperty(m.IpnProperty);
+                    if (!string.IsNullOrEmpty(pkPart.Ipn) && string.IsNullOrEmpty(docIpn))
+                    {
+                        _propertyService.SetCustomProperty(m.IpnProperty, pkPart.Ipn);
+                        PartNumber = pkPart.Ipn;
+                    }
+
+                    _session = new PartSyncSession(pkPart, _client!, _propertyService, GetMappingOrDefault());
+                    PropertiesSectionVisible = true;
+                    RefreshCurrentProperties();
+                    NotifySessionProperties();
+                    SetStatus(string.Empty, StatusSeverity.None);
+                });
+                return;
+            }
+
+            // ── LINKED-by-IPN path (existing behaviour) ────────────────────────
             var ipn = PartNumber;
             if (string.IsNullOrEmpty(ipn))
             {

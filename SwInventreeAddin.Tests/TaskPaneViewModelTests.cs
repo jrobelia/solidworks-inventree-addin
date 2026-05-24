@@ -1564,3 +1564,93 @@ namespace SwInventreeAddin.Tests
         }
     }
 }
+
+// ── Fetch-by-PK tests (issue #20) ──────────────────────────────────────────────
+namespace SwInventreeAddin.Tests
+{
+    using System.Threading.Tasks;
+    using SwInventreeAddin.InvenTree;
+    using SwInventreeAddin.Tests.Stubs;
+    using SwInventreeAddin.UI;
+
+    [TestFixture]
+    public class FetchByPkTests
+    {
+        private StubInventreeClient         _client;
+        private StubDocumentPropertyService _propertyService;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _client          = new StubInventreeClient();
+            _propertyService = new StubDocumentPropertyService();
+            // Seed LINKED-by-PK state: blank IPN + PK present
+            _propertyService.Seed("PartNo",       string.Empty);
+            _propertyService.Seed("InvenTree PK", "42");
+        }
+
+        private TaskPaneViewModel CreateVm() =>
+            new TaskPaneViewModel(_client, _propertyService);
+
+        // ── Fetch uses PK, not IPN ────────────────────────────────────────────
+
+        [Test]
+        public async Task FetchPartAsync_LinkedByPk_CallsGetPartByPk()
+        {
+            _client.PartByPkToReturn = new InventreePart { Pk = 42, Ipn = "TST-001" };
+
+            var vm = CreateVm();
+            await vm.FetchPartAsync();
+
+            Assert.That(_client.LastGetPartByPkPk, Is.EqualTo(42));
+        }
+
+        // ── IPN write-back ────────────────────────────────────────────────────
+
+        [Test]
+        public async Task FetchPartAsync_LinkedByPk_ServerHasIpn_WritesIpnToDocument()
+        {
+            _client.PartByPkToReturn = new InventreePart { Pk = 42, Ipn = "TST-001" };
+
+            var vm = CreateVm();
+            await vm.FetchPartAsync();
+
+            Assert.That(_propertyService.GetCustomProperty("PartNo"), Is.EqualTo("TST-001"));
+        }
+
+        [Test]
+        public async Task FetchPartAsync_LinkedByPk_ServerHasNoIpn_DoesNotWriteIpn()
+        {
+            _client.PartByPkToReturn = new InventreePart { Pk = 42, Ipn = string.Empty };
+
+            var vm = CreateVm();
+            await vm.FetchPartAsync();
+
+            Assert.That(_propertyService.GetCustomProperty("PartNo"), Is.EqualTo(string.Empty));
+        }
+
+        // ── POPULATED state ────────────────────────────────────────────────────
+
+        [Test]
+        public async Task FetchPartAsync_LinkedByPk_EntersPopulatedState()
+        {
+            _client.PartByPkToReturn = new InventreePart { Pk = 42, Ipn = "TST-001", Name = "Widget" };
+
+            var vm = CreateVm();
+            await vm.FetchPartAsync();
+
+            Assert.That(vm.ApplyEnabled, Is.True);
+        }
+
+        [Test]
+        public async Task FetchPartAsync_LinkedByPk_NoIpnFromServer_EntersPopulatedState()
+        {
+            _client.PartByPkToReturn = new InventreePart { Pk = 42, Ipn = string.Empty, Name = "Widget" };
+
+            var vm = CreateVm();
+            await vm.FetchPartAsync();
+
+            Assert.That(vm.ApplyEnabled, Is.True);
+        }
+    }
+}
