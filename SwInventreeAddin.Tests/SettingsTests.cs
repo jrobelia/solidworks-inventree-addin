@@ -84,6 +84,22 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(result!.MappingSourcePath, Is.Null);
         }
+
+        [Test]
+        public void SaveThenGet_RoundTripsWaitForAutoPartNumber()
+        {
+            var config = new ServerConfig
+            {
+                Url                   = "http://example.com",
+                ApiKey                = "key",
+                WaitForAutoPartNumber = true,
+            };
+
+            _provider.SaveServerConfig(config);
+            var result = _provider.GetServerConfig();
+
+            Assert.That(result!.WaitForAutoPartNumber, Is.True);
+        }
     }
 }
 

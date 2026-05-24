@@ -198,6 +198,21 @@
             <!-- ── Separator ────────────────────────────────────────────────── -->
             <Separator Background="{StaticResource BrushBorder}" Margin="0,8,0,0" />
 
+            <!-- ── Part Creation section ──────────────────────────────────── -->
+
+            <TextBlock Text="Part Creation"
+                       FontWeight="SemiBold"
+                       Foreground="{StaticResource BrushForeground}"
+                       Margin="0,8,0,0" />
+
+            <CheckBox x:Name="WaitForAutoPartNumberBox"
+                      Content="Server assigns part numbers automatically"
+                      Margin="0,8,0,0"
+                      FontSize="{StaticResource FontSizeBody}" />
+
+            <!-- ── Separator ────────────────────────────────────────────────── -->
+            <Separator Background="{StaticResource BrushBorder}" Margin="0,8,0,0" />
+
             <!-- ── BOM sync section ────────────────────────────────────────── -->
 
             <TextBlock Text="BOM Sync"

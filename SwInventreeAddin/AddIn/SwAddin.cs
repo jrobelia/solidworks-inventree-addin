@@ -140,6 +140,7 @@ namespace SwInventreeAddin.AddIn
 
                 var assemblyBomService = new SwAssemblyBomService(_swApp);
                 _taskPaneControl.UpdateBomState(assemblyBomService, config?.BomKeyword ?? "inventree");
+                _taskPaneControl.UpdateWaitForAutoPartNumber(config?.WaitForAutoPartNumber ?? false);
 
                 // Refresh the PartNo field whenever the user opens or switches documents.
                 // OnIdleNotify detects when the last document is closed (ActiveDoc becomes null).
@@ -322,6 +323,7 @@ namespace SwInventreeAddin.AddIn
             _httpClient.BaseAddress = new System.Uri(newConfig.Url);
             var newClient = new InventreeHttpClient(_httpClient, newConfig.ApiKey);
             _taskPaneControl?.UpdateClient(newClient);
+            _taskPaneControl?.UpdateWaitForAutoPartNumber(newConfig.WaitForAutoPartNumber);
         }
     }
 }

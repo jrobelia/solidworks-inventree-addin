@@ -330,6 +330,13 @@ namespace SwInventreeAddin.UI
         /// </summary>
         private readonly SynchronizationContext? _uiContext;
 
+        /// <summary>
+        /// When true, the Create Part flow polls InvenTree for a server-assigned IPN.
+        /// When false (default), the poll is skipped and the dialog closes immediately.
+        /// Set from <see cref="ServerConfig.WaitForAutoPartNumber"/> after config loads.
+        /// </summary>
+        public bool WaitForAutoPartNumber { get; set; }
+
         // ── Constructors ──────────────────────────────────────────────────────
 
         /// <summary>Two-service constructor (no viewport capture — e.g. unit tests).</summary>
@@ -502,7 +509,8 @@ namespace SwInventreeAddin.UI
             var mapping = GetMappingOrDefault();
             var name    = _propertyService.GetCustomProperty(mapping.NameProperty);
 
-            var vm = new CreatePartViewModel(_client, _propertyService, name, _mappingProvider);
+            var vm = new CreatePartViewModel(_client, _propertyService, name, _mappingProvider,
+                                             waitForAutoPartNumber: WaitForAutoPartNumber);
 
             vm.PartCreated += (_, part) =>
             {

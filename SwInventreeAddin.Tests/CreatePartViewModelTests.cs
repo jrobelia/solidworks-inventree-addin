@@ -21,8 +21,8 @@ namespace SwInventreeAddin.Tests
             _propertyService = new StubDocumentPropertyService();
         }
 
-        private CreatePartViewModel CreateVm(string name = DefaultName) =>
-            new CreatePartViewModel(_client, _propertyService, name, ipnPollDelayMs: 0);
+        private CreatePartViewModel CreateVm(string name = DefaultName, bool waitForAutoPartNumber = false) =>
+            new CreatePartViewModel(_client, _propertyService, name, ipnPollDelayMs: 0, waitForAutoPartNumber: waitForAutoPartNumber);
 
         private static CategoryNode MakeNode(int pk = 1, string name = "Resistors") =>
             new CategoryNode(new InventreeCategory { Pk = pk, Name = name });
@@ -226,7 +226,7 @@ namespace SwInventreeAddin.Tests
             _propertyService.Seed("Description", string.Empty);
 
             InventreePart? raisedPart = null;
-            var vm = CreateVm();
+            var vm = CreateVm(waitForAutoPartNumber: true);
             vm.PartCreated += (_, p) => raisedPart = p;
             vm.SelectedCategory = MakeNode(pk: 7);
 
@@ -250,7 +250,7 @@ namespace SwInventreeAddin.Tests
             _client.QueuePartByPkResponses(emptyParts);
             _propertyService.Seed("PartNo", string.Empty);
 
-            var vm = CreateVm();
+            var vm = CreateVm(waitForAutoPartNumber: true);
             vm.SelectedCategory = MakeNode(pk: 7);
             await vm.CreateAsync();
 
@@ -284,6 +284,66 @@ namespace SwInventreeAddin.Tests
             await vm.CreateAsync();
 
             Assert.That(_client.LastCreateIpn, Is.EqualTo("FAB-001"));
+        }
+
+        // ── WaitForAutoPartNumber toggle ─────────────────────────────────────────
+
+        [Test]
+        public async Task CreateAsync_WaitOff_BlankIpn_SkipsPollAndRaisesPartCreated()
+        {
+            // Toggle off: poll is skipped even when initial re-fetch returns no IPN.
+            const int newPk = 55;
+            _client.PkToReturnOnCreate = newPk;
+            _client.PartByPkToReturn   = new InventreePart { Pk = newPk, Ipn = string.Empty, Name = "IPN-less Part" };
+            _propertyService.Seed("Description", string.Empty);
+
+            InventreePart? raisedPart = null;
+            var vm = CreateVm(waitForAutoPartNumber: false);
+            vm.PartCreated      += (_, p) => raisedPart = p;
+            vm.SelectedCategory  = MakeNode();
+            await vm.CreateAsync();
+
+            Assert.That(raisedPart,  Is.Not.Null, "PartCreated must fire even with blank IPN");
+            Assert.That(vm.IsBusy,   Is.False);
+            Assert.That(vm.StatusText, Does.Not.Contain("refresh manually"),
+                "refresh-manually message only appears when the poll ran and timed out");
+        }
+
+        [Test]
+        public async Task CreateAsync_WaitOff_BlankIpn_WritesPkToDocument()
+        {
+            // After a poll-skipped creation the InvenTree Part PK is written to the SW document.
+            const int newPk = 55;
+            _client.PkToReturnOnCreate = newPk;
+            _client.PartByPkToReturn   = new InventreePart { Pk = newPk, Ipn = string.Empty, Name = "IPN-less Part" };
+
+            var vm = CreateVm(waitForAutoPartNumber: false);
+            vm.SelectedCategory = MakeNode();
+            await vm.CreateAsync();
+
+            Assert.That(_propertyService.GetCustomProperty("InvenTree PK"), Is.EqualTo(newPk.ToString()));
+        }
+
+        [Test]
+        public async Task CreateAsync_ManualIpn_WaitOn_ClosesImmediatelyWithoutPoll()
+        {
+            // When user enters an IPN manually the poll never runs — toggle has no effect.
+            const int newPk = 77;
+            _client.PkToReturnOnCreate = newPk;
+            _client.PartByPkToReturn   = new InventreePart { Pk = newPk, Ipn = "FAB-123", Name = "Manual Part" };
+            _propertyService.Seed("PartNo",      string.Empty);
+            _propertyService.Seed("Description", string.Empty);
+
+            InventreePart? raisedPart = null;
+            var vm = CreateVm(waitForAutoPartNumber: true);
+            vm.PartCreated      += (_, p) => raisedPart = p;
+            vm.SelectedCategory  = MakeNode();
+            vm.IpnEntry          = "FAB-123";
+            await vm.CreateAsync();
+
+            Assert.That(_client.LastCreateIpn, Is.EqualTo("FAB-123"));
+            Assert.That(raisedPart?.Ipn,        Is.EqualTo("FAB-123"));
+            Assert.That(vm.IsBusy,              Is.False);
         }
     }
 }

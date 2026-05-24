@@ -32,6 +32,7 @@ namespace SwInventreeAddin.UI
         private readonly IDocumentPropertyService  _propertyService;
         private readonly IPropertyMappingProvider? _mappingProvider;
         private readonly int                       _ipnPollDelayMs;
+        private readonly bool                      _waitForAutoPartNumber;
 
         // ── Bindable properties ───────────────────────────────────────────────
 
@@ -99,14 +100,16 @@ namespace SwInventreeAddin.UI
             IInventreeClient          client,
             IDocumentPropertyService  propertyService,
             string                    initialName,
-            IPropertyMappingProvider? mappingProvider = null,
-            int                       ipnPollDelayMs  = 500)
+            IPropertyMappingProvider? mappingProvider       = null,
+            int                       ipnPollDelayMs        = 500,
+            bool                      waitForAutoPartNumber = false)
         {
-            _client          = client;
-            _propertyService = propertyService;
-            _mappingProvider = mappingProvider;
-            _ipnPollDelayMs  = ipnPollDelayMs;
-            PartName         = initialName;
+            _client                = client;
+            _propertyService       = propertyService;
+            _mappingProvider       = mappingProvider;
+            _ipnPollDelayMs        = ipnPollDelayMs;
+            _waitForAutoPartNumber = waitForAutoPartNumber;
+            PartName               = initialName;
         }
 
         // ── Methods ───────────────────────────────────────────────────────────
@@ -211,8 +214,9 @@ namespace SwInventreeAddin.UI
                 }
 
                 // InvenTree plugins generate the IPN asynchronously after the POST.
-                // Poll until it appears or 10 seconds (20 × 500 ms) elapse.
-                if (string.IsNullOrEmpty(part.Ipn))
+                // Poll only when the toggle is enabled and the user didn't supply an IPN.
+                bool pollEnabled = _waitForAutoPartNumber && ipnToSubmit == null;
+                if (pollEnabled && string.IsNullOrEmpty(part.Ipn))
                 {
                     const int maxAttempts = 20;
                     for (int i = 0; i < maxAttempts && string.IsNullOrEmpty(part?.Ipn); i++)
@@ -231,13 +235,15 @@ namespace SwInventreeAddin.UI
                 RunOnUiThread(() =>
                 {
                     var mapping = _mappingProvider?.GetMapping() ?? new PropertyMappingConfig();
+                    _propertyService.SetCustomProperty(mapping.PkProperty, pk.ToString());
                     // Only write IPN if we actually received one — avoid blanking the property
                     // if the plugin timed out.
                     if (!string.IsNullOrEmpty(ipn))
                         _propertyService.SetCustomProperty(mapping.IpnProperty, ipn);
                     _propertyService.SetCustomProperty(mapping.NameProperty, name);
 
-                    if (string.IsNullOrEmpty(ipn))
+                    // Show "refresh manually" only if the poll actually ran but IPN didn't arrive.
+                    if (string.IsNullOrEmpty(ipn) && pollEnabled)
                         StatusText = "Part created. Part number not yet generated \u2014 refresh manually once the server assigns it.";
 
                     IsBusy = false;
