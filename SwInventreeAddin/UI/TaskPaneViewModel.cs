@@ -601,7 +601,8 @@ namespace SwInventreeAddin.UI
                         return;
                     }
 
-                    // Auto-write IPN to SW document when the server has one and the document doesn't.
+                    // Write IPN to SW document when the server has one and the document IPN is blank
+                    // so the document is linked by IPN going forward without an explicit Apply.
                     var m      = GetMappingOrDefault();
                     var docIpn = _propertyService.GetCustomProperty(m.IpnProperty);
                     if (!string.IsNullOrEmpty(pkPart.Ipn) && string.IsNullOrEmpty(docIpn))
@@ -610,7 +611,7 @@ namespace SwInventreeAddin.UI
                         PartNumber = pkPart.Ipn;
                     }
 
-                    _session = new PartSyncSession(pkPart, _client!, _propertyService, GetMappingOrDefault());
+                    _session = new PartSyncSession(pkPart, _client!, _propertyService, m);
                     PropertiesSectionVisible = true;
                     RefreshCurrentProperties();
                     NotifySessionProperties();
