@@ -70,6 +70,7 @@ namespace SwInventreeAddin.UI
         private bool   _fetchEnabled;
         private bool   _createPartEnabled;
         private bool   _isDocumentOpen;
+        private bool   _documentPkPresent;
         private bool   _propertiesSectionVisible;
         private StatusSeverity _statusSeverity = StatusSeverity.None;
         private string _bomStatusText = "BOM: Not checked";
@@ -237,7 +238,7 @@ namespace SwInventreeAddin.UI
         }
 
         private bool CanCreatePart() =>
-            _client != null && string.IsNullOrEmpty(_partNumber) && _isDocumentOpen;
+            _client != null && string.IsNullOrEmpty(_partNumber) && _isDocumentOpen && !_documentPkPresent;
 
         /// <summary>BOM status summary text shown in the task pane BOM section.</summary>
         public string BomStatusText
@@ -407,9 +408,29 @@ namespace SwInventreeAddin.UI
 
             if (string.IsNullOrEmpty(partNo))
             {
+                var pkRaw      = _propertyService.GetCustomProperty(mapping.PkProperty);
+                bool pkPresent = int.TryParse(pkRaw, out int pkVal) && pkVal > 0;
+
                 ClearAll();
-                _isDocumentOpen   = true;   // blank part: doc IS open, Create should be enabled
-                CreatePartEnabled = CanCreatePart();
+                _isDocumentOpen    = true;
+                _documentPkPresent = pkPresent;
+
+                if (pkPresent)
+                {
+                    // LINKED-by-PK: blank IPN but a PK is stored — Fetch enabled, Create disabled.
+                    FetchEnabled      = _client != null;
+                    CreatePartEnabled = false;
+                    if (_client == null)
+                        SetStatus("No server configured \u2014 click \u2699 Settings to get started",
+                                  StatusSeverity.Warning);
+                    else
+                        SetStatus(string.Empty, StatusSeverity.None);
+                }
+                else
+                {
+                    CreatePartEnabled = CanCreatePart();
+                }
+
                 NotifyBomVisibility();
                 return;
             }
@@ -445,6 +466,7 @@ namespace SwInventreeAddin.UI
         public void ClearAll()
         {
             _isDocumentOpen          = false;
+            _documentPkPresent       = false;
             PartNumber               = string.Empty;
             CurrentName              = string.Empty;
             CurrentNotes             = string.Empty;

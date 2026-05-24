@@ -1455,3 +1455,112 @@ namespace SwInventreeAddin.Tests
         }
     }
 }
+
+// ── LINKED-by-PK state tests (issue #19) ───────────────────────────────────────
+namespace SwInventreeAddin.Tests
+{
+    using SwInventreeAddin.Tests.Stubs;
+    using SwInventreeAddin.UI;
+
+    [TestFixture]
+    public class LinkedByPkStateTests
+    {
+        private StubInventreeClient         _client;
+        private StubDocumentPropertyService _propertyService;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _client          = new StubInventreeClient();
+            _propertyService = new StubDocumentPropertyService();
+        }
+
+        private TaskPaneViewModel CreateVm() =>
+            new TaskPaneViewModel(_client, _propertyService);
+
+        // ── UNLINKED (IPN blank, PK blank) ────────────────────────────────────
+
+        [Test]
+        public void LoadPartNumber_BlankIpn_BlankPk_FetchDisabled()
+        {
+            _propertyService.Seed("PartNo",       string.Empty);
+            _propertyService.Seed("InvenTree PK", string.Empty);
+
+            var vm = CreateVm();
+
+            Assert.That(vm.FetchEnabled, Is.False);
+        }
+
+        [Test]
+        public void LoadPartNumber_BlankIpn_BlankPk_CreateEnabled()
+        {
+            _propertyService.Seed("PartNo",       string.Empty);
+            _propertyService.Seed("InvenTree PK", string.Empty);
+
+            var vm = CreateVm();
+
+            Assert.That(vm.CreatePartEnabled, Is.True);
+        }
+
+        // ── LINKED-by-PK (IPN blank, PK present) ─────────────────────────────
+
+        [Test]
+        public void LoadPartNumber_BlankIpn_PositivePk_FetchEnabled()
+        {
+            _propertyService.Seed("PartNo",       string.Empty);
+            _propertyService.Seed("InvenTree PK", "42");
+
+            var vm = CreateVm();
+
+            Assert.That(vm.FetchEnabled, Is.True);
+        }
+
+        [Test]
+        public void LoadPartNumber_BlankIpn_PositivePk_CreateDisabled()
+        {
+            _propertyService.Seed("PartNo",       string.Empty);
+            _propertyService.Seed("InvenTree PK", "42");
+
+            var vm = CreateVm();
+
+            Assert.That(vm.CreatePartEnabled, Is.False);
+        }
+
+        [Test]
+        public void LoadPartNumber_BlankIpn_ZeroPk_NotLinkedByPk()
+        {
+            // Zero is not a valid PK — should behave as UNLINKED.
+            _propertyService.Seed("PartNo",       string.Empty);
+            _propertyService.Seed("InvenTree PK", "0");
+
+            var vm = CreateVm();
+
+            Assert.That(vm.FetchEnabled,      Is.False);
+            Assert.That(vm.CreatePartEnabled, Is.True);
+        }
+
+        // ── LINKED-by-IPN (IPN present — existing behaviour unchanged) ────────
+
+        [Test]
+        public void LoadPartNumber_NonBlankIpn_FetchEnabled()
+        {
+            _propertyService.Seed("PartNo",       "TST-001");
+            _propertyService.Seed("InvenTree PK", string.Empty);
+
+            var vm = CreateVm();
+
+            Assert.That(vm.FetchEnabled, Is.True);
+        }
+
+        [Test]
+        public void LoadPartNumber_NonBlankIpn_CreateDisabled()
+        {
+            _propertyService.Seed("PartNo",       "TST-001");
+            _propertyService.Seed("InvenTree PK", string.Empty);
+
+            var vm = CreateVm();
+
+            Assert.That(vm.CreatePartEnabled, Is.False);
+        }
+    }
+}
