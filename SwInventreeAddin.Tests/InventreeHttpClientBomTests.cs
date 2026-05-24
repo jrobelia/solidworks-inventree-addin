@@ -67,7 +67,7 @@ namespace SwInventreeAddin.Tests
                   ""validated"": true,
                   ""substitutes"": [ { ""pk"": 5 } ] }
             ] }";
-            var detailJson = @"{ ""pk"": 10, ""IPN"": ""OA-00130"", ""name"": ""Part"",
+            var detailJson = @"{ ""pk"": 10, ""IPN"": ""PART-00130"", ""name"": ""Part"",
                 ""revision"": """", ""notes"": """", ""description"": """",
                 ""in_stock"": 0, ""ordering"": 0, ""active"": true }";
             var client = CreateClient(new SequentialStub(
@@ -91,7 +91,7 @@ namespace SwInventreeAddin.Tests
                   ""validated"": false,
                   ""substitutes"": [ { ""pk"": 7 } ] }
             ] }";
-            var detailJson = @"{ ""pk"": 10, ""IPN"": ""OA-X"", ""name"": ""P"",
+            var detailJson = @"{ ""pk"": 10, ""IPN"": ""PART-X"", ""name"": ""P"",
                 ""revision"": """", ""notes"": """", ""description"": """",
                 ""in_stock"": 0, ""ordering"": 0, ""active"": true }";
             var lines = await CreateClient(new SequentialStub(
@@ -109,7 +109,7 @@ namespace SwInventreeAddin.Tests
                   ""note"": """", ""consumable"": false, ""optional"": false,
                   ""validated"": false, ""substitutes"": [] }
             ] }";
-            var detailJson = @"{ ""pk"": 20, ""IPN"": ""OA-Y"", ""name"": ""Q"",
+            var detailJson = @"{ ""pk"": 20, ""IPN"": ""PART-Y"", ""name"": ""Q"",
                 ""revision"": """", ""notes"": """", ""description"": """",
                 ""in_stock"": 0, ""ordering"": 0, ""active"": true }";
             var lines = await CreateClient(new SequentialStub(

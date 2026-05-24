@@ -140,13 +140,17 @@ One architectural clean-up done in M3; one still open:
 
 | # | Task | Milestone | Type | Status | Pass / fail condition |
 |---|------|-----------|------|--------|-----------------------|
-| 10 | Remove remaining company-specific conventions (part number naming, filename patterns) | 3 | cleanup | open | No company-specific strings remain; add-in works out of the box for any SW + InvenTree shop |
-| 16 | Auto part-number wait toggle | 3 | build | open | Settings has a checkbox to disable the 10-second IPN generation poll; useful for servers without the auto-numbering plugin |
+| 10 | Remove remaining company-specific conventions (part number naming, filename patterns) | 3 | cleanup | done | No company-specific strings remain; add-in works out of the box for any SW + InvenTree shop |
+| 16 | Auto part-number wait toggle + PK-based Fetch | 3 | build | open | (1) `ServerConfig.WaitForAutoPartNumber` bool (default false); Settings checkbox "Server assigns part numbers automatically"; `CreatePartViewModel` skips poll when false. (2) `LoadPartNumber` reads InvenTree Part PK property when IPN is blank — IPN blank + PK present = LINKED state, Fetch enabled, Create disabled. (3) `FetchPartAsync` uses `GetPartByPkAsync` when IPN is blank; auto-writes IPN to SW Doc if server returns one. (4) `CanCreatePart` requires both IPN and InvenTree Part PK to be blank. (5) `CreatePartAsync` includes response body in error message on non-2xx. |
 | 17 | Link from task pane to InvenTree part in browser | 3 | build | open | Clicking the thumbnail (or a dedicated link) opens the InvenTree part URL in the default browser |
 | 15 | *(stretch)* Expand Create Part flags — Assembly, Testable, Trackable, Purchaseable, Salable, Copy Category Parameters | 3 | build | open | Create Part dialog exposes applicable flags; Component always true; Assembly auto-set for SW assemblies; toggleable flags persist and POST correctly |
 
 ### Done
 
+- Task 10: Company-specific cleanup -- `OA-` prefixed IPN strings replaced with generic `PART-`
+  placeholders in all test fixtures; Pencil design mockup updated. Coml/Fab/Assy naming
+  conventions and IPN_rev filename patterns were never implemented in production code.
+  Verified 2026-05-23.
 - Tasks 7–9: Assembly BOM sync -- `SwAssemblyBomService` reads SW BOM (immediate children,
   IPN + quantity); `BomCompareViewModel` fetches InvenTree BOM and diffs; `BomCompareWindow`
   shows added / updated / matched / InvenTree-only lines with per-line push selection.
