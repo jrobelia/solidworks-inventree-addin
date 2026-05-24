@@ -104,10 +104,11 @@ namespace SwInventreeAddin.Tests.Stubs
 
         // ── CreatePartAsync ────────────────────────────────────────────────────
 
-        public int    PkToReturnOnCreate  { get; set; }
-        public int    LastCreateCategoryPk { get; private set; }
-        public string LastCreateName       { get; private set; } = string.Empty;
-        public bool   ThrowOnCreate        { get; set; }
+        public int       PkToReturnOnCreate   { get; set; }
+        public int       LastCreateCategoryPk  { get; private set; }
+        public string    LastCreateName        { get; private set; } = string.Empty;
+        public bool      ThrowOnCreate         { get; set; }
+        public Exception ThrowOnCreateException { get; set; }
 
         public string LastCreateIpn       { get; private set; } = string.Empty;
 
@@ -116,6 +117,8 @@ namespace SwInventreeAddin.Tests.Stubs
             LastCreateCategoryPk = categoryPk;
             LastCreateName       = name;
             LastCreateIpn        = ipn ?? string.Empty;
+            if (ThrowOnCreateException != null)
+                throw ThrowOnCreateException;
             if (ThrowOnCreate)
                 throw new HttpRequestException("Stub: CreatePart failed");
             return Task.FromResult(PkToReturnOnCreate);

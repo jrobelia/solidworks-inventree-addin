@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Net.Http;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using SwInventreeAddin.InvenTree;
@@ -196,6 +197,22 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.IsBusy,     Is.False);
             // Original value must be unchanged
             Assert.That(_propertyService.GetCustomProperty("PartNo"), Is.EqualTo("ORIGINAL"));
+        }
+
+        [Test]
+        public async Task CreateAsync_ServerValidationError_StatusTextContainsResponseBody()
+        {
+            const string errorBody = @"{""ipn"": [""Part with this IPN already exists.""]}";
+            _client.ThrowOnCreateException = new HttpRequestException(
+                $"InvenTree API returned 400 BadRequest: {errorBody}");
+
+            var vm = CreateVm();
+            vm.SelectedCategory = MakeNode(pk: 7);
+            vm.IpnEntry         = "DUP-001";
+            await vm.CreateAsync();
+
+            Assert.That(vm.StatusText, Does.Contain("Part with this IPN already exists."));
+            Assert.That(vm.IsBusy,     Is.False);
         }
 
         [Test]

@@ -126,6 +126,18 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public void CreatePartAsync_NonSuccessStatus_ExceptionContainsResponseBody()
+        {
+            var errorJson = @"{""ipn"": [""Part with this IPN already exists.""]}";
+            var handler   = new StubHttpMessageHandler(HttpStatusCode.BadRequest, errorJson);
+
+            var ex = Assert.ThrowsAsync<HttpRequestException>(() =>
+                CreateClient(handler).CreatePartAsync(7, "New Part", "DUP-001"));
+
+            Assert.That(ex!.Message, Does.Contain("Part with this IPN already exists."));
+        }
+
+        [Test]
         public async Task CreatePartAsync_WithIpn_SendsIpnInBody()
         {
             var responseJson = @"{""pk"":99,""name"":""New Part""}";
