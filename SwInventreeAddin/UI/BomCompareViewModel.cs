@@ -151,7 +151,14 @@ namespace SwInventreeAddin.UI
             int newCount    = toProcess.Count(l => l.State == BomDiffState.New);
             int updateCount = toProcess.Count(l => l.State == BomDiffState.Conflict);
 
-            if (!ConfirmPush(newCount, updateCount)) return;
+            // Clear any stale result and let the user know the button was pressed.
+            StatusText = "Pushing selected lines to InvenTree…";
+
+            if (!ConfirmPush(newCount, updateCount))
+            {
+                StatusText = string.Empty;
+                return;
+            }
 
             // Verify the assembly part is flagged as Assembly in InvenTree before writing.
             var assemblyPart = await Task.Run(() => _client.GetPartByPkAsync(_assemblyPk));
