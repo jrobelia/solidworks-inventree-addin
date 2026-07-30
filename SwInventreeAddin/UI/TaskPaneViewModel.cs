@@ -539,21 +539,23 @@ namespace SwInventreeAddin.UI
 
             vm.PartCreated += (_, part) =>
             {
+                // A successful create always links the document by PK. Update the PK
+                // cache before re-evaluating button states so LINKED-by-PK is respected
+                // even when the server has not (yet) assigned an IPN.
+                if (part.Pk > 0)
+                {
+                    _documentPkPresent = true;
+                    _documentPk        = part.Pk;
+                }
+
                 PartNumber        = part.Ipn ?? string.Empty;
-                FetchEnabled      = !string.IsNullOrEmpty(part.Ipn);
+                FetchEnabled      = _client != null && (_documentPkPresent || !string.IsNullOrEmpty(_partNumber));
                 CreatePartEnabled = CanCreatePart();
+
                 _session = new PartSyncSession(part, _client!, _propertyService, GetMappingOrDefault());
                 PropertiesSectionVisible = true;
                 RefreshCurrentProperties();
                 NotifySessionProperties();
-
-                // Write PK to SW doc on create (write-on-create only).
-                if (part.Pk > 0)
-                {
-                    var m = GetMappingOrDefault();
-                    _propertyService.SetCustomProperty(m.PkProperty, part.Pk.ToString());
-                    CurrentPk = part.Pk.ToString();
-                }
 
                 SetStatus("Part created in InvenTree.", StatusSeverity.Success);
             };

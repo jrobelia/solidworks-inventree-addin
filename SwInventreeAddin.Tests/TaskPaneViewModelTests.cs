@@ -1654,3 +1654,52 @@ namespace SwInventreeAddin.Tests
         }
     }
 }
+
+// ── PartCreated handler state (issue #17 / #19) ─────────────────────────────────
+namespace SwInventreeAddin.Tests
+{
+    using SwInventreeAddin.InvenTree;
+    using SwInventreeAddin.Tests.Stubs;
+    using SwInventreeAddin.UI;
+
+    [TestFixture]
+    public class PartCreatedStateTests
+    {
+        private StubInventreeClient         _client;
+        private StubDocumentPropertyService _propertyService;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _client          = new StubInventreeClient();
+            _propertyService = new StubDocumentPropertyService();
+
+            _propertyService.Seed("PartNo",       string.Empty);
+            _propertyService.Seed("InvenTree PK", string.Empty);
+            _propertyService.Seed("Description",  "IPN-less Part");
+        }
+
+        [Test]
+        public void OpenCreatePartWindow_PollSkippedBlankIpn_LeavesTaskPaneLinkedByPk()
+        {
+            const int newPk = 55;
+            _client.PkToReturnOnCreate = newPk;
+            _client.PartByPkToReturn   = new InventreePart { Pk = newPk, Ipn = string.Empty, Name = "IPN-less Part" };
+
+            var vm = new TaskPaneViewModel(_client, _propertyService);
+
+            vm.OpenCreatePartWindow(createVm =>
+            {
+                createVm.SelectedCategory = new CategoryNode(new InventreeCategory { Pk = 1, Name = "Resistors" });
+                createVm.CreateAsync().GetAwaiter().GetResult();
+            });
+
+            Assert.That(_propertyService.GetCustomProperty("InvenTree PK"), Is.EqualTo(newPk.ToString()));
+            Assert.That(vm.CurrentPk,       Is.EqualTo(newPk.ToString()));
+            Assert.That(vm.PartNumber,      Is.EqualTo(string.Empty));
+            Assert.That(vm.FetchEnabled,    Is.True);
+            Assert.That(vm.CreatePartEnabled, Is.False);
+            Assert.That(vm.ApplyEnabled,    Is.True);
+        }
+    }
+}
