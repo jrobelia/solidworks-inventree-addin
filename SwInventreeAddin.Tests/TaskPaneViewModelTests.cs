@@ -1257,6 +1257,7 @@ namespace SwInventreeAddin.Tests
 namespace SwInventreeAddin.Tests
 {
     using SwInventreeAddin.InvenTree;
+    using SwInventreeAddin.SolidWorks;
     using SwInventreeAddin.Tests.Stubs;
     using SwInventreeAddin.UI;
 
@@ -1303,6 +1304,24 @@ namespace SwInventreeAddin.Tests
         {
             // Part already has an IPN — Create would overwrite it.
             var vm = CreateVm();   // SetUp seeds PartNo="TST-001"
+            Assert.That(vm.CreatePartEnabled, Is.False);
+        }
+
+        [Test]
+        public void CreatePartEnabled_DrawingDocument_IsFalse()
+        {
+            _propertyService.Seed("PartNo", string.Empty);
+            _propertyService.DocumentTypeToReturn = DocumentType.Drawing;
+            var vm = CreateVm();
+            Assert.That(vm.CreatePartEnabled, Is.False);
+        }
+
+        [Test]
+        public void CreatePartEnabled_UnknownDocument_IsFalse()
+        {
+            _propertyService.Seed("PartNo", string.Empty);
+            _propertyService.DocumentTypeToReturn = DocumentType.Unknown;
+            var vm = CreateVm();
             Assert.That(vm.CreatePartEnabled, Is.False);
         }
 
@@ -1387,6 +1406,26 @@ namespace SwInventreeAddin.Tests
         {
             int callCount = 0;
             var vm = CreateVm(withClient: false);
+            vm.OpenCreatePartWindow(_ => callCount++);
+            Assert.That(callCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void OpenCreatePartWindow_UnknownDocument_DoesNotOpenDialog()
+        {
+            _propertyService.DocumentTypeToReturn = DocumentType.Unknown;
+            int callCount = 0;
+            var vm = CreateVm();
+            vm.OpenCreatePartWindow(_ => callCount++);
+            Assert.That(callCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void OpenCreatePartWindow_DrawingDocument_DoesNotOpenDialog()
+        {
+            _propertyService.DocumentTypeToReturn = DocumentType.Drawing;
+            int callCount = 0;
+            var vm = CreateVm();
             vm.OpenCreatePartWindow(_ => callCount++);
             Assert.That(callCount, Is.EqualTo(0));
         }

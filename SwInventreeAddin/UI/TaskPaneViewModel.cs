@@ -239,7 +239,11 @@ namespace SwInventreeAddin.UI
         }
 
         private bool CanCreatePart() =>
-            _client != null && string.IsNullOrEmpty(_partNumber) && _isDocumentOpen && !_documentPkPresent;
+            _client != null
+            && string.IsNullOrEmpty(_partNumber)
+            && _isDocumentOpen
+            && !_documentPkPresent
+            && (_currentDocumentType == DocumentType.Part || _currentDocumentType == DocumentType.Assembly);
 
         /// <summary>BOM status summary text shown in the task pane BOM section.</summary>
         public string BomStatusText
@@ -546,6 +550,9 @@ namespace SwInventreeAddin.UI
         public void OpenCreatePartWindow(Action<CreatePartViewModel> showDialog)
         {
             if (_client == null) return;
+            if (!_isDocumentOpen) return;
+            if (_currentDocumentType != DocumentType.Part && _currentDocumentType != DocumentType.Assembly)
+                return;
 
             var mapping = GetMappingOrDefault();
             var name    = _propertyService.GetCustomProperty(mapping.NameProperty);
