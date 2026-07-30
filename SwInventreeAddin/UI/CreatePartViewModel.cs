@@ -190,12 +190,31 @@ namespace SwInventreeAddin.UI
             if (!CanCreate()) return;
 
             IsBusy     = true;
-            StatusText = "Creating part\u2026";
+            StatusText = "Checking part number\u2026";
 
             try
             {
                 var categoryPk  = _selectedCategory!.Category.Pk;
                 var ipnToSubmit = string.IsNullOrWhiteSpace(_ipnEntry) ? null : _ipnEntry.Trim();
+
+                // If the user supplied an IPN, make sure it is not already in use.
+                // InvenTree may silently auto-generate a different number for a
+                // duplicate, so a client-side check is needed before creating.
+                if (!string.IsNullOrWhiteSpace(ipnToSubmit))
+                {
+                    var existing = await _client.GetPartByIpnAsync(ipnToSubmit!).ConfigureAwait(false);
+                    if (existing != null)
+                    {
+                        RunOnUiThread(() =>
+                        {
+                            StatusText = $"Part number '{ipnToSubmit}' already exists. Enter a different part number.";
+                            IsBusy     = false;
+                        });
+                        return;
+                    }
+                }
+
+                StatusText = "Creating part\u2026";
                 var pk          = await _client.CreatePartAsync(categoryPk, _partName, ipnToSubmit)
                                                .ConfigureAwait(false);
 

@@ -362,5 +362,28 @@ namespace SwInventreeAddin.Tests
             Assert.That(raisedPart?.Ipn,        Is.EqualTo("FAB-123"));
             Assert.That(vm.IsBusy,              Is.False);
         }
+
+        [Test]
+        public async Task CreateAsync_DuplicateIpn_SetsStatusText_AndDoesNotCreate()
+        {
+            // An existing part already uses the IPN the user entered.
+            _client.PartToReturn = new InventreePart
+            {
+                Pk  = 1,
+                Ipn = "DUP-001",
+                Name = "Existing Part",
+            };
+            _propertyService.Seed("PartNo", "ORIGINAL");
+
+            var vm = CreateVm();
+            vm.SelectedCategory = MakeNode();
+            vm.IpnEntry         = "DUP-001";
+            await vm.CreateAsync();
+
+            Assert.That(vm.StatusText, Does.Contain("already exists").And.Contain("DUP-001"));
+            Assert.That(_client.LastCreateCategoryPk, Is.EqualTo(0), "CreatePartAsync should not be called");
+            Assert.That(_propertyService.GetCustomProperty("PartNo"), Is.EqualTo("ORIGINAL"));
+            Assert.That(vm.IsBusy, Is.False);
+        }
     }
 }
