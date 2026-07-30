@@ -417,26 +417,49 @@ namespace SwInventreeAddin.UI
 
             if (string.IsNullOrEmpty(partNo))
             {
-                ClearAll();
-                _isDocumentOpen    = true;
-                _documentPkPresent = pkPresent;
-                _documentPk        = pkPresent ? pkVal : 0;
-
-                if (pkPresent)
+                if (!pkPresent)
                 {
-                    // LINKED-by-PK: blank IPN but a PK is stored — Fetch enabled, Create disabled.
-                    FetchEnabled      = _client != null;
-                    CreatePartEnabled = false;
+                    // UNLINKED: no IPN and no PK — reset the panel.
+                    ClearAll();
+                    _isDocumentOpen    = true;
+                    CreatePartEnabled = CanCreatePart();
                     if (_client == null)
                         SetStatus("No server configured \u2014 click \u2699 Settings to get started",
                                   StatusSeverity.Warning);
-                    else
-                        SetStatus(string.Empty, StatusSeverity.None);
+                    NotifyBomVisibility();
+                    return;
+                }
+
+                // LINKED-by-PK: blank IPN but a PK is stored.
+                // If a matching session is already loaded, keep it POPULATED instead
+                // of wiping it when SolidWorks fires LoadPartNumber right after a
+                // poll-skipped Create Part.
+                bool sessionMatches = _session != null && _session.Part.Pk == pkVal;
+                if (!sessionMatches)
+                {
+                    ClearAll();
                 }
                 else
                 {
-                    CreatePartEnabled = CanCreatePart();
+                    RefreshCurrentProperties();
+                    NotifySessionProperties();
                 }
+
+                _isDocumentOpen    = true;
+                _documentPkPresent = true;
+                _documentPk        = pkVal;
+                PartNumber         = string.Empty;
+                FetchEnabled       = _client != null;
+                CreatePartEnabled  = false;
+
+                if (_session != null)
+                    PropertiesSectionVisible = true;
+
+                if (_client == null)
+                    SetStatus("No server configured \u2014 click \u2699 Settings to get started",
+                              StatusSeverity.Warning);
+                else if (!sessionMatches)
+                    SetStatus(string.Empty, StatusSeverity.None);
 
                 NotifyBomVisibility();
                 return;
@@ -504,27 +527,14 @@ namespace SwInventreeAddin.UI
 
         /// <summary>
         /// Updates the client reference — called when settings change.
+        /// Re-evaluates the panel against the current document so button states
+        /// (especially FetchEnabled) stay correct after the server is configured.
         /// </summary>
         public void UpdateClient(IInventreeClient? newClient)
         {
             _client = newClient;
             ClearSession();
-
-            if (_client == null)
-            {
-                FetchEnabled      = false;
-                CreatePartEnabled = false;
-                SetStatus("No server configured \u2014 click \u2699 Settings to get started",
-                          StatusSeverity.Warning);
-            }
-            else
-            {
-                FetchEnabled      = true;
-                CreatePartEnabled = CanCreatePart();
-                SetStatus(string.Empty, StatusSeverity.None);
-            }
-
-            NotifyBomVisibility();
+            LoadPartNumber();
         }
 
         /// <summary>

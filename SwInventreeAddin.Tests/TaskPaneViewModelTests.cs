@@ -589,6 +589,20 @@ namespace SwInventreeAddin.Tests
             Assert.That(_vm.FetchEnabled, Is.True);
         }
 
+        [Test]
+        public void UpdateClient_ToNewClient_UnlinkedDocument_FetchDisabled()
+        {
+            // UNLINKED: no IPN, no PK — Load Properties should stay disabled.
+            _propertyService.Seed("PartNo",       string.Empty);
+            _propertyService.Seed("InvenTree PK", string.Empty);
+            _vm = new TaskPaneViewModel(null, _propertyService);
+
+            _vm.UpdateClient(new StubInventreeClient());
+
+            Assert.That(_vm.FetchEnabled, Is.False);
+            Assert.That(_vm.CreatePartEnabled, Is.True);
+        }
+
         // ── Mapping schema check ───────────────────────────────────────────────────
 
         [Test]
@@ -1700,6 +1714,31 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.FetchEnabled,    Is.True);
             Assert.That(vm.CreatePartEnabled, Is.False);
             Assert.That(vm.ApplyEnabled,    Is.True);
+        }
+
+        [Test]
+        public void LoadPartNumber_AfterPollSkippedBlankIpnCreate_PreservesPopulatedState()
+        {
+            const int newPk = 55;
+            _client.PkToReturnOnCreate = newPk;
+            _client.PartByPkToReturn   = new InventreePart { Pk = newPk, Ipn = string.Empty, Name = "IPN-less Part" };
+
+            var vm = new TaskPaneViewModel(_client, _propertyService);
+
+            vm.OpenCreatePartWindow(createVm =>
+            {
+                createVm.SelectedCategory = new CategoryNode(new InventreeCategory { Pk = 1, Name = "Resistors" });
+                createVm.CreateAsync().GetAwaiter().GetResult();
+            });
+
+            // Simulate SolidWorks firing ActiveDocChangeNotify after the dialog closes.
+            vm.LoadPartNumber();
+
+            Assert.That(vm.NamePreview,              Is.EqualTo("IPN-less Part"));
+            Assert.That(vm.PropertiesSectionVisible,   Is.True);
+            Assert.That(vm.ApplyEnabled,               Is.True);
+            Assert.That(vm.FetchEnabled,               Is.True);
+            Assert.That(vm.CreatePartEnabled,          Is.False);
         }
     }
 
