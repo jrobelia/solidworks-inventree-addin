@@ -404,14 +404,19 @@ namespace SwInventreeAddin.UI
                 return;
             }
 
-            var mapping = GetMappingOrDefault();
-            var partNo = _propertyService.GetCustomProperty(mapping.IpnProperty);
+            var mapping    = GetMappingOrDefault();
+            var partNo     = _propertyService.GetCustomProperty(mapping.IpnProperty);
+            var pkRaw      = _propertyService.GetCustomProperty(mapping.PkProperty);
+            bool pkPresent = int.TryParse(pkRaw, out int pkVal) && pkVal > 0;
+
+            // A document switch can leave stale LINKED-by-PK state from the previous part.
+            // Re-sync from the current document before deciding which fetch path to use
+            // and whether the cached session still belongs here.
+            _documentPkPresent = pkPresent;
+            _documentPk        = pkPresent ? pkVal : 0;
 
             if (string.IsNullOrEmpty(partNo))
             {
-                var pkRaw      = _propertyService.GetCustomProperty(mapping.PkProperty);
-                bool pkPresent = int.TryParse(pkRaw, out int pkVal) && pkVal > 0;
-
                 ClearAll();
                 _isDocumentOpen    = true;
                 _documentPkPresent = pkPresent;
@@ -437,14 +442,15 @@ namespace SwInventreeAddin.UI
                 return;
             }
 
+            // Drop the session if it no longer describes this document.
+            if (_session != null &&
+                (_session.Part.Ipn != partNo || _session.Part.Pk != _documentPk))
+                ClearSession();
+
             _isDocumentOpen          = true;
             PartNumber               = partNo;
             PropertiesSectionVisible = true;
             RefreshCurrentProperties();
-
-            // If IPN changed, clear the session so we return to LINKED state.
-            if (_session == null || _session.Part.Ipn != partNo)
-                ClearSession();
 
             // Restore FetchEnabled / CreatePartEnabled / status after ClearSession.
             if (_client == null)

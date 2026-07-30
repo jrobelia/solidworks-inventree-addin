@@ -1702,4 +1702,50 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.ApplyEnabled,    Is.True);
         }
     }
+
+    [TestFixture]
+    public class LoadPartNumberRegressionTests
+    {
+        private StubInventreeClient         _client;
+        private StubDocumentPropertyService _propertyService;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _client          = new StubInventreeClient();
+            _propertyService = new StubDocumentPropertyService();
+        }
+
+        [Test]
+        public async Task SwitchingFromLinkedByPkToIpn_FetchesByIpn_NotStalePk()
+        {
+            // Document 1: blank IPN, PK 42 -> fetched part is loaded
+            _propertyService.Seed("PartNo",       string.Empty);
+            _propertyService.Seed("InvenTree PK", "42");
+            _propertyService.Seed("Description",  "Old doc");
+
+            var vm = new TaskPaneViewModel(_client, _propertyService);
+            _client.PartByPkToReturn = new InventreePart { Pk = 42, Ipn = "OLD-001", Name = "Old Part" };
+            await vm.FetchPartAsync();
+            Assert.That(vm.NamePreview, Is.EqualTo("Old Part"));
+
+            // Document 2: different IPN, no PK -> should fetch by IPN, not stale PK 42
+            _propertyService.Seed("PartNo",       "NEW-001");
+            _propertyService.Seed("InvenTree PK", string.Empty);
+            _propertyService.Seed("Description",  "New doc");
+            vm.LoadPartNumber();
+
+            Assert.That(vm.PartNumber, Is.EqualTo("NEW-001"));
+            Assert.That(vm.FetchEnabled, Is.True);
+            Assert.That(_propertyService.GetCustomProperty("InvenTree PK"), Is.Empty);
+
+            _client.PartByPkToReturn = new InventreePart { Pk = 999, Ipn = "STALE-001", Name = "Stale Part" };
+            _client.PartToReturn   = new InventreePart { Pk = 99, Ipn = "NEW-001", Name = "New Part" };
+
+            await vm.FetchPartAsync();
+
+            Assert.That(vm.NamePreview, Is.EqualTo("New Part").And.Not.EqualTo("Stale Part"));
+            Assert.That(vm.PartNumber,  Is.EqualTo("NEW-001"));
+        }
+    }
 }
