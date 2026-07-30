@@ -546,6 +546,9 @@ namespace SwInventreeAddin.UI
                 {
                     _documentPkPresent = true;
                     _documentPk        = part.Pk;
+
+                    var m = GetMappingOrDefault();
+                    _propertyService.SetCustomProperty(m.PkProperty, part.Pk.ToString());
                 }
 
                 PartNumber        = part.Ipn ?? string.Empty;
