@@ -104,6 +104,39 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(vm.StatusText, Does.Contain("Error"));
             Assert.That(vm.IsBusy, Is.False);
+            Assert.That(vm.IsLoadingCategories, Is.False);
+        }
+
+        [Test]
+        public async Task LoadRootCategoriesAsync_WhenDone_ClearsIsLoadingCategories()
+        {
+            _client.CategoriesToReturn = new List<InventreeCategory>
+            {
+                new InventreeCategory { Pk = 7, Name = "Resistors" },
+            };
+
+            var vm = CreateVm();
+            await vm.LoadRootCategoriesAsync();
+
+            Assert.That(vm.IsLoadingCategories, Is.False);
+        }
+
+        [Test]
+        public async Task CreateAsync_DoesNotSetIsLoadingCategories()
+        {
+            _client.PkToReturnOnCreate = 99;
+            _client.PartByPkToReturn   = new InventreePart
+            {
+                Pk  = 99,
+                Ipn = "R-NEW-001",
+                Name = "New Resistor",
+            };
+
+            var vm = CreateVm();
+            vm.SelectedCategory = MakeNode(pk: 7);
+            await vm.CreateAsync();
+
+            Assert.That(vm.IsLoadingCategories, Is.False);
         }
 
         // ── LoadChildrenAsync ────────────────────────────────────────────────

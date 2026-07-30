@@ -118,7 +118,7 @@
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"
                                Foreground="{StaticResource BrushSubtle}"
-                               Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}" />
+                               Visibility="{Binding IsLoadingCategories, Converter={StaticResource BoolToVis}}" />
 
                     <TreeView x:Name="CategoryTree"
                               ItemsSource="{Binding RootCategories}"

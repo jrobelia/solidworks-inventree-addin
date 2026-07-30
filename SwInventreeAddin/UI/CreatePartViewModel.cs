@@ -84,6 +84,14 @@ namespace SwInventreeAddin.UI
             }
         }
 
+        private bool _isLoadingCategories;
+        /// <summary>True only while the top-level category list is being loaded. Used for the tree overlay.</summary>
+        public bool IsLoadingCategories
+        {
+            get => _isLoadingCategories;
+            private set => Set(ref _isLoadingCategories, value);
+        }
+
         private string _statusText = string.Empty;
         public string StatusText
         {
@@ -122,8 +130,9 @@ namespace SwInventreeAddin.UI
         /// <summary>Loads top-level categories into RootCategories.</summary>
         public async Task LoadRootCategoriesAsync()
         {
-            IsBusy     = true;
-            StatusText = "Loading categories\u2026";
+            IsBusy             = true;
+            IsLoadingCategories = true;
+            StatusText         = "Loading categories\u2026";
 
             try
             {
@@ -142,7 +151,11 @@ namespace SwInventreeAddin.UI
             }
             finally
             {
-                RunOnUiThread(() => IsBusy = false);
+                RunOnUiThread(() =>
+                {
+                    IsBusy             = false;
+                    IsLoadingCategories = false;
+                });
             }
         }
 
