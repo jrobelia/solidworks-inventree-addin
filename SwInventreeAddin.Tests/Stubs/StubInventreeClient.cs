@@ -74,8 +74,8 @@ namespace SwInventreeAddin.Tests.Stubs
         public Exception? ThrowOnDownload        { get; set; }
 
         /// <summary>
-        /// When true, client methods return uncompleted tasks that complete on the thread pool.
-        /// This lets Create Part tests exercise the WPF thread-marshalling path.
+        /// When true, GetPartByIpnAsync returns a task that completes on the thread pool.
+        /// This lets Create Part tests exercise the WPF UI-thread marshalling path.
         /// </summary>
         public bool ForceAsynchronous { get; set; }
 

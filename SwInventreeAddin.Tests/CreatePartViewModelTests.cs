@@ -431,13 +431,13 @@ namespace SwInventreeAddin.Tests
             SynchronizationContext.SetSynchronizationContext(uiContext);
             try
             {
-                _client.ForceAsynchronous = true;
-                _client.PkToReturnOnCreate = 77;
-                _client.PartByPkToReturn = new InventreePart { Pk = 77, Ipn = "UNIQUE-001", Name = "Custom" };
-                _propertyService.Seed("PartNo", string.Empty);
+                _client.ForceAsynchronous    = true;
+                _client.PkToReturnOnCreate   = 77;
+                _client.PartByPkToReturn     = new InventreePart { Pk = 77, Ipn = "UNIQUE-001", Name = "Custom" };
+                _propertyService.Seed("PartNo",      string.Empty);
                 _propertyService.Seed("Description", string.Empty);
 
-                var vm = new CreatePartViewModel(_client, _propertyService, "Custom Part");
+                var vm = CreateVm("Custom Part");
                 int offUiPropertyChangedCount = 0;
                 vm.PropertyChanged += (_, __) =>
                 {
@@ -465,11 +465,11 @@ namespace SwInventreeAddin.Tests
             }
         }
 
-        // Helpers that simulate a WPF UI thread so we can catch cross-thread property changes.
+        // ── Helpers ───────────────────────────────────────────────────────────
 
         private sealed class PumpingSynchronizationContext : SynchronizationContext
         {
-            private readonly Thread _uiThread;
+            private readonly Thread                                                        _uiThread;
             private readonly ConcurrentQueue<(SendOrPostCallback Callback, object? State)> _queue
                 = new ConcurrentQueue<(SendOrPostCallback, object?)>();
 
