@@ -84,7 +84,8 @@ Set-ItemProperty -Path $regPath -Name "DisplayName"     -Value "SwInventreeAddin
 Set-ItemProperty -Path $regPath -Name "DisplayVersion"  -Value $version
 Set-ItemProperty -Path $regPath -Name "Publisher"       -Value "SwInventreeAddin"
 Set-ItemProperty -Path $regPath -Name "InstallLocation" -Value $installDir
-Set-ItemProperty -Path $regPath -Name "UninstallString" -Value $uninstallBat
+Set-ItemProperty -Path $regPath -Name "UninstallString" -Value "`"$uninstallBat`""
+Set-ItemProperty -Path $regPath -Name "QuietUninstallString" -Value "`"$uninstallBat`""
 Set-ItemProperty -Path $regPath -Name "NoModify"        -Value 1 -Type DWord
 Set-ItemProperty -Path $regPath -Name "NoRepair"        -Value 1 -Type DWord
 Write-Host "  Registered as version $version"
