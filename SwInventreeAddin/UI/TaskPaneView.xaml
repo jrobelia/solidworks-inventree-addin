@@ -181,23 +181,57 @@
                         </Button>
 
                         <!-- Thumbnail on InvenTree side -->
-                        <Grid Grid.Column="2"
-                              Width="120" Height="120"
-                              HorizontalAlignment="Center">
-                            <!-- Grey placeholder box (always visible) -->
-                            <Border Background="#FFE0E0E0" CornerRadius="4" />
-                            <!-- No-image icon (only when InvenTree data loaded but no thumbnail) -->
-                            <TextBlock Text="&#x1F5BC;"
-                                       FontSize="36"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"
-                                       Foreground="#FF888888"
-                                       Visibility="{Binding PushImageVisible, Converter={StaticResource BoolToVis}}" />
-                            <!-- Actual thumbnail paints over placeholder when loaded -->
-                            <Image Source="{Binding ThumbnailBytes, Converter={StaticResource ThumbConverter}}"
-                                   Stretch="Uniform"
-                                   RenderOptions.BitmapScalingMode="HighQuality" />
-                        </Grid>
+                        <Border Grid.Column="2"
+                                Width="120" Height="120"
+                                HorizontalAlignment="Center"
+                                CornerRadius="4"
+                                Background="Transparent"
+                                ToolTip="View in InvenTree"
+                                MouseLeftButtonUp="Thumbnail_Click">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="BorderBrush" Value="Transparent" />
+                                    <Setter Property="BorderThickness" Value="2" />
+                                    <Setter Property="Cursor" Value="Arrow" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding PartLinkEnabled}" Value="True">
+                                            <Setter Property="Cursor" Value="Hand" />
+                                        </DataTrigger>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding PartLinkEnabled}" Value="True" />
+                                                <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}" Value="True" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="BorderBrush" Value="{StaticResource BrushAccentBlue}" />
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Grid>
+                                <!-- Grey placeholder box (always visible) -->
+                                <Border Background="#FFE0E0E0" CornerRadius="4" />
+                                <!-- No-image icon (only when InvenTree data loaded but no thumbnail) -->
+                                <TextBlock Text="&#x1F5BC;"
+                                           FontSize="36"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Foreground="#FF888888"
+                                           Visibility="{Binding PushImageVisible, Converter={StaticResource BoolToVis}}" />
+                                <!-- Actual thumbnail paints over placeholder when loaded -->
+                                <Image Source="{Binding ThumbnailBytes, Converter={StaticResource ThumbConverter}}"
+                                       Stretch="Uniform"
+                                       RenderOptions.BitmapScalingMode="HighQuality" />
+                                <!-- Link affordance -->
+                                <TextBlock Text="&#xE71B;"
+                                           FontFamily="Segoe MDL2 Assets"
+                                           FontSize="14"
+                                           Foreground="White"
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Bottom"
+                                           Margin="0,0,4,4"
+                                           Visibility="{Binding PartLinkEnabled, Converter={StaticResource BoolToVis}}" />
+                            </Grid>
+                        </Border>
                     </Grid>
                     <TextBlock Text="Name"
                                Style="{StaticResource FieldLabelStyle}" />

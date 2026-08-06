@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Drawing;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -57,6 +58,13 @@ namespace SwInventreeAddin.UI
         /// Default always proceeds.
         /// </summary>
         public Func<IReadOnlyList<InventreePart>, InventreePart, bool> ConfirmDuplicateIpn { get; set; } = (_, __) => true;
+
+        /// <summary>
+        /// Called when the InvenTree thumbnail is clicked and a part URL is available.
+        /// Defaults to opening the URL in the system's default browser.
+        /// </summary>
+        public Action<string> OpenBrowserUrl { get; set; } =
+            url => Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
 
         // ── Bindable properties ───────────────────────────────────────────────
 
@@ -154,6 +162,9 @@ namespace SwInventreeAddin.UI
 
         /// <summary>Controls Push Image button visibility.</summary>
         public bool PushImageVisible        => _session != null;
+
+        /// <summary>True when the InvenTree thumbnail is clickable and links to the part page.</summary>
+        public bool PartLinkEnabled         => _session != null;
 
         /// <summary>Current SolidWorks document Name / Description value.</summary>
         public string CurrentName
@@ -382,6 +393,20 @@ namespace SwInventreeAddin.UI
         /// <summary>Compare BOM button — raises the CompareBomRequested event.</summary>
         public void RequestCompareBom() =>
             CompareBomRequested?.Invoke(this, EventArgs.Empty);
+
+        /// <summary>
+        /// Opens the current InvenTree part in the default system browser.
+        /// Does nothing when no part has been fetched.
+        /// </summary>
+        public void OpenPartInBrowser()
+        {
+            if (!PartLinkEnabled) return;
+
+            var url = _client?.GetPartWebUrl(_session!.Part.Pk);
+            if (url == null) return;
+
+            OpenBrowserUrl(url);
+        }
 
         // ── Behaviour ─────────────────────────────────────────────────────────
 
@@ -964,6 +989,7 @@ namespace SwInventreeAddin.UI
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PushDescriptionEnabled)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PushRevisionVisible)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PushImageVisible)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PartLinkEnabled)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NameMatch)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NotesMatch)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RevisionMatch)));

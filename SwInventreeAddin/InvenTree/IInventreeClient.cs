@@ -43,5 +43,9 @@ namespace SwInventreeAddin.InvenTree
         /// <summary>Returns ALL parts matching the given IPN. May return 0, 1, or many.
         /// Never truncates. Callers handle the multi-result case explicitly.</summary>
         Task<IReadOnlyList<InventreePart>> GetPartsByIpnAsync(string ipn);
+
+        /// <summary>Builds the public InvenTree part detail URL for the given PK.
+        /// Returns null when no server base address is configured.</summary>
+        string? GetPartWebUrl(int pk);
     }
 }

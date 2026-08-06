@@ -138,6 +138,36 @@ namespace SwInventreeAddin.Tests
             Assert.ThrowsAsync<HttpRequestException>(() =>
                 CreateClient(handler).GetServerInfoAsync());
         }
+
+        // --- GetPartWebUrl ---
+
+        [Test]
+        public void GetPartWebUrl_KnownPk_ReturnsPartUrl()
+        {
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "[]");
+            var url = CreateClient(handler).GetPartWebUrl(42);
+            Assert.That(url, Is.EqualTo("http://inventree.example.com/part/42/"));
+        }
+
+        [Test]
+        public void GetPartWebUrl_BaseAddressWithTrailingSlash_Normalises()
+        {
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "[]");
+            var http = new HttpClient(handler) { BaseAddress = new Uri(BaseUrl + "/") };
+            var client = new InventreeHttpClient(http, ApiKey);
+            var url = client.GetPartWebUrl(42);
+            Assert.That(url, Is.EqualTo("http://inventree.example.com/part/42/"));
+        }
+
+        [Test]
+        public void GetPartWebUrl_NoBaseAddress_ReturnsNull()
+        {
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "[]");
+            var http = new HttpClient(handler) { BaseAddress = null };
+            var client = new InventreeHttpClient(http, ApiKey);
+            var url = client.GetPartWebUrl(42);
+            Assert.That(url, Is.Null);
+        }
     }
 
     // ---------------------------------------------------------------------------

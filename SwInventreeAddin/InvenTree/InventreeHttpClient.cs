@@ -412,5 +412,19 @@ namespace SwInventreeAddin.InvenTree
                 ApiVersion    = root.TryGetProperty("apiVersion", out var v) ? v.GetInt32() : 0,
             };
         }
+
+        /// <summary>
+        /// Builds the public InvenTree part detail URL relative to the configured base address.
+        /// Returns null when no base address has been set.
+        /// </summary>
+        public string? GetPartWebUrl(int pk)
+        {
+            var baseAddress = _httpClient.BaseAddress;
+            if (baseAddress == null)
+                return null;
+
+            var baseUrl = baseAddress.ToString().TrimEnd('/');
+            return $"{baseUrl}/part/{pk}/";
+        }
     }
 }
