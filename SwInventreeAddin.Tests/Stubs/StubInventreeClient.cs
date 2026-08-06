@@ -24,7 +24,9 @@ namespace SwInventreeAddin.Tests.Stubs
         public Task<InventreePart?> GetPartByIpnAsync(string ipn)
         {
             LastIpnRequested = ipn;
-            return Task.FromResult(PartToReturn);
+            return ForceAsynchronous
+                ? Task.Run(() => PartToReturn)
+                : Task.FromResult(PartToReturn);
         }
 
         public Task UpdatePartRevisionAsync(int pk, string revision)
@@ -70,6 +72,12 @@ namespace SwInventreeAddin.Tests.Stubs
         public byte[]?   ThumbnailBytesToReturn { get; set; }
         public int        DownloadImageCallCount { get; private set; }
         public Exception? ThrowOnDownload        { get; set; }
+
+        /// <summary>
+        /// When true, client methods return uncompleted tasks that complete on the thread pool.
+        /// This lets Create Part tests exercise the WPF thread-marshalling path.
+        /// </summary>
+        public bool ForceAsynchronous { get; set; }
 
         public Task<byte[]?> DownloadImageAsync(string url)
         {

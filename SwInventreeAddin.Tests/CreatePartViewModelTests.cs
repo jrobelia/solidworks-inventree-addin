@@ -1,5 +1,9 @@
+using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using SwInventreeAddin.InvenTree;
@@ -418,5 +422,84 @@ namespace SwInventreeAddin.Tests
             Assert.That(_propertyService.GetCustomProperty("PartNo"), Is.EqualTo("ORIGINAL"));
             Assert.That(vm.IsBusy, Is.False);
         }
+
+        [Test]
+        public void CreateAsync_UserSuppliedUniqueIpn_DoesNotUpdatePropertiesOffUiThread()
+        {
+            var previousContext = SynchronizationContext.Current;
+            var uiContext = new PumpingSynchronizationContext();
+            SynchronizationContext.SetSynchronizationContext(uiContext);
+            try
+            {
+                _client.ForceAsynchronous = true;
+                _client.PkToReturnOnCreate = 77;
+                _client.PartByPkToReturn = new InventreePart { Pk = 77, Ipn = "UNIQUE-001", Name = "Custom" };
+                _propertyService.Seed("PartNo", string.Empty);
+                _propertyService.Seed("Description", string.Empty);
+
+                var vm = new CreatePartViewModel(_client, _propertyService, "Custom Part");
+                int offUiPropertyChangedCount = 0;
+                vm.PropertyChanged += (_, __) =>
+                {
+                    if (!uiContext.IsOnUiThread)
+                        Interlocked.Increment(ref offUiPropertyChangedCount);
+                };
+
+                vm.SelectedCategory = MakeNode(pk: 7);
+                vm.IpnEntry = "UNIQUE-001";
+
+                var createTask = vm.CreateAsync();
+                Assert.That(createTask.Wait(TimeSpan.FromSeconds(5)), Is.True, "CreateAsync did not complete");
+
+                uiContext.PumpAll(TimeSpan.FromMilliseconds(50));
+
+                Assert.That(offUiPropertyChangedCount, Is.EqualTo(0), "A bound property was updated off the UI thread");
+                Assert.That(_client.LastCreateIpn, Is.EqualTo("UNIQUE-001"));
+                Assert.That(_propertyService.GetCustomProperty("PartNo"), Is.EqualTo("UNIQUE-001"));
+                Assert.That(vm.IsBusy, Is.False);
+                Assert.That(vm.StatusText, Does.Not.Contain("Error"));
+            }
+            finally
+            {
+                SynchronizationContext.SetSynchronizationContext(previousContext);
+            }
+        }
+
+        // Helpers that simulate a WPF UI thread so we can catch cross-thread property changes.
+
+        private sealed class PumpingSynchronizationContext : SynchronizationContext
+        {
+            private readonly Thread _uiThread;
+            private readonly ConcurrentQueue<(SendOrPostCallback Callback, object? State)> _queue
+                = new ConcurrentQueue<(SendOrPostCallback, object?)>();
+
+            public PumpingSynchronizationContext() => _uiThread = Thread.CurrentThread;
+
+            public bool IsOnUiThread => Thread.CurrentThread == _uiThread;
+
+            public override void Post(SendOrPostCallback d, object? state)
+                => _queue.Enqueue((d, state));
+
+            public void PumpAll(TimeSpan idleTimeout)
+            {
+                var sw = Stopwatch.StartNew();
+                while (true)
+                {
+                    if (_queue.TryDequeue(out var work))
+                    {
+                        SetSynchronizationContext(this);
+                        work.Callback(work.State);
+                        sw = Stopwatch.StartNew();
+                        continue;
+                    }
+
+                    if (sw.Elapsed >= idleTimeout)
+                        break;
+
+                    Thread.Sleep(1);
+                }
+            }
+        }
+
     }
 }

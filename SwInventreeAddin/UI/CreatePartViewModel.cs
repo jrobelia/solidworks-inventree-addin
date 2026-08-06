@@ -227,7 +227,7 @@ namespace SwInventreeAddin.UI
                     }
                 }
 
-                StatusText = "Creating part\u2026";
+                RunOnUiThread(() => StatusText = "Creating part\u2026");
                 var pk          = await _client.CreatePartAsync(categoryPk, _partName, ipnToSubmit)
                                                .ConfigureAwait(false);
 
