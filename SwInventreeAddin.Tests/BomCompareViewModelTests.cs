@@ -281,6 +281,44 @@ namespace SwInventreeAddin.Tests
             Assert.That(_client.CreatedBomLines.Count, Is.EqualTo(0));
         }
 
+        [Test]
+        public async Task PushAsync_SetsWorkingStatusBeforeConfirm()
+        {
+            _bomService.LinesToReturn.Add(new SwBomLine { SubPartPk = 10, Quantity = 1 });
+            _client.BomLinesToReturn = new List<InventreeBomLine>();
+
+            var vm = CreateVm();
+            await vm.LoadAsync();
+            vm.Lines[0].IsChecked = true;
+
+            string? statusAtConfirm = null;
+            vm.ConfirmPush = (created, updated) =>
+            {
+                statusAtConfirm = vm.StatusText;
+                return true;
+            };
+
+            await vm.PushAsync();
+
+            Assert.That(statusAtConfirm, Does.Contain("Pushing selected lines to InvenTree"));
+            Assert.That(vm.StatusText, Does.Contain("created"));
+        }
+
+        [Test]
+        public async Task PushAsync_WhenCancelled_ClearsWorkingStatus()
+        {
+            _bomService.LinesToReturn.Add(new SwBomLine { SubPartPk = 10, Quantity = 1 });
+            _client.BomLinesToReturn = new List<InventreeBomLine>();
+
+            var vm = CreateVm();
+            await vm.LoadAsync();
+            vm.Lines[0].IsChecked = true;
+            vm.ConfirmPush = (created, updated) => false;
+            await vm.PushAsync();
+
+            Assert.That(vm.StatusText, Is.EqualTo(string.Empty));
+        }
+
         // ── Sort ──────────────────────────────────────────────────────────────
 
         [Test]

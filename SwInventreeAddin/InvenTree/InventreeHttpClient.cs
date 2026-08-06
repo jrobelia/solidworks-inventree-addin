@@ -177,8 +177,11 @@ namespace SwInventreeAddin.InvenTree
             var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                 throw new HttpRequestException(
-                    $"InvenTree API returned {(int)response.StatusCode} {response.StatusCode}");
+                    $"InvenTree API returned {(int)response.StatusCode} {response.StatusCode}: {errorBody}");
+            }
 
             var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
             using var doc = JsonDocument.Parse(json);

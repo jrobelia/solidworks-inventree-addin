@@ -70,6 +70,8 @@ namespace SwInventreeAddin.UI
         private bool   _fetchEnabled;
         private bool   _createPartEnabled;
         private bool   _isDocumentOpen;
+        private bool   _documentPkPresent;
+        private int    _documentPk;
         private bool   _propertiesSectionVisible;
         private StatusSeverity _statusSeverity = StatusSeverity.None;
         private string _bomStatusText = "BOM: Not checked";
@@ -237,7 +239,11 @@ namespace SwInventreeAddin.UI
         }
 
         private bool CanCreatePart() =>
-            _client != null && string.IsNullOrEmpty(_partNumber) && _isDocumentOpen;
+            _client != null
+            && string.IsNullOrEmpty(_partNumber)
+            && _isDocumentOpen
+            && !_documentPkPresent
+            && (_currentDocumentType == DocumentType.Part || _currentDocumentType == DocumentType.Assembly);
 
         /// <summary>BOM status summary text shown in the task pane BOM section.</summary>
         public string BomStatusText
@@ -330,6 +336,13 @@ namespace SwInventreeAddin.UI
         /// </summary>
         private readonly SynchronizationContext? _uiContext;
 
+        /// <summary>
+        /// When true, the Create Part flow polls InvenTree for a server-assigned IPN.
+        /// When false (default), the poll is skipped and the dialog closes immediately.
+        /// Set from <see cref="ServerConfig.WaitForAutoPartNumber"/> after config loads.
+        /// </summary>
+        public bool WaitForAutoPartNumber { get; set; }
+
         // ── Constructors ──────────────────────────────────────────────────────
 
         /// <summary>Two-service constructor (no viewport capture — e.g. unit tests).</summary>
@@ -395,26 +408,76 @@ namespace SwInventreeAddin.UI
                 return;
             }
 
-            var mapping = GetMappingOrDefault();
-            var partNo = _propertyService.GetCustomProperty(mapping.IpnProperty);
+            var mapping    = GetMappingOrDefault();
+            var partNo     = _propertyService.GetCustomProperty(mapping.IpnProperty);
+            var pkRaw      = _propertyService.GetCustomProperty(mapping.PkProperty);
+            bool pkPresent = int.TryParse(pkRaw, out int pkVal) && pkVal > 0;
+
+            // A document switch can leave stale LINKED-by-PK state from the previous part.
+            // Re-sync from the current document before deciding which fetch path to use
+            // and whether the cached session still belongs here.
+            _documentPkPresent = pkPresent;
+            _documentPk        = pkPresent ? pkVal : 0;
 
             if (string.IsNullOrEmpty(partNo))
             {
-                ClearAll();
-                _isDocumentOpen   = true;   // blank part: doc IS open, Create should be enabled
-                CreatePartEnabled = CanCreatePart();
+                if (!pkPresent)
+                {
+                    // UNLINKED: no IPN and no PK — reset the panel.
+                    ClearAll();
+                    _isDocumentOpen    = true;
+                    CreatePartEnabled = CanCreatePart();
+                    if (_client == null)
+                        SetStatus("No server configured \u2014 click \u2699 Settings to get started",
+                                  StatusSeverity.Warning);
+                    NotifyBomVisibility();
+                    return;
+                }
+
+                // LINKED-by-PK: blank IPN but a PK is stored.
+                // If a matching session is already loaded, keep it POPULATED instead
+                // of wiping it when SolidWorks fires LoadPartNumber right after a
+                // poll-skipped Create Part.
+                bool sessionMatches = _session != null && _session.Part.Pk == pkVal;
+                if (!sessionMatches)
+                {
+                    ClearAll();
+                }
+                else
+                {
+                    RefreshCurrentProperties();
+                    NotifySessionProperties();
+                }
+
+                _isDocumentOpen    = true;
+                _documentPkPresent = true;
+                _documentPk        = pkVal;
+                PartNumber         = string.Empty;
+                FetchEnabled       = _client != null;
+                CreatePartEnabled  = false;
+
+                if (_session != null)
+                    PropertiesSectionVisible = true;
+
+                if (_client == null)
+                    SetStatus("No server configured \u2014 click \u2699 Settings to get started",
+                              StatusSeverity.Warning);
+                else if (!sessionMatches)
+                    SetStatus(string.Empty, StatusSeverity.None);
+
                 NotifyBomVisibility();
                 return;
             }
+
+            // Drop the session if it no longer describes this document.
+            if (_session != null &&
+                (_session.Part.Ipn != partNo || _session.Part.Pk != _documentPk))
+                ClearSession();
 
             _isDocumentOpen          = true;
             PartNumber               = partNo;
             PropertiesSectionVisible = true;
             RefreshCurrentProperties();
-
-            // If IPN changed, clear the session so we return to LINKED state.
-            if (_session == null || _session.Part.Ipn != partNo)
-                ClearSession();
 
             // Restore FetchEnabled / CreatePartEnabled / status after ClearSession.
             if (_client == null)
@@ -438,6 +501,8 @@ namespace SwInventreeAddin.UI
         public void ClearAll()
         {
             _isDocumentOpen          = false;
+            _documentPkPresent       = false;
+            _documentPk              = 0;
             PartNumber               = string.Empty;
             CurrentName              = string.Empty;
             CurrentNotes             = string.Empty;
@@ -466,27 +531,14 @@ namespace SwInventreeAddin.UI
 
         /// <summary>
         /// Updates the client reference — called when settings change.
+        /// Re-evaluates the panel against the current document so button states
+        /// (especially FetchEnabled) stay correct after the server is configured.
         /// </summary>
         public void UpdateClient(IInventreeClient? newClient)
         {
             _client = newClient;
             ClearSession();
-
-            if (_client == null)
-            {
-                FetchEnabled      = false;
-                CreatePartEnabled = false;
-                SetStatus("No server configured \u2014 click \u2699 Settings to get started",
-                          StatusSeverity.Warning);
-            }
-            else
-            {
-                FetchEnabled      = true;
-                CreatePartEnabled = CanCreatePart();
-                SetStatus(string.Empty, StatusSeverity.None);
-            }
-
-            NotifyBomVisibility();
+            LoadPartNumber();
         }
 
         /// <summary>
@@ -498,29 +550,38 @@ namespace SwInventreeAddin.UI
         public void OpenCreatePartWindow(Action<CreatePartViewModel> showDialog)
         {
             if (_client == null) return;
+            if (!_isDocumentOpen) return;
+            if (_currentDocumentType != DocumentType.Part && _currentDocumentType != DocumentType.Assembly)
+                return;
 
             var mapping = GetMappingOrDefault();
             var name    = _propertyService.GetCustomProperty(mapping.NameProperty);
 
-            var vm = new CreatePartViewModel(_client, _propertyService, name, _mappingProvider);
+            var vm = new CreatePartViewModel(_client, _propertyService, name, _mappingProvider,
+                                             waitForAutoPartNumber: WaitForAutoPartNumber);
 
             vm.PartCreated += (_, part) =>
             {
+                // A successful create always links the document by PK. Update the PK
+                // cache before re-evaluating button states so LINKED-by-PK is respected
+                // even when the server has not (yet) assigned an IPN.
+                if (part.Pk > 0)
+                {
+                    _documentPkPresent = true;
+                    _documentPk        = part.Pk;
+
+                    var m = GetMappingOrDefault();
+                    _propertyService.SetCustomProperty(m.PkProperty, part.Pk.ToString());
+                }
+
                 PartNumber        = part.Ipn ?? string.Empty;
-                FetchEnabled      = !string.IsNullOrEmpty(part.Ipn);
+                FetchEnabled      = _client != null && (_documentPkPresent || !string.IsNullOrEmpty(_partNumber));
                 CreatePartEnabled = CanCreatePart();
+
                 _session = new PartSyncSession(part, _client!, _propertyService, GetMappingOrDefault());
                 PropertiesSectionVisible = true;
                 RefreshCurrentProperties();
                 NotifySessionProperties();
-
-                // Write PK to SW doc on create (write-on-create only).
-                if (part.Pk > 0)
-                {
-                    var m = GetMappingOrDefault();
-                    _propertyService.SetCustomProperty(m.PkProperty, part.Pk.ToString());
-                    CurrentPk = part.Pk.ToString();
-                }
 
                 SetStatus("Part created in InvenTree.", StatusSeverity.Success);
             };
@@ -535,6 +596,59 @@ namespace SwInventreeAddin.UI
         {
             RefreshCurrentProperties();
 
+            // ── LINKED-by-PK path ─────────────────────────────────────────────
+            if (_documentPkPresent && _documentPk > 0)
+            {
+                SetStatus("Fetching from InvenTree\u2026", StatusSeverity.None);
+                ClearSession();
+
+                if (_client == null)
+                {
+                    SetStatus("No server configured \u2014 click \u2699 Settings to get started",
+                              StatusSeverity.Warning);
+                    return;
+                }
+
+                InventreePart? pkPart  = null;
+                Exception?     pkError = null;
+
+                try   { pkPart = await _client.GetPartByPkAsync(_documentPk).ConfigureAwait(false); }
+                catch (Exception ex) { pkError = ex; }
+
+                RunOnUiThread(() =>
+                {
+                    if (pkError != null)
+                    {
+                        SetStatus($"Error: {pkError.Message}", StatusSeverity.Error);
+                        return;
+                    }
+
+                    if (pkPart == null)
+                    {
+                        SetStatus($"No part found in InvenTree for PK: {_documentPk}", StatusSeverity.Warning);
+                        return;
+                    }
+
+                    // Write IPN to SW document when the server has one and the document IPN is blank
+                    // so the document is linked by IPN going forward without an explicit Apply.
+                    var m      = GetMappingOrDefault();
+                    var docIpn = _propertyService.GetCustomProperty(m.IpnProperty);
+                    if (!string.IsNullOrEmpty(pkPart.Ipn) && string.IsNullOrEmpty(docIpn))
+                    {
+                        _propertyService.SetCustomProperty(m.IpnProperty, pkPart.Ipn);
+                        PartNumber = pkPart.Ipn;
+                    }
+
+                    _session = new PartSyncSession(pkPart, _client!, _propertyService, m);
+                    PropertiesSectionVisible = true;
+                    RefreshCurrentProperties();
+                    NotifySessionProperties();
+                    SetStatus(string.Empty, StatusSeverity.None);
+                });
+                return;
+            }
+
+            // ── LINKED-by-IPN path (existing behaviour) ────────────────────────
             var ipn = PartNumber;
             if (string.IsNullOrEmpty(ipn))
             {

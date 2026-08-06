@@ -16,5 +16,11 @@
         /// Case-insensitive. Defaults to "inventree".
         /// </summary>
         public string BomKeyword { get; set; } = "inventree";
+
+        /// <summary>
+        /// When true, the Create Part flow polls InvenTree after creation, waiting
+        /// for a server-assigned part number. When false (default), the poll is skipped.
+        /// </summary>
+        public bool WaitForAutoPartNumber { get; set; } = false;
     }
 }

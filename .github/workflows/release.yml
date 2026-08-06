@@ -1,0 +1,42 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  release:
+    types: [created]
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: self-hosted
+
+    steps:
+      - name: Check SolidWorks is not running
+        shell: pwsh
+        run: |
+          $sw = Get-Process -Name SLDWORKS -ErrorAction SilentlyContinue
+          if ($sw) {
+            Write-Error "SolidWorks is running. Close SolidWorks before building (it holds a lock on the add-in DLL)."
+            exit 1
+          }
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build installer package
+        shell: pwsh
+        run: |
+          Set-StrictMode -Version Latest
+          .\Installer\Package.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: Installer/SwInventreeAddin-*.zip
+          fail_on_unmatched_files: true

@@ -24,7 +24,9 @@ namespace SwInventreeAddin.Tests.Stubs
         public Task<InventreePart?> GetPartByIpnAsync(string ipn)
         {
             LastIpnRequested = ipn;
-            return Task.FromResult(PartToReturn);
+            return ForceAsynchronous
+                ? Task.Run(() => PartToReturn)
+                : Task.FromResult(PartToReturn);
         }
 
         public Task UpdatePartRevisionAsync(int pk, string revision)
@@ -71,6 +73,12 @@ namespace SwInventreeAddin.Tests.Stubs
         public int        DownloadImageCallCount { get; private set; }
         public Exception? ThrowOnDownload        { get; set; }
 
+        /// <summary>
+        /// When true, GetPartByIpnAsync returns a task that completes on the thread pool.
+        /// This lets Create Part tests exercise the WPF UI-thread marshalling path.
+        /// </summary>
+        public bool ForceAsynchronous { get; set; }
+
         public Task<byte[]?> DownloadImageAsync(string url)
         {
             DownloadImageCallCount++;
@@ -104,10 +112,11 @@ namespace SwInventreeAddin.Tests.Stubs
 
         // ── CreatePartAsync ────────────────────────────────────────────────────
 
-        public int    PkToReturnOnCreate  { get; set; }
-        public int    LastCreateCategoryPk { get; private set; }
-        public string LastCreateName       { get; private set; } = string.Empty;
-        public bool   ThrowOnCreate        { get; set; }
+        public int        PkToReturnOnCreate    { get; set; }
+        public int        LastCreateCategoryPk   { get; private set; }
+        public string     LastCreateName         { get; private set; } = string.Empty;
+        public bool       ThrowOnCreate          { get; set; }
+        public Exception? ThrowOnCreateException { get; set; }
 
         public string LastCreateIpn       { get; private set; } = string.Empty;
 
@@ -116,6 +125,8 @@ namespace SwInventreeAddin.Tests.Stubs
             LastCreateCategoryPk = categoryPk;
             LastCreateName       = name;
             LastCreateIpn        = ipn ?? string.Empty;
+            if (ThrowOnCreateException != null)
+                throw ThrowOnCreateException;
             if (ThrowOnCreate)
                 throw new HttpRequestException("Stub: CreatePart failed");
             return Task.FromResult(PkToReturnOnCreate);

@@ -1,4 +1,9 @@
+using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using SwInventreeAddin.InvenTree;
@@ -21,8 +26,8 @@ namespace SwInventreeAddin.Tests
             _propertyService = new StubDocumentPropertyService();
         }
 
-        private CreatePartViewModel CreateVm(string name = DefaultName) =>
-            new CreatePartViewModel(_client, _propertyService, name, ipnPollDelayMs: 0);
+        private CreatePartViewModel CreateVm(string name = DefaultName, bool waitForAutoPartNumber = false) =>
+            new CreatePartViewModel(_client, _propertyService, name, ipnPollDelayMs: 0, waitForAutoPartNumber: waitForAutoPartNumber);
 
         private static CategoryNode MakeNode(int pk = 1, string name = "Resistors") =>
             new CategoryNode(new InventreeCategory { Pk = pk, Name = name });
@@ -103,6 +108,39 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(vm.StatusText, Does.Contain("Error"));
             Assert.That(vm.IsBusy, Is.False);
+            Assert.That(vm.IsLoadingCategories, Is.False);
+        }
+
+        [Test]
+        public async Task LoadRootCategoriesAsync_WhenDone_ClearsIsLoadingCategories()
+        {
+            _client.CategoriesToReturn = new List<InventreeCategory>
+            {
+                new InventreeCategory { Pk = 7, Name = "Resistors" },
+            };
+
+            var vm = CreateVm();
+            await vm.LoadRootCategoriesAsync();
+
+            Assert.That(vm.IsLoadingCategories, Is.False);
+        }
+
+        [Test]
+        public async Task CreateAsync_DoesNotSetIsLoadingCategories()
+        {
+            _client.PkToReturnOnCreate = 99;
+            _client.PartByPkToReturn   = new InventreePart
+            {
+                Pk  = 99,
+                Ipn = "R-NEW-001",
+                Name = "New Resistor",
+            };
+
+            var vm = CreateVm();
+            vm.SelectedCategory = MakeNode(pk: 7);
+            await vm.CreateAsync();
+
+            Assert.That(vm.IsLoadingCategories, Is.False);
         }
 
         // ── LoadChildrenAsync ────────────────────────────────────────────────
@@ -199,6 +237,22 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public async Task CreateAsync_ServerValidationError_StatusTextContainsResponseBody()
+        {
+            const string errorBody = @"{""ipn"": [""Part with this IPN already exists.""]}";
+            _client.ThrowOnCreateException = new HttpRequestException(
+                $"InvenTree API returned 400 BadRequest: {errorBody}");
+
+            var vm = CreateVm();
+            vm.SelectedCategory = MakeNode(pk: 7);
+            vm.IpnEntry         = "DUP-001";
+            await vm.CreateAsync();
+
+            Assert.That(vm.StatusText, Does.Contain("Part with this IPN already exists."));
+            Assert.That(vm.IsBusy,     Is.False);
+        }
+
+        [Test]
         public async Task CreateAsync_RefetchReturnsNull_SetsStatusText_NoDocWrite()
         {
             _client.PkToReturnOnCreate = 99;
@@ -226,7 +280,7 @@ namespace SwInventreeAddin.Tests
             _propertyService.Seed("Description", string.Empty);
 
             InventreePart? raisedPart = null;
-            var vm = CreateVm();
+            var vm = CreateVm(waitForAutoPartNumber: true);
             vm.PartCreated += (_, p) => raisedPart = p;
             vm.SelectedCategory = MakeNode(pk: 7);
 
@@ -250,7 +304,7 @@ namespace SwInventreeAddin.Tests
             _client.QueuePartByPkResponses(emptyParts);
             _propertyService.Seed("PartNo", string.Empty);
 
-            var vm = CreateVm();
+            var vm = CreateVm(waitForAutoPartNumber: true);
             vm.SelectedCategory = MakeNode(pk: 7);
             await vm.CreateAsync();
 
@@ -285,5 +339,167 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(_client.LastCreateIpn, Is.EqualTo("FAB-001"));
         }
+
+        // ── WaitForAutoPartNumber toggle ─────────────────────────────────────────
+
+        [Test]
+        public async Task CreateAsync_WaitOff_BlankIpn_SkipsPollAndRaisesPartCreated()
+        {
+            // Toggle off: poll is skipped even when initial re-fetch returns no IPN.
+            const int newPk = 55;
+            _client.PkToReturnOnCreate = newPk;
+            _client.PartByPkToReturn   = new InventreePart { Pk = newPk, Ipn = string.Empty, Name = "IPN-less Part" };
+            _propertyService.Seed("Description", string.Empty);
+
+            InventreePart? raisedPart = null;
+            var vm = CreateVm(waitForAutoPartNumber: false);
+            vm.PartCreated      += (_, p) => raisedPart = p;
+            vm.SelectedCategory  = MakeNode();
+            await vm.CreateAsync();
+
+            Assert.That(raisedPart,  Is.Not.Null, "PartCreated must fire even with blank IPN");
+            Assert.That(vm.IsBusy,   Is.False);
+            Assert.That(vm.StatusText, Does.Not.Contain("refresh manually"),
+                "refresh-manually message only appears when the poll ran and timed out");
+        }
+
+        [Test]
+        public async Task CreateAsync_WaitOff_BlankIpn_WritesPkToDocument()
+        {
+            // After a poll-skipped creation the InvenTree Part PK is written to the SW document.
+            const int newPk = 55;
+            _client.PkToReturnOnCreate = newPk;
+            _client.PartByPkToReturn   = new InventreePart { Pk = newPk, Ipn = string.Empty, Name = "IPN-less Part" };
+
+            var vm = CreateVm(waitForAutoPartNumber: false);
+            vm.SelectedCategory = MakeNode();
+            await vm.CreateAsync();
+
+            Assert.That(_propertyService.GetCustomProperty("InvenTree PK"), Is.EqualTo(newPk.ToString()));
+        }
+
+        [Test]
+        public async Task CreateAsync_ManualIpn_WaitOn_ClosesImmediatelyWithoutPoll()
+        {
+            // When user enters an IPN manually the poll never runs — toggle has no effect.
+            const int newPk = 77;
+            _client.PkToReturnOnCreate = newPk;
+            _client.PartByPkToReturn   = new InventreePart { Pk = newPk, Ipn = "FAB-123", Name = "Manual Part" };
+            _propertyService.Seed("PartNo",      string.Empty);
+            _propertyService.Seed("Description", string.Empty);
+
+            InventreePart? raisedPart = null;
+            var vm = CreateVm(waitForAutoPartNumber: true);
+            vm.PartCreated      += (_, p) => raisedPart = p;
+            vm.SelectedCategory  = MakeNode();
+            vm.IpnEntry          = "FAB-123";
+            await vm.CreateAsync();
+
+            Assert.That(_client.LastCreateIpn, Is.EqualTo("FAB-123"));
+            Assert.That(raisedPart?.Ipn,        Is.EqualTo("FAB-123"));
+            Assert.That(vm.IsBusy,              Is.False);
+        }
+
+        [Test]
+        public async Task CreateAsync_DuplicateIpn_SetsStatusText_AndDoesNotCreate()
+        {
+            // An existing part already uses the IPN the user entered.
+            _client.PartToReturn = new InventreePart
+            {
+                Pk  = 1,
+                Ipn = "DUP-001",
+                Name = "Existing Part",
+            };
+            _propertyService.Seed("PartNo", "ORIGINAL");
+
+            var vm = CreateVm();
+            vm.SelectedCategory = MakeNode();
+            vm.IpnEntry         = "DUP-001";
+            await vm.CreateAsync();
+
+            Assert.That(vm.StatusText, Does.Contain("already exists").And.Contain("DUP-001"));
+            Assert.That(_client.LastCreateCategoryPk, Is.EqualTo(0), "CreatePartAsync should not be called");
+            Assert.That(_propertyService.GetCustomProperty("PartNo"), Is.EqualTo("ORIGINAL"));
+            Assert.That(vm.IsBusy, Is.False);
+        }
+
+        [Test]
+        public void CreateAsync_UserSuppliedUniqueIpn_DoesNotUpdatePropertiesOffUiThread()
+        {
+            var previousContext = SynchronizationContext.Current;
+            var uiContext = new PumpingSynchronizationContext();
+            SynchronizationContext.SetSynchronizationContext(uiContext);
+            try
+            {
+                _client.ForceAsynchronous    = true;
+                _client.PkToReturnOnCreate   = 77;
+                _client.PartByPkToReturn     = new InventreePart { Pk = 77, Ipn = "UNIQUE-001", Name = "Custom" };
+                _propertyService.Seed("PartNo",      string.Empty);
+                _propertyService.Seed("Description", string.Empty);
+
+                var vm = CreateVm("Custom Part");
+                int offUiPropertyChangedCount = 0;
+                vm.PropertyChanged += (_, __) =>
+                {
+                    if (!uiContext.IsOnUiThread)
+                        Interlocked.Increment(ref offUiPropertyChangedCount);
+                };
+
+                vm.SelectedCategory = MakeNode(pk: 7);
+                vm.IpnEntry = "UNIQUE-001";
+
+                var createTask = vm.CreateAsync();
+                Assert.That(createTask.Wait(TimeSpan.FromSeconds(5)), Is.True, "CreateAsync did not complete");
+
+                uiContext.PumpAll(TimeSpan.FromMilliseconds(50));
+
+                Assert.That(offUiPropertyChangedCount, Is.EqualTo(0), "A bound property was updated off the UI thread");
+                Assert.That(_client.LastCreateIpn, Is.EqualTo("UNIQUE-001"));
+                Assert.That(_propertyService.GetCustomProperty("PartNo"), Is.EqualTo("UNIQUE-001"));
+                Assert.That(vm.IsBusy, Is.False);
+                Assert.That(vm.StatusText, Does.Not.Contain("Error"));
+            }
+            finally
+            {
+                SynchronizationContext.SetSynchronizationContext(previousContext);
+            }
+        }
+
+        // ── Helpers ───────────────────────────────────────────────────────────
+
+        private sealed class PumpingSynchronizationContext : SynchronizationContext
+        {
+            private readonly Thread                                                        _uiThread;
+            private readonly ConcurrentQueue<(SendOrPostCallback Callback, object? State)> _queue
+                = new ConcurrentQueue<(SendOrPostCallback, object?)>();
+
+            public PumpingSynchronizationContext() => _uiThread = Thread.CurrentThread;
+
+            public bool IsOnUiThread => Thread.CurrentThread == _uiThread;
+
+            public override void Post(SendOrPostCallback d, object? state)
+                => _queue.Enqueue((d, state));
+
+            public void PumpAll(TimeSpan idleTimeout)
+            {
+                var sw = Stopwatch.StartNew();
+                while (true)
+                {
+                    if (_queue.TryDequeue(out var work))
+                    {
+                        SetSynchronizationContext(this);
+                        work.Callback(work.State);
+                        sw = Stopwatch.StartNew();
+                        continue;
+                    }
+
+                    if (sw.Elapsed >= idleTimeout)
+                        break;
+
+                    Thread.Sleep(1);
+                }
+            }
+        }
+
     }
 }
