@@ -222,14 +222,21 @@
                                        Stretch="Uniform"
                                        RenderOptions.BitmapScalingMode="HighQuality" />
                                 <!-- Link affordance -->
-                                <TextBlock Text="&#xE71B;"
-                                           FontFamily="Segoe MDL2 Assets"
-                                           FontSize="14"
-                                           Foreground="White"
-                                           HorizontalAlignment="Right"
-                                           VerticalAlignment="Bottom"
-                                           Margin="0,0,4,4"
-                                           Visibility="{Binding PartLinkEnabled, Converter={StaticResource BoolToVis}}" />
+                                <Border HorizontalAlignment="Right"
+                                        VerticalAlignment="Bottom"
+                                        Margin="0,0,4,4"
+                                        Width="20"
+                                        Height="20"
+                                        Background="#AA000000"
+                                        CornerRadius="10"
+                                        Visibility="{Binding PartLinkEnabled, Converter={StaticResource BoolToVis}}">
+                                    <TextBlock Text="&#xE71B;"
+                                               FontFamily="Segoe MDL2 Assets"
+                                               FontSize="12"
+                                               Foreground="White"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" />
+                                </Border>
                             </Grid>
                         </Border>
                     </Grid>
