@@ -13,7 +13,7 @@ Run both subagents in the **foreground** (`is_background=false`) using `run_suba
 1. Standards subagent first, with the diff command and `docs/agents/coding-standards.md`.
 2. Spec subagent second, with the diff command and the relevant issue numbers (`gh issue view ...`).
 
-Do **not** edit `.agents/skills/code-review/SKILL.md` to change this; that file is managed by the skill store and may be overwritten on skill updates. Keep project-level notes here and in `AGENTS.md`.
+Do **not** edit `.agents/skills/code-review/SKILL.md` to change this; that file is managed by the skill store and may be overwritten on skill updates. Keep project-level notes here; the root `AGENTS.md` links to this file.
 
 ## Another gotcha
 
