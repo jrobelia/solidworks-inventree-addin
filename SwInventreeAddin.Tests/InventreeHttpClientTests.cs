@@ -27,6 +27,16 @@ namespace SwInventreeAddin.Tests
             return new InventreeHttpClient(http, ApiKey);
         }
 
+        private static Uri? GetPartWebUrl(string? baseAddress)
+        {
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "[]");
+            var http = new HttpClient(handler);
+            if (baseAddress != null)
+                http.BaseAddress = new Uri(baseAddress);
+            var client = new InventreeHttpClient(http, ApiKey);
+            return client.GetPartWebUrl(42);
+        }
+
         // --- successful response ---
 
         [Test]
@@ -144,8 +154,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void GetPartWebUrl_KnownPk_ReturnsPartUrl()
         {
-            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "[]");
-            var url = CreateClient(handler).GetPartWebUrl(42);
+            var url = GetPartWebUrl(BaseUrl);
             Assert.That(url, Is.Not.Null);
             Assert.That(url!.AbsoluteUri, Is.EqualTo("http://inventree.example.com/part/42/"));
         }
@@ -153,10 +162,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void GetPartWebUrl_BaseAddressWithTrailingSlash_ReturnsNormalizedUrl()
         {
-            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "[]");
-            var http = new HttpClient(handler) { BaseAddress = new Uri(BaseUrl + "/") };
-            var client = new InventreeHttpClient(http, ApiKey);
-            var url = client.GetPartWebUrl(42);
+            var url = GetPartWebUrl(BaseUrl + "/");
             Assert.That(url, Is.Not.Null);
             Assert.That(url!.AbsoluteUri, Is.EqualTo("http://inventree.example.com/part/42/"));
         }
@@ -164,20 +170,14 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void GetPartWebUrl_NoBaseAddress_ReturnsNull()
         {
-            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "[]");
-            var http = new HttpClient(handler) { BaseAddress = null };
-            var client = new InventreeHttpClient(http, ApiKey);
-            var url = client.GetPartWebUrl(42);
+            var url = GetPartWebUrl(null);
             Assert.That(url, Is.Null);
         }
 
         [Test]
         public void GetPartWebUrl_BaseAddressWithEncodedPath_PreservesPercentEncoding()
         {
-            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "[]");
-            var http = new HttpClient(handler) { BaseAddress = new Uri("http://inventree.example.com/path%20with%20space/") };
-            var client = new InventreeHttpClient(http, ApiKey);
-            var url = client.GetPartWebUrl(42);
+            var url = GetPartWebUrl("http://inventree.example.com/path%20with%20space/");
             Assert.That(url, Is.Not.Null);
             Assert.That(url!.AbsoluteUri, Is.EqualTo("http://inventree.example.com/path%20with%20space/part/42/"));
         }
