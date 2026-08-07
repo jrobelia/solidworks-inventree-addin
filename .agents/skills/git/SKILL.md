@@ -7,6 +7,14 @@ description: Project-specific git guidance for the SolidWorks InvenTree add-in. 
 
 Use this guide for every git operation in this repo. It captures the Windows/PowerShell quirks, push expectations, and code-review base rules that are easy to get wrong.
 
+## Command form
+
+Run git commands from the repository directory as plain `git <command>`.
+
+- Use the `exec` tool's `workdir` parameter to set the working directory for each command. Set it to the repository directory (or a subdirectory within it).
+- Do not rely on `cd` persisting across separate `exec` calls; the environment resets the shell to the open project before each call.
+- Do not use `git -C <directory> <command>`. The `-C` flag changes git's working tree, and the auto-approve rules in this environment do not match that pattern, so every `git -C` command will require manual approval.
+
 ## Before committing
 
 1. Run `git status --short` and `git diff` to see what is changing.
