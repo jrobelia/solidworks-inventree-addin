@@ -936,6 +936,7 @@ namespace SwInventreeAddin.Tests
 
             await _vm.FetchPartAsync();
 
+            _vm.OpenBrowserUrl = _ => { };
             _vm.OpenPartInBrowser();
 
             Assert.That(_client.LastGetPartWebUrlPk, Is.EqualTo(42));

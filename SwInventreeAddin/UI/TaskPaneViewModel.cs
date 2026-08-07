@@ -63,8 +63,10 @@ namespace SwInventreeAddin.UI
         /// Called when the InvenTree thumbnail is clicked and a part URL is available.
         /// Defaults to opening the URL in the system's default browser.
         /// </summary>
-        public Action<string> OpenBrowserUrl { get; set; } =
-            url => Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        public Action<string> OpenBrowserUrl { get; set; } = url =>
+        {
+            using var _ = Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        };
 
         // ── Bindable properties ───────────────────────────────────────────────
 

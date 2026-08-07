@@ -230,7 +230,14 @@
                                            HorizontalAlignment="Right"
                                            VerticalAlignment="Bottom"
                                            Margin="0,0,4,4"
-                                           Visibility="{Binding PartLinkEnabled, Converter={StaticResource BoolToVis}}" />
+                                           Visibility="{Binding PartLinkEnabled, Converter={StaticResource BoolToVis}}">
+                                    <TextBlock.Effect>
+                                        <DropShadowEffect ShadowDepth="0"
+                                                          BlurRadius="3"
+                                                          Color="Black"
+                                                          Opacity="0.8" />
+                                    </TextBlock.Effect>
+                                </TextBlock>
                             </Grid>
                         </Border>
                     </Grid>
