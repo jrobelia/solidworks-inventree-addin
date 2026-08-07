@@ -877,6 +877,72 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(_vm.CurrentInvenTreePk, Is.EqualTo(0));
         }
+
+        // ── Part link from thumbnail ───────────────────────────────────────────
+
+        [Test]
+        public void PartLinkEnabled_BeforeFetch_IsFalse()
+        {
+            CreateVm();
+
+            Assert.That(_vm.PartLinkEnabled, Is.False);
+        }
+
+        [Test]
+        public async Task PartLinkEnabled_AfterSuccessfulFetch_IsTrue()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.PartLinkEnabled, Is.True);
+        }
+
+        [Test]
+        public void OpenPartInBrowser_WhenNoPartFetched_DoesNotOpenUrl()
+        {
+            CreateVm();
+            string? openedUrl = null;
+            _vm.OpenBrowserUrl = url => openedUrl = url;
+
+            _vm.OpenPartInBrowser();
+
+            Assert.That(openedUrl, Is.Null);
+        }
+
+        [Test]
+        public async Task OpenPartInBrowser_AfterSuccessfulFetch_OpensCorrectUrl()
+        {
+            _client.PartToReturn = SamplePart;
+            _client.PartWebUrlToReturn = "http://inventree.example.com/part/42/";
+            CreateVm();
+
+            await _vm.FetchPartAsync();
+
+            string? openedUrl = null;
+            _vm.OpenBrowserUrl = url => openedUrl = url;
+            _vm.OpenPartInBrowser();
+
+            Assert.That(openedUrl, Is.EqualTo("http://inventree.example.com/part/42/"));
+            Assert.That(_client.LastGetPartWebUrlPk, Is.EqualTo(42));
+        }
+
+        [Test]
+        public async Task OpenPartInBrowser_WhenClientReturnsNull_DoesNotOpenUrl()
+        {
+            _client.PartToReturn = SamplePart;
+            _client.PartWebUrlToReturn = null;
+            CreateVm();
+
+            await _vm.FetchPartAsync();
+
+            string? openedUrl = null;
+            _vm.OpenBrowserUrl = url => openedUrl = url;
+            _vm.OpenPartInBrowser();
+
+            Assert.That(openedUrl, Is.Null);
+        }
     }
 
     /// <summary>Stub client that throws on GetPartByIpnAsync — used to test the fetch error path.</summary>
@@ -1508,72 +1574,6 @@ namespace SwInventreeAddin.Tests
             await _vm.FetchPartAsync();
 
             Assert.That(raised, Does.Contain("BomButtonEnabled"));
-        }
-
-        // ── Part link from thumbnail ───────────────────────────────────────────
-
-        [Test]
-        public void PartLinkEnabled_BeforeFetch_IsFalse()
-        {
-            CreateVm();
-
-            Assert.That(_vm.PartLinkEnabled, Is.False);
-        }
-
-        [Test]
-        public async Task PartLinkEnabled_AfterSuccessfulFetch_IsTrue()
-        {
-            _client.PartToReturn = SamplePart;
-            CreateVm();
-
-            await _vm.FetchPartAsync();
-
-            Assert.That(_vm.PartLinkEnabled, Is.True);
-        }
-
-        [Test]
-        public void OpenPartInBrowser_WhenNoPartFetched_DoesNotOpenUrl()
-        {
-            CreateVm();
-            string? openedUrl = null;
-            _vm.OpenBrowserUrl = url => openedUrl = url;
-
-            _vm.OpenPartInBrowser();
-
-            Assert.That(openedUrl, Is.Null);
-        }
-
-        [Test]
-        public async Task OpenPartInBrowser_AfterSuccessfulFetch_OpensCorrectUrl()
-        {
-            _client.PartToReturn = SamplePart;
-            _client.PartWebUrlToReturn = "http://inventree.example.com/part/42/";
-            CreateVm();
-
-            await _vm.FetchPartAsync();
-
-            string? openedUrl = null;
-            _vm.OpenBrowserUrl = url => openedUrl = url;
-            _vm.OpenPartInBrowser();
-
-            Assert.That(openedUrl, Is.EqualTo("http://inventree.example.com/part/42/"));
-            Assert.That(_client.LastGetPartWebUrlPk, Is.EqualTo(42));
-        }
-
-        [Test]
-        public async Task OpenPartInBrowser_WhenClientReturnsNull_DoesNotOpenUrl()
-        {
-            _client.PartToReturn = SamplePart;
-            _client.PartWebUrlToReturn = null;
-            CreateVm();
-
-            await _vm.FetchPartAsync();
-
-            string? openedUrl = null;
-            _vm.OpenBrowserUrl = url => openedUrl = url;
-            _vm.OpenPartInBrowser();
-
-            Assert.That(openedUrl, Is.Null);
         }
     }
 }
