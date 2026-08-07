@@ -168,6 +168,16 @@ namespace SwInventreeAddin.Tests
             var url = client.GetPartWebUrl(42);
             Assert.That(url, Is.Null);
         }
+
+        [Test]
+        public void GetPartWebUrl_BaseAddressWithEncodedPath_PreservesPercentEncoding()
+        {
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "[]");
+            var http = new HttpClient(handler) { BaseAddress = new Uri("http://inventree.example.com/path%20with%20space/") };
+            var client = new InventreeHttpClient(http, ApiKey);
+            var url = client.GetPartWebUrl(42);
+            Assert.That(url, Is.EqualTo("http://inventree.example.com/path%20with%20space/part/42/"));
+        }
     }
 
     // ---------------------------------------------------------------------------

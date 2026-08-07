@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
@@ -423,7 +423,7 @@ namespace SwInventreeAddin.InvenTree
             if (baseAddress == null)
                 return null;
 
-            var baseUrl = baseAddress.ToString().TrimEnd('/');
+            var baseUrl = baseAddress.AbsoluteUri.TrimEnd('/');
             return $"{baseUrl}/part/{pk}/";
         }
     }
