@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using SwInventreeAddin.InvenTree;
+using SwInventreeAddin.SolidWorks;
 using SwInventreeAddin.Tests.Stubs;
 using SwInventreeAddin.UI;
 
@@ -26,8 +27,11 @@ namespace SwInventreeAddin.Tests
             _propertyService = new StubDocumentPropertyService();
         }
 
-        private CreatePartViewModel CreateVm(string name = DefaultName, bool waitForAutoPartNumber = false) =>
-            new CreatePartViewModel(_client, _propertyService, name, ipnPollDelayMs: 0, waitForAutoPartNumber: waitForAutoPartNumber);
+        private CreatePartViewModel CreateVm(
+            string name = DefaultName,
+            bool waitForAutoPartNumber = false,
+            DocumentType documentType = DocumentType.Part) =>
+            new CreatePartViewModel(_client, _propertyService, name, ipnPollDelayMs: 0, waitForAutoPartNumber: waitForAutoPartNumber, documentType: documentType);
 
         private static CategoryNode MakeNode(int pk = 1, string name = "Resistors") =>
             new CategoryNode(new InventreeCategory { Pk = pk, Name = name });
@@ -463,6 +467,89 @@ namespace SwInventreeAddin.Tests
             {
                 SynchronizationContext.SetSynchronizationContext(previousContext);
             }
+        }
+
+        // ── Part flags ─────────────────────────────────────────────────────────
+
+        [Test]
+        public void Defaults_ForPartDocument_AssemblyOff_ComponentOn_OthersOff()
+        {
+            var vm = CreateVm(documentType: DocumentType.Part);
+
+            Assert.That(vm.Assembly, Is.False);
+            Assert.That(vm.Component, Is.True);
+            Assert.That(vm.Purchaseable, Is.False);
+            Assert.That(vm.Salable, Is.False);
+            Assert.That(vm.Trackable, Is.False);
+            Assert.That(vm.Testable, Is.False);
+            Assert.That(vm.CopyCategoryParameters, Is.False);
+        }
+
+        [Test]
+        public void Defaults_ForAssemblyDocument_AssemblyOn_ComponentOff_OthersOff()
+        {
+            var vm = CreateVm(documentType: DocumentType.Assembly);
+
+            Assert.That(vm.Assembly, Is.True);
+            Assert.That(vm.Component, Is.False);
+            Assert.That(vm.Purchaseable, Is.False);
+            Assert.That(vm.Salable, Is.False);
+            Assert.That(vm.Trackable, Is.False);
+            Assert.That(vm.Testable, Is.False);
+            Assert.That(vm.CopyCategoryParameters, Is.False);
+        }
+
+        [Test]
+        public void Defaults_ForUnknownDocument_AllFlagsOff()
+        {
+            var vm = CreateVm(documentType: DocumentType.Unknown);
+
+            Assert.That(vm.Assembly, Is.False);
+            Assert.That(vm.Component, Is.False);
+            Assert.That(vm.Purchaseable, Is.False);
+            Assert.That(vm.Salable, Is.False);
+            Assert.That(vm.Trackable, Is.False);
+            Assert.That(vm.Testable, Is.False);
+            Assert.That(vm.CopyCategoryParameters, Is.False);
+        }
+
+        [Test]
+        public void Assembly_And_Component_AreIndependent()
+        {
+            var vm = CreateVm(documentType: DocumentType.Assembly);
+            Assert.That(vm.Assembly, Is.True);
+
+            vm.Component = true;
+            Assert.That(vm.Assembly, Is.True);
+            Assert.That(vm.Component, Is.True);
+
+            vm.Assembly = false;
+            Assert.That(vm.Assembly, Is.False);
+            Assert.That(vm.Component, Is.True);
+        }
+
+        [Test]
+        public async Task CreateAsync_SendsAllFlagsToClient()
+        {
+            _client.PkToReturnOnCreate = 99;
+            _client.PartByPkToReturn   = new InventreePart { Pk = 99, Ipn = "R-NEW-001", Name = "New Resistor" };
+
+            var vm = CreateVm(documentType: DocumentType.Assembly);
+            vm.SelectedCategory = MakeNode(pk: 7);
+            vm.Purchaseable = true;
+            vm.Trackable = true;
+            vm.CopyCategoryParameters = true;
+
+            await vm.CreateAsync();
+
+            Assert.That(_client.LastCreateFlags, Is.Not.Null);
+            Assert.That(_client.LastCreateFlags!.Assembly, Is.True);
+            Assert.That(_client.LastCreateFlags.Component, Is.False);
+            Assert.That(_client.LastCreateFlags.Purchaseable, Is.True);
+            Assert.That(_client.LastCreateFlags.Salable, Is.False);
+            Assert.That(_client.LastCreateFlags.Trackable, Is.True);
+            Assert.That(_client.LastCreateFlags.Testable, Is.False);
+            Assert.That(_client.LastCreateFlags.CopyCategoryParameters, Is.True);
         }
 
         // ── Helpers ───────────────────────────────────────────────────────────

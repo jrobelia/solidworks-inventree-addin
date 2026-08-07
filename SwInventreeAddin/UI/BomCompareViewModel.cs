@@ -160,7 +160,7 @@ namespace SwInventreeAddin.UI
 
             // Verify the assembly part is flagged as Assembly in InvenTree before writing.
             var assemblyPart = await Task.Run(() => _client.GetPartByPkAsync(_assemblyPk));
-            if (assemblyPart == null || !assemblyPart.IsAssembly)
+            if (assemblyPart == null || !assemblyPart.Assembly)
             {
                 StatusText = $"Cannot push — InvenTree part {_assemblyPk} is not flagged as Assembly. Edit it in InvenTree first.";
                 return;

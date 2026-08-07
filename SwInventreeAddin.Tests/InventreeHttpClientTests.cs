@@ -230,6 +230,56 @@ namespace SwInventreeAddin.Tests
     }
 
     // ---------------------------------------------------------------------------
+    // Task 15: FetchDetailAsync parses InvenTree part flags
+    // ---------------------------------------------------------------------------
+    [TestFixture]
+    public class InventreeHttpClientFlagFieldTests
+    {
+        private const string BaseUrl = "http://inventree.example.com";
+        private const string ApiKey  = "test-api-key";
+
+        private const string ListJson = @"[{ ""pk"": 42, ""IPN"": ""R-10K-0402"" }]";
+
+        private static InventreeHttpClient CreateClient(MultiResponseStubHttpHandler handler)
+        {
+            var http = new HttpClient(handler) { BaseAddress = new Uri(BaseUrl) };
+            return new InventreeHttpClient(http, ApiKey);
+        }
+
+        [Test]
+        public async Task GetPartByIpnAsync_ParsesAllPartFlags()
+        {
+            var detailJson = @"{ ""pk"": 42, ""name"": ""R"", ""description"": """", ""notes"": """", ""revision"": """", ""IPN"": ""R-10K-0402"", ""in_stock"": 0, ""ordering"": 0, ""active"": true, ""assembly"": true, ""component"": false, ""purchaseable"": true, ""salable"": false, ""trackable"": true, ""testable"": false }";
+            var handler = new MultiResponseStubHttpHandler(ListJson, detailJson);
+            var part = await CreateClient(handler).GetPartByIpnAsync("R-10K-0402");
+
+            Assert.That(part, Is.Not.Null);
+            Assert.That(part!.Assembly, Is.True);
+            Assert.That(part.Component, Is.False);
+            Assert.That(part.Purchaseable, Is.True);
+            Assert.That(part.Salable, Is.False);
+            Assert.That(part.Trackable, Is.True);
+            Assert.That(part.Testable, Is.False);
+        }
+
+        [Test]
+        public async Task GetPartByIpnAsync_MissingFlags_DefaultToFalse()
+        {
+            var detailJson = @"{ ""pk"": 42, ""name"": ""R"", ""description"": """", ""notes"": """", ""revision"": """", ""IPN"": ""R-10K-0402"", ""in_stock"": 0, ""ordering"": 0, ""active"": true }";
+            var handler = new MultiResponseStubHttpHandler(ListJson, detailJson);
+            var part = await CreateClient(handler).GetPartByIpnAsync("R-10K-0402");
+
+            Assert.That(part, Is.Not.Null);
+            Assert.That(part!.Assembly, Is.False);
+            Assert.That(part.Component, Is.False);
+            Assert.That(part.Purchaseable, Is.False);
+            Assert.That(part.Salable, Is.False);
+            Assert.That(part.Trackable, Is.False);
+            Assert.That(part.Testable, Is.False);
+        }
+    }
+
+    // ---------------------------------------------------------------------------
     // Stub that returns responses from a queue — first call gets responses[0], etc.
     // ---------------------------------------------------------------------------
     internal sealed class MultiResponseStubHttpHandler : HttpMessageHandler

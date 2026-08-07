@@ -4,7 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="Create Part in InvenTree"
     Width="360"
-    Height="490"
+    Height="620"
     ResizeMode="NoResize"
     WindowStartupLocation="CenterScreen"
     FontFamily="Segoe UI"
@@ -45,6 +45,7 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
@@ -154,8 +155,106 @@
                 </Grid>
             </Border>
 
+            <!-- InvenTree flags -->
+            <StackPanel Grid.Row="6" Margin="0,0,0,8">
+                <TextBlock Text="InvenTree Flags"
+                           Foreground="{StaticResource BrushSubtle}"
+                           FontSize="{StaticResource FontSizeBody}"
+                           Margin="0,0,0,4" />
+                <Border BorderBrush="{StaticResource BrushBorder}"
+                        BorderThickness="1"
+                        Padding="8,4"
+                        Background="White">
+                    <StackPanel>
+                        <CheckBox Style="{StaticResource InvenTreeToggleStyle}"
+                                  IsChecked="{Binding Assembly}">
+                            <StackPanel>
+                                <TextBlock Text="Assembly"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource BrushForeground}" />
+                                <TextBlock Text="Can this part be built from other parts?"
+                                           FontSize="11"
+                                           Foreground="{StaticResource BrushSubtle}" />
+                            </StackPanel>
+                        </CheckBox>
+
+                        <CheckBox Style="{StaticResource InvenTreeToggleStyle}"
+                                  IsChecked="{Binding Component}">
+                            <StackPanel>
+                                <TextBlock Text="Component"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource BrushForeground}" />
+                                <TextBlock Text="Can this part be used to build other parts?"
+                                           FontSize="11"
+                                           Foreground="{StaticResource BrushSubtle}" />
+                            </StackPanel>
+                        </CheckBox>
+
+                        <CheckBox Style="{StaticResource InvenTreeToggleStyle}"
+                                  IsChecked="{Binding Purchaseable}">
+                            <StackPanel>
+                                <TextBlock Text="Purchaseable"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource BrushForeground}" />
+                                <TextBlock Text="Can this part be purchased from suppliers?"
+                                           FontSize="11"
+                                           Foreground="{StaticResource BrushSubtle}" />
+                            </StackPanel>
+                        </CheckBox>
+
+                        <CheckBox Style="{StaticResource InvenTreeToggleStyle}"
+                                  IsChecked="{Binding Salable}">
+                            <StackPanel>
+                                <TextBlock Text="Salable"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource BrushForeground}" />
+                                <TextBlock Text="Can this part be sold to customers?"
+                                           FontSize="11"
+                                           Foreground="{StaticResource BrushSubtle}" />
+                            </StackPanel>
+                        </CheckBox>
+
+                        <CheckBox Style="{StaticResource InvenTreeToggleStyle}"
+                                  IsChecked="{Binding Trackable}">
+                            <StackPanel>
+                                <TextBlock Text="Trackable"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource BrushForeground}" />
+                                <TextBlock Text="Track stock by batch or serial number."
+                                           FontSize="11"
+                                           Foreground="{StaticResource BrushSubtle}" />
+                            </StackPanel>
+                        </CheckBox>
+
+                        <CheckBox Style="{StaticResource InvenTreeToggleStyle}"
+                                  IsChecked="{Binding Testable}">
+                            <StackPanel>
+                                <TextBlock Text="Testable"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource BrushForeground}" />
+                                <TextBlock Text="Allow tests to be recorded against stock."
+                                           FontSize="11"
+                                           Foreground="{StaticResource BrushSubtle}" />
+                            </StackPanel>
+                        </CheckBox>
+
+                        <CheckBox Style="{StaticResource InvenTreeToggleStyle}"
+                                  IsChecked="{Binding CopyCategoryParameters}">
+                            <StackPanel>
+                                <TextBlock Text="Copy category parameters"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource BrushForeground}" />
+                                <TextBlock Text="Copy parameter templates from the selected category."
+                                           FontSize="11"
+                                           Foreground="{StaticResource BrushSubtle}" />
+                            </StackPanel>
+                        </CheckBox>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
             <!-- Selected category indicator -->
-            <Border Grid.Row="6"
+            <Border Grid.Row="7"
                     BorderBrush="{StaticResource BrushBorder}"
                     BorderThickness="1"
                     Background="{StaticResource BrushSectionHeader}"
@@ -174,7 +273,7 @@
             </Border>
 
             <!-- Button row -->
-            <Grid Grid.Row="7">
+            <Grid Grid.Row="8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition />
                     <ColumnDefinition Width="8" />

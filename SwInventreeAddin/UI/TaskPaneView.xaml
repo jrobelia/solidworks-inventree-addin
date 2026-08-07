@@ -600,6 +600,41 @@
                 </StackPanel>
                 <!-- end properties section -->
 
+                <!-- ── BOM Comparison section ────────────────────────────── -->
+                <StackPanel Visibility="{Binding BomSectionVisible,
+                                         Converter={StaticResource BoolToVis}}"
+                            Margin="0,8,0,0">
+
+                    <Grid Margin="{StaticResource SectionSpacing}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="3" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0"
+                                Background="{StaticResource BrushAccentBlue}" />
+                        <Border Grid.Column="1"
+                                Background="{StaticResource BrushSectionHeader}"
+                                Padding="6,4">
+                            <TextBlock Text="BOM Comparison"
+                                       FontWeight="SemiBold"
+                                       FontSize="{StaticResource FontSizeHeading}" />
+                        </Border>
+                    </Grid>
+
+                    <Button Style="{StaticResource PrimaryButtonStyle}"
+                            HorizontalAlignment="Stretch"
+                            IsEnabled="{Binding BomButtonEnabled}"
+                            Click="CompareBom_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Compare BOM Table with InvenTree" VerticalAlignment="Center" />
+                            <TextBlock Text="&#xE8C8;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                       VerticalAlignment="Center" Margin="6,0,0,0" />
+                        </StackPanel>
+                    </Button>
+
+                </StackPanel>
+                <!-- end BOM section -->
+
                 <!-- ── InvenTree info panel (read-only stock/status) ──────────── -->
                 <StackPanel Visibility="{Binding PropertiesSectionVisible,
                                          Converter={StaticResource BoolToVis}}"
@@ -666,43 +701,116 @@
                                  IsReadOnly="True" Height="26" />
                     </Grid>
 
+                    <!-- Flag chips -->
+                    <WrapPanel Margin="0,8,0,0">
+
+                        <Border Background="{StaticResource BrushInventreeField}"
+                                BorderBrush="{StaticResource BrushBorder}"
+                                BorderThickness="1"
+                                CornerRadius="2"
+                                Padding="5,2"
+                                Margin="0,0,4,4">
+                            <TextBlock FontSize="{StaticResource FontSizeBody}"
+                                       VerticalAlignment="Center">
+                                <TextBlock.Text>
+                                    <MultiBinding StringFormat="{}{0}: {1}">
+                                        <Binding Source="Assembly" />
+                                        <Binding Path="AssemblyDisplay" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </Border>
+
+                        <Border Background="{StaticResource BrushInventreeField}"
+                                BorderBrush="{StaticResource BrushBorder}"
+                                BorderThickness="1"
+                                CornerRadius="2"
+                                Padding="5,2"
+                                Margin="0,0,4,4">
+                            <TextBlock FontSize="{StaticResource FontSizeBody}"
+                                       VerticalAlignment="Center">
+                                <TextBlock.Text>
+                                    <MultiBinding StringFormat="{}{0}: {1}">
+                                        <Binding Source="Component" />
+                                        <Binding Path="ComponentDisplay" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </Border>
+
+                        <Border Background="{StaticResource BrushInventreeField}"
+                                BorderBrush="{StaticResource BrushBorder}"
+                                BorderThickness="1"
+                                CornerRadius="2"
+                                Padding="5,2"
+                                Margin="0,0,4,4">
+                            <TextBlock FontSize="{StaticResource FontSizeBody}"
+                                       VerticalAlignment="Center">
+                                <TextBlock.Text>
+                                    <MultiBinding StringFormat="{}{0}: {1}">
+                                        <Binding Source="Purchaseable" />
+                                        <Binding Path="PurchaseableDisplay" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </Border>
+
+                        <Border Background="{StaticResource BrushInventreeField}"
+                                BorderBrush="{StaticResource BrushBorder}"
+                                BorderThickness="1"
+                                CornerRadius="2"
+                                Padding="5,2"
+                                Margin="0,0,4,4">
+                            <TextBlock FontSize="{StaticResource FontSizeBody}"
+                                       VerticalAlignment="Center">
+                                <TextBlock.Text>
+                                    <MultiBinding StringFormat="{}{0}: {1}">
+                                        <Binding Source="Salable" />
+                                        <Binding Path="SalableDisplay" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </Border>
+
+                        <Border Background="{StaticResource BrushInventreeField}"
+                                BorderBrush="{StaticResource BrushBorder}"
+                                BorderThickness="1"
+                                CornerRadius="2"
+                                Padding="5,2"
+                                Margin="0,0,4,4">
+                            <TextBlock FontSize="{StaticResource FontSizeBody}"
+                                       VerticalAlignment="Center">
+                                <TextBlock.Text>
+                                    <MultiBinding StringFormat="{}{0}: {1}">
+                                        <Binding Source="Trackable" />
+                                        <Binding Path="TrackableDisplay" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </Border>
+
+                        <Border Background="{StaticResource BrushInventreeField}"
+                                BorderBrush="{StaticResource BrushBorder}"
+                                BorderThickness="1"
+                                CornerRadius="2"
+                                Padding="5,2"
+                                Margin="0,0,4,4">
+                            <TextBlock FontSize="{StaticResource FontSizeBody}"
+                                       VerticalAlignment="Center">
+                                <TextBlock.Text>
+                                    <MultiBinding StringFormat="{}{0}: {1}">
+                                        <Binding Source="Testable" />
+                                        <Binding Path="TestableDisplay" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </Border>
+
+                    </WrapPanel>
+
                 </StackPanel>
                 <!-- end InvenTree info panel -->
 
-                <!-- ── BOM Comparison section ────────────────────────────── -->
-                <StackPanel Visibility="{Binding BomSectionVisible,
-                                         Converter={StaticResource BoolToVis}}"
-                            Margin="0,8,0,0">
-
-                    <Grid Margin="{StaticResource SectionSpacing}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="3" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Border Grid.Column="0"
-                                Background="{StaticResource BrushAccentBlue}" />
-                        <Border Grid.Column="1"
-                                Background="{StaticResource BrushSectionHeader}"
-                                Padding="6,4">
-                            <TextBlock Text="BOM Comparison"
-                                       FontWeight="SemiBold"
-                                       FontSize="{StaticResource FontSizeHeading}" />
-                        </Border>
-                    </Grid>
-
-                    <Button Style="{StaticResource PrimaryButtonStyle}"
-                            HorizontalAlignment="Stretch"
-                            IsEnabled="{Binding BomButtonEnabled}"
-                            Click="CompareBom_Click">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Compare BOM Table with InvenTree" VerticalAlignment="Center" />
-                            <TextBlock Text="&#xE8C8;" FontFamily="Segoe MDL2 Assets" FontSize="13"
-                                       VerticalAlignment="Center" Margin="6,0,0,0" />
-                        </StackPanel>
-                    </Button>
-
-                </StackPanel>
-                <!-- end BOM section -->
 
             </StackPanel>
         </ScrollViewer>

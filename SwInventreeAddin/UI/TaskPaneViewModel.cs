@@ -133,6 +133,27 @@ namespace SwInventreeAddin.UI
         /// <summary>"Active" or "Inactive".</summary>
         public string ActiveDisplay      => _session == null ? string.Empty : (_session.Part.Active ? "Active" : "Inactive");
 
+        private static string YesNoDisplay(bool? value)
+            => value == null ? string.Empty : (value.Value ? "Yes" : "No");
+
+        /// <summary>"Yes" or "No" for the InvenTree Assembly flag.</summary>
+        public string AssemblyDisplay    => YesNoDisplay(_session?.Part.Assembly);
+
+        /// <summary>"Yes" or "No" for the InvenTree Component flag.</summary>
+        public string ComponentDisplay   => YesNoDisplay(_session?.Part.Component);
+
+        /// <summary>"Yes" or "No" for the InvenTree Purchaseable flag.</summary>
+        public string PurchaseableDisplay => YesNoDisplay(_session?.Part.Purchaseable);
+
+        /// <summary>"Yes" or "No" for the InvenTree Salable flag.</summary>
+        public string SalableDisplay     => YesNoDisplay(_session?.Part.Salable);
+
+        /// <summary>"Yes" or "No" for the InvenTree Trackable flag.</summary>
+        public string TrackableDisplay   => YesNoDisplay(_session?.Part.Trackable);
+
+        /// <summary>"Yes" or "No" for the InvenTree Testable flag.</summary>
+        public string TestableDisplay    => YesNoDisplay(_session?.Part.Testable);
+
         // ── Enabled / visible flags (computed from session) ───────────────────
 
         /// <summary>True when a part has been fetched and Apply is meaningful.</summary>
@@ -581,7 +602,8 @@ namespace SwInventreeAddin.UI
             var name    = _propertyService.GetCustomProperty(mapping.NameProperty);
 
             var vm = new CreatePartViewModel(_client, _propertyService, name, _mappingProvider,
-                                             waitForAutoPartNumber: WaitForAutoPartNumber);
+                                             waitForAutoPartNumber: WaitForAutoPartNumber,
+                                             documentType: _currentDocumentType);
 
             vm.PartCreated += (_, part) =>
             {
@@ -978,6 +1000,12 @@ namespace SwInventreeAddin.UI
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(InStockDisplay)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(OrderingDisplay)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActiveDisplay)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AssemblyDisplay)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ComponentDisplay)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PurchaseableDisplay)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SalableDisplay)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TrackableDisplay)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TestableDisplay)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ApplyEnabled)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ApplyNameEnabled)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ApplyNotesEnabled)));

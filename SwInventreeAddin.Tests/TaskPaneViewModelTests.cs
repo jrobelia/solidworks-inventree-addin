@@ -759,6 +759,44 @@ namespace SwInventreeAddin.Tests
             Assert.That(_vm.InStockDisplay, Is.Empty);
         }
 
+        [Test]
+        public async Task AfterFetch_FlagDisplays_ShowYesOrNo()
+        {
+            _client.PartToReturn = new InventreePart
+            {
+                Pk = 1,
+                Assembly = true,
+                Component = false,
+                Purchaseable = true,
+                Salable = false,
+                Trackable = true,
+                Testable = false,
+            };
+            CreateVm();
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.AssemblyDisplay, Is.EqualTo("Yes"));
+            Assert.That(_vm.ComponentDisplay, Is.EqualTo("No"));
+            Assert.That(_vm.PurchaseableDisplay, Is.EqualTo("Yes"));
+            Assert.That(_vm.SalableDisplay, Is.EqualTo("No"));
+            Assert.That(_vm.TrackableDisplay, Is.EqualTo("Yes"));
+            Assert.That(_vm.TestableDisplay, Is.EqualTo("No"));
+        }
+
+        [Test]
+        public void BeforeFetch_FlagDisplays_AreEmpty()
+        {
+            CreateVm();
+
+            Assert.That(_vm.AssemblyDisplay, Is.Empty);
+            Assert.That(_vm.ComponentDisplay, Is.Empty);
+            Assert.That(_vm.PurchaseableDisplay, Is.Empty);
+            Assert.That(_vm.SalableDisplay, Is.Empty);
+            Assert.That(_vm.TrackableDisplay, Is.Empty);
+            Assert.That(_vm.TestableDisplay, Is.Empty);
+        }
+
         // ── Task 12: Property Validation ───────────────────────────────────────
 
         [Test]
@@ -988,7 +1026,7 @@ namespace SwInventreeAddin.Tests
             => Task.FromResult<System.Collections.Generic.IReadOnlyList<InventreeCategory>>(
                 new System.Collections.Generic.List<InventreeCategory>());
 
-        public Task<int> CreatePartAsync(int categoryPk, string name, string? ipn = null)
+        public Task<int> CreatePartAsync(int categoryPk, string name, string? ipn = null, PartCreationFlags? flags = null)
             => Task.FromResult(0);
 
         public Task<InventreePart?> GetPartByPkAsync(int pk)
@@ -1517,6 +1555,47 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.ApplyEnabled,      Is.True);           // fields unlocked via FetchPartAsync
             Assert.That(vm.CreatePartEnabled, Is.False);          // IPN now set — Create disabled
             Assert.That(_propertyService.SetCallLog, Does.Contain("InvenTree PK")); // PK written on create
+        }
+
+        [Test]
+        public void OpenCreatePartWindow_OnPartCreated_PopulatesFlagDisplays()
+        {
+            var createdPart = new InventreePart
+            {
+                Pk = 1,
+                Ipn = "R-NEW-001",
+                Name = "New Resistor",
+                Assembly = true,
+                Component = true,
+                Purchaseable = true,
+                Salable = false,
+                Trackable = true,
+                Testable = false,
+            };
+
+            _propertyService.Seed("PartNo", string.Empty);
+            _propertyService.Seed("Description", string.Empty);
+            _client.PartToReturn = createdPart;
+            var vm = CreateVm();
+
+            vm.OpenCreatePartWindow(createVm =>
+            {
+                var backingField = typeof(CreatePartViewModel)
+                    .GetField("PartCreated",
+                        System.Reflection.BindingFlags.NonPublic |
+                        System.Reflection.BindingFlags.Instance |
+                        System.Reflection.BindingFlags.Public);
+                var handler = backingField?.GetValue(createVm) as
+                    System.EventHandler<InventreePart>;
+                handler?.Invoke(createVm, createdPart);
+            });
+
+            Assert.That(vm.AssemblyDisplay, Is.EqualTo("Yes"));
+            Assert.That(vm.ComponentDisplay, Is.EqualTo("Yes"));
+            Assert.That(vm.PurchaseableDisplay, Is.EqualTo("Yes"));
+            Assert.That(vm.SalableDisplay, Is.EqualTo("No"));
+            Assert.That(vm.TrackableDisplay, Is.EqualTo("Yes"));
+            Assert.That(vm.TestableDisplay, Is.EqualTo("No"));
         }
 
         [Test]
