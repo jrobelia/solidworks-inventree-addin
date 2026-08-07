@@ -116,7 +116,7 @@ For each issue in `APPROVED_BATCH`, working in priority order (bugs → tracer b
    Issues blocked: #N (reason), ...
    Total commits: N
 
-   Next step: run /interactive-qa against the PR branch to verify before merging.
+   Next step: run /qa against the PR branch to verify before merging.
    ```
 
 ## Rules
