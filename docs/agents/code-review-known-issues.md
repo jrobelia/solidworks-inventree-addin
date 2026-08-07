@@ -18,3 +18,7 @@ Do **not** edit `.agents/skills/code-review/SKILL.md` to change this; that file 
 ## Another gotcha
 
 The diff base for this repo should usually be `origin/main`, not the local `main` branch. The local `main` can lag behind `origin/main` and pull in unrelated skill-setup commits.
+
+## Implement-skill note
+
+When the `implement` skill says to run `/code-review`, that step is part of the workflow, not optional. Do not skip it because of the subagent limitations above; use the foreground workaround and the appropriate diff base, then review the work before declaring it done.
