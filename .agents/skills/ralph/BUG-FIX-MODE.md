@@ -32,7 +32,7 @@ Entered from "Before starting" step 4 when `PARENT_BRANCH` already has an open P
      Bug fixes committed: #N, #N, ...
      PR body updated with Closes references.
 
-     Next step: run /interactive-qa against this PR branch to re-verify before merging.
+     Next step: run /qa against this PR branch to re-verify before merging.
      ```
 
    - **Stop.** Do not proceed to batch proposal.

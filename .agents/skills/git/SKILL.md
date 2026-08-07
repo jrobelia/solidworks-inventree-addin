@@ -7,6 +7,14 @@ description: Project-specific git guidance for the SolidWorks InvenTree add-in. 
 
 Use this guide for every git operation in this repo. It captures the Windows/PowerShell quirks, push expectations, and code-review base rules that are easy to get wrong.
 
+## Command form
+
+Run git commands from the repository directory as plain `git <command>`.
+
+- Use the `exec` tool's `workdir` parameter to set the working directory for each command. Set it to the repository directory (or a subdirectory within it).
+- Do not rely on `cd` persisting across separate `exec` calls; the environment resets the shell to the open project before each call.
+- Do not use `git -C <directory> <command>`. The `-C` flag changes git's working tree, and the auto-approve rules in this environment do not match that pattern, so every `git -C` command will require manual approval.
+
 ## Before committing
 
 1. Run `git status --short` and `git diff` to see what is changing.
@@ -15,13 +23,21 @@ Use this guide for every git operation in this repo. It captures the Windows/Pow
 
 ## Writing commit messages on Windows
 
-PowerShell does not support bash heredoc for `git commit -m`. Use one of these patterns:
+PowerShell does not support bash heredoc for `git commit -m`.
+
+### Short commits (default)
+
+Use multiple `-m` flags. This keeps the command readable and avoids temp-file cleanup:
 
 ```powershell
-# Multiple -m flags
 git commit -m "fix(task-pane): short title" -m "Longer body." -m "Closes #47"
+```
 
-# Or a temporary file for longer messages
+### Long messages
+
+If the message is long, has backticks, or would make the command hard to read, write it to a temp file and commit from that:
+
+```powershell
 $msg = "fix(task-pane): short title`n`nLonger body.`n`nCloses #47"
 $msg | Out-File -FilePath .gitmessage -Encoding utf8
 git commit -F .gitmessage
@@ -42,6 +58,46 @@ Push after the work is committed, the build passes, and any requested review is 
 - If the current branch already has an **open PR**, pushing the completed work is the normal next step to update the PR.
 - If the branch has **no open PR** or this is the **first push**, stop and ask the user whether to create a PR or push.
 - Confirm with the user before destructive operations: force-push, history rewrite, branch deletion, or checking out over uncommitted changes.
+
+## Branch hygiene
+
+Don't reuse a branch that has already been merged. Merged branches should be pruned and new work should start from an up-to-date `main`.
+
+### Check whether the current branch is already merged
+
+Use `gh` to check for a merged PR on the current branch — this is more reliable than checking `git branch --merged main` when local `main` is behind:
+
+```powershell
+$branch = git branch --show-current
+gh pr list --state merged --head "$branch" --json number,title,state
+```
+
+If a merged PR is found, the branch has already served its purpose.
+
+### Clean up and start from main
+
+If the current branch is already merged:
+
+```powershell
+git checkout main
+git pull
+git branch -d <stale-branch>
+git push origin --delete <stale-branch>
+```
+
+Then create a fresh branch for the new task:
+
+```powershell
+git checkout -b devin/<issue-or-task-slug>
+```
+
+### After a PR is merged
+
+Once the PR for a branch is merged, prune the branch before starting the next task:
+
+- Delete the local branch: `git branch -d <branch>`
+- Delete the remote branch: `git push origin --delete <branch>`
+- Pull `main` so the next branch starts from the latest state: `git pull`
 
 ## Code-review diff base
 
