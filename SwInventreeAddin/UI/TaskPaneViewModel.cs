@@ -166,6 +166,9 @@ namespace SwInventreeAddin.UI
         /// <summary>Controls Push Image button visibility.</summary>
         public bool PushImageVisible        => _session != null;
 
+        /// <summary>True when the no-image placeholder icon should be shown.</summary>
+        public bool ThumbnailPlaceholderVisible => _session != null && (_session.ThumbnailBytes == null || _session.ThumbnailBytes.Length == 0);
+
         /// <summary>True when the InvenTree thumbnail is clickable and links to the part page.</summary>
         public bool PartLinkEnabled         => _session != null && _session.PartPk > 0;
 
@@ -944,6 +947,7 @@ namespace SwInventreeAddin.UI
                 {
                     if (thumb != null) _session.SetThumbnail(thumb);
                     PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ThumbnailBytes)));
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ThumbnailPlaceholderVisible)));
                     SetStatus("Image pushed to InvenTree.", StatusSeverity.Success);
                 });
             }
@@ -979,6 +983,7 @@ namespace SwInventreeAddin.UI
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DescriptionPreview)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PkPreview)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ThumbnailBytes)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ThumbnailPlaceholderVisible)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(InStockDisplay)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(OrderingDisplay)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActiveDisplay)));

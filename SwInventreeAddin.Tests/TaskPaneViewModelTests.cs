@@ -1269,6 +1269,43 @@ namespace SwInventreeAddin.Tests
             Assert.DoesNotThrowAsync(async () => await _vm.FetchPartAsync());
             Assert.That(_vm.ThumbnailBytes, Is.Null);
         }
+
+        [Test]
+        public void ThumbnailPlaceholderVisible_OnInitialisation_IsFalse()
+        {
+            Assert.That(_vm.ThumbnailPlaceholderVisible, Is.False);
+        }
+
+        [Test]
+        public async Task ThumbnailPlaceholderVisible_AfterFetch_WithThumbnail_IsFalse()
+        {
+            _client.ThumbnailBytesToReturn = new byte[] { 1, 2, 3 };
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.ThumbnailPlaceholderVisible, Is.False);
+        }
+
+        [Test]
+        public async Task ThumbnailPlaceholderVisible_AfterFetch_WithNoThumbnail_IsTrue()
+        {
+            _client.ThumbnailBytesToReturn = null;
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.ThumbnailPlaceholderVisible, Is.True);
+        }
+
+        [Test]
+        public async Task ThumbnailPlaceholderVisible_AfterClearAll_IsFalse()
+        {
+            _client.ThumbnailBytesToReturn = new byte[] { 1, 2, 3 };
+            await _vm.FetchPartAsync();
+
+            _vm.ClearAll();
+
+            Assert.That(_vm.ThumbnailPlaceholderVisible, Is.False);
+        }
     }
 }
 

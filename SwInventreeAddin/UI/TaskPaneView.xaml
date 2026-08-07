@@ -212,13 +212,13 @@
                             <Grid>
                                 <!-- Grey placeholder box (always visible) -->
                                 <Border Background="#FFE0E0E0" CornerRadius="4" />
-                                <!-- No-image icon (only when InvenTree data loaded but no thumbnail) -->
+                                <!-- No-image icon (only when no thumbnail is available) -->
                                 <TextBlock Text="&#x1F5BC;"
                                            FontSize="36"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"
                                            Foreground="#FF888888"
-                                           Visibility="{Binding PushImageVisible, Converter={StaticResource BoolToVis}}" />
+                                           Visibility="{Binding ThumbnailPlaceholderVisible, Converter={StaticResource BoolToVis}}" />
                                 <!-- Actual thumbnail paints over placeholder when loaded -->
                                 <Image Source="{Binding ThumbnailBytes, Converter={StaticResource ThumbConverter}}"
                                        Stretch="Uniform"
