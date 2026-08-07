@@ -150,7 +150,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void GetPartWebUrl_BaseAddressWithTrailingSlash_Normalises()
+        public void GetPartWebUrl_BaseAddressWithTrailingSlash_ReturnsNormalizedUrl()
         {
             var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "[]");
             var http = new HttpClient(handler) { BaseAddress = new Uri(BaseUrl + "/") };

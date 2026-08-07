@@ -925,6 +925,19 @@ namespace SwInventreeAddin.Tests
             _vm.OpenPartInBrowser();
 
             Assert.That(openedUrl, Is.EqualTo("http://inventree.example.com/part/42/"));
+        }
+
+        [Test]
+        public async Task OpenPartInBrowser_AfterSuccessfulFetch_PassesPartPkToClient()
+        {
+            _client.PartToReturn = SamplePart;
+            _client.PartWebUrlToReturn = "http://inventree.example.com/part/42/";
+            CreateVm();
+
+            await _vm.FetchPartAsync();
+
+            _vm.OpenPartInBrowser();
+
             Assert.That(_client.LastGetPartWebUrlPk, Is.EqualTo(42));
         }
 

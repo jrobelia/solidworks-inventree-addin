@@ -186,16 +186,17 @@
                                 HorizontalAlignment="Center"
                                 CornerRadius="4"
                                 Background="Transparent"
-                                ToolTip="View in InvenTree"
                                 MouseLeftButtonUp="Thumbnail_Click">
                             <Border.Style>
                                 <Style TargetType="Border">
                                     <Setter Property="BorderBrush" Value="Transparent" />
                                     <Setter Property="BorderThickness" Value="2" />
                                     <Setter Property="Cursor" Value="Arrow" />
+                                    <Setter Property="ToolTip" Value="{x:Null}" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding PartLinkEnabled}" Value="True">
                                             <Setter Property="Cursor" Value="Hand" />
+                                            <Setter Property="ToolTip" Value="View in InvenTree" />
                                         </DataTrigger>
                                         <MultiDataTrigger>
                                             <MultiDataTrigger.Conditions>
@@ -222,21 +223,14 @@
                                        Stretch="Uniform"
                                        RenderOptions.BitmapScalingMode="HighQuality" />
                                 <!-- Link affordance -->
-                                <Border HorizontalAlignment="Right"
-                                        VerticalAlignment="Bottom"
-                                        Margin="0,0,4,4"
-                                        Width="20"
-                                        Height="20"
-                                        Background="#AA000000"
-                                        CornerRadius="10"
-                                        Visibility="{Binding PartLinkEnabled, Converter={StaticResource BoolToVis}}">
-                                    <TextBlock Text="&#xE71B;"
-                                               FontFamily="Segoe MDL2 Assets"
-                                               FontSize="12"
-                                               Foreground="White"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center" />
-                                </Border>
+                                <TextBlock Text="&#xE71B;"
+                                           FontFamily="Segoe MDL2 Assets"
+                                           FontSize="12"
+                                           Foreground="White"
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Bottom"
+                                           Margin="0,0,4,4"
+                                           Visibility="{Binding PartLinkEnabled, Converter={StaticResource BoolToVis}}" />
                             </Grid>
                         </Border>
                     </Grid>

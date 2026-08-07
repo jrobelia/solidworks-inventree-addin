@@ -164,7 +164,7 @@ namespace SwInventreeAddin.UI
         public bool PushImageVisible        => _session != null;
 
         /// <summary>True when the InvenTree thumbnail is clickable and links to the part page.</summary>
-        public bool PartLinkEnabled         => _session != null;
+        public bool PartLinkEnabled         => _session != null && _session.Part.Pk > 0;
 
         /// <summary>Current SolidWorks document Name / Description value.</summary>
         public string CurrentName
