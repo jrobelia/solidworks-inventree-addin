@@ -29,8 +29,7 @@ namespace SwInventreeAddin.UI
         /// <summary>
         /// Runs the full Viewport Capture workflow for <paramref name="partPk"/>.
         /// </summary>
-        /// <param name="partPk">InvenTree PK of the part to update.</param>
-        /// <param name="partIpn">IPN used to re-fetch the part after upload.</param>
+        /// <param name="partPk">InvenTree PK of the part to update and re-fetch after upload.</param>
         /// <param name="reportStatus">Callback for progress status messages (called on the UI thread).</param>
         /// <param name="imageOverride">Skip capture and crop when supplied (used in tests).</param>
         /// <returns>
@@ -40,7 +39,6 @@ namespace SwInventreeAddin.UI
         /// <exception cref="Exception">Thrown on upload failure — caller handles error reporting.</exception>
         public async Task<byte[]?> PushAsync(
             int                          partPk,
-            string?                      partIpn,
             Action<string, StatusSeverity> reportStatus,
             Image?                       imageOverride = null)
         {
@@ -80,7 +78,7 @@ namespace SwInventreeAddin.UI
                 byte[]? newThumb = null;
                 try
                 {
-                    var refreshed = await _client.GetPartByIpnAsync(partIpn)
+                    var refreshed = await _client.GetPartByPkAsync(partPk)
                                                   .ConfigureAwait(false);
                     if (refreshed != null && !string.IsNullOrEmpty(refreshed.ThumbnailUrl))
                     {

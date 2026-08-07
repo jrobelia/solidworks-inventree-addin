@@ -939,7 +939,6 @@ namespace SwInventreeAddin.UI
             {
                 var thumb = await service.PushAsync(
                     _session.Part.Pk,
-                    _session.Part.Ipn,
                     (text, severity) => SetStatus(text, severity),
                     imageOverride).ConfigureAwait(true);
 
