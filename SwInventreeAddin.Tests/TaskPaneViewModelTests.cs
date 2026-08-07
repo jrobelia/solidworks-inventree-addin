@@ -1,3 +1,4 @@
+using System;
 using System.Drawing;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -40,6 +41,15 @@ namespace SwInventreeAddin.Tests
         {
             _propertyService.Seed("PartNo", seedPartNo);
             _vm = new TaskPaneViewModel(_client, _propertyService);
+        }
+
+        private async Task FetchSamplePart(Uri? partWebUrl = null)
+        {
+            _client.PartToReturn = SamplePart;
+            _client.PartWebUrlToReturn = partWebUrl;
+            CreateVm();
+
+            await _vm.FetchPartAsync();
         }
 
         // ── Initialisation ─────────────────────────────────────────────────────
@@ -877,6 +887,74 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(_vm.CurrentInvenTreePk, Is.EqualTo(0));
         }
+
+        // ── Part link from thumbnail ───────────────────────────────────────────
+
+        [Test]
+        public void PartLinkEnabled_BeforeFetch_IsFalse()
+        {
+            CreateVm();
+
+            Assert.That(_vm.PartLinkEnabled, Is.False);
+        }
+
+        [Test]
+        public async Task PartLinkEnabled_AfterSuccessfulFetch_IsTrue()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.PartLinkEnabled, Is.True);
+        }
+
+        [Test]
+        public void OpenPartInBrowser_WhenNoPartFetched_DoesNotOpenUrl()
+        {
+            CreateVm();
+            string? openedUrl = null;
+            _vm.OpenBrowserUrl = url => openedUrl = url?.ToString();
+
+            _vm.OpenPartInBrowser();
+
+            Assert.That(openedUrl, Is.Null);
+        }
+
+        [Test]
+        public async Task OpenPartInBrowser_AfterSuccessfulFetch_OpensCorrectUrl()
+        {
+            await FetchSamplePart(new Uri("http://inventree.example.com/part/42/"));
+
+            string? openedUrl = null;
+            _vm.OpenBrowserUrl = url => openedUrl = url?.ToString();
+            _vm.OpenPartInBrowser();
+
+            Assert.That(openedUrl, Is.EqualTo("http://inventree.example.com/part/42/"));
+        }
+
+        [Test]
+        public async Task OpenPartInBrowser_AfterSuccessfulFetch_PassesPartPkToClient()
+        {
+            await FetchSamplePart(new Uri("http://inventree.example.com/part/42/"));
+
+            _vm.OpenBrowserUrl = _ => { };
+            _vm.OpenPartInBrowser();
+
+            Assert.That(_client.LastGetPartWebUrlPk, Is.EqualTo(42));
+        }
+
+        [Test]
+        public async Task OpenPartInBrowser_WhenClientReturnsNull_DoesNotOpenUrl()
+        {
+            await FetchSamplePart(null);
+
+            string? openedUrl = null;
+            _vm.OpenBrowserUrl = url => openedUrl = url?.ToString();
+            _vm.OpenPartInBrowser();
+
+            Assert.That(openedUrl, Is.Null);
+        }
     }
 
     /// <summary>Stub client that throws on GetPartByIpnAsync — used to test the fetch error path.</summary>
@@ -930,6 +1008,9 @@ namespace SwInventreeAddin.Tests
 
         public Task<System.Collections.Generic.IReadOnlyList<InventreePart>> GetPartsByIpnAsync(string ipn)
             => throw new System.Net.Http.HttpRequestException("simulated network error");
+
+        public Uri? GetPartWebUrl(int pk)
+            => null;
     }
 }
 
@@ -1187,6 +1268,43 @@ namespace SwInventreeAddin.Tests
             // Should complete without throwing and leave ThumbnailBytes null
             Assert.DoesNotThrowAsync(async () => await _vm.FetchPartAsync());
             Assert.That(_vm.ThumbnailBytes, Is.Null);
+        }
+
+        [Test]
+        public void ThumbnailPlaceholderVisible_OnInitialisation_IsFalse()
+        {
+            Assert.That(_vm.ThumbnailPlaceholderVisible, Is.False);
+        }
+
+        [Test]
+        public async Task ThumbnailPlaceholderVisible_AfterFetch_WithThumbnail_IsFalse()
+        {
+            _client.ThumbnailBytesToReturn = new byte[] { 1, 2, 3 };
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.ThumbnailPlaceholderVisible, Is.False);
+        }
+
+        [Test]
+        public async Task ThumbnailPlaceholderVisible_AfterFetch_WithNoThumbnail_IsTrue()
+        {
+            _client.ThumbnailBytesToReturn = null;
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.ThumbnailPlaceholderVisible, Is.True);
+        }
+
+        [Test]
+        public async Task ThumbnailPlaceholderVisible_AfterClearAll_IsFalse()
+        {
+            _client.ThumbnailBytesToReturn = new byte[] { 1, 2, 3 };
+            await _vm.FetchPartAsync();
+
+            _vm.ClearAll();
+
+            Assert.That(_vm.ThumbnailPlaceholderVisible, Is.False);
         }
     }
 }

@@ -27,6 +27,16 @@ namespace SwInventreeAddin.Tests
             return new InventreeHttpClient(http, ApiKey);
         }
 
+        private static Uri? GetPartWebUrl(string? baseAddress)
+        {
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "[]");
+            var http = new HttpClient(handler);
+            if (baseAddress != null)
+                http.BaseAddress = new Uri(baseAddress);
+            var client = new InventreeHttpClient(http, ApiKey);
+            return client.GetPartWebUrl(42);
+        }
+
         // --- successful response ---
 
         [Test]
@@ -137,6 +147,39 @@ namespace SwInventreeAddin.Tests
             var handler = new StubHttpMessageHandler(HttpStatusCode.InternalServerError, "error");
             Assert.ThrowsAsync<HttpRequestException>(() =>
                 CreateClient(handler).GetServerInfoAsync());
+        }
+
+        // --- GetPartWebUrl ---
+
+        [Test]
+        public void GetPartWebUrl_KnownPk_ReturnsPartUrl()
+        {
+            var url = GetPartWebUrl(BaseUrl);
+            Assert.That(url, Is.Not.Null);
+            Assert.That(url!.AbsoluteUri, Is.EqualTo("http://inventree.example.com/part/42/"));
+        }
+
+        [Test]
+        public void GetPartWebUrl_BaseAddressWithTrailingSlash_ReturnsNormalizedUrl()
+        {
+            var url = GetPartWebUrl(BaseUrl + "/");
+            Assert.That(url, Is.Not.Null);
+            Assert.That(url!.AbsoluteUri, Is.EqualTo("http://inventree.example.com/part/42/"));
+        }
+
+        [Test]
+        public void GetPartWebUrl_NoBaseAddress_ReturnsNull()
+        {
+            var url = GetPartWebUrl(null);
+            Assert.That(url, Is.Null);
+        }
+
+        [Test]
+        public void GetPartWebUrl_BaseAddressWithEncodedPath_PreservesPercentEncoding()
+        {
+            var url = GetPartWebUrl("http://inventree.example.com/path%20with%20space/");
+            Assert.That(url, Is.Not.Null);
+            Assert.That(url!.AbsoluteUri, Is.EqualTo("http://inventree.example.com/path%20with%20space/part/42/"));
         }
     }
 

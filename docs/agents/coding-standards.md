@@ -9,6 +9,7 @@ This file defines the coding standards for this project. It is used by RALPH's r
 Language: C# 8.0
 Runtime: .NET Framework 4.8 (`net48`)
 UI: WPF (XAML + code-behind)
+InvenTree client: `SwInventreeAddin/InvenTree/` — wraps InvenTree REST endpoints; uses `System.Text.Json`
 
 Style guide: Microsoft C# coding conventions. Nullable reference types enabled. No C# 9+ features (`init`, `record`, top-level statements).
 

@@ -1,6 +1,7 @@
 using System;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using SwInventreeAddin.UI;
 
@@ -167,5 +168,8 @@ namespace SwInventreeAddin.UI
 
         private void CompareBom_Click(object sender, RoutedEventArgs e) =>
             _vm?.RequestCompareBom();
+
+        private void Thumbnail_Click(object sender, MouseButtonEventArgs e) =>
+            _vm?.OpenPartInBrowser();
     }
 }

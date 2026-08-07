@@ -207,5 +207,16 @@ namespace SwInventreeAddin.Tests.Stubs
                 : new List<InventreePart>();
             return Task.FromResult(result);
         }
+
+        // ── GetPartWebUrl ─────────────────────────────────────────────────────
+
+        public Uri?  PartWebUrlToReturn  { get; set; }
+        public int   LastGetPartWebUrlPk { get; private set; }
+
+        public Uri? GetPartWebUrl(int pk)
+        {
+            LastGetPartWebUrlPk = pk;
+            return PartWebUrlToReturn;
+        }
     }
 }
