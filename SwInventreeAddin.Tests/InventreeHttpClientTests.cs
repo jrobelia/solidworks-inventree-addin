@@ -146,7 +146,8 @@ namespace SwInventreeAddin.Tests
         {
             var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "[]");
             var url = CreateClient(handler).GetPartWebUrl(42);
-            Assert.That(url, Is.EqualTo("http://inventree.example.com/part/42/"));
+            Assert.That(url, Is.Not.Null);
+            Assert.That(url!.AbsoluteUri, Is.EqualTo("http://inventree.example.com/part/42/"));
         }
 
         [Test]
@@ -156,7 +157,8 @@ namespace SwInventreeAddin.Tests
             var http = new HttpClient(handler) { BaseAddress = new Uri(BaseUrl + "/") };
             var client = new InventreeHttpClient(http, ApiKey);
             var url = client.GetPartWebUrl(42);
-            Assert.That(url, Is.EqualTo("http://inventree.example.com/part/42/"));
+            Assert.That(url, Is.Not.Null);
+            Assert.That(url!.AbsoluteUri, Is.EqualTo("http://inventree.example.com/part/42/"));
         }
 
         [Test]
@@ -176,7 +178,8 @@ namespace SwInventreeAddin.Tests
             var http = new HttpClient(handler) { BaseAddress = new Uri("http://inventree.example.com/path%20with%20space/") };
             var client = new InventreeHttpClient(http, ApiKey);
             var url = client.GetPartWebUrl(42);
-            Assert.That(url, Is.EqualTo("http://inventree.example.com/path%20with%20space/part/42/"));
+            Assert.That(url, Is.Not.Null);
+            Assert.That(url!.AbsoluteUri, Is.EqualTo("http://inventree.example.com/path%20with%20space/part/42/"));
         }
     }
 

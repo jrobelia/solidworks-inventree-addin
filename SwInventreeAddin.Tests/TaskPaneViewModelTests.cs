@@ -1,3 +1,4 @@
+using System;
 using System.Drawing;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -40,6 +41,15 @@ namespace SwInventreeAddin.Tests
         {
             _propertyService.Seed("PartNo", seedPartNo);
             _vm = new TaskPaneViewModel(_client, _propertyService);
+        }
+
+        private async Task FetchSamplePart(Uri? partWebUrl = null)
+        {
+            _client.PartToReturn = SamplePart;
+            _client.PartWebUrlToReturn = partWebUrl;
+            CreateVm();
+
+            await _vm.FetchPartAsync();
         }
 
         // ── Initialisation ─────────────────────────────────────────────────────
@@ -904,7 +914,7 @@ namespace SwInventreeAddin.Tests
         {
             CreateVm();
             string? openedUrl = null;
-            _vm.OpenBrowserUrl = url => openedUrl = url;
+            _vm.OpenBrowserUrl = url => openedUrl = url?.ToString();
 
             _vm.OpenPartInBrowser();
 
@@ -914,14 +924,10 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task OpenPartInBrowser_AfterSuccessfulFetch_OpensCorrectUrl()
         {
-            _client.PartToReturn = SamplePart;
-            _client.PartWebUrlToReturn = "http://inventree.example.com/part/42/";
-            CreateVm();
-
-            await _vm.FetchPartAsync();
+            await FetchSamplePart(new Uri("http://inventree.example.com/part/42/"));
 
             string? openedUrl = null;
-            _vm.OpenBrowserUrl = url => openedUrl = url;
+            _vm.OpenBrowserUrl = url => openedUrl = url?.ToString();
             _vm.OpenPartInBrowser();
 
             Assert.That(openedUrl, Is.EqualTo("http://inventree.example.com/part/42/"));
@@ -930,11 +936,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task OpenPartInBrowser_AfterSuccessfulFetch_PassesPartPkToClient()
         {
-            _client.PartToReturn = SamplePart;
-            _client.PartWebUrlToReturn = "http://inventree.example.com/part/42/";
-            CreateVm();
-
-            await _vm.FetchPartAsync();
+            await FetchSamplePart(new Uri("http://inventree.example.com/part/42/"));
 
             _vm.OpenBrowserUrl = _ => { };
             _vm.OpenPartInBrowser();
@@ -945,14 +947,10 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task OpenPartInBrowser_WhenClientReturnsNull_DoesNotOpenUrl()
         {
-            _client.PartToReturn = SamplePart;
-            _client.PartWebUrlToReturn = null;
-            CreateVm();
-
-            await _vm.FetchPartAsync();
+            await FetchSamplePart(null);
 
             string? openedUrl = null;
-            _vm.OpenBrowserUrl = url => openedUrl = url;
+            _vm.OpenBrowserUrl = url => openedUrl = url?.ToString();
             _vm.OpenPartInBrowser();
 
             Assert.That(openedUrl, Is.Null);
@@ -1011,7 +1009,7 @@ namespace SwInventreeAddin.Tests
         public Task<System.Collections.Generic.IReadOnlyList<InventreePart>> GetPartsByIpnAsync(string ipn)
             => throw new System.Net.Http.HttpRequestException("simulated network error");
 
-        public string? GetPartWebUrl(int pk)
+        public Uri? GetPartWebUrl(int pk)
             => null;
     }
 }

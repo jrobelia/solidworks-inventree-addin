@@ -23,6 +23,9 @@ namespace SwInventreeAddin
         /// <summary>The fetched InvenTree part. Updated in-place on successful Push calls.</summary>
         public InventreePart Part { get; }
 
+        /// <summary>Shortcut to the fetched part's InvenTree PK.</summary>
+        public int PartPk => Part.Pk;
+
         /// <summary>Thumbnail PNG bytes; null if not yet fetched or not available.</summary>
         public byte[]? ThumbnailBytes { get; private set; }
 

@@ -417,14 +417,14 @@ namespace SwInventreeAddin.InvenTree
         /// Builds the public InvenTree part detail URL relative to the configured base address.
         /// Returns null when no base address has been set.
         /// </summary>
-        public string? GetPartWebUrl(int pk)
+        public Uri? GetPartWebUrl(int pk)
         {
             var baseAddress = _httpClient.BaseAddress;
             if (baseAddress == null)
                 return null;
 
             var baseUrl = baseAddress.AbsoluteUri.TrimEnd('/');
-            return $"{baseUrl}/part/{pk}/";
+            return new Uri($"{baseUrl}/part/{pk}/");
         }
     }
 }

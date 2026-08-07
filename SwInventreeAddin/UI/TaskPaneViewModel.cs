@@ -63,9 +63,10 @@ namespace SwInventreeAddin.UI
         /// Called when the InvenTree thumbnail is clicked and a part URL is available.
         /// Defaults to opening the URL in the system's default browser.
         /// </summary>
-        public Action<string> OpenBrowserUrl { get; set; } = url =>
+        public Action<Uri?> OpenBrowserUrl { get; set; } = url =>
         {
-            using var _ = Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            if (url == null) return;
+            using var _ = Process.Start(new ProcessStartInfo(url.AbsoluteUri) { UseShellExecute = true });
         };
 
         // ── Bindable properties ───────────────────────────────────────────────
@@ -166,7 +167,7 @@ namespace SwInventreeAddin.UI
         public bool PushImageVisible        => _session != null;
 
         /// <summary>True when the InvenTree thumbnail is clickable and links to the part page.</summary>
-        public bool PartLinkEnabled         => _session != null && _session.Part.Pk > 0;
+        public bool PartLinkEnabled         => _session != null && _session.PartPk > 0;
 
         /// <summary>Current SolidWorks document Name / Description value.</summary>
         public string CurrentName
@@ -404,7 +405,7 @@ namespace SwInventreeAddin.UI
         {
             if (!PartLinkEnabled) return;
 
-            var url = _client?.GetPartWebUrl(_session!.Part.Pk);
+            var url = _client?.GetPartWebUrl(_session!.PartPk);
             if (url == null) return;
 
             OpenBrowserUrl(url);

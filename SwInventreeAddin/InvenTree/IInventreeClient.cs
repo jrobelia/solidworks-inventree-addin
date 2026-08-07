@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using SwInventreeAddin.Bom;
 
@@ -46,6 +47,6 @@ namespace SwInventreeAddin.InvenTree
 
         /// <summary>Builds the public InvenTree part detail URL for the given PK.
         /// Returns null when no server base address is configured.</summary>
-        string? GetPartWebUrl(int pk);
+        Uri? GetPartWebUrl(int pk);
     }
 }

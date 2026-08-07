@@ -210,10 +210,10 @@ namespace SwInventreeAddin.Tests.Stubs
 
         // ── GetPartWebUrl ─────────────────────────────────────────────────────
 
-        public string? PartWebUrlToReturn  { get; set; }
-        public int     LastGetPartWebUrlPk { get; private set; }
+        public Uri?  PartWebUrlToReturn  { get; set; }
+        public int   LastGetPartWebUrlPk { get; private set; }
 
-        public string? GetPartWebUrl(int pk)
+        public Uri? GetPartWebUrl(int pk)
         {
             LastGetPartWebUrlPk = pk;
             return PartWebUrlToReturn;
