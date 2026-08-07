@@ -43,3 +43,7 @@ Default label vocabulary (needs-triage, needs-info, ready-for-agent, ready-for-h
 ### Domain docs
 
 Single-context repo. Domain glossary in `CONTEXT.md`; architectural decisions in `docs/adr/`. See `docs/agents/domain.md`.
+
+## Agent skill environment notes
+
+In this Devin CLI environment, skills that spawn background `subagent_general` instances (e.g. `code-review`) cannot use `exec` or `read` inside those subagents unless the subagent runs in the foreground. See `docs/agents/code-review-known-issues.md` for the workaround.
