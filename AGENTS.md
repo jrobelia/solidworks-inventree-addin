@@ -1,4 +1,4 @@
-# Copilot Instructions — SolidWorks InvenTree Add-In
+# Agent Instructions — SolidWorks InvenTree Add-In
 
 A C# WPF add-in for SolidWorks that bridges parts and assemblies to an InvenTree inventory server.
 
