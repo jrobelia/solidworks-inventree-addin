@@ -6,9 +6,9 @@ disable-model-invocation: true
 
 # QA
 
-Human-in-the-loop verification for the SolidWorks InvenTree Add-In. QA sits after `/implement` and before `/triage`:
+Human-in-the-loop verification for the SolidWorks InvenTree Add-In. QA sits after `/build` and before `/triage`:
 
-`grill-with-docs → to-spec → to-tickets → implement (tdd, code-review) → qa → triage`
+`grill-with-docs → to-spec → to-tickets → build → qa → triage`
 
 QA orients from the current branch, proposes Test Groups, builds a GUI-focused test plan, runs the preflight, walks the user through each step, labels verified issues, and files failures for triage.
 
