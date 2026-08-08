@@ -33,7 +33,7 @@ Run when the user says `/build` or passes a parent spec and child tickets.
    - Commit.
 5. Run the build/test commands once more.
 6. Run `/code-review` over the full diff since the commit before the branch.
-7. Classify each finding as **RED / YELLOW / GREEN** and act on it.
+7. Verify each finding against the code and the spec, then classify and act on it following the review guide in `REFERENCE.md`. If a finding is unclear, a fix is risky, or the rework is large, ask the user before proceeding.
 8. Push and open a draft PR to `PARENT_BRANCH`.
 
 See [`REFERENCE.md`](REFERENCE.md) for branch naming, build/test commands, review classification, PR body, and diff-size guard.

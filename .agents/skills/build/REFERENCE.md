@@ -28,13 +28,17 @@ dotnet test "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj"
 
 ## Review classification
 
-`/code-review` returns **Standards** and **Spec** findings. Map each to:
+`/code-review` returns separate **Standards** and **Spec** findings. Keep the axes separate; do not merge them into one ranked list.
 
-- **RED / BLOCKING** — spec gap, broken functionality, hard standards violation. Fix, rerun `/code-review`, rerun build/test. Repeat up to two loops.
-- **YELLOW / MAJOR** — real quality issue. Auto-fix if simple; stop and ask the user for large rework.
-- **GREEN / MINOR** — style or cosmetic. Auto-fix if trivial; otherwise add to `### Review notes`.
+For each finding:
 
-If a RED blocker is too large to fix safely, create a follow-up issue labeled `needs-triage`, link it as a blocking dependency, and stop without merging.
+1. **Verify it against the code.** Subagent findings are opinions, not tasks. If the finding is factually wrong or contradicts the spec, skip it.
+2. **Classify within its axis** as **RED / YELLOW / GREEN**.
+   - **RED** — a hard spec gap (Spec) or a documented hard-standards violation (Standards). Fix it if the fix is safe and small. If the fix is too large or risky, stop and ask the user whether to open the PR with a blocking dependency, create a follow-up issue, or continue.
+   - **YELLOW** — a real quality or partial-spec issue. Propose a fix; ask the user if the rework is large or if the trade-off is unclear.
+   - **GREEN** — style or cosmetic. Auto-fix if trivial; otherwise add it to `### Review notes**.
+3. Re-run the build/test commands after any fix.
+4. If review loops aren't converging, stop and ask the user instead of looping.
 
 ## PR body
 
