@@ -28,4 +28,4 @@ This repo uses the conventions from `to-tickets`:
 - A **child issue** references its parent in a `## Parent` section.
 - A child issue lists its blockers in a `## Blocked by` section, or uses the tracker's native blocking / sub-issue links when available.
 - To find child issues of parent `#N`, list open issues and filter for bodies containing `## Parent` followed by `#N`.
-- To order child issues by dependency, resolve each issue's `## Blocked by` references (or native blocking links). Issues with no blockers come first; otherwise process blockers before the issue that depends on them.
+- To order child issues by dependency, resolve each issue's `## Blocked by` references (or native blocking links). Match `## Blocked by` entries against issue numbers (`#M`), URLs, or titles of known child issues; if ambiguous, ask. Issues with no blockers come first; otherwise process blockers before the issue that depends on them.
