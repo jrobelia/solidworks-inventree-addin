@@ -14,13 +14,13 @@
 
 ## Inputs and issue hierarchy
 
-`/build` needs a parent spec and one or more child tickets. See `docs/agents/issue-tracker.md` for the shared conventions (`## Parent`, `## Blocked by`, native blocking / sub-issue links).
+`/build` needs a parent spec and one or more child tickets. See `docs/agents/issue-tracker.md` for how to find child issues and order them by dependency (`## Parent`, `## Blocked by`, native blocking / sub-issue links).
 
 - If the user gives one issue number, treat it as a single child ticket unless the issue body declares it as a parent spec.
-- If the user gives a parent spec alone, find child issues whose bodies have a `## Parent` section containing the parent issue. Confirm the batch with the user.
+- If the user gives a parent spec alone, find child issues whose bodies reference the parent and confirm the batch.
 - If the user gives a parent spec and explicit child tickets, use those children and confirm the batch.
 
-Order child tickets by dependency: resolve each issue's `## Blocked by` section (or native blocking links) and process blockers first. If the order is unclear, ask the user.
+Order child tickets by dependency per `docs/agents/issue-tracker.md`.
 
 ## Branch names
 
@@ -33,6 +33,16 @@ Order child tickets by dependency: resolve each issue's `## Blocked by` section 
 ## Build and test commands
 
 Run the commands from `docs/agents/coding-standards.md` before every commit, after any review fix, and once more before opening the PR. If either command fails, fix the failure before proceeding.
+
+## Code review invocation
+
+`/code-review` needs a fixed point and its source material up front:
+
+1. Pre-compute `git diff <PRE_BUILD_SHA>...HEAD` and `git log <PRE_BUILD_SHA>..HEAD --oneline`.
+2. Fetch the parent spec and load `docs/agents/coding-standards.md`.
+3. Invoke `/code-review` with the fixed point (`PRE_BUILD_SHA`) and the diff/spec/standards context.
+
+Run the subagents per `docs/agents/code-review-known-issues.md` — foreground is the reliable default in this Devin CLI environment; background is an option only when read-only subagents are pre-approved and the pasted diff/spec/standards context fits the budget.
 
 ## Review classification
 
@@ -50,7 +60,7 @@ For each finding:
 
 ## PR body
 
-- `Closes #<ticket>` for each child ticket; `Closes #<parent>` if the batch completes the spec.
+- `Closes #<ticket>` for each child ticket; `Part of #<parent>` to reference the parent spec without closing it.
 - Acceptance criteria copied from the tickets.
 - Build and test commands that were run.
 - Changed GUI flows and edge cases.
@@ -70,7 +80,7 @@ If the diff exceeds ~500 changed lines, split `/code-review` into per-ticket or 
 - Issue `#51` is the child ticket.
 - Create `build/issue-51` from `PARENT_BRANCH`.
 - Propose the public seam, run `/tdd`, run build/test, commit.
-- Run `/code-review` over the full branch diff.
+- Run `/code-review` per the invocation guide above.
 - Push and open a draft PR to `PARENT_BRANCH`.
 
 ### Parent spec with linked child issues
