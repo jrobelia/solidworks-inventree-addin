@@ -27,7 +27,7 @@ Run when the user says `/build` or passes a parent spec and child tickets.
 2. Read `CONTEXT.md`, `docs/agents/domain.md`, `docs/agents/coding-standards.md`, and `docs/agents/issue-tracker.md`.
 3. Create the branch: `build/issue-<N>` or `build/spec-<parent>-<count>` from `PARENT_BRANCH`.
 4. For each ticket in dependency order:
-   - Agree the public seams in domain language (use an explore subagent if unclear).
+   - Propose the public seam for this ticket in domain language. If there is a real trade-off, present the options; otherwise proceed with the recommended seam after confirming with the user.
    - Run `/tdd`.
    - Run the repo's build/test commands.
    - Commit.
