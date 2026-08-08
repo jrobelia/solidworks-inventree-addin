@@ -19,16 +19,18 @@
 
 ## Build and test commands
 
-Run before every commit and once more before the PR:
+Run before every commit, after any review fix, and once more before the PR:
 
 ```powershell
 dotnet build "Solidworks Inventree Add-In.sln"
 dotnet test "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj"
 ```
 
+If either command fails, fix the failure before proceeding.
+
 ## Review classification
 
-`/code-review` returns separate **Standards** and **Spec** findings. Keep the axes separate; do not merge them into one ranked list.
+`/code-review` returns separate **Standards** and **Spec** findings. Classify each finding within its original axis; keep the two lists separate.
 
 For each finding:
 
@@ -36,7 +38,7 @@ For each finding:
 2. **Classify within its axis** as **RED / YELLOW / GREEN**.
    - **RED** — a hard spec gap (Spec) or a documented hard-standards violation (Standards). Fix it if the fix is safe and small. If the fix is too large or risky, stop and ask the user whether to open the PR with a blocking dependency, create a follow-up issue, or continue.
    - **YELLOW** — a real quality or partial-spec issue. Propose a fix; ask the user if the rework is large or if the trade-off is unclear.
-   - **GREEN** — style or cosmetic. Auto-fix if trivial; otherwise add it to `### Review notes**.
+   - **GREEN** — style or cosmetic. Auto-fix if trivial; otherwise add it to `### Review notes`.
 3. Re-run the build/test commands after any fix.
 4. If review loops aren't converging, stop and ask the user instead of looping.
 
@@ -44,7 +46,7 @@ For each finding:
 
 - `Closes #<ticket>` for each child ticket; `Closes #<parent>` if the batch completes the spec.
 - Acceptance criteria copied from the tickets.
-- Build/test commands run.
+- Build and test commands that were run.
 - Changed GUI flows and edge cases.
 - `### Review notes` from `/code-review`.
 - `Run /qa on this branch.`
