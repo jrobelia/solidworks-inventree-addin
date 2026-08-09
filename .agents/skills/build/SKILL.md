@@ -36,7 +36,7 @@ If the parent spec or child tickets are missing or ambiguous, ask the user.
 3. Capture the current branch as `PARENT_BRANCH` and the current commit as `PRE_BUILD_SHA`.
 4. Create the build branch from `PARENT_BRANCH` using the naming rules in `REFERENCE.md`.
 5. For each ticket in dependency order:
-   - Propose the public seam for this ticket in domain language. If there is a real trade-off, present the options; otherwise proceed with the recommended seam after confirming with the user.
+   - Propose the public seam for this ticket in domain language. If two or more seams are equally good, present the candidates and ask which to use; otherwise confirm the recommended seam before proceeding.
    - Run `/tdd`.
    - Run the build and test commands from `REFERENCE.md`. If either fails, fix before proceeding.
    - Commit with a message that references the ticket. One commit per ticket. Include the parent spec reference in the first commit so `/code-review` can locate it.
