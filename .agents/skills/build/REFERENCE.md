@@ -52,11 +52,11 @@ For each finding:
 
 1. **Verify it against the code.** Subagent findings are opinions, not tasks. If the finding is factually wrong or contradicts the spec, skip it.
 2. **Classify within its axis** as **RED / YELLOW / GREEN**.
-   - **RED** — a hard spec gap (Spec) or a documented hard-standards violation (Standards). Fix it if the fix is safe and small. If the fix is too large or risky, stop and ask the user whether to open the PR with a blocking dependency, create a follow-up issue, or continue.
+   - **RED** — a hard spec gap (Spec) or a documented hard-standards violation (Standards). Fix it if the fix is safe and small. If the fix is too large or risky to complete in the session, create a follow-up issue, link it as a blocking dependency on the PR, and stop without merging.
    - **YELLOW** — a real quality or partial-spec issue. Propose a fix; ask the user if the rework is large or if the trade-off is unclear.
    - **GREEN** — style or cosmetic. Auto-fix if trivial; otherwise add it to `### Review notes`.
 3. Re-run the build/test commands after any fix.
-4. If review loops aren't converging, stop and ask the user instead of looping.
+4. Re-run `/code-review` (or a targeted re-review of the changed areas) to verify the finding is resolved. Limit the fix → build/test → re-review cycle to **two passes**. If the finding is still unresolved after two passes, or if review loops aren't converging, stop and ask the user.
 
 ## PR body
 
