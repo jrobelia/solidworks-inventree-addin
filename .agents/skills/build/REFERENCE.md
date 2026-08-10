@@ -48,8 +48,6 @@ Run the commands from `docs/agents/coding-standards.md` before every commit, aft
 
 Run the subagents per `docs/agents/code-review-known-issues.md` — foreground is the reliable default in this Devin CLI environment; background is an option only when read-only subagents are pre-approved and the pasted diff/spec/standards context fits the budget.
 
-If the diff is large or especially risky, consider using a more capable model for the `/code-review` subagents. The diff-size guard (`~500 changed lines`) is the primary control; model choice is a secondary lever.
-
 ## Review classification
 
 `/code-review` returns separate **Standards** and **Spec** findings. Classify each finding within its original axis; keep the two lists separate.
