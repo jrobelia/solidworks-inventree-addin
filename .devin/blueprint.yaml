@@ -1,0 +1,13 @@
+runs-on: windows
+
+initialize:
+  - name: Install .NET SDK, .NET 4.8 dev pack, NuGet CLI, and SolidWorks interop DLLs
+    run: powershell.exe -ExecutionPolicy Bypass -File .devin/setup-windows.ps1
+
+knowledge:
+  - name: build
+    contents: dotnet build "Solidworks Inventree Add-In.sln"
+  - name: test
+    contents: dotnet test "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj"
+  - name: sw-redist
+    contents: SolidWorks interop DLLs are in C:\sw-redist and referenced via Directory.Build.props.user.
