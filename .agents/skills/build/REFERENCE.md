@@ -22,6 +22,10 @@
 
 Order child tickets by dependency per `docs/agents/issue-tracker.md`.
 
+## Starting state
+
+`/build` must start from a clean feature branch. If `git status --short` is non-empty, stop and ask the user to commit or stash before proceeding.
+
 ## Branch names
 
 - Single ticket: `build/issue-<number>`
@@ -44,6 +48,8 @@ Run the commands from `docs/agents/coding-standards.md` before every commit, aft
 
 Run the subagents per `docs/agents/code-review-known-issues.md` — foreground is the reliable default in this Devin CLI environment; background is an option only when read-only subagents are pre-approved and the pasted diff/spec/standards context fits the budget.
 
+If the diff is large or especially risky, consider using a more capable model for the `/code-review` subagents. The diff-size guard (`~500 changed lines`) is the primary control; model choice is a secondary lever.
+
 ## Review classification
 
 `/code-review` returns separate **Standards** and **Spec** findings. Classify each finding within its original axis; keep the two lists separate.
@@ -64,7 +70,8 @@ For each finding:
 - Acceptance criteria copied from the tickets.
 - Build and test commands that were run.
 - Changed GUI flows and edge cases.
-- `### Review notes` from `/code-review`.
+- `### Review notes` from `/code-review`, including any deferred or escalated findings.
+- `### Deferred and follow-up issues` — list any YELLOW findings intentionally deferred and any RED findings converted into follow-up issues with their issue numbers.
 - `Run /qa on this branch.`
 
 ## Diff-size guard

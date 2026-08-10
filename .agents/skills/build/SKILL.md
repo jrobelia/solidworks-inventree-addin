@@ -26,23 +26,24 @@ If the parent spec or child tickets are missing or ambiguous, ask the user.
 
 - The current branch must be a feature branch; if it is `main`/`master`, stop and ask the user to check out a feature branch.
 - Limit a batch to 3-5 tickets; if more are found, ask the user to split the work.
-- The PR base is the branch `/build` was invoked from.
+- The PR base is the branch `/build` was invoked from. If `PARENT_BRANCH` is not `main`/`master`, warn the user and confirm they want a chained PR.
 - Open a draft PR and leave it for review.
 
 ## Loop
 
 1. Identify the parent spec and child tickets from the user's input (see `REFERENCE.md` for the input cases and `docs/agents/issue-tracker.md` for the shared conventions). If only a parent spec is given, find its child issues and confirm the batch. If inputs are missing, ask.
 2. Load the context files listed in `REFERENCE.md`.
-3. Capture the current branch as `PARENT_BRANCH` and the current commit as `PRE_BUILD_SHA`.
-4. Create the build branch from `PARENT_BRANCH` using the naming rules in `REFERENCE.md`.
-5. For each ticket in dependency order:
+3. Verify the working tree is clean. If `git status --short` is non-empty, stop and ask the user to commit or stash their changes before `/build` starts.
+4. Capture the current branch as `PARENT_BRANCH` and the current commit as `PRE_BUILD_SHA`.
+5. Create the build branch from `PARENT_BRANCH` using the naming rules in `REFERENCE.md`.
+6. For each ticket in dependency order:
    - Propose the public seam for this ticket in domain language. If two or more seams are equally good, present the candidates and ask which to use; otherwise confirm the recommended seam before proceeding.
-   - Run `/tdd`.
+   - Run `/tdd`. If `/tdd` exits with failing tests, fix the failures and re-run `/tdd` before proceeding. If you cannot make `/tdd` green, stop and ask.
    - Run the build and test commands from `REFERENCE.md`. If either fails, fix before proceeding.
-   - Commit with a message that references the ticket. One commit per ticket. Include the parent spec reference in the first commit so `/code-review` can locate it.
-6. Run the build and test commands once more. If either fails, fix before proceeding.
-7. Run `/code-review` from `PRE_BUILD_SHA`, pre-computing the diff and source material per `REFERENCE.md`.
-8. Verify each `/code-review` finding against the code and the spec, then classify and act on it following the review guide in `REFERENCE.md`. Continue until every finding is resolved, deferred, or escalated to the user.
-9. Push and open a draft PR to `PARENT_BRANCH`.
+   - Commit with a message that references the ticket. Default to one logical commit per ticket; use multiple commits only if the ticket has clearly separate logical steps and the user agrees. Include the parent spec reference in the first commit so `/code-review` can locate it.
+7. Run the build and test commands once more. If either fails, fix before proceeding.
+8. Run `/code-review` from `PRE_BUILD_SHA`, pre-computing the diff and source material per `REFERENCE.md`.
+9. Verify each `/code-review` finding against the code and the spec, then classify and act on it following the review guide in `REFERENCE.md`. Continue until every finding is resolved, deferred, or escalated to the user.
+10. Push and open a draft PR to `PARENT_BRANCH`.
 
 See [`REFERENCE.md`](REFERENCE.md) for branch naming, code review invocation, review classification, PR body, diff-size guard, and examples.
