@@ -45,14 +45,10 @@ Do not move to the next step until the **Done when** criterion for the current s
    **Done when:** the new branch exists, is checked out, and is based on `PARENT_BRANCH`.
 6. For each ticket in dependency order:
    - Propose the public seam for this ticket in domain language. If two or more seams are equally good, present the candidates and ask which to use; otherwise confirm the recommended seam before proceeding.
-     **Done when:** a seam is chosen and confirmed.
    - Run `/tdd`. If `/tdd` exits with failing tests, fix the failures and re-run `/tdd` before proceeding. If you cannot make `/tdd` green, stop and ask.
-     **Done when:** `/tdd` ends with no failing tests.
    - Run the build and test commands from `REFERENCE.md`. If either fails, fix before proceeding.
-     **Done when:** both commands exit successfully.
    - Commit with a message that references the ticket. Default to one logical commit per ticket; use multiple commits only if the ticket has clearly separate logical steps and the user agrees. Include the parent spec reference in the first commit so `/code-review` can locate it.
-     **Done when:** the commit is present on the build branch.
-   **Done when:** every ticket in the batch is processed this way.
+   **Done when:** every ticket has a confirmed seam, green `/tdd`, passing build/test, and a reference commit on the build branch.
 7. Run the build and test commands once more. If either fails, fix before proceeding.
    **Done when:** both commands exit successfully on the full branch.
 8. Run `/code-review` from `PRE_BUILD_SHA`, pre-computing the diff and source material per `REFERENCE.md`.
