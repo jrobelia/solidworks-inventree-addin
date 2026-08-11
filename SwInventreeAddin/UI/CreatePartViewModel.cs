@@ -132,7 +132,7 @@ namespace SwInventreeAddin.UI
         }
 
         private bool _trackable;
-        /// <summary>Can stock for this part be tracked by batch or serial number?</summary>
+        /// <summary>Can stock for this part be tracked by serial number?</summary>
         public bool Trackable
         {
             get => _trackable;
