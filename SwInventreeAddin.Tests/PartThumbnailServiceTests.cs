@@ -73,7 +73,7 @@ namespace SwInventreeAddin.Tests
             Assert.That(reports, Has.Count.GreaterThanOrEqualTo(1));
             var lastReport = reports[reports.Count - 1];
             Assert.That(lastReport.Severity, Is.EqualTo(StatusSeverity.Warning));
-            Assert.That(lastReport.Text, Does.Contain("re-fetched").IgnoreCase);
+            Assert.That(lastReport.Text, Does.Contain("could not be refreshed").IgnoreCase);
         }
 
         [Test]
