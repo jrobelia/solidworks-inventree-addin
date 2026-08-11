@@ -690,10 +690,6 @@
                         </Border>
                     </Grid>
 
-                    <TextBlock Text="{Binding BomStatusText}"
-                               Style="{StaticResource FieldLabelStyle}"
-                               Margin="0,4,0,4" />
-
                     <Button Style="{StaticResource PrimaryButtonStyle}"
                             HorizontalAlignment="Stretch"
                             IsEnabled="{Binding BomButtonEnabled}"

@@ -79,8 +79,6 @@ namespace SwInventreeAddin.UI
         private void Set<T>(ref T f, T v, [CallerMemberName] string? n = null)
         { if (Equals(f, v)) return; f = v; PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n)); }
 
-        public event EventHandler<int>? BomSynced;
-
         private readonly IInventreeClient      _client;
         private readonly IAssemblyBomService   _bomService;
         private readonly PropertyMappingConfig _mapping;
@@ -247,8 +245,6 @@ namespace SwInventreeAddin.UI
             if (failed  > 0) parts.Add($"{failed} failed ({string.Join(", ", failedIpns)})");
             StatusText = parts.Count > 0 ? string.Join(", ", parts) : "No changes applied";
 
-            int diffCount = Lines.Count(l => l.State == BomDiffState.New || l.State == BomDiffState.Conflict);
-            BomSynced?.Invoke(this, diffCount);
         }
 
         public void SortCommand(string columnName)
