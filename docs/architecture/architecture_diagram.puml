@@ -1,0 +1,75 @@
+@startuml architecture_diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+title Component diagram for the SolidWorks InvenTree Add-In (milestone-3)
+
+Person(engineer, "Design Engineer", "Uses SolidWorks and wants to keep part data in sync with InvenTree.")
+
+Container_Boundary(addin, "SolidWorks InvenTree Add-In (C# .NET 4.8 COM Add-in)") {
+    Component(swAddin, "SwAddin", "C# / .NET Framework 4.8", "COM entry point and lifecycle. Handles RegAsm registration, SolidWorks event subscriptions, TLS setup, and assembly resolution.")
+    Component(taskPaneControl, "TaskPaneControl", "WinForms / ElementHost", "Hosts the WPF task pane view inside the SolidWorks task pane.")
+    Component(taskPaneView, "TaskPaneView", "WPF / XAML", "MVVM view bound to TaskPaneViewModel; displays part comparison, status, thumbnail link, and BOM actions.")
+    Component(taskPaneVM, "TaskPaneViewModel", "C# / INotifyPropertyChanged", "Core task-pane business logic: loads IPN/PK, fetches/creates parts, exposes Apply/Push commands, opens the InvenTree part page in a browser, and drives BOM/image state.")
+    Component(createPartVM, "CreatePartViewModel", "C# / WPF", "Workflow logic for creating a new InvenTree part: category tree navigation, duplicate-IPN guard, optional polling for server-assigned IPN, and writing IPN/Name/PK back to SolidWorks.")
+    Component(createPartWin, "CreatePartWindow", "WPF", "Dialog for creating a new InvenTree part.")
+    Component(bomCompareVM, "BomCompareViewModel", "C# / INotifyPropertyChanged", "ViewModel for the BOM compare dialog; loads SW and InvenTree BOMs, runs the diff engine, and pushes selected lines to InvenTree.")
+    Component(bomCompareWin, "BomCompareWindow", "WPF / XAML", "Dialog that displays the BOM diff and lets the user select which lines to push.")
+    Component(partSync, "PartSyncSession", "C# Domain Logic", "Owns a fetched InvenTree part and executes field-level Apply (InvenTree -> SW) and Push (SW -> InvenTree) for name, notes, description, and revision.")
+    Component(inventreeClient, "InventreeHttpClient", "System.Net.Http / System.Text.Json", "REST client for InvenTree endpoints: parts, BOM, categories, images, server info, and public part-detail URL construction.")
+    Component(partThumbnail, "PartThumbnailService", "C#", "Orchestrates the viewport-capture workflow: capture, crop dialog, PNG encoding, upload to InvenTree, and re-fetch of the thumbnail preview.")
+    Component(bomReadiness, "BomCompareReadinessCheck", "C#", "Pre-flight validation of PK linkage and revision alignment before a BOM compare.")
+    Component(bomDiff, "BomDiffEngine", "C#", "Compares SolidWorks assembly BOM against the InvenTree BOM and classifies lines as matched, new, changed, ambiguous, or InvenTree-only.")
+    Component(revCompare, "RevisionComparer", "C#", "Determines whether SolidWorks or InvenTree has the newer revision and detects ambiguous/unknown ordering.")
+    Component(imagePipeline, "ImagePipeline", "System.Drawing", "Crops, resizes, and PNG-encodes viewport captures.")
+    Component(configProvider, "EncryptedConfigProvider", "Windows DPAPI", "Encrypts and stores the InvenTree server URL and API key under %APPDATA%.")
+    Component(mappingProvider, "PropertyMappingProvider", "JSON file / network share", "Provides user-configurable mapping between SolidWorks custom property names and InvenTree fields/BOM columns.")
+    Component(swDocProp, "SwDocumentPropertyService", "SolidWorks.Interop", "Reads and writes SolidWorks custom properties and BOM tables via COM interop.")
+    Component(swViewport, "SwViewportCaptureService", "SolidWorks.Interop", "Captures viewport screenshots from the active SolidWorks model view.")
+    Component(settingsWin, "SettingsWindow", "WPF", "UI for configuring server credentials, selecting mapping source, and editing property mapping.")
+}
+
+System_Ext(solidworks, "SolidWorks", "Dassault Systemes SolidWorks CAD application that hosts the COM add-in.")
+System_Ext(inventree, "InvenTree", "Open-source PLM/ERP inventory server exposed via HTTPS REST API.")
+
+Rel(engineer, solidworks, "Opens parts/assemblies and uses the InvenTree task pane")
+Rel(solidworks, swAddin, "Loads via COM and dispatches application/document events")
+Rel(swAddin, taskPaneControl, "Creates and adds to the SolidWorks task pane")
+Rel(taskPaneControl, taskPaneView, "Hosts WPF view with ElementHost")
+Rel(taskPaneView, taskPaneVM, "Data binding (MVVM)")
+
+Rel(taskPaneVM, swDocProp, "Reads IPN, name, notes, revision, PK and BOM data")
+Rel(taskPaneVM, partSync, "Creates and commands Apply/Push")
+Rel(taskPaneVM, inventreeClient, "Fetches parts, downloads thumbnails, and gets public part URLs")
+Rel(taskPaneVM, createPartVM, "Triggers new-part creation flow")
+Rel(createPartVM, createPartWin, "Dialog binding")
+Rel(createPartVM, inventreeClient, "Creates parts and checks duplicate IPNs")
+
+Rel(taskPaneVM, partThumbnail, "Runs viewport capture -> upload workflow")
+Rel(partThumbnail, swViewport, "Captures viewport image")
+Rel(partThumbnail, imagePipeline, "Crops/resizes/encodes capture to PNG")
+Rel(partThumbnail, inventreeClient, "Uploads image and re-downloads thumbnail")
+Rel(swViewport, solidworks, "Captures viewport via SolidWorks API")
+
+Rel(taskPaneVM, bomReadiness, "Checks readiness before BOM compare")
+Rel(bomReadiness, partSync, "Validates PK and revision linkage")
+Rel(taskPaneVM, bomCompareVM, "Opens BOM compare dialog")
+Rel(bomCompareVM, bomCompareWin, "Dialog binding")
+Rel(bomCompareVM, swDocProp, "Reads SW BOM table and resolves sub-assembly IPNs")
+Rel(bomCompareVM, inventreeClient, "Fetches InvenTree BOM and pushes selected lines")
+Rel(bomCompareVM, bomDiff, "Runs diff between SW and InvenTree BOMs")
+Rel(bomDiff, revCompare, "Resolves duplicate IPNs by revision match")
+
+Rel(partSync, swDocProp, "Applies InvenTree values to SolidWorks custom properties")
+Rel(partSync, inventreeClient, "Pushes name, notes, description, and revision")
+Rel(swDocProp, solidworks, "Reads/writes custom properties and BOM tables via COM")
+Rel(inventreeClient, inventree, "HTTPS REST calls authenticated with API token")
+
+Rel(taskPaneVM, configProvider, "Reads encrypted server config and credentials")
+Rel(inventreeClient, configProvider, "Obtains API key and base URL")
+Rel(taskPaneVM, mappingProvider, "Reads property/BOM column mappings")
+Rel(settingsWin, configProvider, "Reads/writes encrypted credentials")
+Rel(settingsWin, mappingProvider, "Reads/writes property mapping source")
+
+@enduml
