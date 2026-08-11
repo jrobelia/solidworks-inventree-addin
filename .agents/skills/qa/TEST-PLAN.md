@@ -1,6 +1,6 @@
 # Test Plan Formats
 
-Use these templates when presenting proposals and the full plan. Print them to the chat panel; keep the `ask_user_question` prompt concise.
+Use these templates when presenting proposals and the full plan. Print the proposal or plan in the chat response; keep the `ask_user_question` prompt concise. Do not put the full plan inside the `ask_user_question` body — a long question box can break the UI.
 
 ## Group proposal
 

@@ -72,7 +72,9 @@ Run `git diff` and `git status --short`. If unlinked changes are present, ask th
 
 Default: one issue per Test Group. Propose a multi-issue group only when issues share acceptance criteria that cannot be verified in isolation.
 
-Present the proposed groups using the [TEST-PLAN.md](TEST-PLAN.md) group format. Print the proposal to the chat panel, then call `ask_user_question` with a concise prompt:
+Present the proposed groups using the [TEST-PLAN.md](TEST-PLAN.md) group format. Print the full proposal in the chat response first; then call `ask_user_question` with a concise prompt. Do not paste the proposal into the `ask_user_question` body — a long question box can break the UI.
+
+Prompt:
 
 > Approve this grouping, or merge/split groups before we continue?
 
@@ -84,7 +86,9 @@ For each approved Test Group, generate test steps from the acceptance criteria. 
 
 Include at least one edge case per feature area. See [CHECKLIST.md](CHECKLIST.md).
 
-Present the full plan using the [TEST-PLAN.md](TEST-PLAN.md) plan format. Print it to the chat panel, then call `ask_user_question` with a concise prompt:
+Present the full plan using the [TEST-PLAN.md](TEST-PLAN.md) plan format. Print the full plan in the chat response first; then call `ask_user_question` with a concise prompt. Do not paste the plan into the `ask_user_question` body — a long question box can break the UI.
+
+Prompt:
 
 > Approve this plan, or edit/reorder steps before we start?
 
