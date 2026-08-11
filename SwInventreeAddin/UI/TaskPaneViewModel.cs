@@ -85,7 +85,6 @@ namespace SwInventreeAddin.UI
         private int    _documentPk;
         private bool   _propertiesSectionVisible;
         private StatusSeverity _statusSeverity = StatusSeverity.None;
-        private string _bomStatusText = "BOM: Not checked";
 
         /// <summary>
         /// The type of the currently active SolidWorks document.
@@ -261,13 +260,6 @@ namespace SwInventreeAddin.UI
             && _isDocumentOpen
             && !_documentPkPresent
             && (_currentDocumentType == DocumentType.Part || _currentDocumentType == DocumentType.Assembly);
-
-        /// <summary>BOM status summary text shown in the task pane BOM section.</summary>
-        public string BomStatusText
-        {
-            get => _bomStatusText;
-            private set => Set(ref _bomStatusText, value);
-        }
 
         /// <summary>True when an assembly is open — shows the BOM section.</summary>
         public bool BomSectionVisible =>
@@ -1043,15 +1035,6 @@ namespace SwInventreeAddin.UI
         {
             StatusText     = text;
             StatusSeverity = severity;
-        }
-
-        /// <summary>
-        /// Updates the BOM status text after a BOM sync.
-        /// Called by the code-behind (via subscription to BomSynced).
-        /// </summary>
-        public void UpdateBomStatus(int diffCount)
-        {
-            BomStatusText = diffCount == 0 ? "BOM: In sync" : $"BOM: {diffCount} difference(s)";
         }
 
         /// <summary>Fires PropertyChanged for BOM visibility properties.</summary>
