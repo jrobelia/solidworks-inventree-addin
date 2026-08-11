@@ -546,7 +546,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public async Task PushImage_WhenReFetchFails_StatusText_ShowsWarning()
+        public async Task PushImage_WhenDownloadFails_StatusText_ShowsWarning()
         {
             _client.PartToReturn = SamplePart;
             _client.PartByPkToReturn = new InventreePart
@@ -561,7 +561,7 @@ namespace SwInventreeAddin.Tests
             using (var img = new Bitmap(100, 100))
                 await _vm.PushImageAsync(imageOverride: img);
 
-            Assert.That(_vm.StatusText, Does.Contain("pushed").IgnoreCase);
+            Assert.That(_vm.StatusText, Does.Contain("could not be refreshed").IgnoreCase);
             Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
         }
 

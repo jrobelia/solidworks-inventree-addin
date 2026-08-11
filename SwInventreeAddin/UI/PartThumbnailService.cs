@@ -26,6 +26,12 @@ namespace SwInventreeAddin.UI
             _viewportService = viewportService;
         }
 
+        private static byte[]? ReportWarning(Action<string, StatusSeverity> reportStatus, string message)
+        {
+            reportStatus(message, StatusSeverity.Warning);
+            return null;
+        }
+
         /// <summary>
         /// Runs the full Viewport Capture workflow for <paramref name="partPk"/>.
         /// </summary>
@@ -81,33 +87,19 @@ namespace SwInventreeAddin.UI
                     var refreshed = await _client.GetPartByPkAsync(partPk)
                                                   .ConfigureAwait(false);
                     if (refreshed == null)
-                    {
-                        reportStatus("Image pushed, but the part could not be re-fetched for a preview.",
-                                     StatusSeverity.Warning);
-                        return null;
-                    }
+                        return ReportWarning(reportStatus, "Image pushed, but the part could not be re-fetched for a preview.");
 
                     if (string.IsNullOrEmpty(refreshed.ThumbnailUrl))
-                    {
-                        reportStatus("Image pushed, but InvenTree did not return a thumbnail URL.",
-                                     StatusSeverity.Warning);
-                        return null;
-                    }
+                        return ReportWarning(reportStatus, "Image pushed, but InvenTree did not return a thumbnail URL.");
 
                     newThumb = await _client.DownloadImageAsync(refreshed.ThumbnailUrl!)
                                             .ConfigureAwait(false);
                     if (newThumb == null)
-                    {
-                        reportStatus("Image pushed, but the thumbnail could not be downloaded.",
-                                     StatusSeverity.Warning);
-                        return null;
-                    }
+                        return ReportWarning(reportStatus, "Image pushed, but the thumbnail could not be downloaded.");
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
-                    reportStatus($"Image pushed, but the thumbnail preview could not be refreshed: {ex.Message}",
-                                 StatusSeverity.Warning);
-                    return null;
+                    return ReportWarning(reportStatus, "Image pushed, but the thumbnail preview could not be refreshed.");
                 }
 
                 return newThumb;
