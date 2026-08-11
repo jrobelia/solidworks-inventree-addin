@@ -80,13 +80,35 @@ namespace SwInventreeAddin.UI
                 {
                     var refreshed = await _client.GetPartByPkAsync(partPk)
                                                   .ConfigureAwait(false);
-                    if (refreshed != null && !string.IsNullOrEmpty(refreshed.ThumbnailUrl))
+                    if (refreshed == null)
                     {
-                        newThumb = await _client.DownloadImageAsync(refreshed.ThumbnailUrl!)
-                                                 .ConfigureAwait(false);
+                        reportStatus("Image uploaded, but the part could not be re-fetched for a preview.",
+                                     StatusSeverity.Warning);
+                        return null;
+                    }
+
+                    if (string.IsNullOrEmpty(refreshed.ThumbnailUrl))
+                    {
+                        reportStatus("Image uploaded, but InvenTree did not return a thumbnail URL.",
+                                     StatusSeverity.Warning);
+                        return null;
+                    }
+
+                    newThumb = await _client.DownloadImageAsync(refreshed.ThumbnailUrl!)
+                                            .ConfigureAwait(false);
+                    if (newThumb == null)
+                    {
+                        reportStatus("Image uploaded, but the thumbnail could not be downloaded.",
+                                     StatusSeverity.Warning);
+                        return null;
                     }
                 }
-                catch { /* silent — stale thumbnail stays until next fetch */ }
+                catch (Exception ex)
+                {
+                    reportStatus($"Image uploaded, but the thumbnail preview could not be refreshed: {ex.Message}",
+                                 StatusSeverity.Warning);
+                    return null;
+                }
 
                 return newThumb;
             }

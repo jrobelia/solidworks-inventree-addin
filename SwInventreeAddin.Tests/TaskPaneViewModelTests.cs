@@ -529,15 +529,40 @@ namespace SwInventreeAddin.Tests
         public async Task PushImage_OnSuccess_StatusText_ShowsSuccess()
         {
             _client.PartToReturn = SamplePart;
+            _client.PartByPkToReturn = new InventreePart
+            {
+                Pk = SamplePart.Pk,
+                ThumbnailUrl = "/media/test.png",
+            };
+            _client.ThumbnailBytesToReturn = new byte[] { 1, 2, 3 };
             CreateVm();
             await _vm.FetchPartAsync();
 
             using (var img = new Bitmap(100, 100))
                 await _vm.PushImageAsync(imageOverride: img);
 
-            Assert.That(_vm.StatusText,
-                Does.Contain("image").IgnoreCase
-                .Or.Contain("\u2713"));
+            Assert.That(_vm.StatusText, Does.Contain("Image pushed to InvenTree."));
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Success));
+        }
+
+        [Test]
+        public async Task PushImage_WhenReFetchFails_StatusText_ShowsWarning()
+        {
+            _client.PartToReturn = SamplePart;
+            _client.PartByPkToReturn = new InventreePart
+            {
+                Pk = SamplePart.Pk,
+                ThumbnailUrl = "/media/test.png",
+            };
+            _client.ThrowOnDownload = new Exception("download failed");
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            using (var img = new Bitmap(100, 100))
+                await _vm.PushImageAsync(imageOverride: img);
+
+            Assert.That(_vm.StatusText, Does.Contain("uploaded").IgnoreCase);
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
         }
 
         [Test]
