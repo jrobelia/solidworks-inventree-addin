@@ -561,7 +561,7 @@ namespace SwInventreeAddin.Tests
             using (var img = new Bitmap(100, 100))
                 await _vm.PushImageAsync(imageOverride: img);
 
-            Assert.That(_vm.StatusText, Does.Contain("uploaded").IgnoreCase);
+            Assert.That(_vm.StatusText, Does.Contain("pushed").IgnoreCase);
             Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
         }
 

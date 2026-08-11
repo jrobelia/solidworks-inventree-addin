@@ -34,7 +34,7 @@ namespace SwInventreeAddin.UI
         /// <param name="imageOverride">Skip capture and crop when supplied (used in tests).</param>
         /// <returns>
         /// New thumbnail bytes after upload, or <c>null</c> if the user cancelled,
-        /// no viewport service is available, or the re-fetch returned no thumbnail.
+        /// no viewport service is available, or the re-fetch/download failed.
         /// </returns>
         /// <exception cref="Exception">Thrown on upload failure — caller handles error reporting.</exception>
         public async Task<byte[]?> PushAsync(
@@ -70,7 +70,7 @@ namespace SwInventreeAddin.UI
 
                 byte[] pngData = ImagePipeline.Process(image, cropRect);
 
-                reportStatus("Uploading image to InvenTree\u2026", StatusSeverity.None);
+                reportStatus("Pushing image to InvenTree\u2026", StatusSeverity.None);
 
                 await _client.UploadPartImageAsync(partPk, pngData).ConfigureAwait(false);
 
@@ -82,14 +82,14 @@ namespace SwInventreeAddin.UI
                                                   .ConfigureAwait(false);
                     if (refreshed == null)
                     {
-                        reportStatus("Image uploaded, but the part could not be re-fetched for a preview.",
+                        reportStatus("Image pushed, but the part could not be re-fetched for a preview.",
                                      StatusSeverity.Warning);
                         return null;
                     }
 
                     if (string.IsNullOrEmpty(refreshed.ThumbnailUrl))
                     {
-                        reportStatus("Image uploaded, but InvenTree did not return a thumbnail URL.",
+                        reportStatus("Image pushed, but InvenTree did not return a thumbnail URL.",
                                      StatusSeverity.Warning);
                         return null;
                     }
@@ -98,14 +98,14 @@ namespace SwInventreeAddin.UI
                                             .ConfigureAwait(false);
                     if (newThumb == null)
                     {
-                        reportStatus("Image uploaded, but the thumbnail could not be downloaded.",
+                        reportStatus("Image pushed, but the thumbnail could not be downloaded.",
                                      StatusSeverity.Warning);
                         return null;
                     }
                 }
                 catch (Exception ex)
                 {
-                    reportStatus($"Image uploaded, but the thumbnail preview could not be refreshed: {ex.Message}",
+                    reportStatus($"Image pushed, but the thumbnail preview could not be refreshed: {ex.Message}",
                                  StatusSeverity.Warning);
                     return null;
                 }
