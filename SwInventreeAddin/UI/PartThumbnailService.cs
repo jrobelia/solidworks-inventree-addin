@@ -26,6 +26,12 @@ namespace SwInventreeAddin.UI
             _viewportService = viewportService;
         }
 
+        private static byte[]? ReportWarning(Action<string, StatusSeverity> reportStatus, string message)
+        {
+            reportStatus(message, StatusSeverity.Warning);
+            return null;
+        }
+
         /// <summary>
         /// Runs the full Viewport Capture workflow for <paramref name="partPk"/>.
         /// </summary>
@@ -34,7 +40,7 @@ namespace SwInventreeAddin.UI
         /// <param name="imageOverride">Skip capture and crop when supplied (used in tests).</param>
         /// <returns>
         /// New thumbnail bytes after upload, or <c>null</c> if the user cancelled,
-        /// no viewport service is available, or the re-fetch returned no thumbnail.
+        /// no viewport service is available, or the re-fetch/download failed.
         /// </returns>
         /// <exception cref="Exception">Thrown on upload failure — caller handles error reporting.</exception>
         public async Task<byte[]?> PushAsync(
@@ -70,7 +76,7 @@ namespace SwInventreeAddin.UI
 
                 byte[] pngData = ImagePipeline.Process(image, cropRect);
 
-                reportStatus("Uploading image to InvenTree\u2026", StatusSeverity.None);
+                reportStatus("Pushing image to InvenTree\u2026", StatusSeverity.None);
 
                 await _client.UploadPartImageAsync(partPk, pngData).ConfigureAwait(false);
 
@@ -80,13 +86,21 @@ namespace SwInventreeAddin.UI
                 {
                     var refreshed = await _client.GetPartByPkAsync(partPk)
                                                   .ConfigureAwait(false);
-                    if (refreshed != null && !string.IsNullOrEmpty(refreshed.ThumbnailUrl))
-                    {
-                        newThumb = await _client.DownloadImageAsync(refreshed.ThumbnailUrl!)
-                                                 .ConfigureAwait(false);
-                    }
+                    if (refreshed == null)
+                        return ReportWarning(reportStatus, "Image pushed, but the part could not be re-fetched for a preview.");
+
+                    if (string.IsNullOrEmpty(refreshed.ThumbnailUrl))
+                        return ReportWarning(reportStatus, "Image pushed, but InvenTree did not return a thumbnail URL.");
+
+                    newThumb = await _client.DownloadImageAsync(refreshed.ThumbnailUrl!)
+                                            .ConfigureAwait(false);
+                    if (newThumb == null)
+                        return ReportWarning(reportStatus, "Image pushed, but the thumbnail could not be downloaded.");
                 }
-                catch { /* silent — stale thumbnail stays until next fetch */ }
+                catch (Exception)
+                {
+                    return ReportWarning(reportStatus, "Image pushed, but the thumbnail preview could not be refreshed.");
+                }
 
                 return newThumb;
             }

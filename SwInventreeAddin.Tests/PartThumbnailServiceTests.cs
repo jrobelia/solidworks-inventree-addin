@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -32,7 +34,7 @@ namespace SwInventreeAddin.Tests
             };
             _client.ThumbnailBytesToReturn = expectedThumb;
 
-            var service = new PartThumbnailService(_client, null);
+            var service = CreateService();
 
             using var image = new Bitmap(10, 10);
             var result = await service.PushAsync(
@@ -44,6 +46,85 @@ namespace SwInventreeAddin.Tests
             Assert.That(_client.LastGetPartByPkPk, Is.EqualTo(expectedPk));
             Assert.That(_client.DownloadImageCallCount, Is.EqualTo(1));
             Assert.That(result, Is.SameAs(expectedThumb));
+        }
+
+        [Test]
+        public async Task PushAsync_WhenGetPartByPkThrowsAfterUpload_ReportsWarningAndReturnsNull()
+        {
+            const int expectedPk = 42;
+            _client.PartByPkToReturn = new InventreePart
+            {
+                Pk = expectedPk,
+                ThumbnailUrl = "/media/test.png",
+            };
+            _client.ThrowOnGetPartByPk = true;
+
+            var reports = new List<(string Text, StatusSeverity Severity)>();
+
+            using var image = new Bitmap(10, 10);
+            var result = await CreateService().PushAsync(
+                expectedPk,
+                (text, severity) => reports.Add((text, severity)),
+                image);
+
+            Assert.That(_client.LastUploadedPk, Is.EqualTo(expectedPk));
+            Assert.That(result, Is.Null);
+            AssertLastReportWarns(reports, "could not be refreshed");
+        }
+
+        [Test]
+        public async Task PushAsync_WhenDownloadImageThrowsAfterUpload_ReportsWarningAndReturnsNull()
+        {
+            const int expectedPk = 42;
+            _client.PartByPkToReturn = new InventreePart
+            {
+                Pk = expectedPk,
+                ThumbnailUrl = "/media/test.png",
+            };
+            _client.ThrowOnDownload = new Exception("download failed");
+
+            var reports = new List<(string Text, StatusSeverity Severity)>();
+
+            using var image = new Bitmap(10, 10);
+            var result = await CreateService().PushAsync(
+                expectedPk,
+                (text, severity) => reports.Add((text, severity)),
+                image);
+
+            Assert.That(_client.LastUploadedPk, Is.EqualTo(expectedPk));
+            Assert.That(_client.DownloadImageCallCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(result, Is.Null);
+            AssertLastReportWarns(reports, "preview");
+        }
+
+        [Test]
+        public async Task PushAsync_WhenPartHasNoThumbnailUrl_ReportsWarningAndReturnsNull()
+        {
+            const int expectedPk = 42;
+            _client.PartByPkToReturn = new InventreePart { Pk = expectedPk };
+
+            var reports = new List<(string Text, StatusSeverity Severity)>();
+
+            using var image = new Bitmap(10, 10);
+            var result = await CreateService().PushAsync(
+                expectedPk,
+                (text, severity) => reports.Add((text, severity)),
+                image);
+
+            Assert.That(_client.LastUploadedPk, Is.EqualTo(expectedPk));
+            Assert.That(_client.DownloadImageCallCount, Is.EqualTo(0));
+            Assert.That(result, Is.Null);
+            AssertLastReportWarns(reports, "thumbnail URL");
+        }
+
+        private PartThumbnailService CreateService() => new PartThumbnailService(_client, null);
+
+        private static void AssertLastReportWarns(List<(string Text, StatusSeverity Severity)> reports, string expectedText)
+        {
+            Assert.That(reports, Has.Count.GreaterThanOrEqualTo(1));
+            var lastReport = reports[reports.Count - 1];
+            Assert.That(lastReport.Severity, Is.EqualTo(StatusSeverity.Warning));
+            Assert.That(lastReport.Text, Does.Contain(expectedText).IgnoreCase);
         }
     }
 }
