@@ -15,15 +15,6 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - name: Check SolidWorks is not running
-        shell: pwsh
-        run: |
-          $sw = Get-Process -Name SLDWORKS -ErrorAction SilentlyContinue
-          if ($sw) {
-            Write-Error "SolidWorks is running. Close SolidWorks before building (it holds a lock on the add-in DLL)."
-            exit 1
-          }
-
       - name: Checkout
         uses: actions/checkout@v4
 

@@ -120,6 +120,8 @@ Never run a milestone branch in production.
 
 Releases are tagged `vMAJOR.MINOR.0` and published as [GitHub Releases](../../releases). Each release corresponds to a milestone or a significant increment within one. The roadmap in [`docs/roadmap.md`](docs/roadmap.md) tracks what is planned and what shipped.
 
+The release workflow builds the installer package into `bin\Release\net48`, which is independent of the `bin\Debug\net48` path SolidWorks may have loaded, so it does not require SolidWorks to be closed.
+
 | Tag | Contents |
 |---|---|
 | `v1.0.0` | Initial working add-in: fetch, compare, apply, push revision. Encrypted settings panel. Installer and DevRegister scripts. |
