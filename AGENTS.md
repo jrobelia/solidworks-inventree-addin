@@ -8,6 +8,8 @@ A C# WPF add-in for SolidWorks that bridges parts and assemblies to an InvenTree
 - Test: `dotnet test "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj"`
 - Package manager: NuGet (restored automatically by `dotnet build`).
 
+> Unit tests build the add-in into a throwaway `bin_unit_test` folder, so `dotnet test` can run while SolidWorks is open. Run `dotnet build` of the add-in project with SolidWorks closed if it needs to overwrite a locked `bin\Debug\net48\SwInventreeAddin.dll`.
+
 ## Where to look next
 
 - [Build, test, language, naming, and code-quality rules](docs/agents/coding-standards.md)

@@ -22,6 +22,10 @@ Test: `dotnet test "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj"`
 
 Check: (none — no separate lint step)
 
+Notes:
+- `dotnet test` builds the add-in into `bin_unit_test\net48` so it can run while SolidWorks is open.
+- `dotnet build` of the add-in project writes `bin\Debug\net48\SwInventreeAddin.dll`, which SolidWorks may have locked. Run it with SolidWorks closed when the locked DLL must be overwritten.
+
 ---
 
 ## Naming Conventions
