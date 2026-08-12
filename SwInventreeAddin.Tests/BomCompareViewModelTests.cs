@@ -25,7 +25,7 @@ namespace SwInventreeAddin.Tests
             _mapping    = new PropertyMappingConfig();
 
             // Default: assembly part exists and is flagged as Assembly so ApplyAsync guard passes.
-            _client.PartByPkToReturn = new InventreePart { IsAssembly = true };
+            _client.PartByPkToReturn = new InventreePart { Assembly = true };
         }
 
         private BomCompareViewModel CreateVm(int assemblyPk = 42) =>

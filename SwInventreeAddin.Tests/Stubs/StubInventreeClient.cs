@@ -119,12 +119,14 @@ namespace SwInventreeAddin.Tests.Stubs
         public Exception? ThrowOnCreateException { get; set; }
 
         public string LastCreateIpn       { get; private set; } = string.Empty;
+        public PartCreationFlags? LastCreateFlags { get; private set; }
 
-        public Task<int> CreatePartAsync(int categoryPk, string name, string? ipn = null)
+        public Task<int> CreatePartAsync(int categoryPk, string name, string? ipn = null, PartCreationFlags? flags = null)
         {
             LastCreateCategoryPk = categoryPk;
             LastCreateName       = name;
             LastCreateIpn        = ipn ?? string.Empty;
+            LastCreateFlags      = flags;
             if (ThrowOnCreateException != null)
                 throw ThrowOnCreateException;
             if (ThrowOnCreate)

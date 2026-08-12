@@ -195,4 +195,58 @@
         </Setter>
     </Style>
 
+    <!-- ── InvenTree toggle switch (left/right label + toggle thumb) ────────── -->
+
+    <Style x:Key="InvenTreeToggleStyle" TargetType="CheckBox">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Cursor"     Value="Hand" />
+        <Setter Property="Margin"     Value="0,6,0,0" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <Grid Background="Transparent">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <ContentPresenter Grid.Column="0"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          VerticalAlignment="Center"
+                                          HorizontalAlignment="Left"
+                                          RecognizesAccessKey="True" />
+
+                        <Grid Grid.Column="1"
+                              Width="36"
+                              Height="18"
+                              VerticalAlignment="Center"
+                              Margin="8,0,0,0">
+                            <Border x:Name="Track"
+                                    Background="#FFCCCCCC"
+                                    CornerRadius="9" />
+                            <Ellipse x:Name="Thumb"
+                                     Fill="White"
+                                     Width="14"
+                                     Height="14"
+                                     HorizontalAlignment="Left"
+                                     VerticalAlignment="Center"
+                                     Margin="2,0,0,0" />
+                        </Grid>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Track" Property="Background" Value="{StaticResource BrushAccentBlue}" />
+                            <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right" />
+                            <Setter TargetName="Thumb" Property="Margin" Value="0,0,2,0" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
 </ResourceDictionary>

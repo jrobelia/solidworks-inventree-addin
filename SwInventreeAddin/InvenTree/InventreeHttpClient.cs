@@ -103,7 +103,12 @@ namespace SwInventreeAddin.InvenTree
                 InStock      = GetDecimal(detail, "in_stock"),
                 Ordering     = GetDecimal(detail, "ordering"),
                 Active       = GetBool(detail, "active"),
-                IsAssembly   = GetBool(detail, "assembly"),
+                Assembly     = GetBool(detail, "assembly"),
+                Component    = GetBool(detail, "component"),
+                Purchaseable = GetBool(detail, "purchaseable"),
+                Salable      = GetBool(detail, "salable"),
+                Trackable    = GetBool(detail, "trackable"),
+                Testable     = GetBool(detail, "testable"),
             };
         }
 
@@ -156,7 +161,7 @@ namespace SwInventreeAddin.InvenTree
             return list;
         }
 
-        public async Task<int> CreatePartAsync(int categoryPk, string name, string? ipn = null)
+        public async Task<int> CreatePartAsync(int categoryPk, string name, string? ipn = null, PartCreationFlags? flags = null)
         {
             var payloadDict = new System.Collections.Generic.Dictionary<string, object>
             {
@@ -164,7 +169,18 @@ namespace SwInventreeAddin.InvenTree
                 ["name"]     = name
             };
             if (!string.IsNullOrWhiteSpace(ipn))
-                payloadDict["ipn"] = ipn.Trim();
+                payloadDict["ipn"] = ipn!.Trim();
+
+            if (flags != null)
+            {
+                payloadDict["assembly"]                = flags.Assembly;
+                payloadDict["component"]               = flags.Component;
+                payloadDict["purchaseable"]            = flags.Purchaseable;
+                payloadDict["salable"]                 = flags.Salable;
+                payloadDict["trackable"]               = flags.Trackable;
+                payloadDict["testable"]                = flags.Testable;
+                payloadDict["copy_category_parameters"] = flags.CopyCategoryParameters;
+            }
 
             var payload = JsonSerializer.Serialize(payloadDict);
             var body    = new StringContent(payload, System.Text.Encoding.UTF8, "application/json");

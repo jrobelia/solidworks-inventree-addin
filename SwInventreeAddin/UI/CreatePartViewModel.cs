@@ -99,6 +99,62 @@ namespace SwInventreeAddin.UI
             private set => Set(ref _statusText, value);
         }
 
+        private bool _assembly;
+        /// <summary>Can this part be built from other parts?</summary>
+        public bool Assembly
+        {
+            get => _assembly;
+            set => Set(ref _assembly, value);
+        }
+
+        private bool _component;
+        /// <summary>Can this part be used to build other parts?</summary>
+        public bool Component
+        {
+            get => _component;
+            set => Set(ref _component, value);
+        }
+
+        private bool _purchaseable;
+        /// <summary>Can this part be purchased from external suppliers?</summary>
+        public bool Purchaseable
+        {
+            get => _purchaseable;
+            set => Set(ref _purchaseable, value);
+        }
+
+        private bool _salable;
+        /// <summary>Can this part be sold to external customers?</summary>
+        public bool Salable
+        {
+            get => _salable;
+            set => Set(ref _salable, value);
+        }
+
+        private bool _trackable;
+        /// <summary>Can stock for this part be tracked by serial number?</summary>
+        public bool Trackable
+        {
+            get => _trackable;
+            set => Set(ref _trackable, value);
+        }
+
+        private bool _testable;
+        /// <summary>Can stock for this part be tested on receipt?</summary>
+        public bool Testable
+        {
+            get => _testable;
+            set => Set(ref _testable, value);
+        }
+
+        private bool _copyCategoryParameters;
+        /// <summary>Copy category-level parameter templates onto the newly created part.</summary>
+        public bool CopyCategoryParameters
+        {
+            get => _copyCategoryParameters;
+            set => Set(ref _copyCategoryParameters, value);
+        }
+
         public ObservableCollection<CategoryNode> RootCategories { get; }
             = new ObservableCollection<CategoryNode>();
 
@@ -110,7 +166,8 @@ namespace SwInventreeAddin.UI
             string                    initialName,
             IPropertyMappingProvider? mappingProvider       = null,
             int                       ipnPollDelayMs        = 500,
-            bool                      waitForAutoPartNumber = false)
+            bool                      waitForAutoPartNumber = false,
+            DocumentType              documentType          = DocumentType.Unknown)
         {
             _client                = client;
             _propertyService       = propertyService;
@@ -118,6 +175,10 @@ namespace SwInventreeAddin.UI
             _ipnPollDelayMs        = ipnPollDelayMs;
             _waitForAutoPartNumber = waitForAutoPartNumber;
             PartName               = initialName;
+
+            // Seed the type flags from the SolidWorks document type, but keep both editable.
+            Assembly  = documentType == DocumentType.Assembly;
+            Component = documentType == DocumentType.Part;
         }
 
         // ── Methods ───────────────────────────────────────────────────────────
@@ -228,7 +289,17 @@ namespace SwInventreeAddin.UI
                 }
 
                 RunOnUiThread(() => StatusText = "Creating part\u2026");
-                var pk          = await _client.CreatePartAsync(categoryPk, _partName, ipnToSubmit)
+                var flags = new PartCreationFlags
+                {
+                    Assembly              = _assembly,
+                    Component             = _component,
+                    Purchaseable          = _purchaseable,
+                    Salable               = _salable,
+                    Trackable             = _trackable,
+                    Testable              = _testable,
+                    CopyCategoryParameters = _copyCategoryParameters,
+                };
+                var pk          = await _client.CreatePartAsync(categoryPk, _partName, ipnToSubmit, flags)
                                                .ConfigureAwait(false);
 
                 RunOnUiThread(() => StatusText = "Fetching new part\u2026");

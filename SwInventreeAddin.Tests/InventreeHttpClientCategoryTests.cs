@@ -161,6 +161,52 @@ namespace SwInventreeAddin.Tests
             Assert.That(doc.RootElement.TryGetProperty("ipn", out _), Is.False);
         }
 
+        [Test]
+        public async Task CreatePartAsync_WithFlags_SendsAllFlagFieldsInBody()
+        {
+            var responseJson = @"{""pk"":99,""name"":""New Part""}";
+            var handler      = new StubHttpMessageHandler(HttpStatusCode.OK, responseJson);
+            var flags = new PartCreationFlags
+            {
+                Assembly              = true,
+                Component             = false,
+                Purchaseable          = true,
+                Salable               = false,
+                Trackable             = true,
+                Testable              = false,
+                CopyCategoryParameters = true,
+            };
+
+            await CreateClient(handler).CreatePartAsync(7, "New Part", null, flags);
+
+            using var doc = JsonDocument.Parse(handler.LastRequestBody);
+            Assert.That(doc.RootElement.GetProperty("assembly").GetBoolean(),                Is.True);
+            Assert.That(doc.RootElement.GetProperty("component").GetBoolean(),               Is.False);
+            Assert.That(doc.RootElement.GetProperty("purchaseable").GetBoolean(),            Is.True);
+            Assert.That(doc.RootElement.GetProperty("salable").GetBoolean(),                 Is.False);
+            Assert.That(doc.RootElement.GetProperty("trackable").GetBoolean(),               Is.True);
+            Assert.That(doc.RootElement.GetProperty("testable").GetBoolean(),                Is.False);
+            Assert.That(doc.RootElement.GetProperty("copy_category_parameters").GetBoolean(), Is.True);
+        }
+
+        [Test]
+        public async Task CreatePartAsync_NoFlags_OmitsFlagFieldsFromBody()
+        {
+            var responseJson = @"{""pk"":99,""name"":""New Part""}";
+            var handler      = new StubHttpMessageHandler(HttpStatusCode.OK, responseJson);
+
+            await CreateClient(handler).CreatePartAsync(7, "New Part");
+
+            using var doc = JsonDocument.Parse(handler.LastRequestBody);
+            Assert.That(doc.RootElement.TryGetProperty("assembly", out _), Is.False);
+            Assert.That(doc.RootElement.TryGetProperty("component", out _), Is.False);
+            Assert.That(doc.RootElement.TryGetProperty("purchaseable", out _), Is.False);
+            Assert.That(doc.RootElement.TryGetProperty("salable", out _), Is.False);
+            Assert.That(doc.RootElement.TryGetProperty("trackable", out _), Is.False);
+            Assert.That(doc.RootElement.TryGetProperty("testable", out _), Is.False);
+            Assert.That(doc.RootElement.TryGetProperty("copy_category_parameters", out _), Is.False);
+        }
+
         // ── GetPartByPkAsync ────────────────────────────────────────────────────
 
         [Test]
