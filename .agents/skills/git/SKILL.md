@@ -15,6 +15,14 @@ Run git commands from the repository directory as plain `git <command>`.
 - Do not rely on `cd` persisting across separate `exec` calls; the environment resets the shell to the open project before each call.
 - Do not use `git -C <directory> <command>`. The `-C` flag changes git's working tree, and the auto-approve rules in this environment do not match that pattern, so every `git -C` command will require manual approval.
 
+## Default branch
+
+This repo uses a milestone release branch as the integration target (e.g., `milestone-3` at the time of writing). Use the active milestone branch in place of `main` when checking out, pulling, or cleaning up after a merge. If you are unsure of the current target branch, run `gh pr view <number> --json baseRefName` for the open PR.
+
+## Closing issues from milestone branches
+
+GitHub only auto-closes an issue when a commit or PR is merged into the **default** branch (usually `main`). When a PR targets a milestone branch, keywords like `Closes #N` or `Fixes #N` in the PR body or commit message will **not** auto-close the issue when the PR merges. To keep issue tracking clean, manually close the issue or add the `qa-verified`/`done` label when the PR lands in its milestone branch, and rely on the eventual `main` merge only for the final close if needed.
+
 ## Before committing
 
 1. Run `git status --short` and `git diff` to see what is changing.
