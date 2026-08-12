@@ -133,26 +133,27 @@ namespace SwInventreeAddin.UI
         /// <summary>"Active" or "Inactive".</summary>
         public string ActiveDisplay      => _session == null ? string.Empty : (_session.Part.Active ? "Active" : "Inactive");
 
-        private static string YesNoDisplay(bool? value)
-            => value == null ? string.Empty : (value.Value ? "Yes" : "No");
+        /// <summary>Segoe MDL2 Assets check-mark glyph for true, cancel glyph for false.</summary>
+        private static string FlagGlyph(bool? value)
+            => value == null ? string.Empty : (value.Value ? "\uE73E" : "\uE711");
 
-        /// <summary>"Yes" or "No" for the InvenTree Assembly flag.</summary>
-        public string AssemblyDisplay    => YesNoDisplay(_session?.Part.Assembly);
+        /// <summary>Check/cancel glyph for the InvenTree Assembly flag.</summary>
+        public string AssemblyDisplay    => FlagGlyph(_session?.Part.Assembly);
 
-        /// <summary>"Yes" or "No" for the InvenTree Component flag.</summary>
-        public string ComponentDisplay   => YesNoDisplay(_session?.Part.Component);
+        /// <summary>Check/cancel glyph for the InvenTree Component flag.</summary>
+        public string ComponentDisplay   => FlagGlyph(_session?.Part.Component);
 
-        /// <summary>"Yes" or "No" for the InvenTree Purchaseable flag.</summary>
-        public string PurchaseableDisplay => YesNoDisplay(_session?.Part.Purchaseable);
+        /// <summary>Check/cancel glyph for the InvenTree Purchaseable flag.</summary>
+        public string PurchaseableDisplay => FlagGlyph(_session?.Part.Purchaseable);
 
-        /// <summary>"Yes" or "No" for the InvenTree Salable flag.</summary>
-        public string SalableDisplay     => YesNoDisplay(_session?.Part.Salable);
+        /// <summary>Check/cancel glyph for the InvenTree Salable flag.</summary>
+        public string SalableDisplay     => FlagGlyph(_session?.Part.Salable);
 
-        /// <summary>"Yes" or "No" for the InvenTree Trackable flag.</summary>
-        public string TrackableDisplay   => YesNoDisplay(_session?.Part.Trackable);
+        /// <summary>Check/cancel glyph for the InvenTree Trackable flag.</summary>
+        public string TrackableDisplay   => FlagGlyph(_session?.Part.Trackable);
 
-        /// <summary>"Yes" or "No" for the InvenTree Testable flag.</summary>
-        public string TestableDisplay    => YesNoDisplay(_session?.Part.Testable);
+        /// <summary>Check/cancel glyph for the InvenTree Testable flag.</summary>
+        public string TestableDisplay    => FlagGlyph(_session?.Part.Testable);
 
         // ── Enabled / visible flags (computed from session) ───────────────────
 

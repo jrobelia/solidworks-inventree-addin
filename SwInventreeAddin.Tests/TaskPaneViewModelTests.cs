@@ -760,7 +760,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public async Task AfterFetch_FlagDisplays_ShowYesOrNo()
+        public async Task AfterFetch_FlagDisplays_ShowGlyphs()
         {
             _client.PartToReturn = new InventreePart
             {
@@ -776,12 +776,12 @@ namespace SwInventreeAddin.Tests
 
             await _vm.FetchPartAsync();
 
-            Assert.That(_vm.AssemblyDisplay, Is.EqualTo("Yes"));
-            Assert.That(_vm.ComponentDisplay, Is.EqualTo("No"));
-            Assert.That(_vm.PurchaseableDisplay, Is.EqualTo("Yes"));
-            Assert.That(_vm.SalableDisplay, Is.EqualTo("No"));
-            Assert.That(_vm.TrackableDisplay, Is.EqualTo("Yes"));
-            Assert.That(_vm.TestableDisplay, Is.EqualTo("No"));
+            Assert.That(_vm.AssemblyDisplay, Is.EqualTo("\uE73E"));
+            Assert.That(_vm.ComponentDisplay, Is.EqualTo("\uE711"));
+            Assert.That(_vm.PurchaseableDisplay, Is.EqualTo("\uE73E"));
+            Assert.That(_vm.SalableDisplay, Is.EqualTo("\uE711"));
+            Assert.That(_vm.TrackableDisplay, Is.EqualTo("\uE73E"));
+            Assert.That(_vm.TestableDisplay, Is.EqualTo("\uE711"));
         }
 
         [Test]
@@ -1590,12 +1590,12 @@ namespace SwInventreeAddin.Tests
                 handler?.Invoke(createVm, createdPart);
             });
 
-            Assert.That(vm.AssemblyDisplay, Is.EqualTo("Yes"));
-            Assert.That(vm.ComponentDisplay, Is.EqualTo("Yes"));
-            Assert.That(vm.PurchaseableDisplay, Is.EqualTo("Yes"));
-            Assert.That(vm.SalableDisplay, Is.EqualTo("No"));
-            Assert.That(vm.TrackableDisplay, Is.EqualTo("Yes"));
-            Assert.That(vm.TestableDisplay, Is.EqualTo("No"));
+            Assert.That(vm.AssemblyDisplay, Is.EqualTo("\uE73E"));
+            Assert.That(vm.ComponentDisplay, Is.EqualTo("\uE73E"));
+            Assert.That(vm.PurchaseableDisplay, Is.EqualTo("\uE73E"));
+            Assert.That(vm.SalableDisplay, Is.EqualTo("\uE711"));
+            Assert.That(vm.TrackableDisplay, Is.EqualTo("\uE73E"));
+            Assert.That(vm.TestableDisplay, Is.EqualTo("\uE711"));
         }
 
         [Test]

@@ -16,6 +16,7 @@
             <!-- Visibility converters -->
             <BooleanToVisibilityConverter x:Key="BoolToVis" />
             <local:ByteArrayToBitmapImageConverter x:Key="ThumbConverter" />
+            <local:FlagGlyphToBrushConverter x:Key="FlagGlyphToBrushConverter" />
         </ResourceDictionary>
     </UserControl.Resources>
 
@@ -710,15 +711,17 @@
                                 CornerRadius="2"
                                 Padding="5,2"
                                 Margin="0,0,4,4">
-                            <TextBlock FontSize="{StaticResource FontSizeBody}"
-                                       VerticalAlignment="Center">
-                                <TextBlock.Text>
-                                    <MultiBinding StringFormat="{}{0}: {1}">
-                                        <Binding Source="Assembly" />
-                                        <Binding Path="AssemblyDisplay" />
-                                    </MultiBinding>
-                                </TextBlock.Text>
-                            </TextBlock>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Assembly:"
+                                           FontSize="{StaticResource FontSizeBody}"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding AssemblyDisplay}"
+                                           FontFamily="Segoe MDL2 Assets"
+                                           FontSize="{StaticResource FontSizeBody}"
+                                           VerticalAlignment="Center"
+                                           Margin="4,0,0,0"
+                                           Foreground="{Binding AssemblyDisplay, Converter={StaticResource FlagGlyphToBrushConverter}}" />
+                            </StackPanel>
                         </Border>
 
                         <Border Background="{StaticResource BrushInventreeField}"
@@ -727,15 +730,17 @@
                                 CornerRadius="2"
                                 Padding="5,2"
                                 Margin="0,0,4,4">
-                            <TextBlock FontSize="{StaticResource FontSizeBody}"
-                                       VerticalAlignment="Center">
-                                <TextBlock.Text>
-                                    <MultiBinding StringFormat="{}{0}: {1}">
-                                        <Binding Source="Component" />
-                                        <Binding Path="ComponentDisplay" />
-                                    </MultiBinding>
-                                </TextBlock.Text>
-                            </TextBlock>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Component:"
+                                           FontSize="{StaticResource FontSizeBody}"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding ComponentDisplay}"
+                                           FontFamily="Segoe MDL2 Assets"
+                                           FontSize="{StaticResource FontSizeBody}"
+                                           VerticalAlignment="Center"
+                                           Margin="4,0,0,0"
+                                           Foreground="{Binding ComponentDisplay, Converter={StaticResource FlagGlyphToBrushConverter}}" />
+                            </StackPanel>
                         </Border>
 
                         <Border Background="{StaticResource BrushInventreeField}"
@@ -744,15 +749,17 @@
                                 CornerRadius="2"
                                 Padding="5,2"
                                 Margin="0,0,4,4">
-                            <TextBlock FontSize="{StaticResource FontSizeBody}"
-                                       VerticalAlignment="Center">
-                                <TextBlock.Text>
-                                    <MultiBinding StringFormat="{}{0}: {1}">
-                                        <Binding Source="Purchaseable" />
-                                        <Binding Path="PurchaseableDisplay" />
-                                    </MultiBinding>
-                                </TextBlock.Text>
-                            </TextBlock>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Purchaseable:"
+                                           FontSize="{StaticResource FontSizeBody}"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding PurchaseableDisplay}"
+                                           FontFamily="Segoe MDL2 Assets"
+                                           FontSize="{StaticResource FontSizeBody}"
+                                           VerticalAlignment="Center"
+                                           Margin="4,0,0,0"
+                                           Foreground="{Binding PurchaseableDisplay, Converter={StaticResource FlagGlyphToBrushConverter}}" />
+                            </StackPanel>
                         </Border>
 
                         <Border Background="{StaticResource BrushInventreeField}"
@@ -761,15 +768,17 @@
                                 CornerRadius="2"
                                 Padding="5,2"
                                 Margin="0,0,4,4">
-                            <TextBlock FontSize="{StaticResource FontSizeBody}"
-                                       VerticalAlignment="Center">
-                                <TextBlock.Text>
-                                    <MultiBinding StringFormat="{}{0}: {1}">
-                                        <Binding Source="Salable" />
-                                        <Binding Path="SalableDisplay" />
-                                    </MultiBinding>
-                                </TextBlock.Text>
-                            </TextBlock>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Salable:"
+                                           FontSize="{StaticResource FontSizeBody}"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding SalableDisplay}"
+                                           FontFamily="Segoe MDL2 Assets"
+                                           FontSize="{StaticResource FontSizeBody}"
+                                           VerticalAlignment="Center"
+                                           Margin="4,0,0,0"
+                                           Foreground="{Binding SalableDisplay, Converter={StaticResource FlagGlyphToBrushConverter}}" />
+                            </StackPanel>
                         </Border>
 
                         <Border Background="{StaticResource BrushInventreeField}"
@@ -778,15 +787,17 @@
                                 CornerRadius="2"
                                 Padding="5,2"
                                 Margin="0,0,4,4">
-                            <TextBlock FontSize="{StaticResource FontSizeBody}"
-                                       VerticalAlignment="Center">
-                                <TextBlock.Text>
-                                    <MultiBinding StringFormat="{}{0}: {1}">
-                                        <Binding Source="Trackable" />
-                                        <Binding Path="TrackableDisplay" />
-                                    </MultiBinding>
-                                </TextBlock.Text>
-                            </TextBlock>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Trackable:"
+                                           FontSize="{StaticResource FontSizeBody}"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding TrackableDisplay}"
+                                           FontFamily="Segoe MDL2 Assets"
+                                           FontSize="{StaticResource FontSizeBody}"
+                                           VerticalAlignment="Center"
+                                           Margin="4,0,0,0"
+                                           Foreground="{Binding TrackableDisplay, Converter={StaticResource FlagGlyphToBrushConverter}}" />
+                            </StackPanel>
                         </Border>
 
                         <Border Background="{StaticResource BrushInventreeField}"
@@ -795,15 +806,17 @@
                                 CornerRadius="2"
                                 Padding="5,2"
                                 Margin="0,0,4,4">
-                            <TextBlock FontSize="{StaticResource FontSizeBody}"
-                                       VerticalAlignment="Center">
-                                <TextBlock.Text>
-                                    <MultiBinding StringFormat="{}{0}: {1}">
-                                        <Binding Source="Testable" />
-                                        <Binding Path="TestableDisplay" />
-                                    </MultiBinding>
-                                </TextBlock.Text>
-                            </TextBlock>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Testable:"
+                                           FontSize="{StaticResource FontSizeBody}"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding TestableDisplay}"
+                                           FontFamily="Segoe MDL2 Assets"
+                                           FontSize="{StaticResource FontSizeBody}"
+                                           VerticalAlignment="Center"
+                                           Margin="4,0,0,0"
+                                           Foreground="{Binding TestableDisplay, Converter={StaticResource FlagGlyphToBrushConverter}}" />
+                            </StackPanel>
                         </Border>
 
                     </WrapPanel>
