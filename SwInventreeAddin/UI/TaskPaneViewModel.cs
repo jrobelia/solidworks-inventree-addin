@@ -655,9 +655,19 @@ namespace SwInventreeAddin.UI
                 }
 
                 InventreePart? pkPart  = null;
+                byte[]?        pkThumb = null;
                 Exception?     pkError = null;
 
-                try   { pkPart = await _client.GetPartByPkAsync(_documentPk).ConfigureAwait(false); }
+                try
+                {
+                    pkPart = await _client.GetPartByPkAsync(_documentPk).ConfigureAwait(false);
+
+                    if (pkPart != null && !string.IsNullOrEmpty(pkPart.ThumbnailUrl))
+                    {
+                        try   { pkThumb = await _client.DownloadImageAsync(pkPart.ThumbnailUrl!).ConfigureAwait(false); }
+                        catch { /* silent — placeholder will show */ }
+                    }
+                }
                 catch (Exception ex) { pkError = ex; }
 
                 RunOnUiThread(() =>
@@ -684,7 +694,7 @@ namespace SwInventreeAddin.UI
                         PartNumber = pkPart.Ipn;
                     }
 
-                    _session = new PartSyncSession(pkPart, _client!, _propertyService, m);
+                    _session = new PartSyncSession(pkPart, _client!, _propertyService, m, pkThumb);
                     PropertiesSectionVisible = true;
                     RefreshCurrentProperties();
                     NotifySessionProperties();
