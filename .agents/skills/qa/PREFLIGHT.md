@@ -28,7 +28,26 @@ dotnet test "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj"
 
 If tests fail, stop and ask the user to fix the branch before QA.
 
-## 4. Register the dev build with SolidWorks
+## 4. Verify the built assembly version matches the git-derived version
+
+For features that display a version or build identifier, confirm the add-in assembly is stamped with a version that reflects the current branch. For example, `v2.0.0-107-gce8b2dc` should produce assembly version `2.0.0.107`.
+
+```powershell
+$gitDesc = git describe --tags --always
+$gitVersion = if ($gitDesc -match '^v?(\d+)\.(\d+)\.(\d+)(?:-(\d+))?') {
+    $rev = if ($matches[4]) { $matches[4] } else { 0 }
+    "$($matches[1]).$($matches[2]).$($matches[3]).$rev"
+} else { 'unknown' }
+$assemblyVersion = [System.Reflection.AssemblyName]::GetAssemblyName("$(Get-Location)\SwInventreeAddin\bin\Debug\net48\SwInventreeAddin.dll").Version.ToString()
+
+if ($gitVersion -ne $assemblyVersion) {
+    throw "Assembly version $assemblyVersion does not match git-derived version $gitVersion"
+}
+```
+
+If the versions do not match, the build pipeline may be defaulting to `1.0.0.0`. Stop and ask the user to fix the branch before QA.
+
+## 5. Register the dev build with SolidWorks
 
 Per ADR-0007, registration is one-time per DLL path. Rebuilding in place is covered. Re-register only when the latest build fails to load or the DLL path changes.
 
@@ -40,8 +59,20 @@ Start-Process PowerShell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File
 
 Alternatively, the user may right-click `DevRegister.bat` and select **Run as administrator**.
 
+If this shell is not running as Administrator, the elevation prompt may not appear and the registry will not be updated. In that case, ask the user to run `DevRegister.bat` as Administrator manually.
+
 After registration, the user must restart SolidWorks.
 
-## 5. Confirm InvenTree configuration
+## 6. Verify the registered add-in path
+
+Before starting GUI testing, confirm that SolidWorks will load the dev build and not an installed release copy:
+
+```powershell
+reg query "HKLM\SOFTWARE\Classes\CLSID\{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}\InprocServer32" /s
+```
+
+Check the `CodeBase` value. It must point to the repo's `SwInventreeAddin\bin\Debug\net48\SwInventreeAddin.dll`. If it points to `C:\Program Files\SwInventreeAddin\SwInventreeAddin.DLL`, re-registration was skipped or failed. Ask the user to run `DevRegister.bat` as Administrator again and restart SolidWorks.
+
+## 7. Confirm InvenTree configuration
 
 The InvenTree server URL and API key must already be configured in the Task Pane. Ask the user to confirm before starting GUI testing.
