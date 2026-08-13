@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Windows;
 using System.Windows.Media;
 using Microsoft.Win32;
+using SwInventreeAddin;
 using SwInventreeAddin.Config;
 using SwInventreeAddin.InvenTree;
 
@@ -15,7 +16,8 @@ namespace SwInventreeAddin.UI
     {
         private readonly IConfigProvider          _configProvider;
         private readonly IInventreeTokenService   _tokenService;
-        private IPropertyMappingProvider _mappingProvider;
+        private readonly IVersionInfo             _versionInfo;
+        private IPropertyMappingProvider          _mappingProvider;
 
         private (string Url, string ApiKey, string Username, string Password,
                  string SharedPath, string BomKeyword, bool UseLocalMapping,
@@ -28,17 +30,22 @@ namespace SwInventreeAddin.UI
         public event EventHandler<IPropertyMappingProvider>? MappingApplied;
 
         public SettingsWindow(IConfigProvider configProvider,
-                              IPropertyMappingProvider mappingProvider)
-            : this(configProvider, mappingProvider,
+                              IPropertyMappingProvider mappingProvider,
+                              IVersionInfo versionInfo)
+            : this(configProvider, mappingProvider, versionInfo,
                    new InventreeTokenService(new HttpClient())) { }
 
         internal SettingsWindow(IConfigProvider configProvider,
                                 IPropertyMappingProvider mappingProvider,
+                                IVersionInfo versionInfo,
                                 IInventreeTokenService tokenService)
         {
             _configProvider  = configProvider;
             _mappingProvider = mappingProvider;
+            _versionInfo     = versionInfo;
             _tokenService    = tokenService;
+            DataContext      = _versionInfo;
+
             InitializeComponent();
 
             UrlBox.TextChanged          += (_, __) => RefreshButtonStates();
