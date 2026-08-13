@@ -42,4 +42,19 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
+
+  <!--
+    Derive the assembly version from the nearest git tag and the number of
+    commits since that tag. For example, v2.0.0-107-gce8b2dc becomes 2.0.0.107.
+  -->
+  <Target Name="SetGitVersion" BeforeTargets="GetAssemblyVersion">
+    <Exec Command="powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)SetGitVersion.ps1&quot;" ConsoleToMsBuild="true" StandardOutputImportance="low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="GitAssemblyVersion" />
+    </Exec>
+    <PropertyGroup>
+      <Version>$(GitAssemblyVersion.Trim())</Version>
+      <AssemblyVersion>$(GitAssemblyVersion.Trim())</AssemblyVersion>
+      <FileVersion>$(GitAssemblyVersion.Trim())</FileVersion>
+    </PropertyGroup>
+  </Target>
 </Project>

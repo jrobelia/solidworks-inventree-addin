@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using Microsoft.Win32;
 using SolidWorks.Interop.sldworks;
 using SolidWorks.Interop.swpublished;
+using SwInventreeAddin;
 using SwInventreeAddin.Config;
 using SwInventreeAddin.InvenTree;
 using SwInventreeAddin.SolidWorks;
@@ -305,7 +306,7 @@ namespace SwInventreeAddin.AddIn
                 return;
             }
 
-            var form = new SettingsWindow(_configProvider, _mappingProvider);
+            var form = new SettingsWindow(_configProvider, _mappingProvider, new AssemblyVersionInfo());
             form.MappingApplied += (_, provider) =>
             {
                 _mappingProvider = provider;
