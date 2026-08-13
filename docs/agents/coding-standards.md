@@ -17,10 +17,15 @@ Style guide: Microsoft C# coding conventions. Nullable reference types enabled. 
 
 ## Build & Test Commands
 
-Build: `dotnet build "Solidworks Inventree Add-In.sln"`
-Test: `dotnet test "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj"`
+Test: `dotnet test "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj"` — primary verification loop.
+Build: `dotnet build "SwInventreeAddin/SwInventreeAddin.csproj"` — produces the SolidWorks-facing `bin\Debug\net48` output.
+Solution build: `dotnet build "Solidworks Inventree Add-In.sln"` — builds the full solution; still valid but not the primary agent build command because it also writes the add-in to the `bin\Debug` path.
 
 Check: (none — no separate lint step)
+
+Notes:
+- `dotnet test` builds the referenced add-in into `bin_unit_test\net48` so it can run while SolidWorks is open.
+- `dotnet build` of the add-in project writes `bin\Debug\net48\SwInventreeAddin.dll`, which SolidWorks may have locked. Run it with SolidWorks closed when the locked DLL must be overwritten.
 
 ---
 

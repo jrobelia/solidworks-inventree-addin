@@ -43,10 +43,12 @@ Run the commands from `docs/agents/coding-standards.md` before every commit, aft
 `/code-review` needs a fixed point and its source material up front:
 
 1. Pre-compute `git diff <PRE_BUILD_SHA>...HEAD` and `git log <PRE_BUILD_SHA>..HEAD --oneline`.
-2. Fetch the parent spec and load `docs/agents/coding-standards.md`.
-3. Invoke `/code-review` with the fixed point (`PRE_BUILD_SHA`) and the diff/spec/standards context.
+2. Fetch the parent spec and relevant child tickets, and load `docs/agents/coding-standards.md`.
+3. Paste the pre-computed diff, log, spec, and standards context into both subagent prompts. Each prompt must state that all context is provided and no tool calls are needed.
+4. Run the subagents:
 
-Run the subagents per `docs/agents/code-review-known-issues.md` — foreground is the reliable default in this Devin CLI environment; background is an option only when read-only subagents are pre-approved and the pasted diff/spec/standards context fits the budget.
+   - **Attempt background parallel review first.** Run the Standards and Spec subagents in the background (`is_background=true`) in parallel. This works when the full context has been pasted, so the subagents do not need `exec` or `read` tools.
+   - **Fallback to foreground** if either subagent fails, requests more context, emits a tool-denial error, or its output is incomplete. Re-run the failed axis in the foreground (`is_background=false`) with the same pasted context.
 
 ## Review classification
 
@@ -59,8 +61,8 @@ For each finding:
    - **RED** — a hard spec gap (Spec) or a documented hard-standards violation (Standards). Fix it if the fix is safe and small. If the fix is too large or risky to complete in the session, create a follow-up issue, link it as a blocking dependency on the PR, and stop without merging.
    - **YELLOW** — a real quality or partial-spec issue. Propose a fix; ask the user if the rework is large or if the trade-off is unclear.
    - **GREEN** — style or cosmetic. Auto-fix if trivial; otherwise add it to `### Review notes`.
-3. Re-run the build/test commands after any fix.
-4. Re-run `/code-review` (or a targeted re-review of the changed areas) to verify the finding is resolved. Limit the fix → build/test → re-review cycle to **two passes**. If the finding is still unresolved after two passes, or if review loops aren't converging, stop and ask the user.
+3. **Re-run the build/test commands** after any fix.
+4. **Re-run `/code-review`.** A targeted re-review of the changed areas is required after every fix that touches code or docs, even when the diff is small. This is not optional. Limit the fix → build/test → re-review cycle to **two passes**. If the finding is still unresolved after two passes, or if review loops aren't converging, stop and ask the user. If the user explicitly accepts a YELLOW finding as-is, record the decision in the PR's `### Review notes` and `### Deferred and follow-up issues` sections.
 
 ## PR body
 
@@ -69,7 +71,7 @@ For each finding:
 - Build and test commands that were run.
 - Changed GUI flows and edge cases.
 - `### Review notes` from `/code-review`, including any deferred or escalated findings.
-- `### Deferred and follow-up issues` — list any YELLOW findings intentionally deferred and any RED findings converted into follow-up issues with their issue numbers.
+- `### Deferred and follow-up issues` — list any YELLOW findings intentionally deferred (with the user's explicit agreement and reason) and any RED findings converted into follow-up issues with their issue numbers.
 - `Run /qa on this branch.`
 
 ## Diff-size guard

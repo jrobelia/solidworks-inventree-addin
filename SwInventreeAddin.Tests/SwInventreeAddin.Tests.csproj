@@ -18,6 +18,8 @@
     <Reference Include="System.Net.Http" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\SwInventreeAddin\SwInventreeAddin.csproj" />
+    <ProjectReference Include="..\SwInventreeAddin\SwInventreeAddin.csproj">
+      <Properties>OutputPath=bin_unit_test\net48\</Properties>
+    </ProjectReference>
   </ItemGroup>
 </Project>

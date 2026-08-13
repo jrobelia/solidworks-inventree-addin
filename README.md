@@ -69,11 +69,13 @@ Then open `Solidworks Inventree Add-In.sln` in Visual Studio and build.
 dotnet test SwInventreeAddin.Tests
 ```
 
-Tests use NUnit 3 and do not require SolidWorks to be installed.
+Tests use NUnit 3 and do not require SolidWorks to be installed. The test build places the add-in in a throwaway `bin_unit_test` folder, so unit tests can run while SolidWorks is open.
 
 ### Registering the Add-In (Development)
 
 After the first build, register the DLL with SolidWorks by running `DevRegister.ps1` as administrator (one-time per machine; only needed again if the DLL path changes).
+
+> If SolidWorks is running, close it before running `dotnet build` on the add-in project. The build writes to `bin\Debug\net48`, which SolidWorks may have locked.
 
 ## Tech Stack
 
@@ -117,6 +119,8 @@ Never run a milestone branch in production.
 ## Versioning and Releases
 
 Releases are tagged `vMAJOR.MINOR.0` and published as [GitHub Releases](../../releases). Each release corresponds to a milestone or a significant increment within one. The roadmap in [`docs/roadmap.md`](docs/roadmap.md) tracks what is planned and what shipped.
+
+The release workflow builds the installer package into `bin\Release\net48`, which is independent of the `bin\Debug\net48` path SolidWorks may have loaded, so it does not require SolidWorks to be closed.
 
 | Tag | Contents |
 |---|---|

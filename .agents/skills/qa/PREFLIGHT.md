@@ -10,7 +10,7 @@ Check whether `SLDWORKS.exe` is running:
 Get-Process SLDWORKS -ErrorAction SilentlyContinue
 ```
 
-If it is running, ask the user to close SolidWorks and confirm before continuing. Building or registering while SolidWorks is running can lock the add-in DLL.
+If it is running, ask the user to close SolidWorks and confirm before continuing. Building or registering while SolidWorks is running can lock the add-in DLL. Unit tests (`dotnet test`) are an exception — they build into a separate `bin_unit_test` folder and can run while SolidWorks is open.
 
 ## 2. Build
 

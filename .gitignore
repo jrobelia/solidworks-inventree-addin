@@ -24,6 +24,7 @@ Installer/*.zip
 # --- .NET / Visual Studio build outputs ---
 bin/
 obj/
+bin_unit_test/
 *.user
 *.suo
 .vs/
