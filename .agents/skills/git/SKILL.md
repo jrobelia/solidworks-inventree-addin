@@ -67,6 +67,22 @@ Push after the work is committed, the build passes, and any requested review is 
 - If the branch has **no open PR** or this is the **first push**, stop and ask the user whether to create a PR or push.
 - Confirm with the user before destructive operations: force-push, history rewrite, branch deletion, or checking out over uncommitted changes.
 
+## Merging a PR
+
+Once a PR is reviewed and QA-verified, merge it with a merge commit to match the repo's existing history:
+
+```powershell
+gh pr merge <number> --merge --delete-branch
+```
+
+- Prefer `--merge` (create a merge commit). Use `--squash` or `--rebase` only when the user explicitly asks for it.
+- `--delete-branch` prunes the source branch after merge, consistent with the branch-hygiene guidance below.
+- If `gh pr merge` cannot be used non-interactively, use the API instead:
+  ```powershell
+  gh api -X PUT /repos/<owner>/<repo>/pulls/<number>/merge -f merge_method=merge
+  ```
+- For PRs targeting a milestone branch, `Closes #N` keywords in commits/PR body will **not** auto-close the issue. Apply `qa-verified`/`done` labels and manually close the child issues after the PR lands.
+
 ## Branch hygiene
 
 Don't reuse a branch that has already been merged. Merged branches should be pruned and new work should start from an up-to-date `main`.
