@@ -60,7 +60,7 @@ Skip to **Form Test Groups** after this step.
 
 **Check for unlinked code changes.** After presenting issues (or if there are none), run `git diff` and `git status --short`. If unlinked changes are found, ask whether to include them. Only add diff-based steps if the user says yes.
 
-**Build the test plan.** For each approved Test Group, generate test steps from acceptance criteria. Include edge cases: empty/null inputs, boundary values, error paths. See [CHECKLIST.md](CHECKLIST.md). Present the full plan and wait for approval before executing — format in [TEST-PLAN.md](TEST-PLAN.md).
+**Build the test plan.** For each approved Test Group, generate test steps from acceptance criteria. Include edge cases: empty/null inputs, boundary values, error paths. If the change touches the **Task Pane**, a **dialog**, a **control**, or a **data-bound property**, add a GUI functionality group with at least one step per category listed in the GUI functionality section of [TEST-PLAN.md](TEST-PLAN.md). See [CHECKLIST.md](CHECKLIST.md). Present the full plan and wait for approval before executing — format in [TEST-PLAN.md](TEST-PLAN.md).
 
 ## 2. Walk through the plan
 
