@@ -688,29 +688,91 @@
                     </Grid>
 
                     <!-- Flag chips -->
-                    <ItemsControl ItemsSource="{Binding FlagChips}" Margin="0,8,0,0">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <WrapPanel />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type local:FlagChip}">
-                                <Border Background="{StaticResource BrushInventreeField}"
-                                        BorderBrush="{StaticResource BrushBorder}"
-                                        BorderThickness="1"
-                                        CornerRadius="2"
-                                        Padding="5,2"
-                                        Margin="0,0,4,4">
-                                    <TextBlock FontSize="{StaticResource FontSizeBody}"
-                                               VerticalAlignment="Center">
-                                        <Run Text="{Binding Name}" /><Run Text=": " /><Run Text="{Binding Glyph}"
-                                             Foreground="{Binding Value, Converter={StaticResource FlagBrushConverter}}" />
-                                    </TextBlock>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    <!--
+                        Each chip is a single TextBlock bound to a stable FlagChip
+                        instance. Avoids ItemsControl/DataTemplate (container churn)
+                        and Run element bindings, both of which have triggered WPF
+                        layout re-entries into SolidWorks COM (see #87).
+                    -->
+                    <WrapPanel Margin="0,8,0,0">
+                        <Border Background="{StaticResource BrushInventreeField}"
+                                BorderBrush="{StaticResource BrushBorder}"
+                                BorderThickness="1"
+                                CornerRadius="2"
+                                Padding="5,2"
+                                Margin="0,0,4,4">
+                            <TextBlock FontSize="{StaticResource FontSizeBody}"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding FlagChips[0].Display}"
+                                       Foreground="{Binding FlagChips[0].Value, Converter={StaticResource FlagBrushConverter}}" />
+                        </Border>
+                        <Border Background="{StaticResource BrushInventreeField}"
+                                BorderBrush="{StaticResource BrushBorder}"
+                                BorderThickness="1"
+                                CornerRadius="2"
+                                Padding="5,2"
+                                Margin="0,0,4,4">
+                            <TextBlock FontSize="{StaticResource FontSizeBody}"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding FlagChips[1].Display}"
+                                       Foreground="{Binding FlagChips[1].Value, Converter={StaticResource FlagBrushConverter}}" />
+                        </Border>
+                        <Border Background="{StaticResource BrushInventreeField}"
+                                BorderBrush="{StaticResource BrushBorder}"
+                                BorderThickness="1"
+                                CornerRadius="2"
+                                Padding="5,2"
+                                Margin="0,0,4,4">
+                            <TextBlock FontSize="{StaticResource FontSizeBody}"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding FlagChips[2].Display}"
+                                       Foreground="{Binding FlagChips[2].Value, Converter={StaticResource FlagBrushConverter}}" />
+                        </Border>
+                        <Border Background="{StaticResource BrushInventreeField}"
+                                BorderBrush="{StaticResource BrushBorder}"
+                                BorderThickness="1"
+                                CornerRadius="2"
+                                Padding="5,2"
+                                Margin="0,0,4,4">
+                            <TextBlock FontSize="{StaticResource FontSizeBody}"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding FlagChips[3].Display}"
+                                       Foreground="{Binding FlagChips[3].Value, Converter={StaticResource FlagBrushConverter}}" />
+                        </Border>
+                        <Border Background="{StaticResource BrushInventreeField}"
+                                BorderBrush="{StaticResource BrushBorder}"
+                                BorderThickness="1"
+                                CornerRadius="2"
+                                Padding="5,2"
+                                Margin="0,0,4,4">
+                            <TextBlock FontSize="{StaticResource FontSizeBody}"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding FlagChips[4].Display}"
+                                       Foreground="{Binding FlagChips[4].Value, Converter={StaticResource FlagBrushConverter}}" />
+                        </Border>
+                        <Border Background="{StaticResource BrushInventreeField}"
+                                BorderBrush="{StaticResource BrushBorder}"
+                                BorderThickness="1"
+                                CornerRadius="2"
+                                Padding="5,2"
+                                Margin="0,0,4,4">
+                            <TextBlock FontSize="{StaticResource FontSizeBody}"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding FlagChips[5].Display}"
+                                       Foreground="{Binding FlagChips[5].Value, Converter={StaticResource FlagBrushConverter}}" />
+                        </Border>
+                        <Border Background="{StaticResource BrushInventreeField}"
+                                BorderBrush="{StaticResource BrushBorder}"
+                                BorderThickness="1"
+                                CornerRadius="2"
+                                Padding="5,2"
+                                Margin="0,0,4,4">
+                            <TextBlock FontSize="{StaticResource FontSizeBody}"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding FlagChips[6].Display}"
+                                       Foreground="{Binding FlagChips[6].Value, Converter={StaticResource FlagBrushConverter}}" />
+                        </Border>
+                    </WrapPanel>
 
                 </StackPanel>
                 <!-- end InvenTree info panel -->

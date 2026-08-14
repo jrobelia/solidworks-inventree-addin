@@ -825,6 +825,17 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public async Task AfterFetch_FlagChips_DisplayIncludesNameAndGlyph()
+        {
+            _client.PartToReturn = new InventreePart { Pk = 1, Active = true };
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.FlagChips[0].Display, Is.EqualTo("Active: \u2713"));
+            Assert.That(_vm.FlagChips[2].Display, Is.EqualTo("Component: \u2717"));
+        }
+
+        [Test]
         public async Task AfterFetchThenClear_FlagChips_HaveNullValues()
         {
             _client.PartToReturn = new InventreePart { Pk = 1, Active = true };
