@@ -131,38 +131,26 @@ namespace SwInventreeAddin.UI
         /// <summary>On-order quantity display string (e.g. "100").</summary>
         public string OrderingDisplay    => _session?.Part.Ordering.ToString("G29") ?? string.Empty;
 
-        /// <summary>
-        /// Read-only flag chips for the InvenTree Info section, showing a green check
-        /// or red X glyph for each boolean flag. Populated once with seven null-valued
-        /// chips and never mutated afterward; session changes update each chip's
-        /// <see cref="FlagChip.Value"/> in place so the WPF ItemsControl never
-        /// rebuilds its containers (see #87).
-        /// </summary>
-        public ObservableCollection<FlagChip> FlagChips { get; } = CreateFlagChips();
+        // ── Flag chips (computed from session) ──────────────────────────────────
 
-        /// <summary>
-        /// Single source of truth for the ordered flag chips: display name and the
-        /// getter that reads that flag from an InvenTree part. Both chip creation
-        /// and in-place updates read from here so name/index/order can never drift.
-        /// </summary>
-        private static readonly (string Name, Func<InventreePart, bool?> Getter)[] FlagDescriptors =
-        {
-            ("Active",       p => p.Active),
-            ("Assembly",     p => p.Assembly),
-            ("Component",    p => p.Component),
-            ("Purchaseable", p => p.Purchaseable),
-            ("Salable",      p => p.Salable),
-            ("Trackable",    p => p.Trackable),
-            ("Testable",     p => p.Testable),
-        };
+        /// <summary>"Active: ✓" / "Active: ✗" display text for the Active flag chip.</summary>
+        public string ActiveDisplay       => FormatFlag("Active",       _session?.Part.Active);
+        public bool?  ActiveValue         => _session?.Part.Active;
+        public string AssemblyDisplay     => FormatFlag("Assembly",     _session?.Part.Assembly);
+        public bool?  AssemblyValue       => _session?.Part.Assembly;
+        public string ComponentDisplay    => FormatFlag("Component",    _session?.Part.Component);
+        public bool?  ComponentValue      => _session?.Part.Component;
+        public string PurchaseableDisplay => FormatFlag("Purchaseable", _session?.Part.Purchaseable);
+        public bool?  PurchaseableValue   => _session?.Part.Purchaseable;
+        public string SalableDisplay      => FormatFlag("Salable",      _session?.Part.Salable);
+        public bool?  SalableValue        => _session?.Part.Salable;
+        public string TrackableDisplay    => FormatFlag("Trackable",    _session?.Part.Trackable);
+        public bool?  TrackableValue      => _session?.Part.Trackable;
+        public string TestableDisplay     => FormatFlag("Testable",     _session?.Part.Testable);
+        public bool?  TestableValue       => _session?.Part.Testable;
 
-        private static ObservableCollection<FlagChip> CreateFlagChips()
-        {
-            var chips = new ObservableCollection<FlagChip>();
-            foreach (var (name, _) in FlagDescriptors)
-                chips.Add(new FlagChip(name));
-            return chips;
-        }
+        private static string FormatFlag(string name, bool? value) =>
+            value == null ? string.Empty : $"{name}: {(value.Value ? "\u2713" : "\u2717")}";
 
         // ── Enabled / visible flags (computed from session) ───────────────────
 
@@ -1040,14 +1028,25 @@ namespace SwInventreeAddin.UI
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PkMatch)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CurrentInvenTreePk)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(BomButtonEnabled)));
-            UpdateFlagChips();
+            NotifyFlagDisplays();
         }
 
-        private void UpdateFlagChips()
+        private void NotifyFlagDisplays()
         {
-            var p = _session?.Part;
-            for (var i = 0; i < FlagDescriptors.Length; i++)
-                FlagChips[i].Value = p != null ? FlagDescriptors[i].Getter(p) : null;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActiveDisplay)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActiveValue)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AssemblyDisplay)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AssemblyValue)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ComponentDisplay)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ComponentValue)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PurchaseableDisplay)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PurchaseableValue)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SalableDisplay)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SalableValue)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TrackableDisplay)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TrackableValue)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TestableDisplay)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TestableValue)));
         }
 
         /// <summary>
