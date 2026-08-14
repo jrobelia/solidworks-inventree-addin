@@ -81,6 +81,7 @@ Design **deep modules**: a lot of behaviour behind a small interface, placed at 
 - **The interface is the test surface.** Callers and tests cross the same seam.
 - **One adapter means a hypothetical seam. Two adapters means a real one.** Introduce an interface only when a production adapter and a test adapter both sit at the seam.
 - **Depth is a property of the interface, not the implementation.** A module can be composed internally; the caller must not see the parts.
+- **YAGNI and simplicity.** Only deepen a module or introduce a seam where the code has already shown a need: multiple callers, real test variation, or repeated change. Prefer a boring, direct implementation until the simple version leaks complexity or forces duplication.
 
 ### Applying it here
 
@@ -138,3 +139,4 @@ Before adding a public method or class, ask:
 - Missing locality: business logic or state duplicated across callers instead of living in a deep module.
 - Hypothetical seams: a new cross-layer dependency with an interface but no `Stub*` test adapter.
 - Tests that bypass the seam and exercise internal helpers rather than the module's public interface.
+- New modules or seams introduced before the code shows a real need for them (YAGNI / over-engineering).
