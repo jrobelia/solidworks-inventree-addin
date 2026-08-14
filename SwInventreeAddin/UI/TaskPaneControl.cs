@@ -33,18 +33,19 @@ namespace SwInventreeAddin.UI
             IInventreeClient?        client,
             IDocumentPropertyService propertyService,
             IViewportCaptureService? viewportService)
-            : this(client, propertyService, viewportService, null) { }
+            : this(client, propertyService, viewportService, null, null) { }
 
         public TaskPaneControl(
             IInventreeClient?         client,
             IDocumentPropertyService  propertyService,
             IViewportCaptureService?  viewportService,
-            IPropertyMappingProvider? mappingProvider = null)
+            IPropertyMappingProvider? mappingProvider = null,
+            IConfigProvider?          configProvider = null)
         {
             _client          = client;
             _mappingProvider = mappingProvider;
 
-            _vm = new TaskPaneViewModel(client, propertyService, viewportService, mappingProvider);
+            _vm = new TaskPaneViewModel(client, propertyService, viewportService, mappingProvider, configProvider);
             _vm.SettingsRequested   += (s, e) => SettingsRequested?.Invoke(this, e);
             _vm.CompareBomRequested += OnCompareBomRequested;
             _vm.ConfirmMissingProperties = missing =>

@@ -38,6 +38,7 @@ namespace SwInventreeAddin.UI
         private readonly IDocumentPropertyService _propertyService;
         private readonly IViewportCaptureService? _viewportService;
         private IPropertyMappingProvider?         _mappingProvider;
+        private readonly IConfigProvider?         _configProvider;
         private const string ExpectedMappingSchemaVersion = PropertyMappingConfig.CurrentSchemaVersion;
 
         /// <summary>Raised when the user triggers the Settings action.</summary>
@@ -382,19 +383,21 @@ namespace SwInventreeAddin.UI
             IInventreeClient?        client,
             IDocumentPropertyService propertyService,
             IViewportCaptureService? viewportService)
-            : this(client, propertyService, viewportService, null) { }
+            : this(client, propertyService, viewportService, null, null) { }
 
         /// <summary>Full constructor used by the production add-in.</summary>
         public TaskPaneViewModel(
             IInventreeClient?         client,
             IDocumentPropertyService  propertyService,
             IViewportCaptureService?  viewportService,
-            IPropertyMappingProvider? mappingProvider = null)
+            IPropertyMappingProvider? mappingProvider = null,
+            IConfigProvider?          configProvider  = null)
         {
             _client          = client;
             _propertyService = propertyService;
             _viewportService = viewportService;
             _mappingProvider = mappingProvider;
+            _configProvider  = configProvider;
             _uiContext       = SynchronizationContext.Current;
 
             LoadPartNumber();
@@ -600,7 +603,7 @@ namespace SwInventreeAddin.UI
             var name    = _propertyService.GetCustomProperty(mapping.NameProperty);
 
             var vm = new CreatePartViewModel(_client, _propertyService, name, _mappingProvider,
-                                             waitForAutoPartNumber: WaitForAutoPartNumber,
+                                             waitForServerAssignedIpn: WaitForAutoPartNumber,
                                              documentType: _currentDocumentType);
 
             vm.PartCreated += (_, part) =>
@@ -630,6 +633,26 @@ namespace SwInventreeAddin.UI
             };
 
             showDialog(vm);
+
+            // Remember the choice for the next Create Part dialog in this SolidWorks session.
+            WaitForAutoPartNumber = vm.WaitForServerAssignedIpn;
+
+            if (_configProvider != null)
+            {
+                try
+                {
+                    var config = _configProvider.GetServerConfig();
+                    if (config != null)
+                    {
+                        config.WaitForAutoPartNumber = vm.WaitForServerAssignedIpn;
+                        _configProvider.SaveServerConfig(config);
+                    }
+                }
+                catch
+                {
+                    // Non-fatal: the preference lives in memory for this session.
+                }
+            }
         }
 
         /// <summary>

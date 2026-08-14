@@ -78,35 +78,68 @@
                        FontSize="{StaticResource FontSizeBody}"
                        Margin="0,0,0,4" />
 
-            <Grid Grid.Row="3"
-                  Grid.Column="0"
-                  Grid.ColumnSpan="3"
-                  Margin="0,0,0,12">
-                <TextBox x:Name="IpnEntryBox"
-                         Height="26"
-                         Padding="4,4"
-                         FontSize="{StaticResource FontSizeBody}"
-                         BorderBrush="{StaticResource BrushBorder}"
-                         BorderThickness="1"
-                         Background="Transparent" />
-                <TextBlock Text="leave blank for InvenTree auto-assign"
-                           Foreground="{StaticResource BrushSubtle}"
+            <StackPanel Grid.Row="3"
+                        Grid.Column="0"
+                        Grid.ColumnSpan="3"
+                        Margin="0,0,0,12">
+                <Grid>
+                    <TextBox x:Name="IpnEntryBox"
+                             Height="26"
+                             Padding="4,4"
+                             FontSize="{StaticResource FontSizeBody}"
+                             BorderBrush="{StaticResource BrushBorder}"
+                             BorderThickness="1"
+                             Background="Transparent" />
+                    <TextBlock Text="leave blank for InvenTree auto-assign"
+                               Foreground="{StaticResource BrushSubtle}"
+                               FontSize="{StaticResource FontSizeBody}"
+                               Padding="6,4"
+                               IsHitTestVisible="False"
+                               VerticalAlignment="Center">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Text, ElementName=IpnEntryBox}" Value="">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Grid>
+
+                <TextBlock x:Name="IpnErrorTextBlock"
+                           Text="{Binding IpnErrorText}"
+                           Foreground="{StaticResource BrushStatusError}"
                            FontSize="{StaticResource FontSizeBody}"
-                           Padding="6,4"
-                           IsHitTestVisible="False"
-                           VerticalAlignment="Center">
+                           Margin="0,4,0,0"
+                           TextWrapping="Wrap">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock">
-                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Setter Property="Visibility" Value="Visible" />
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding Text, ElementName=IpnEntryBox}" Value="">
-                                    <Setter Property="Visibility" Value="Visible" />
+                                <DataTrigger Binding="{Binding IpnErrorText}" Value="">
+                                    <Setter Property="Visibility" Value="Collapsed" />
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
                     </TextBlock.Style>
                 </TextBlock>
-            </Grid>
+
+                <CheckBox x:Name="WaitForServerAssignedIpnBox"
+                          Content="Wait for server-assigned IPN before closing"
+                          IsChecked="{Binding WaitForServerAssignedIpn, Mode=TwoWay}"
+                          IsEnabled="{Binding IsWaitForServerIpnEnabled}"
+                          FontSize="{StaticResource FontSizeBody}"
+                          Margin="0,4,0,0" />
+
+                <TextBlock Text="When checked, the dialog polls InvenTree for an auto-generated IPN before closing. Clear the IPN field to enable this. Uncheck to create the part without waiting."
+                           Foreground="{StaticResource BrushSubtle}"
+                           FontSize="{StaticResource FontSizeBody}"
+                           TextWrapping="Wrap"
+                           Margin="20,0,0,0" />
+            </StackPanel>
 
             <TextBlock Grid.Row="4"
                        Grid.Column="0"

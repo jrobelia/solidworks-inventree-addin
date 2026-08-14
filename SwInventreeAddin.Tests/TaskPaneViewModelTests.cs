@@ -1682,6 +1682,29 @@ namespace SwInventreeAddin.Tests
             vm.OpenCreatePartWindow(_ => callCount++);
             Assert.That(callCount, Is.EqualTo(0));
         }
+
+        [Test]
+        public void OpenCreatePartWindow_WhenCheckboxToggled_SavesPreference()
+        {
+            _propertyService.Seed("PartNo",      string.Empty);
+            _propertyService.Seed("Description", string.Empty);
+
+            var configProvider = new StubConfigProvider();
+            var vm = new TaskPaneViewModel(_client, _propertyService, null, null, configProvider);
+            vm.WaitForAutoPartNumber = true;
+
+            bool dialogOpened = false;
+            vm.OpenCreatePartWindow(createVm =>
+            {
+                dialogOpened = true;
+                createVm.WaitForServerAssignedIpn = false;
+            });
+
+            Assert.That(dialogOpened, Is.True);
+            Assert.That(vm.WaitForAutoPartNumber, Is.False);
+            Assert.That(configProvider.LastSavedConfig, Is.Not.Null);
+            Assert.That(configProvider.LastSavedConfig!.WaitForAutoPartNumber, Is.False);
+        }
     }
 }
 
