@@ -1,7 +1,7 @@
 ---
 name: code-review-spec
 description: "Spec-axis reviewer for /build. Tool-restricted; reviews a diff against the originating issue/PRD/spec. Returns a structured ## Spec findings block with spec quotes."
-model: sonnet
+model: swe-1-7
 allowed-tools: []
 ---
 

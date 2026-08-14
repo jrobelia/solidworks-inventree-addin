@@ -1,7 +1,7 @@
 ---
 name: code-review-standards
 description: "Standards-axis reviewer for /build. Tool-restricted; reviews a diff against docs/agents/coding-standards.md and the Fowler smell baseline. Returns a structured ## Standards findings block."
-model: sonnet
+model: swe-1-7
 allowed-tools: []
 ---
 
