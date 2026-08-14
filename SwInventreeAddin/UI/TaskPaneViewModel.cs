@@ -130,8 +130,8 @@ namespace SwInventreeAddin.UI
         /// <summary>On-order quantity display string (e.g. "100").</summary>
         public string OrderingDisplay    => _session?.Part.Ordering.ToString("G29") ?? string.Empty;
 
-        /// <summary>"Active" or "Inactive".</summary>
-        public string ActiveDisplay      => _session == null ? string.Empty : (_session.Part.Active ? "Active" : "Inactive");
+        /// <summary>"Yes" or "No" for the InvenTree Active flag, shown as a chip alongside the other flag chips.</summary>
+        public string ActiveDisplay      => YesNoDisplay(_session?.Part.Active);
 
         private static string YesNoDisplay(bool? value)
             => value == null ? string.Empty : (value.Value ? "Yes" : "No");

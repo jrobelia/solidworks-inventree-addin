@@ -686,23 +686,25 @@
                                  IsReadOnly="True" Height="26" />
                     </Grid>
 
-                    <!-- Status row -->
-                    <Grid Margin="0,2,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="90" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="Status"
-                                   VerticalAlignment="Center"
-                                   Style="{StaticResource FieldLabelStyle}" />
-                        <TextBox Grid.Column="1"
-                                 Text="{Binding ActiveDisplay, Mode=OneWay}"
-                                 Style="{StaticResource InvenTreeFieldStyle}"
-                                 IsReadOnly="True" Height="26" />
-                    </Grid>
-
                     <!-- Flag chips -->
                     <WrapPanel Margin="0,8,0,0">
+
+                        <Border Background="{StaticResource BrushInventreeField}"
+                                BorderBrush="{StaticResource BrushBorder}"
+                                BorderThickness="1"
+                                CornerRadius="2"
+                                Padding="5,2"
+                                Margin="0,0,4,4">
+                            <TextBlock FontSize="{StaticResource FontSizeBody}"
+                                       VerticalAlignment="Center">
+                                <TextBlock.Text>
+                                    <MultiBinding StringFormat="{}{0}: {1}">
+                                        <Binding Source="Active" />
+                                        <Binding Path="ActiveDisplay" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </Border>
 
                         <Border Background="{StaticResource BrushInventreeField}"
                                 BorderBrush="{StaticResource BrushBorder}"
