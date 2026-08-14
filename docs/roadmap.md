@@ -128,11 +128,13 @@ One architectural clean-up done in M3; one still open:
   sequentially per IPN but `BuildIpnLookupAsync` already parallelizes across
   distinct IPNs via `Task.WhenAll`, making this a second-order problem.
   Batch fetch via `?pk__in=` filter not investigated; deferred to parking lot.
-- **`IBomReadinessSource` coupling** *(reviewed, not pursuing)* -- `BomCompareReadinessCheck`
-  calls back into `TaskPaneViewModel` via this interface, mixing state queries
-  with action methods. The .NET dependency direction is correct; the only gain
-  from refactoring to a pure evaluator is code purity, with no user-visible
-  improvement. Not worth the effort given open M3 tasks.
+- **`IBomReadinessSource` coupling** *(reopened, see #89)* -- The original M3
+  decision not to pursue this was correct for the open tasks at that time. Since
+  then `TaskPaneViewModel` has grown to 1115 lines and is the central seam for
+  Part Sync, BOM Compare, and Create Part, and the `FlagChip` / `Run` re-entrant
+  layout crash (#87) showed that the state/UI entanglement is no longer only a
+  code-purity issue. Issue #89 reverses that decision and extracts `TaskPaneState`
+  with a small `ITaskPaneState` seam.
 
 ---
 
