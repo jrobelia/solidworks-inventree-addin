@@ -115,6 +115,17 @@ namespace SwInventreeAddin.AddIn
                 _swApp       = (ISldWorks)thisSW;
                 _addinCookie = cookie;
 
+                // Capture the SolidWorks main window handle for reliable WPF dialog parenting.
+                // Process.MainWindowHandle is unreliable inside SW (returns IntPtr.Zero on SW 2026),
+                // so we use the COM API instead. See issue #82.
+                try
+                {
+                    var frame = _swApp.IFrameObject() as IFrame;
+                    if (frame != null)
+                        SolidWorksWindowHandle.Set(new IntPtr(frame.GetHWndx64()));
+                }
+                catch { /* fallback in SolidWorksWindowHandle.Get handles this */ }
+
                 // Tell SolidWorks our cookie so it can track us
                 _swApp.SetAddinCallbackInfo2(0, this, cookie);
 
