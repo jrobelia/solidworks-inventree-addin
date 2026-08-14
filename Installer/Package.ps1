@@ -14,7 +14,7 @@ $zipPath    = "$repoRoot\Installer\SwInventreeAddin-$version.zip"
 
 Write-Host "Building add-in..." -ForegroundColor Cyan
 Push-Location $repoRoot
-dotnet build SwInventreeAddin/SwInventreeAddin.csproj -c Release --nologo -v quiet
+dotnet build SwInventreeAddin/SwInventreeAddin.csproj -c Release --nologo -v quiet --disable-build-servers
 if ($LASTEXITCODE -ne 0) { Write-Host "Build failed." -ForegroundColor Red; Pop-Location; exit 1 }
 Pop-Location
 

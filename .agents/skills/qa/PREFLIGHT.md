@@ -15,7 +15,7 @@ If it is running, ask the user to close SolidWorks and confirm before continuing
 ## 2. Build
 
 ```powershell
-dotnet build "Solidworks Inventree Add-In.sln"
+dotnet build "Solidworks Inventree Add-In.sln" --disable-build-servers
 ```
 
 If the build fails, stop and ask the user to fix the branch before QA.
@@ -23,7 +23,7 @@ If the build fails, stop and ask the user to fix the branch before QA.
 ## 3. Run unit tests
 
 ```powershell
-dotnet test "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj"
+dotnet test "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj" --disable-build-servers
 ```
 
 If tests fail, stop and ask the user to fix the branch before QA.

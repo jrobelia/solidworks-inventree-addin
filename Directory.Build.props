@@ -22,6 +22,11 @@
     <SolidWorksApiRedist Condition="'$(SolidWorksApiRedist)' == '' AND Exists('C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\api\redist')">C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\api\redist</SolidWorksApiRedist>
   </PropertyGroup>
 
+  <!-- Prevent the Roslyn VBCSCompiler server from staying resident. -->
+  <PropertyGroup>
+    <UseSharedCompilation>false</UseSharedCompilation>
+  </PropertyGroup>
+
   <!-- Optional override for unusual installs or to pick a specific version -->
   <Import Project="$(MSBuildThisFileDirectory)Directory.Build.props.user"
           Condition="Exists('$(MSBuildThisFileDirectory)Directory.Build.props.user')" />
