@@ -62,7 +62,7 @@ namespace SwInventreeAddin.UI
             try
             {
                 var helper = new System.Windows.Interop.WindowInteropHelper(this);
-                helper.Owner = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
+                helper.Owner = SolidWorksWindowHandle.Get();
             }
             catch { /* cosmetic */ }
         }
