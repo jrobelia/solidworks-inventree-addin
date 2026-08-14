@@ -1,8 +1,8 @@
 # Roadmap
 
-Last updated: 2026-05-23 (M3 in progress: tasks 10, 16, 17 active; task 15 stretch)
+Last updated: 2026-08-14 (M3 in progress: bug fixes; M4 queued)
 
-Next action: Work through tasks 10, 16, 17 on `milestone-3`.
+Next action: Work through open [Milestone 3](https://github.com/jrobelia/solidworks-inventree-addin/milestone/1) bug fixes on `milestone-3`.
 
 ## Project North Star
 
@@ -33,8 +33,8 @@ keeping the inventory system in sync while designing.
 
 ### Immediate Gaps
 
-- **Assembly flag on Create Part** -- Add an "Assembly" checkbox to the Create
-  Part dialog so the part is immediately usable as a BOM parent (task 15, expanded to full flags in task 16).
+- **Assembly flag on Create Part** -- Done. All part flags are exposed in the
+  Create Part dialog and the Task Pane (issues `#42`, `#43`, `#34`).
 
 ### Future Vision
 
@@ -105,14 +105,15 @@ Duplicate IPN resolution uses revision matching to pick the correct part
 when InvenTree returns multiple candidates. Revision ordering and PK-match
 gates prevent the compare from running on stale or uncreated assemblies.
 
-### Milestone 3 -- Open-Source Ready (status: future)
+### Milestone 3 -- Open-Source Ready (status: in progress)
 
 Property mapping is already configurable (shipped in Milestone 1). This
 milestone focuses on removing remaining company-specific conventions (part
-number naming, filename patterns) and verifying the add-in works out of the
-box for any SolidWorks + InvenTree shop. Lighter lift than originally scoped.
+number naming, filename patterns), fixing open bugs, and verifying the add-in
+works out of the box for any SolidWorks + InvenTree shop. The architecture
+cleanup originally planned here has moved to Milestone 4 (see `#89`).
 
-One architectural clean-up done in M3; one still open:
+Architectural clean-ups completed in M3:
 
 - **`TaskPaneViewModel` refactor** *(done, issues #5/#6/#9)* -- `PartSyncSession`
   extracted as a standalone module owning all Apply/Push domain logic and
@@ -128,24 +129,32 @@ One architectural clean-up done in M3; one still open:
   sequentially per IPN but `BuildIpnLookupAsync` already parallelizes across
   distinct IPNs via `Task.WhenAll`, making this a second-order problem.
   Batch fetch via `?pk__in=` filter not investigated; deferred to parking lot.
-- **`IBomReadinessSource` coupling** *(reopened, see #89)* -- The original M3
-  decision not to pursue this was correct for the open tasks at that time. Since
-  then `TaskPaneViewModel` has grown to 1115 lines and is the central seam for
-  Part Sync, BOM Compare, and Create Part, and the `FlagChip` / `Run` re-entrant
-  layout crash (#87) showed that the state/UI entanglement is no longer only a
-  code-purity issue. Issue #89 reverses that decision and extracts `TaskPaneState`
-  with a small `ITaskPaneState` seam.
+
+### Milestone 4 -- Architecture & Performance (status: future)
+
+Milestone 4 extracts `TaskPaneState` from `TaskPaneViewModel` to create a small,
+UI-free domain seam, then builds performance and reliability improvements on top
+of that cleaner state boundary. This reverses the earlier M3 call not to pursue
+`IBomReadinessSource` coupling, because the codebase has since outgrown the
+single `TaskPaneViewModel` seam.
+
+Tracked in [Milestone 4](https://github.com/jrobelia/solidworks-inventree-addin/milestone/2):
+
+- `#89` — Extract `TaskPaneState` from `TaskPaneViewModel` (parent spec)
+- `#90` — Phase A: Introduce `TaskPaneState`
+- `#91` — Phase B1: Move document state into `TaskPaneState`
+- `#92` — Phase B2: Move session lifecycle and Apply/Push delegation into `TaskPaneState`
+- `#93` — Phase C: Contract `TaskPaneViewModel` to a thin projection adapter
+- `#65` — Reduce InvenTree round-trips during Compare BOM
 
 ---
 
-## Actionable Backlog
+## Active Work
 
-| # | Task | Milestone | Type | Status | Pass / fail condition |
-|---|------|-----------|------|--------|-----------------------|
-| 10 | Remove remaining company-specific conventions (part number naming, filename patterns) | 3 | cleanup | done | No company-specific strings remain; add-in works out of the box for any SW + InvenTree shop |
-| 16 | Auto part-number wait toggle + PK-based Fetch | 3 | build | open | (1) `ServerConfig.WaitForAutoPartNumber` bool (default false); Settings checkbox "Server assigns part numbers automatically"; `CreatePartViewModel` skips poll when false. (2) `LoadPartNumber` reads InvenTree Part PK property when IPN is blank — IPN blank + PK present = LINKED state, Fetch enabled, Create disabled. (3) `FetchPartAsync` uses `GetPartByPkAsync` when IPN is blank; auto-writes IPN to SW Doc if server returns one. (4) `CanCreatePart` requires both IPN and InvenTree Part PK to be blank. (5) `CreatePartAsync` includes response body in error message on non-2xx. |
-| 17 | Link from task pane to InvenTree part in browser | 3 | build | open | Clicking the thumbnail (or a dedicated link) opens the InvenTree part URL in the default browser |
-| 15 | *(stretch)* Expand Create Part flags — Assembly, Testable, Trackable, Purchaseable, Salable, Copy Category Parameters | 3 | build | open | Create Part dialog exposes applicable flags; Component always true; Assembly auto-set for SW assemblies; toggleable flags persist and POST correctly |
+Work is now tracked in GitHub Milestones rather than this table.
+
+- [Milestone 3 — Bug fixes and stabilization](https://github.com/jrobelia/solidworks-inventree-addin/milestone/1)
+- [Milestone 4 — TaskPaneState architecture and performance](https://github.com/jrobelia/solidworks-inventree-addin/milestone/2)
 
 ### Done
 
@@ -190,8 +199,9 @@ One architectural clean-up done in M3; one still open:
 
 ## Next Action
 
-M1 and M2 complete. M3 in progress (PR #10 merged).
-Active: task 10 (company-specific cleanup), task 16 (auto-number toggle), task 17 (browser link).
-Stretch: task 15 (Create Part flags). Tasks 14, 18, 19 moved to parking lot.
+M1 and M2 complete. M3 in progress on the `milestone-3` branch.
+M4 (TaskPaneState extraction and performance) is queued behind M3.
+
+Active M3 work: `#84`, `#85`, `#60`, `#61`, `#37`.
 
 
