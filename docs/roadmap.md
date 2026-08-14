@@ -109,9 +109,10 @@ gates prevent the compare from running on stale or uncreated assemblies.
 
 Property mapping is already configurable (shipped in Milestone 1). This
 milestone focuses on removing remaining company-specific conventions (part
-number naming, filename patterns), fixing open bugs, and verifying the add-in
-works out of the box for any SolidWorks + InvenTree shop. The architecture
-cleanup originally planned here has moved to Milestone 4 (see `#89`).
+number naming, filename patterns), fixing open bugs, refreshing the README with
+functionality screenshots (`#94`), and verifying the add-in works out of the
+box for any SolidWorks + InvenTree shop. The architecture cleanup originally
+planned here has moved to Milestone 4 (see `#89`).
 
 Architectural clean-ups completed in M3:
 
@@ -202,6 +203,6 @@ Work is now tracked in GitHub Milestones rather than this table.
 M1 and M2 complete. M3 in progress on the `milestone-3` branch.
 M4 (TaskPaneState extraction and performance) is queued behind M3.
 
-Active M3 work: `#84`, `#85`, `#60`, `#61`, `#37`.
+Active M3 work: `#84`, `#85`, `#60`, `#61`, `#37`, `#94`.
 
 
