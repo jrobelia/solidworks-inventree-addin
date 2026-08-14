@@ -20,7 +20,11 @@ namespace SwInventreeAddin.UI
 
         public BomDiffLine DiffLine { get; }
         public BomDiffState State   => DiffLine.State;
-        public bool CanCheck        { get; }
+        // Computed from the current State so it stays correct after PushAsync mutates
+        // DiffLine.State to Match. Select All / Select New / Select Conflicts and the
+        // PushEnabled predicate all filter on this, so a pushed row drops out of every
+        // selection path as soon as its state changes.
+        public bool CanCheck        => State == BomDiffState.New || State == BomDiffState.Conflict;
 
         private bool _isChecked;
         public bool IsChecked
@@ -64,8 +68,6 @@ namespace SwInventreeAddin.UI
         public BomDiffLineViewModel(BomDiffLine diffLine)
         {
             DiffLine = diffLine;
-            CanCheck = diffLine.State == BomDiffState.New
-                    || diffLine.State == BomDiffState.Conflict;
         }
 
         /// <summary>Called after DiffLine.State is mutated externally to refresh bound properties.</summary>
@@ -231,8 +233,11 @@ namespace SwInventreeAddin.UI
                     vm.DiffLine.ItLine.Note      = sw.Note;
                 }
 
-                vm.DiffLine.State = BomDiffState.Match;
+                // Clear the checkbox before flipping State to Match: the IsChecked setter
+                // guards on CanCheck, which is derived from State. Once State == Match the
+                // guard would silently swallow the clear and leave the row visibly checked.
                 vm.IsChecked      = false;
+                vm.DiffLine.State = BomDiffState.Match;
                 vm.NotifyStateChanged();
             }
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PushEnabled)));

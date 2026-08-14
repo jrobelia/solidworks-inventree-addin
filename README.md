@@ -66,7 +66,7 @@ Then open `Solidworks Inventree Add-In.sln` in Visual Studio and build.
 ### Running Tests
 
 ```
-dotnet test SwInventreeAddin.Tests
+dotnet test SwInventreeAddin.Tests --disable-build-servers
 ```
 
 Tests use NUnit 3 and do not require SolidWorks to be installed. The test build places the add-in in a throwaway `bin_unit_test` folder, so unit tests can run while SolidWorks is open.
