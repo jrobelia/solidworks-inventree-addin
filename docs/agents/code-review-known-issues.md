@@ -1,30 +1,31 @@
 # Code-review skill — known environment issues
 
-The `code-review` skill spawns two parallel subagents (Standards and Spec). In this Devin CLI environment, background `subagent_general` instances do not have `exec` or `read` permission, so they cannot:
+The `/build` workflow runs a two-axis review by default using the custom subagent profiles `code-review-standards` and `code-review-spec` under `.devin/agents/`. Both profiles have `allowed-tools: []`, so they can run in the background without `read`/`exec` permission prompts. The parent `/build` agent pre-computes and pastes the diff, commit list, standards context, and spec contents into each subagent prompt.
 
-- run `git diff` / `git log`
-- read repo files such as `docs/agents/coding-standards.md`
-- run `gh issue view ...`
+## Default path: custom profiles in the background
 
-## Background option
+- **Standards axis:** `run_subagent` with `profile: code-review-standards` in the background. The prompt contains the diff, commit list, `docs/agents/coding-standards.md`, and the Fowler smell baseline.
+- **Spec axis:** `run_subagent` with `profile: code-review-spec` in the background. The prompt contains the diff, commit list, and the originating issue/PRD/spec body.
+- Both subagents return separate `## Standards` and `## Spec` findings blocks. The parent parses and classifies each finding as RED / YELLOW / GREEN.
 
-`/code-review`'s Standards/Spec subagents can run in parallel in the background only if the parent session pre-approves their read-only `exec`/`read` tools and pastes the pre-computed diff, the parent spec, and the standards context into each subagent prompt.
+## Fallback path: `subagent_general` or `/code-review`
 
-In this Devin CLI environment, background `subagent_general` instances do not have `exec` or `read` permission, so the foreground fallback below is the reliable default.
+If either profile file is missing, or a custom subagent fails, requests more context, emits a tool-denial error, or returns incomplete output, `/build` falls back to the existing `/code-review` path. In that case:
 
-## Workaround
-
-Run both subagents in the **foreground** (`is_background=false`) using `run_subagent` with the `subagent_general` profile. Because they cannot run in parallel, run them one after another:
-
-1. Standards subagent first, with the diff command and `docs/agents/coding-standards.md`.
-2. Spec subagent second, with the diff command and the relevant issue numbers (`gh issue view ...`).
+- Run both axes in the **foreground** (`is_background=false`) using `subagent_general` with the same pasted context, one after another.
+- The Standards subagent receives the diff and `docs/agents/coding-standards.md`.
+- The Spec subagent receives the diff and the relevant issue/PRD/spec contents.
 
 Do **not** edit `.agents/skills/code-review/SKILL.md` to change this; that file is managed by the skill store and may be overwritten on skill updates. Keep project-level notes here; the root `AGENTS.md` links to this file.
 
-## Another gotcha
+## Diff base
 
 The diff base for this repo should usually be `origin/main`, not the local `main` branch. The local `main` can lag behind `origin/main` and pull in unrelated skill-setup commits.
 
+## Legacy foreground-only workaround (superseded)
+
+The old recommendation to default to foreground `subagent_general` is now legacy. Custom profiles with `allowed-tools: []` and pre-computed context are the default. Only use the foreground fallback when the custom profiles are absent or fail.
+
 ## Build-skill note
 
-When `/build` runs `/code-review`, that step is part of the workflow, not optional. Do not skip it because of the subagent limitations above; use the foreground workaround (or the background option if read-only subagents are pre-approved) and the appropriate diff base, then review the work before declaring it done.
+When `/build` runs the two-axis review, that step is part of the workflow, not optional. Use the custom-profile background path when the profiles exist; otherwise use the fallback above and the appropriate diff base, then review the work before declaring it done.
