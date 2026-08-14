@@ -73,6 +73,7 @@ Rules:
 - **No comments describing what the code does.** Only explain non-obvious *why* decisions. XML doc comments on public APIs are welcome.
 - **`ConfigureAwait(false)` on all HTTP awaits; `RunOnUiThread` for UI updates.** In ViewModels, await HTTP calls with `.ConfigureAwait(false)` so they run on the thread pool. Then wrap all property sets and status updates in `RunOnUiThread(...)` to marshal back to the STA thread. Do not use `ConfigureAwait(true)` as a substitute for `RunOnUiThread`. See ADR 0002.
 - **`Set<T>` for all `INotifyPropertyChanged` properties.** Use the `Set(ref _field, value)` helper rather than calling `PropertyChanged` directly. Computed properties (no backing field) fire `PropertyChanged` explicitly from the setters of their dependencies.
+- **Batch data-bound collection updates.** When updating a data-bound `ObservableCollection`, update items in place or raise a single `Reset` notification rather than calling `Clear()` followed by multiple `Add()` calls. Each `Clear`/`Add` raises a separate `CollectionChanged` event and triggers a WPF layout pass; during a host repaint callback (e.g. a SolidWorks view notification), re-entrant layout can crash the host process.
 - **Section separator comments.** Use `// ── Section name ─────` dividers to separate logical sections within a class (Dependencies, Bindable properties, State, Constructors, Commands, Behaviour, Helpers). Match the existing style exactly.
 - **Column-aligned field declarations.** Private field blocks align types and names vertically with spaces (not tabs). Match the surrounding alignment when adding new fields.
 - **Domain terminology.** Use terms from `CONTEXT.md`: IPN (not part number), Fetch (not load/pull), Apply (InvenTree → SW), Push (SW → InvenTree), Task Pane (not sidebar/panel). Use these in identifiers, comments, and status strings.
@@ -92,4 +93,5 @@ Rules:
 - Missing `RunOnUiThread` wrapper around property sets inside an async method — silently breaks on the STA thread.
 - Using `ConfigureAwait(true)` or omitting `ConfigureAwait` on HTTP awaits in ViewModels.
 - New properties using `PropertyChanged?.Invoke(...)` directly instead of the `Set<T>` helper.
+- Data-bound `ObservableCollection` updated with `Clear()` + multiple `Add()` instead of in-place updates or a single `Reset` — risks re-entrant WPF layout crashes during host repaint callbacks.
 - Domain terminology violations: `Load` instead of `Fetch`, `sync` instead of `Apply`/`Push`, `part number` instead of `IPN`.
