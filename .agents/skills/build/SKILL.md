@@ -2,6 +2,7 @@
 name: build
 description: "Build a reviewed, test-passing draft PR from a spec or tickets using /tdd and /code-review."
 disable-model-invocation: true
+triggers: ["user"]
 ---
 
 # Build
@@ -51,9 +52,9 @@ Do not move to the next step until the **Done when** criterion for the current s
    **Done when:** every ticket has a user-confirmed seam, green `/tdd` (or documented build-only equivalent), passing build/test, and a reference commit on the build branch.
 7. Run the build and test commands once more. If either fails, fix before proceeding.
    **Done when:** both commands exit successfully on the full branch.
-8. Run `/code-review` from `PRE_BUILD_SHA`, pre-computing the diff and source material per `REFERENCE.md`.
-   **Done when:** `/code-review` has returned its Standards and Spec findings.
-9. Verify each `/code-review` finding against the code and the spec, then classify and act on it following the review guide in `REFERENCE.md`. Continue until every finding is resolved, deferred, or escalated to the user.
+8. Run the two-axis review from `PRE_BUILD_SHA` per `REFERENCE.md`. Pre-compute the diff, commit list, standards context, and originating spec context. If `.devin/agents/code-review-standards.md` and `.devin/agents/code-review-spec.md` exist, invoke them in parallel via `run_subagent` with the pasted context and aggregate the `## Standards` and `## Spec` findings; otherwise fall back to the existing `/code-review` path.
+   **Done when:** the Standards and Spec findings have been returned.
+9. Verify each Standards and Spec finding against the code and the spec, then classify and act on it following the review guide in `REFERENCE.md`. Continue until every finding is resolved, deferred, or escalated to the user.
    **Done when:** every finding is resolved, deferred, or escalated, or the two-pass cap in `REFERENCE.md` has been reached.
 10. Push and open a draft PR to `PARENT_BRANCH`.
     **Done when:** the branch is pushed and a draft PR is open.

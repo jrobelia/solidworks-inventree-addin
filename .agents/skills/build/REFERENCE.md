@@ -3,7 +3,8 @@
 ## Skills to invoke
 
 - `/tdd` — red-green loop and seams.
-- `/code-review` — two-axis (Standards / Spec) review.
+- `/code-review` — two-axis (Standards / Spec) review (fallback when the custom subagent profiles below are absent).
+- `run_subagent` with profiles `code-review-standards` and `code-review-spec` — the preferred two-axis review when `.devin/agents/code-review-standards.md` and `.devin/agents/code-review-spec.md` exist.
 
 ## Context files
 
@@ -40,15 +41,28 @@ Run the commands from `docs/agents/coding-standards.md` before every commit, aft
 
 ## Code review invocation
 
-`/code-review` needs a fixed point and its source material up front:
+The two-axis review needs a fixed point and its source material up front. The preferred path uses the custom subagent profiles `code-review-standards` and `code-review-spec`; it falls back to the `/code-review` skill if either profile is missing or a custom subagent fails.
 
-1. Pre-compute `git diff <PRE_BUILD_SHA>...HEAD` and `git log <PRE_BUILD_SHA>..HEAD --oneline`.
-2. Fetch the parent spec and relevant child tickets, and load `docs/agents/coding-standards.md`.
-3. Paste the pre-computed diff, log, spec, and standards context into both subagent prompts. Each prompt must state that all context is provided and no tool calls are needed.
-4. Run the subagents:
+1. Pre-compute:
+   - `git diff <PRE_BUILD_SHA>...HEAD`
+   - `git log <PRE_BUILD_SHA>..HEAD --oneline`
+   - the contents of `docs/agents/coding-standards.md`
+   - the Fowler smell baseline from the `code-review` skill
+   - the full body of the parent spec and any child tickets being reviewed.
+2. Determine whether the custom profiles exist at `.devin/agents/code-review-standards.md` and `.devin/agents/code-review-spec.md`.
+3. If the profiles exist, run them in parallel with `run_subagent`:
 
-   - **Attempt background parallel review first.** Run the Standards and Spec subagents in the background (`is_background=true`) in parallel. This works when the full context has been pasted, so the subagents do not need `exec` or `read` tools.
-   - **Fallback to foreground** if either subagent fails, requests more context, emits a tool-denial error, or its output is incomplete. Re-run the failed axis in the foreground (`is_background=false`) with the same pasted context.
+   - **Standards subagent** (`profile: code-review-standards`, `is_background=true`):
+     - Paste the diff, commit list, `docs/agents/coding-standards.md`, and Fowler smell baseline.
+   - **Spec subagent** (`profile: code-review-spec`, `is_background=true`):
+     - Paste the diff, commit list, and the parent spec contents.
+
+   Both prompts already contain all needed context; the subagents should not call `read` or `exec`.
+4. **Fallback to `/code-review`.** Use the existing `/code-review` path (or `subagent_general` in the foreground per `docs/agents/code-review-known-issues.md`) when:
+   - either custom profile file is missing, or
+   - a custom subagent fails, requests more context, emits a tool-denial error, or returns incomplete output.
+
+5. Parse the subagent responses for `## Standards` and `## Spec` headings and translate each finding's severity into the RED / YELLOW / GREEN classification in `## Review classification`.
 
 ## Review classification
 
