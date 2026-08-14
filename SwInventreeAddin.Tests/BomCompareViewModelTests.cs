@@ -319,6 +319,81 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.StatusText, Is.EqualTo(string.Empty));
         }
 
+        [Test]
+        public async Task PushAsync_ConflictRow_BecomesUnselectableAfterPush()
+        {
+            _bomService.LinesToReturn.Add(new SwBomLine { Ipn = "A", SubPartPk = 10, Quantity = 2 });
+            _client.BomLinesToReturn = new List<InventreeBomLine>
+            {
+                new InventreeBomLine { Pk = 5, SubPartPk = 10, Quantity = 1 }
+            };
+
+            var vm = CreateVm();
+            await vm.LoadAsync();
+            Assert.That(vm.Lines[0].State,    Is.EqualTo(BomDiffState.Conflict));
+            Assert.That(vm.Lines[0].CanCheck, Is.True, "Conflict row is selectable before push");
+
+            vm.Lines[0].IsChecked = true;
+            await vm.PushAsync();
+
+            Assert.That(vm.Lines[0].State,    Is.EqualTo(BomDiffState.Match));
+            Assert.That(vm.Lines[0].CanCheck, Is.False,
+                "CanCheck must reflect current State — pushed row is no longer selectable");
+            Assert.That(vm.Lines[0].IsChecked, Is.False,
+                "Checkbox must be cleared after a successful push");
+        }
+
+        [Test]
+        public async Task PushAsync_NewRow_BecomesUnselectableAfterPush()
+        {
+            _bomService.LinesToReturn.Add(new SwBomLine { Ipn = "A", SubPartPk = 10, Quantity = 1 });
+            _client.BomLinesToReturn = new List<InventreeBomLine>();
+
+            var vm = CreateVm();
+            await vm.LoadAsync();
+            Assert.That(vm.Lines[0].State,    Is.EqualTo(BomDiffState.New));
+            Assert.That(vm.Lines[0].CanCheck, Is.True);
+
+            vm.Lines[0].IsChecked = true;
+            await vm.PushAsync();
+
+            Assert.That(vm.Lines[0].State,    Is.EqualTo(BomDiffState.Match));
+            Assert.That(vm.Lines[0].CanCheck, Is.False,
+                "Pushed New row must become unselectable");
+            Assert.That(vm.Lines[0].IsChecked, Is.False);
+        }
+
+        [Test]
+        public async Task PushAsync_SelectAllAfterPush_DoesNotReselectPushedRows()
+        {
+            // One pushable Conflict row + one pushable New row. Push only the Conflict row,
+            // then simulate Select All and assert the pushed row stays unchecked.
+            _bomService.LinesToReturn = new List<SwBomLine>
+            {
+                new SwBomLine { Ipn = "A", SubPartPk = 10, Quantity = 2 }, // Conflict
+                new SwBomLine { Ipn = "B", SubPartPk = 20, Quantity = 1 }, // New
+            };
+            _client.BomLinesToReturn = new List<InventreeBomLine>
+            {
+                new InventreeBomLine { Pk = 5, SubPartPk = 10, Quantity = 1 }
+            };
+
+            var vm = CreateVm();
+            await vm.LoadAsync();
+            vm.Lines[0].IsChecked = true;   // Conflict
+            vm.Lines[1].IsChecked = false;  // New
+            await vm.PushAsync();
+
+            // Mirror BomCompareWindow.SelectAll_Click: check every row where CanCheck.
+            foreach (var line in vm.Lines.Where(l => l.CanCheck))
+                line.IsChecked = true;
+
+            Assert.That(vm.Lines[0].IsChecked, Is.False,
+                "Pushed Conflict row must not be re-checkable by Select All");
+            Assert.That(vm.Lines[1].IsChecked, Is.True,
+                "Unpushed New row should still be selectable");
+        }
+
         // ── Sort ──────────────────────────────────────────────────────────────
 
         [Test]
