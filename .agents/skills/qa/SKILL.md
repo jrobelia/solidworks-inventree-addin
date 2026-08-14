@@ -72,11 +72,7 @@ Run `git diff` and `git status --short`. If unlinked changes are present, ask th
 
 Default: one issue per Test Group. Propose a multi-issue group only when issues share acceptance criteria that cannot be verified in isolation.
 
-Present the proposed groups using the [TEST-PLAN.md](TEST-PLAN.md) group format. Print the full proposal in the chat response first; then call `ask_user_question` with a concise prompt. Do not paste the proposal into the `ask_user_question` body — a long question box can break the UI.
-
-Prompt:
-
-> Approve this grouping, or merge/split groups before we continue?
+Present the proposed groups using the [TEST-PLAN.md](TEST-PLAN.md) group format. Print the full proposal in the chat response first, then ask the user to reply with approve/edit/merge/split. Do not use `ask_user_question` for long proposal approvals — the question dialog can hide the previous chat and make the proposal hard to review.
 
 ## 3. Build the test plan
 
@@ -88,11 +84,7 @@ Include at least one edge case per feature area. See [CHECKLIST.md](CHECKLIST.md
 
 If the change touches the **Task Pane**, a **dialog**, a **control**, or a **data-bound property**, add a GUI functionality group using the categories and example in the GUI functionality testing section of [TEST-PLAN.md](TEST-PLAN.md).
 
-Present the full plan using the [TEST-PLAN.md](TEST-PLAN.md) plan format. Print the full plan in the chat response first; then call `ask_user_question` with a concise prompt. Do not paste the plan into the `ask_user_question` body — a long question box can break the UI.
-
-Prompt:
-
-> Approve this plan, or edit/reorder steps before we start?
+Present the full plan using the [TEST-PLAN.md](TEST-PLAN.md) plan format. Print the full plan in the chat response first, then ask the user to reply with approve/edit/reorder. Do not use `ask_user_question` for long plan approvals — the question dialog can hide the previous chat and make the plan hard to review.
 
 ## 4. Preflight
 
@@ -100,9 +92,11 @@ Run the preflight in [PREFLIGHT.md](PREFLIGHT.md) before the GUI test pass. Stop
 
 ## 5. Walk the steps
 
-Present one step at a time from the approved plan. Print the step to the chat panel, then call `ask_user_question` with a concise prompt:
+Present one step at a time from the approved plan. Print the full step (preconditions, action, and expected result) to the chat panel as the assistant's message first. Only after the step is visible in chat, call `ask_user_question` with a concise prompt:
 
 > Pass, Fail, or Skip?
+
+Never call `ask_user_question` for a step without first printing the step in the chat message. The question body must contain only the short prompt and the three options.
 
 Interpret the answer. If the result is unclear, confirm before moving on:
 

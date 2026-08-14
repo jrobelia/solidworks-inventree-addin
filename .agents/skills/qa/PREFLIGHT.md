@@ -54,11 +54,30 @@ Get the built assembly version:
 
 The two values must match. If they do not, the build pipeline may be defaulting to `1.0.0.0`. Stop and ask the user to fix the branch before QA.
 
-## 5. Register the dev build with SolidWorks
+## 5. Verify the registered add-in path
 
-Per ADR-0007, registration is one-time per DLL path. Rebuilding in place is covered. Re-register only when the latest build fails to load or the DLL path changes.
+Before starting GUI testing, confirm that SolidWorks will load the dev build and not an installed release copy:
 
-Ask the user whether to re-register. If yes, run `DevRegister.ps1` as Administrator from the repo root:
+```powershell
+reg query "HKLM\SOFTWARE\Classes\CLSID\{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}\InprocServer32" /s
+```
+
+Check the `CodeBase` value. It must point to the repo's `SwInventreeAddin\bin\Debug\net48\SwInventreeAddin.dll`. If it points to `C:\Program Files\SwInventreeAddin\SwInventreeAddin.DLL`, re-registration was skipped or failed.
+
+Ignore the `Assembly` version in the registry — it is the version that was registered at install time and does not need to match the current build.
+
+## 6. Register the dev build with SolidWorks (only if needed)
+
+Per ADR-0007, registration is one-time per DLL path. Rebuilding in place is covered.
+
+If the `CodeBase` value from step 5 already points to the repo's `SwInventreeAddin\bin\Debug\net48\SwInventreeAddin.dll`, re-registration is unnecessary — do not ask the user and do not re-register.
+
+Re-register only when:
+- The `CodeBase` path is wrong or the DLL path has changed,
+- The add-in fails to load in SolidWorks,
+- The user explicitly asks to re-register.
+
+To re-register, run `DevRegister.ps1` as Administrator from the repo root:
 
 ```powershell
 Start-Process PowerShell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File '$(Get-Location)\DevRegister.ps1'" -Verb RunAs -Wait
@@ -69,18 +88,6 @@ Alternatively, the user may right-click `DevRegister.bat` and select **Run as ad
 If this shell is not running as Administrator, the elevation prompt may not appear and the registry will not be updated. In that case, ask the user to run `DevRegister.bat` as Administrator manually.
 
 After registration, the user must restart SolidWorks.
-
-## 6. Verify the registered add-in path
-
-Before starting GUI testing, confirm that SolidWorks will load the dev build and not an installed release copy:
-
-```powershell
-reg query "HKLM\SOFTWARE\Classes\CLSID\{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}\InprocServer32" /s
-```
-
-Check the `CodeBase` value. It must point to the repo's `SwInventreeAddin\bin\Debug\net48\SwInventreeAddin.dll`. If it points to `C:\Program Files\SwInventreeAddin\SwInventreeAddin.DLL`, re-registration was skipped or failed. Ask the user to run `DevRegister.bat` as Administrator again and restart SolidWorks.
-
-Ignore the `Assembly` version in the registry — it is the version that was registered at install time and does not need to match the current build. Re-registering is only required if the `CodeBase` path is wrong or the add-in fails to load.
 
 ## 7. Confirm InvenTree configuration
 
