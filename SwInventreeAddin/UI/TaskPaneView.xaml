@@ -17,6 +17,7 @@
             <BooleanToVisibilityConverter x:Key="BoolToVis" />
             <local:ByteArrayToBitmapImageConverter x:Key="ThumbConverter" />
             <local:BoolToFlagBrushConverter x:Key="FlagBrushConverter" />
+            <local:NullableBoolToVisibilityConverter x:Key="NullableBoolToVis" />
         </ResourceDictionary>
     </UserControl.Resources>
 
@@ -689,13 +690,15 @@
 
                     <!-- Flag chips -->
                     <!--
-                        Each chip is a single TextBlock bound to a stable FlagChip
-                        instance. Avoids ItemsControl/DataTemplate (container churn)
-                        and Run element bindings, both of which have triggered WPF
-                        layout re-entries into SolidWorks COM (see #87).
+                        Explicit, static layout: one Border/TextBlock per chip. Each
+                        TextBlock binds directly to a ViewModel *Display string and
+                        *Value bool? (converted to green/red foreground). No collection,
+                        no DataTemplate, no Run binding — the minimal WPF surface that
+                        avoids the re-entrant layout crashes from #87.
                     -->
                     <WrapPanel Margin="0,8,0,0">
-                        <Border Background="{StaticResource BrushInventreeField}"
+                        <Border Visibility="{Binding ActiveValue, Converter={StaticResource NullableBoolToVis}}"
+                                Background="{StaticResource BrushInventreeField}"
                                 BorderBrush="{StaticResource BrushBorder}"
                                 BorderThickness="1"
                                 CornerRadius="2"
@@ -703,10 +706,11 @@
                                 Margin="0,0,4,4">
                             <TextBlock FontSize="{StaticResource FontSizeBody}"
                                        VerticalAlignment="Center"
-                                       Text="{Binding FlagChips[0].Display}"
-                                       Foreground="{Binding FlagChips[0].Value, Converter={StaticResource FlagBrushConverter}}" />
+                                       Text="{Binding ActiveDisplay}"
+                                       Foreground="{Binding ActiveValue, Converter={StaticResource FlagBrushConverter}}" />
                         </Border>
-                        <Border Background="{StaticResource BrushInventreeField}"
+                        <Border Visibility="{Binding AssemblyValue, Converter={StaticResource NullableBoolToVis}}"
+                                Background="{StaticResource BrushInventreeField}"
                                 BorderBrush="{StaticResource BrushBorder}"
                                 BorderThickness="1"
                                 CornerRadius="2"
@@ -714,10 +718,11 @@
                                 Margin="0,0,4,4">
                             <TextBlock FontSize="{StaticResource FontSizeBody}"
                                        VerticalAlignment="Center"
-                                       Text="{Binding FlagChips[1].Display}"
-                                       Foreground="{Binding FlagChips[1].Value, Converter={StaticResource FlagBrushConverter}}" />
+                                       Text="{Binding AssemblyDisplay}"
+                                       Foreground="{Binding AssemblyValue, Converter={StaticResource FlagBrushConverter}}" />
                         </Border>
-                        <Border Background="{StaticResource BrushInventreeField}"
+                        <Border Visibility="{Binding ComponentValue, Converter={StaticResource NullableBoolToVis}}"
+                                Background="{StaticResource BrushInventreeField}"
                                 BorderBrush="{StaticResource BrushBorder}"
                                 BorderThickness="1"
                                 CornerRadius="2"
@@ -725,10 +730,11 @@
                                 Margin="0,0,4,4">
                             <TextBlock FontSize="{StaticResource FontSizeBody}"
                                        VerticalAlignment="Center"
-                                       Text="{Binding FlagChips[2].Display}"
-                                       Foreground="{Binding FlagChips[2].Value, Converter={StaticResource FlagBrushConverter}}" />
+                                       Text="{Binding ComponentDisplay}"
+                                       Foreground="{Binding ComponentValue, Converter={StaticResource FlagBrushConverter}}" />
                         </Border>
-                        <Border Background="{StaticResource BrushInventreeField}"
+                        <Border Visibility="{Binding PurchaseableValue, Converter={StaticResource NullableBoolToVis}}"
+                                Background="{StaticResource BrushInventreeField}"
                                 BorderBrush="{StaticResource BrushBorder}"
                                 BorderThickness="1"
                                 CornerRadius="2"
@@ -736,10 +742,11 @@
                                 Margin="0,0,4,4">
                             <TextBlock FontSize="{StaticResource FontSizeBody}"
                                        VerticalAlignment="Center"
-                                       Text="{Binding FlagChips[3].Display}"
-                                       Foreground="{Binding FlagChips[3].Value, Converter={StaticResource FlagBrushConverter}}" />
+                                       Text="{Binding PurchaseableDisplay}"
+                                       Foreground="{Binding PurchaseableValue, Converter={StaticResource FlagBrushConverter}}" />
                         </Border>
-                        <Border Background="{StaticResource BrushInventreeField}"
+                        <Border Visibility="{Binding SalableValue, Converter={StaticResource NullableBoolToVis}}"
+                                Background="{StaticResource BrushInventreeField}"
                                 BorderBrush="{StaticResource BrushBorder}"
                                 BorderThickness="1"
                                 CornerRadius="2"
@@ -747,10 +754,11 @@
                                 Margin="0,0,4,4">
                             <TextBlock FontSize="{StaticResource FontSizeBody}"
                                        VerticalAlignment="Center"
-                                       Text="{Binding FlagChips[4].Display}"
-                                       Foreground="{Binding FlagChips[4].Value, Converter={StaticResource FlagBrushConverter}}" />
+                                       Text="{Binding SalableDisplay}"
+                                       Foreground="{Binding SalableValue, Converter={StaticResource FlagBrushConverter}}" />
                         </Border>
-                        <Border Background="{StaticResource BrushInventreeField}"
+                        <Border Visibility="{Binding TrackableValue, Converter={StaticResource NullableBoolToVis}}"
+                                Background="{StaticResource BrushInventreeField}"
                                 BorderBrush="{StaticResource BrushBorder}"
                                 BorderThickness="1"
                                 CornerRadius="2"
@@ -758,10 +766,11 @@
                                 Margin="0,0,4,4">
                             <TextBlock FontSize="{StaticResource FontSizeBody}"
                                        VerticalAlignment="Center"
-                                       Text="{Binding FlagChips[5].Display}"
-                                       Foreground="{Binding FlagChips[5].Value, Converter={StaticResource FlagBrushConverter}}" />
+                                       Text="{Binding TrackableDisplay}"
+                                       Foreground="{Binding TrackableValue, Converter={StaticResource FlagBrushConverter}}" />
                         </Border>
-                        <Border Background="{StaticResource BrushInventreeField}"
+                        <Border Visibility="{Binding TestableValue, Converter={StaticResource NullableBoolToVis}}"
+                                Background="{StaticResource BrushInventreeField}"
                                 BorderBrush="{StaticResource BrushBorder}"
                                 BorderThickness="1"
                                 CornerRadius="2"
@@ -769,8 +778,8 @@
                                 Margin="0,0,4,4">
                             <TextBlock FontSize="{StaticResource FontSizeBody}"
                                        VerticalAlignment="Center"
-                                       Text="{Binding FlagChips[6].Display}"
-                                       Foreground="{Binding FlagChips[6].Value, Converter={StaticResource FlagBrushConverter}}" />
+                                       Text="{Binding TestableDisplay}"
+                                       Foreground="{Binding TestableValue, Converter={StaticResource FlagBrushConverter}}" />
                         </Border>
                     </WrapPanel>
 

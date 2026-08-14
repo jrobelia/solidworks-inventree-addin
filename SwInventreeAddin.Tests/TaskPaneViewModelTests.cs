@@ -1,6 +1,5 @@
 using System;
 using System.Drawing;
-using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using SwInventreeAddin.Config;
@@ -758,142 +757,89 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void BeforeFetch_FlagChips_HasSevenNullValuedChipsInOrder()
+        public void BeforeFetch_FlagDisplays_AreEmpty()
         {
             CreateVm();
-            Assert.That(_vm.FlagChips.Count, Is.EqualTo(7));
-            Assert.That(_vm.FlagChips[0].Name, Is.EqualTo("Active"));
-            Assert.That(_vm.FlagChips[6].Name, Is.EqualTo("Testable"));
-            foreach (var chip in _vm.FlagChips)
-            {
-                Assert.That(chip.Value, Is.Null);
-                Assert.That(chip.Glyph, Is.EqualTo(string.Empty));
-            }
+            Assert.That(_vm.ActiveDisplay, Is.Empty);
+            Assert.That(_vm.AssemblyDisplay, Is.Empty);
+            Assert.That(_vm.ComponentDisplay, Is.Empty);
+            Assert.That(_vm.PurchaseableDisplay, Is.Empty);
+            Assert.That(_vm.SalableDisplay, Is.Empty);
+            Assert.That(_vm.TrackableDisplay, Is.Empty);
+            Assert.That(_vm.TestableDisplay, Is.Empty);
         }
 
         [Test]
-        public async Task AfterFetch_FlagChips_HasSevenChipsInOrder()
-        {
-            _client.PartToReturn = new InventreePart { Pk = 1 };
-            CreateVm();
-            await _vm.FetchPartAsync();
-
-            Assert.That(_vm.FlagChips.Count, Is.EqualTo(7));
-            Assert.That(_vm.FlagChips[0].Name, Is.EqualTo("Active"));
-            Assert.That(_vm.FlagChips[1].Name, Is.EqualTo("Assembly"));
-            Assert.That(_vm.FlagChips[2].Name, Is.EqualTo("Component"));
-            Assert.That(_vm.FlagChips[3].Name, Is.EqualTo("Purchaseable"));
-            Assert.That(_vm.FlagChips[4].Name, Is.EqualTo("Salable"));
-            Assert.That(_vm.FlagChips[5].Name, Is.EqualTo("Trackable"));
-            Assert.That(_vm.FlagChips[6].Name, Is.EqualTo("Testable"));
-        }
-
-        [Test]
-        public async Task AfterFetch_FlagChips_GlyphsMatchFlagValues()
-        {
-            _client.PartToReturn = new InventreePart
-            {
-                Pk          = 1,
-                Active      = true,
-                Assembly    = true,
-                Component   = false,
-                Purchaseable = true,
-                Salable     = false,
-                Trackable   = true,
-                Testable    = false,
-            };
-            CreateVm();
-            await _vm.FetchPartAsync();
-
-            Assert.That(_vm.FlagChips[0].Glyph, Is.EqualTo("\u2713")); // Active   = true
-            Assert.That(_vm.FlagChips[1].Glyph, Is.EqualTo("\u2713")); // Assembly = true
-            Assert.That(_vm.FlagChips[2].Glyph, Is.EqualTo("\u2717")); // Component = false
-            Assert.That(_vm.FlagChips[3].Glyph, Is.EqualTo("\u2713")); // Purchaseable = true
-            Assert.That(_vm.FlagChips[4].Glyph, Is.EqualTo("\u2717")); // Salable = false
-            Assert.That(_vm.FlagChips[5].Glyph, Is.EqualTo("\u2713")); // Trackable = true
-            Assert.That(_vm.FlagChips[6].Glyph, Is.EqualTo("\u2717")); // Testable = false
-        }
-
-        [Test]
-        public async Task AfterFetch_FlagChips_WhenActiveFalse_ShowsXGlyph()
-        {
-            _client.PartToReturn = new InventreePart { Pk = 1, Active = false };
-            CreateVm();
-            await _vm.FetchPartAsync();
-            Assert.That(_vm.FlagChips[0].Name, Is.EqualTo("Active"));
-            Assert.That(_vm.FlagChips[0].Glyph, Is.EqualTo("\u2717"));
-        }
-
-        [Test]
-        public async Task AfterFetch_FlagChips_DisplayIncludesNameAndGlyph()
-        {
-            _client.PartToReturn = new InventreePart { Pk = 1, Active = true };
-            CreateVm();
-            await _vm.FetchPartAsync();
-
-            Assert.That(_vm.FlagChips[0].Display, Is.EqualTo("Active: \u2713"));
-            Assert.That(_vm.FlagChips[2].Display, Is.EqualTo("Component: \u2717"));
-        }
-
-        [Test]
-        public async Task AfterFetchThenClear_FlagChips_HaveNullValues()
-        {
-            _client.PartToReturn = new InventreePart { Pk = 1, Active = true };
-            CreateVm();
-            await _vm.FetchPartAsync();
-            _vm.ClearAll();
-            Assert.That(_vm.FlagChips.Count, Is.EqualTo(7));
-            foreach (var chip in _vm.FlagChips)
-            {
-                Assert.That(chip.Value, Is.Null);
-                Assert.That(chip.Glyph, Is.EqualTo(string.Empty));
-            }
-        }
-
-        // ── Regression for #87: flag chips must update in place, not via
-        //    collection mutation. Clear+Add rebuilds the ItemsControl containers
-        //    and runs WPF layout, which collides with a SolidWorks view repaint
-        //    and re-enters the COM CustomPropertyManager, crashing the process. ──
-
-        [Test]
-        public async Task FlagChips_AcrossFetchAndClear_NeverMutatesCollection()
+        public async Task AfterFetch_FlagDisplays_ShowNameAndGlyph()
         {
             _client.PartToReturn = new InventreePart
             {
                 Pk           = 1,
                 Active       = true,
-                Assembly     = false,
-                Component    = true,
-                Purchaseable = false,
-                Salable      = true,
-                Trackable    = false,
-                Testable     = true,
+                Assembly     = true,
+                Component    = false,
+                Purchaseable = true,
+                Salable      = false,
+                Trackable    = true,
+                Testable     = false,
             };
             CreateVm();
-
-            var collectionChanged = false;
-            _vm.FlagChips.CollectionChanged += (_, __) => collectionChanged = true;
-
-            var initialRefs = _vm.FlagChips.ToList();
-
             await _vm.FetchPartAsync();
 
-            Assert.That(collectionChanged, Is.False,
-                "Fetch must not mutate the FlagChips collection.");
-            Assert.That(_vm.FlagChips.Count, Is.EqualTo(initialRefs.Count));
-            for (var i = 0; i < initialRefs.Count; i++)
-                Assert.That(ReferenceEquals(_vm.FlagChips[i], initialRefs[i]), Is.True,
-                    $"Flag chip {i} reference must be stable across fetch.");
-            Assert.That(_vm.FlagChips[0].Glyph, Is.EqualTo("\u2713")); // Active = true
+            Assert.That(_vm.ActiveDisplay, Is.EqualTo("Active: \u2713"));
+            Assert.That(_vm.AssemblyDisplay, Is.EqualTo("Assembly: \u2713"));
+            Assert.That(_vm.ComponentDisplay, Is.EqualTo("Component: \u2717"));
+            Assert.That(_vm.PurchaseableDisplay, Is.EqualTo("Purchaseable: \u2713"));
+            Assert.That(_vm.SalableDisplay, Is.EqualTo("Salable: \u2717"));
+            Assert.That(_vm.TrackableDisplay, Is.EqualTo("Trackable: \u2713"));
+            Assert.That(_vm.TestableDisplay, Is.EqualTo("Testable: \u2717"));
+        }
 
+        [Test]
+        public async Task AfterFetch_FlagValues_MatchFlagValues()
+        {
+            _client.PartToReturn = new InventreePart
+            {
+                Pk           = 1,
+                Active       = true,
+                Assembly     = true,
+                Component    = false,
+                Purchaseable = true,
+                Salable      = false,
+                Trackable    = true,
+                Testable     = false,
+            };
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.ActiveValue, Is.True);
+            Assert.That(_vm.AssemblyValue, Is.True);
+            Assert.That(_vm.ComponentValue, Is.False);
+            Assert.That(_vm.PurchaseableValue, Is.True);
+            Assert.That(_vm.SalableValue, Is.False);
+            Assert.That(_vm.TrackableValue, Is.True);
+            Assert.That(_vm.TestableValue, Is.False);
+        }
+
+        [Test]
+        public async Task AfterFetch_FlagDisplays_WhenActiveFalse_ShowsXGlyph()
+        {
+            _client.PartToReturn = new InventreePart { Pk = 1, Active = false };
+            CreateVm();
+            await _vm.FetchPartAsync();
+            Assert.That(_vm.ActiveDisplay, Is.EqualTo("Active: \u2717"));
+            Assert.That(_vm.ActiveValue, Is.False);
+        }
+
+        [Test]
+        public async Task AfterFetchThenClear_FlagDisplays_AreEmpty()
+        {
+            _client.PartToReturn = new InventreePart { Pk = 1, Active = true };
+            CreateVm();
+            await _vm.FetchPartAsync();
             _vm.ClearAll();
-
-            Assert.That(collectionChanged, Is.False,
-                "Clear must not mutate the FlagChips collection.");
-            for (var i = 0; i < initialRefs.Count; i++)
-                Assert.That(ReferenceEquals(_vm.FlagChips[i], initialRefs[i]), Is.True,
-                    $"Flag chip {i} reference must be stable across clear.");
-            Assert.That(_vm.FlagChips[0].Glyph, Is.EqualTo(string.Empty)); // null value
+            Assert.That(_vm.ActiveDisplay, Is.Empty);
+            Assert.That(_vm.ActiveValue, Is.Null);
         }
 
         [Test]
@@ -1699,61 +1645,13 @@ namespace SwInventreeAddin.Tests
                 handler?.Invoke(createVm, createdPart);
             });
 
-            Assert.That(vm.FlagChips.Count, Is.EqualTo(7));
-            Assert.That(vm.FlagChips[0].Name, Is.EqualTo("Active"));
-            Assert.That(vm.FlagChips[0].Glyph, Is.EqualTo("\u2717")); // Active defaults to false
-            Assert.That(vm.FlagChips[1].Name, Is.EqualTo("Assembly"));
-            Assert.That(vm.FlagChips[1].Glyph, Is.EqualTo("\u2713"));
-            Assert.That(vm.FlagChips[2].Name, Is.EqualTo("Component"));
-            Assert.That(vm.FlagChips[2].Glyph, Is.EqualTo("\u2713"));
-            Assert.That(vm.FlagChips[3].Name, Is.EqualTo("Purchaseable"));
-            Assert.That(vm.FlagChips[3].Glyph, Is.EqualTo("\u2713"));
-            Assert.That(vm.FlagChips[4].Name, Is.EqualTo("Salable"));
-            Assert.That(vm.FlagChips[4].Glyph, Is.EqualTo("\u2717"));
-            Assert.That(vm.FlagChips[5].Name, Is.EqualTo("Trackable"));
-            Assert.That(vm.FlagChips[5].Glyph, Is.EqualTo("\u2713"));
-            Assert.That(vm.FlagChips[6].Name, Is.EqualTo("Testable"));
-            Assert.That(vm.FlagChips[6].Glyph, Is.EqualTo("\u2717"));
-        }
-
-        [Test]
-        public void OpenCreatePartWindow_OnPartCreated_DoesNotMutateFlagChipsCollection()
-        {
-            var createdPart = new InventreePart
-            {
-                Pk   = 1,
-                Ipn  = "R-NEW-001",
-                Active = true,
-            };
-
-            _propertyService.Seed("PartNo", string.Empty);
-            _propertyService.Seed("Description", string.Empty);
-            _client.PartToReturn = createdPart;
-            var vm = CreateVm();
-
-            var collectionChanged = false;
-            vm.FlagChips.CollectionChanged += (_, __) => collectionChanged = true;
-            var initialRefs = vm.FlagChips.ToList();
-
-            vm.OpenCreatePartWindow(createVm =>
-            {
-                var backingField = typeof(CreatePartViewModel)
-                    .GetField("PartCreated",
-                        System.Reflection.BindingFlags.NonPublic |
-                        System.Reflection.BindingFlags.Instance |
-                        System.Reflection.BindingFlags.Public);
-                var handler = backingField?.GetValue(createVm) as
-                    System.EventHandler<InventreePart>;
-                handler?.Invoke(createVm, createdPart);
-            });
-
-            Assert.That(collectionChanged, Is.False,
-                "PartCreated must not mutate the FlagChips collection.");
-            Assert.That(vm.FlagChips.Count, Is.EqualTo(initialRefs.Count));
-            for (var i = 0; i < initialRefs.Count; i++)
-                Assert.That(ReferenceEquals(vm.FlagChips[i], initialRefs[i]), Is.True,
-                    $"Flag chip {i} reference must be stable across part creation.");
-            Assert.That(vm.FlagChips[0].Glyph, Is.EqualTo("\u2713")); // Active = true
+            Assert.That(vm.ActiveDisplay, Is.EqualTo("Active: \u2717")); // Active defaults to false
+            Assert.That(vm.AssemblyDisplay, Is.EqualTo("Assembly: \u2713"));
+            Assert.That(vm.ComponentDisplay, Is.EqualTo("Component: \u2713"));
+            Assert.That(vm.PurchaseableDisplay, Is.EqualTo("Purchaseable: \u2713"));
+            Assert.That(vm.SalableDisplay, Is.EqualTo("Salable: \u2717"));
+            Assert.That(vm.TrackableDisplay, Is.EqualTo("Trackable: \u2713"));
+            Assert.That(vm.TestableDisplay, Is.EqualTo("Testable: \u2717"));
         }
 
         [Test]
