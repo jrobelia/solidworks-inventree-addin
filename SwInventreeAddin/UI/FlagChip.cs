@@ -9,12 +9,12 @@ namespace SwInventreeAddin.UI
     /// chips once and updates <see cref="Value"/> in place via
     /// <see cref="INotifyPropertyChanged"/> when the part session changes.
     /// Updating in place raises only property-change notifications on the
-    /// existing text/foreground bindings, so the WPF <c>ItemsControl</c>
-    /// never rebuilds its containers and never runs a layout pass on a
-    /// session change. (Rebuilding the collection — Clear + Add — destroyed
-    /// and recreated containers, and the layout burst collided with a
-    /// SolidWorks view repaint, re-entering the COM CustomPropertyManager
-    /// and crashing the process. See #87.)
+    /// existing text/foreground bindings, so the WPF layout pass is
+    /// confined to a single text/foreground change and never re-enters
+    /// SolidWorks COM. (Rebuilding a bound collection with Clear + Add
+    /// destroyed and recreated containers, ran a larger layout pass, and
+    /// collided with a SolidWorks view repaint, re-entering the COM
+    /// CustomPropertyManager and crashing the process. See #87.)
     /// </summary>
     public class FlagChip : INotifyPropertyChanged
     {
@@ -31,14 +31,22 @@ namespace SwInventreeAddin.UI
             get => _value;
             set
             {
-                if (Set(ref _value, value))
-                    OnPropertyChanged(nameof(Glyph));
+                if (!Set(ref _value, value)) return;
+                OnPropertyChanged(nameof(Glyph));
+                OnPropertyChanged(nameof(Display));
             }
         }
         private bool? _value;
 
         /// <summary>Green-check glyph for true, red-X glyph for false, empty for null.</summary>
         public string Glyph => Value == null ? string.Empty : (Value.Value ? "\u2713" : "\u2717");
+
+        /// <summary>
+        /// Full chip text (e.g. "Active: ✓"). Empty when no part is loaded so the
+        /// chip is not visible. Bound directly to a single TextBlock to avoid
+        /// multi-Run WPF binding issues inside the SolidWorks task pane.
+        /// </summary>
+        public string Display => Value == null ? string.Empty : $"{Name}: {Glyph}";
 
         public FlagChip(string name, bool? value = null)
         {
