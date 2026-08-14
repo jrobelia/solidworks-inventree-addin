@@ -10,7 +10,13 @@ Check whether `SLDWORKS.exe` is running:
 Get-Process SLDWORKS -ErrorAction SilentlyContinue
 ```
 
-If it is running, ask the user to close SolidWorks and confirm before continuing. Building or registering while SolidWorks is running can lock the add-in DLL. Unit tests (`dotnet test`) are an exception — they build into a separate `bin_unit_test` folder and can run while SolidWorks is open.
+Also check for any SolidWorks helper processes that can keep the add-in DLL open (e.g. `sldworks_fs`):
+
+```powershell
+Get-Process | Where-Object { $_.Name -like 'sldworks*' } | Select-Object Name, Id
+```
+
+If any are running, ask the user to close them and confirm before continuing. Building or registering while SolidWorks (or its helpers) is running can lock the add-in DLL. Unit tests (`dotnet test`) are an exception — they build into a separate `bin_unit_test` folder and can run while SolidWorks is open.
 
 ## 2. Build
 
@@ -32,20 +38,21 @@ If tests fail, stop and ask the user to fix the branch before QA.
 
 For features that display a version or build identifier, confirm the add-in assembly is stamped with a version that reflects the current branch. For example, `v2.0.0-107-gce8b2dc` should produce assembly version `2.0.0.107`.
 
+Get the git-derived version:
+
 ```powershell
 $gitDesc = git describe --tags --always
-$gitVersion = if ($gitDesc -match '^v?(\d+)\.(\d+)\.(\d+)(?:-(\d+))?') {
-    $rev = if ($matches[4]) { $matches[4] } else { 0 }
-    "$($matches[1]).$($matches[2]).$($matches[3]).$rev"
-} else { 'unknown' }
-$assemblyVersion = [System.Reflection.AssemblyName]::GetAssemblyName("$(Get-Location)\SwInventreeAddin\bin\Debug\net48\SwInventreeAddin.dll").Version.ToString()
-
-if ($gitVersion -ne $assemblyVersion) {
-    throw "Assembly version $assemblyVersion does not match git-derived version $gitVersion"
-}
+$gitVersion = if ($gitDesc -match '^v?(\d+)\.(\d+)\.(\d+)(?:-(\d+))?') { $rev = if ($matches[4]) { $matches[4] } else { 0 }; "$($matches[1]).$($matches[2]).$($matches[3]).$rev" } else { 'unknown' }
+$gitVersion
 ```
 
-If the versions do not match, the build pipeline may be defaulting to `1.0.0.0`. Stop and ask the user to fix the branch before QA.
+Get the built assembly version:
+
+```powershell
+[System.Reflection.AssemblyName]::GetAssemblyName("$(Get-Location)\SwInventreeAddin\bin\Debug\net48\SwInventreeAddin.dll").Version.ToString()
+```
+
+The two values must match. If they do not, the build pipeline may be defaulting to `1.0.0.0`. Stop and ask the user to fix the branch before QA.
 
 ## 5. Register the dev build with SolidWorks
 
@@ -72,6 +79,8 @@ reg query "HKLM\SOFTWARE\Classes\CLSID\{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}\In
 ```
 
 Check the `CodeBase` value. It must point to the repo's `SwInventreeAddin\bin\Debug\net48\SwInventreeAddin.dll`. If it points to `C:\Program Files\SwInventreeAddin\SwInventreeAddin.DLL`, re-registration was skipped or failed. Ask the user to run `DevRegister.bat` as Administrator again and restart SolidWorks.
+
+Ignore the `Assembly` version in the registry — it is the version that was registered at install time and does not need to match the current build. Re-registering is only required if the `CodeBase` path is wrong or the add-in fails to load.
 
 ## 7. Confirm InvenTree configuration
 
