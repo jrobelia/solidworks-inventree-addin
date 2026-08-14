@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using SwInventreeAddin.Config;
@@ -757,10 +758,17 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void BeforeFetch_FlagChips_IsEmpty()
+        public void BeforeFetch_FlagChips_HasSevenNullValuedChipsInOrder()
         {
             CreateVm();
-            Assert.That(_vm.FlagChips, Is.Empty);
+            Assert.That(_vm.FlagChips.Count, Is.EqualTo(7));
+            Assert.That(_vm.FlagChips[0].Name, Is.EqualTo("Active"));
+            Assert.That(_vm.FlagChips[6].Name, Is.EqualTo("Testable"));
+            foreach (var chip in _vm.FlagChips)
+            {
+                Assert.That(chip.Value, Is.Null);
+                Assert.That(chip.Glyph, Is.EqualTo(string.Empty));
+            }
         }
 
         [Test]
@@ -817,13 +825,64 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public async Task AfterFetchThenClear_FlagChips_IsEmpty()
+        public async Task AfterFetchThenClear_FlagChips_HaveNullValues()
         {
             _client.PartToReturn = new InventreePart { Pk = 1, Active = true };
             CreateVm();
             await _vm.FetchPartAsync();
             _vm.ClearAll();
-            Assert.That(_vm.FlagChips, Is.Empty);
+            Assert.That(_vm.FlagChips.Count, Is.EqualTo(7));
+            foreach (var chip in _vm.FlagChips)
+            {
+                Assert.That(chip.Value, Is.Null);
+                Assert.That(chip.Glyph, Is.EqualTo(string.Empty));
+            }
+        }
+
+        // ── Regression for #87: flag chips must update in place, not via
+        //    collection mutation. Clear+Add rebuilds the ItemsControl containers
+        //    and runs WPF layout, which collides with a SolidWorks view repaint
+        //    and re-enters the COM CustomPropertyManager, crashing the process. ──
+
+        [Test]
+        public async Task FlagChips_AcrossFetchAndClear_NeverMutatesCollection()
+        {
+            _client.PartToReturn = new InventreePart
+            {
+                Pk           = 1,
+                Active       = true,
+                Assembly     = false,
+                Component    = true,
+                Purchaseable = false,
+                Salable      = true,
+                Trackable    = false,
+                Testable     = true,
+            };
+            CreateVm();
+
+            var collectionChanged = false;
+            _vm.FlagChips.CollectionChanged += (_, __) => collectionChanged = true;
+
+            var initialRefs = _vm.FlagChips.ToList();
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(collectionChanged, Is.False,
+                "Fetch must not mutate the FlagChips collection.");
+            Assert.That(_vm.FlagChips.Count, Is.EqualTo(initialRefs.Count));
+            for (var i = 0; i < initialRefs.Count; i++)
+                Assert.That(ReferenceEquals(_vm.FlagChips[i], initialRefs[i]), Is.True,
+                    $"Flag chip {i} reference must be stable across fetch.");
+            Assert.That(_vm.FlagChips[0].Glyph, Is.EqualTo("\u2713")); // Active = true
+
+            _vm.ClearAll();
+
+            Assert.That(collectionChanged, Is.False,
+                "Clear must not mutate the FlagChips collection.");
+            for (var i = 0; i < initialRefs.Count; i++)
+                Assert.That(ReferenceEquals(_vm.FlagChips[i], initialRefs[i]), Is.True,
+                    $"Flag chip {i} reference must be stable across clear.");
+            Assert.That(_vm.FlagChips[0].Glyph, Is.EqualTo(string.Empty)); // null value
         }
 
         [Test]
@@ -1644,6 +1703,46 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.FlagChips[5].Glyph, Is.EqualTo("\u2713"));
             Assert.That(vm.FlagChips[6].Name, Is.EqualTo("Testable"));
             Assert.That(vm.FlagChips[6].Glyph, Is.EqualTo("\u2717"));
+        }
+
+        [Test]
+        public void OpenCreatePartWindow_OnPartCreated_DoesNotMutateFlagChipsCollection()
+        {
+            var createdPart = new InventreePart
+            {
+                Pk   = 1,
+                Ipn  = "R-NEW-001",
+                Active = true,
+            };
+
+            _propertyService.Seed("PartNo", string.Empty);
+            _propertyService.Seed("Description", string.Empty);
+            _client.PartToReturn = createdPart;
+            var vm = CreateVm();
+
+            var collectionChanged = false;
+            vm.FlagChips.CollectionChanged += (_, __) => collectionChanged = true;
+            var initialRefs = vm.FlagChips.ToList();
+
+            vm.OpenCreatePartWindow(createVm =>
+            {
+                var backingField = typeof(CreatePartViewModel)
+                    .GetField("PartCreated",
+                        System.Reflection.BindingFlags.NonPublic |
+                        System.Reflection.BindingFlags.Instance |
+                        System.Reflection.BindingFlags.Public);
+                var handler = backingField?.GetValue(createVm) as
+                    System.EventHandler<InventreePart>;
+                handler?.Invoke(createVm, createdPart);
+            });
+
+            Assert.That(collectionChanged, Is.False,
+                "PartCreated must not mutate the FlagChips collection.");
+            Assert.That(vm.FlagChips.Count, Is.EqualTo(initialRefs.Count));
+            for (var i = 0; i < initialRefs.Count; i++)
+                Assert.That(ReferenceEquals(vm.FlagChips[i], initialRefs[i]), Is.True,
+                    $"Flag chip {i} reference must be stable across part creation.");
+            Assert.That(vm.FlagChips[0].Glyph, Is.EqualTo("\u2713")); // Active = true
         }
 
         [Test]
