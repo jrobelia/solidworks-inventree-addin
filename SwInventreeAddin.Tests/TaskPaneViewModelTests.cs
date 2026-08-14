@@ -757,21 +757,28 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public async Task AfterFetch_ActiveDisplay_WhenTrue_IsActive()
+        public async Task AfterFetch_ActiveDisplay_WhenTrue_IsYes()
         {
             _client.PartToReturn = new InventreePart { Pk = 1, Active = true };
             CreateVm();
             await _vm.FetchPartAsync();
-            Assert.That(_vm.ActiveDisplay, Is.EqualTo("Active"));
+            Assert.That(_vm.ActiveDisplay, Is.EqualTo("Yes"));
         }
 
         [Test]
-        public async Task AfterFetch_ActiveDisplay_WhenFalse_IsInactive()
+        public async Task AfterFetch_ActiveDisplay_WhenFalse_IsNo()
         {
             _client.PartToReturn = new InventreePart { Pk = 1, Active = false };
             CreateVm();
             await _vm.FetchPartAsync();
-            Assert.That(_vm.ActiveDisplay, Is.EqualTo("Inactive"));
+            Assert.That(_vm.ActiveDisplay, Is.EqualTo("No"));
+        }
+
+        [Test]
+        public void BeforeFetch_ActiveDisplay_IsEmpty()
+        {
+            CreateVm();
+            Assert.That(_vm.ActiveDisplay, Is.Empty);
         }
 
         [Test]
