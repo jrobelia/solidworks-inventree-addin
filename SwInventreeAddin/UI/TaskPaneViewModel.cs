@@ -133,9 +133,36 @@ namespace SwInventreeAddin.UI
 
         /// <summary>
         /// Read-only flag chips for the InvenTree Info section, showing a green check
-        /// or red X glyph for each boolean flag. Rebuilt on every session change.
+        /// or red X glyph for each boolean flag. Populated once with seven null-valued
+        /// chips and never mutated afterward; session changes update each chip's
+        /// <see cref="FlagChip.Value"/> in place so the WPF ItemsControl never
+        /// rebuilds its containers (see #87).
         /// </summary>
-        public ObservableCollection<FlagChip> FlagChips { get; } = new ObservableCollection<FlagChip>();
+        public ObservableCollection<FlagChip> FlagChips { get; } = CreateFlagChips();
+
+        /// <summary>
+        /// Single source of truth for the ordered flag chips: display name and the
+        /// getter that reads that flag from an InvenTree part. Both chip creation
+        /// and in-place updates read from here so name/index/order can never drift.
+        /// </summary>
+        private static readonly (string Name, Func<InventreePart, bool?> Getter)[] FlagDescriptors =
+        {
+            ("Active",       p => p.Active),
+            ("Assembly",     p => p.Assembly),
+            ("Component",    p => p.Component),
+            ("Purchaseable", p => p.Purchaseable),
+            ("Salable",      p => p.Salable),
+            ("Trackable",    p => p.Trackable),
+            ("Testable",     p => p.Testable),
+        };
+
+        private static ObservableCollection<FlagChip> CreateFlagChips()
+        {
+            var chips = new ObservableCollection<FlagChip>();
+            foreach (var (name, _) in FlagDescriptors)
+                chips.Add(new FlagChip(name));
+            return chips;
+        }
 
         // ── Enabled / visible flags (computed from session) ───────────────────
 
@@ -1013,23 +1040,14 @@ namespace SwInventreeAddin.UI
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PkMatch)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CurrentInvenTreePk)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(BomButtonEnabled)));
-            RebuildFlagChips();
+            UpdateFlagChips();
         }
 
-        private void RebuildFlagChips()
+        private void UpdateFlagChips()
         {
-            FlagChips.Clear();
-            if (_session == null)
-                return;
-
-            var p = _session.Part;
-            FlagChips.Add(new FlagChip("Active",       p.Active));
-            FlagChips.Add(new FlagChip("Assembly",     p.Assembly));
-            FlagChips.Add(new FlagChip("Component",    p.Component));
-            FlagChips.Add(new FlagChip("Purchaseable", p.Purchaseable));
-            FlagChips.Add(new FlagChip("Salable",      p.Salable));
-            FlagChips.Add(new FlagChip("Trackable",    p.Trackable));
-            FlagChips.Add(new FlagChip("Testable",     p.Testable));
+            var p = _session?.Part;
+            for (var i = 0; i < FlagDescriptors.Length; i++)
+                FlagChips[i].Value = p != null ? FlagDescriptors[i].Getter(p) : null;
         }
 
         /// <summary>
