@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
@@ -130,29 +131,11 @@ namespace SwInventreeAddin.UI
         /// <summary>On-order quantity display string (e.g. "100").</summary>
         public string OrderingDisplay    => _session?.Part.Ordering.ToString("G29") ?? string.Empty;
 
-        /// <summary>"Yes" or "No" for the InvenTree Active flag, shown as a chip alongside the other flag chips.</summary>
-        public string ActiveDisplay      => YesNoDisplay(_session?.Part.Active);
-
-        private static string YesNoDisplay(bool? value)
-            => value == null ? string.Empty : (value.Value ? "Yes" : "No");
-
-        /// <summary>"Yes" or "No" for the InvenTree Assembly flag.</summary>
-        public string AssemblyDisplay    => YesNoDisplay(_session?.Part.Assembly);
-
-        /// <summary>"Yes" or "No" for the InvenTree Component flag.</summary>
-        public string ComponentDisplay   => YesNoDisplay(_session?.Part.Component);
-
-        /// <summary>"Yes" or "No" for the InvenTree Purchaseable flag.</summary>
-        public string PurchaseableDisplay => YesNoDisplay(_session?.Part.Purchaseable);
-
-        /// <summary>"Yes" or "No" for the InvenTree Salable flag.</summary>
-        public string SalableDisplay     => YesNoDisplay(_session?.Part.Salable);
-
-        /// <summary>"Yes" or "No" for the InvenTree Trackable flag.</summary>
-        public string TrackableDisplay   => YesNoDisplay(_session?.Part.Trackable);
-
-        /// <summary>"Yes" or "No" for the InvenTree Testable flag.</summary>
-        public string TestableDisplay    => YesNoDisplay(_session?.Part.Testable);
+        /// <summary>
+        /// Read-only flag chips for the InvenTree Info section, showing a green check
+        /// or red X glyph for each boolean flag. Rebuilt on every session change.
+        /// </summary>
+        public ObservableCollection<FlagChip> FlagChips { get; } = new ObservableCollection<FlagChip>();
 
         // ── Enabled / visible flags (computed from session) ───────────────────
 
@@ -1012,13 +995,6 @@ namespace SwInventreeAddin.UI
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ThumbnailPlaceholderVisible)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(InStockDisplay)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(OrderingDisplay)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActiveDisplay)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AssemblyDisplay)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ComponentDisplay)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PurchaseableDisplay)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SalableDisplay)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TrackableDisplay)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TestableDisplay)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ApplyEnabled)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ApplyNameEnabled)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ApplyNotesEnabled)));
@@ -1037,6 +1013,23 @@ namespace SwInventreeAddin.UI
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PkMatch)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CurrentInvenTreePk)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(BomButtonEnabled)));
+            RebuildFlagChips();
+        }
+
+        private void RebuildFlagChips()
+        {
+            FlagChips.Clear();
+            if (_session == null)
+                return;
+
+            var p = _session.Part;
+            FlagChips.Add(new FlagChip("Active",       p.Active));
+            FlagChips.Add(new FlagChip("Assembly",     p.Assembly));
+            FlagChips.Add(new FlagChip("Component",    p.Component));
+            FlagChips.Add(new FlagChip("Purchaseable", p.Purchaseable));
+            FlagChips.Add(new FlagChip("Salable",      p.Salable));
+            FlagChips.Add(new FlagChip("Trackable",    p.Trackable));
+            FlagChips.Add(new FlagChip("Testable",     p.Testable));
         }
 
         /// <summary>

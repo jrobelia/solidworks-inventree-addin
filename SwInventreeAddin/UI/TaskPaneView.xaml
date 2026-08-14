@@ -16,6 +16,7 @@
             <!-- Visibility converters -->
             <BooleanToVisibilityConverter x:Key="BoolToVis" />
             <local:ByteArrayToBitmapImageConverter x:Key="ThumbConverter" />
+            <local:BoolToFlagBrushConverter x:Key="FlagBrushConverter" />
         </ResourceDictionary>
     </UserControl.Resources>
 
@@ -687,128 +688,29 @@
                     </Grid>
 
                     <!-- Flag chips -->
-                    <WrapPanel Margin="0,8,0,0">
-
-                        <Border Background="{StaticResource BrushInventreeField}"
-                                BorderBrush="{StaticResource BrushBorder}"
-                                BorderThickness="1"
-                                CornerRadius="2"
-                                Padding="5,2"
-                                Margin="0,0,4,4">
-                            <TextBlock FontSize="{StaticResource FontSizeBody}"
-                                       VerticalAlignment="Center">
-                                <TextBlock.Text>
-                                    <MultiBinding StringFormat="{}{0}: {1}">
-                                        <Binding Source="Active" />
-                                        <Binding Path="ActiveDisplay" />
-                                    </MultiBinding>
-                                </TextBlock.Text>
-                            </TextBlock>
-                        </Border>
-
-                        <Border Background="{StaticResource BrushInventreeField}"
-                                BorderBrush="{StaticResource BrushBorder}"
-                                BorderThickness="1"
-                                CornerRadius="2"
-                                Padding="5,2"
-                                Margin="0,0,4,4">
-                            <TextBlock FontSize="{StaticResource FontSizeBody}"
-                                       VerticalAlignment="Center">
-                                <TextBlock.Text>
-                                    <MultiBinding StringFormat="{}{0}: {1}">
-                                        <Binding Source="Assembly" />
-                                        <Binding Path="AssemblyDisplay" />
-                                    </MultiBinding>
-                                </TextBlock.Text>
-                            </TextBlock>
-                        </Border>
-
-                        <Border Background="{StaticResource BrushInventreeField}"
-                                BorderBrush="{StaticResource BrushBorder}"
-                                BorderThickness="1"
-                                CornerRadius="2"
-                                Padding="5,2"
-                                Margin="0,0,4,4">
-                            <TextBlock FontSize="{StaticResource FontSizeBody}"
-                                       VerticalAlignment="Center">
-                                <TextBlock.Text>
-                                    <MultiBinding StringFormat="{}{0}: {1}">
-                                        <Binding Source="Component" />
-                                        <Binding Path="ComponentDisplay" />
-                                    </MultiBinding>
-                                </TextBlock.Text>
-                            </TextBlock>
-                        </Border>
-
-                        <Border Background="{StaticResource BrushInventreeField}"
-                                BorderBrush="{StaticResource BrushBorder}"
-                                BorderThickness="1"
-                                CornerRadius="2"
-                                Padding="5,2"
-                                Margin="0,0,4,4">
-                            <TextBlock FontSize="{StaticResource FontSizeBody}"
-                                       VerticalAlignment="Center">
-                                <TextBlock.Text>
-                                    <MultiBinding StringFormat="{}{0}: {1}">
-                                        <Binding Source="Purchaseable" />
-                                        <Binding Path="PurchaseableDisplay" />
-                                    </MultiBinding>
-                                </TextBlock.Text>
-                            </TextBlock>
-                        </Border>
-
-                        <Border Background="{StaticResource BrushInventreeField}"
-                                BorderBrush="{StaticResource BrushBorder}"
-                                BorderThickness="1"
-                                CornerRadius="2"
-                                Padding="5,2"
-                                Margin="0,0,4,4">
-                            <TextBlock FontSize="{StaticResource FontSizeBody}"
-                                       VerticalAlignment="Center">
-                                <TextBlock.Text>
-                                    <MultiBinding StringFormat="{}{0}: {1}">
-                                        <Binding Source="Salable" />
-                                        <Binding Path="SalableDisplay" />
-                                    </MultiBinding>
-                                </TextBlock.Text>
-                            </TextBlock>
-                        </Border>
-
-                        <Border Background="{StaticResource BrushInventreeField}"
-                                BorderBrush="{StaticResource BrushBorder}"
-                                BorderThickness="1"
-                                CornerRadius="2"
-                                Padding="5,2"
-                                Margin="0,0,4,4">
-                            <TextBlock FontSize="{StaticResource FontSizeBody}"
-                                       VerticalAlignment="Center">
-                                <TextBlock.Text>
-                                    <MultiBinding StringFormat="{}{0}: {1}">
-                                        <Binding Source="Trackable" />
-                                        <Binding Path="TrackableDisplay" />
-                                    </MultiBinding>
-                                </TextBlock.Text>
-                            </TextBlock>
-                        </Border>
-
-                        <Border Background="{StaticResource BrushInventreeField}"
-                                BorderBrush="{StaticResource BrushBorder}"
-                                BorderThickness="1"
-                                CornerRadius="2"
-                                Padding="5,2"
-                                Margin="0,0,4,4">
-                            <TextBlock FontSize="{StaticResource FontSizeBody}"
-                                       VerticalAlignment="Center">
-                                <TextBlock.Text>
-                                    <MultiBinding StringFormat="{}{0}: {1}">
-                                        <Binding Source="Testable" />
-                                        <Binding Path="TestableDisplay" />
-                                    </MultiBinding>
-                                </TextBlock.Text>
-                            </TextBlock>
-                        </Border>
-
-                    </WrapPanel>
+                    <ItemsControl ItemsSource="{Binding FlagChips}" Margin="0,8,0,0">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type local:FlagChip}">
+                                <Border Background="{StaticResource BrushInventreeField}"
+                                        BorderBrush="{StaticResource BrushBorder}"
+                                        BorderThickness="1"
+                                        CornerRadius="2"
+                                        Padding="5,2"
+                                        Margin="0,0,4,4">
+                                    <TextBlock FontSize="{StaticResource FontSizeBody}"
+                                               VerticalAlignment="Center">
+                                        <Run Text="{Binding Name}" /><Run Text=": " /><Run Text="{Binding Glyph}"
+                                             Foreground="{Binding Value, Converter={StaticResource FlagBrushConverter}}" />
+                                    </TextBlock>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
 
                 </StackPanel>
                 <!-- end InvenTree info panel -->
