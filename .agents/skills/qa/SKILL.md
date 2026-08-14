@@ -86,6 +86,8 @@ For each approved Test Group, generate test steps from the acceptance criteria. 
 
 Include at least one edge case per feature area. See [CHECKLIST.md](CHECKLIST.md).
 
+If the change touches the **Task Pane**, a **dialog**, a **control**, or a **data-bound property**, add a GUI functionality group using the categories and example in the GUI functionality testing section of [TEST-PLAN.md](TEST-PLAN.md).
+
 Present the full plan using the [TEST-PLAN.md](TEST-PLAN.md) plan format. Print the full plan in the chat response first; then call `ask_user_question` with a concise prompt. Do not paste the plan into the `ask_user_question` body — a long question box can break the UI.
 
 Prompt:
