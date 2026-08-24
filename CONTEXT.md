@@ -5,7 +5,7 @@ A SolidWorks add-in that bridges SolidWorks parts and assemblies with an InvenTr
 ## Language
 
 **IPN** (InvenTree Part Number):
-The user-supplied string that identifies a part in InvenTree; stored as a SolidWorks Document Property and used to look up the part at fetch time.
+The string that identifies a part in InvenTree; may be user-supplied or server-assigned (e.g., by an InvenTree plugin when the user leaves the IPN field blank during part creation). Stored as a SolidWorks Document Property and used to look up the part at fetch time.
 _Avoid_: part number, PN
 
 **InvenTree Part PK**:

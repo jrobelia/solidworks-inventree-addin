@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using SwInventreeAddin.Config;
@@ -32,7 +34,6 @@ namespace SwInventreeAddin.UI
         private readonly IDocumentPropertyService  _propertyService;
         private readonly IPropertyMappingProvider? _mappingProvider;
         private readonly int                       _ipnPollDelayMs;
-        private readonly bool                      _waitForAutoPartNumber;
 
         // ── Bindable properties ───────────────────────────────────────────────
 
@@ -52,7 +53,13 @@ namespace SwInventreeAddin.UI
         public string IpnEntry
         {
             get => _ipnEntry;
-            set => Set(ref _ipnEntry, value);
+            set
+            {
+                if (!Equals(_ipnEntry, value))
+                    Set(ref _ipnErrorText, string.Empty, nameof(IpnErrorText));
+                Set(ref _ipnEntry, value);
+                Set(ref _isWaitForServerIpnEnabled, string.IsNullOrWhiteSpace(value), nameof(IsWaitForServerIpnEnabled));
+            }
         }
 
         private CategoryNode? _selectedCategory;
@@ -155,6 +162,36 @@ namespace SwInventreeAddin.UI
             set => Set(ref _copyCategoryParameters, value);
         }
 
+        private bool _waitForServerAssignedIpn;
+        /// <summary>
+        /// When true, the dialog waits and polls for a server-assigned IPN before closing.
+        /// When false, the part is created without waiting.
+        /// </summary>
+        public bool WaitForServerAssignedIpn
+        {
+            get => _waitForServerAssignedIpn;
+            set => Set(ref _waitForServerAssignedIpn, value);
+        }
+
+        private bool _isWaitForServerIpnEnabled = true;
+        /// <summary>
+        /// True when the IPN field is blank, so waiting for a server-assigned IPN is applicable.
+        /// False when the user has entered an IPN.
+        /// </summary>
+        public bool IsWaitForServerIpnEnabled
+        {
+            get => _isWaitForServerIpnEnabled;
+            private set => Set(ref _isWaitForServerIpnEnabled, value);
+        }
+
+        private string _ipnErrorText = string.Empty;
+        /// <summary>Validation error returned by InvenTree for a user-entered IPN.</summary>
+        public string IpnErrorText
+        {
+            get => _ipnErrorText;
+            private set => Set(ref _ipnErrorText, value);
+        }
+
         public ObservableCollection<CategoryNode> RootCategories { get; }
             = new ObservableCollection<CategoryNode>();
 
@@ -164,17 +201,17 @@ namespace SwInventreeAddin.UI
             IInventreeClient          client,
             IDocumentPropertyService  propertyService,
             string                    initialName,
-            IPropertyMappingProvider? mappingProvider       = null,
-            int                       ipnPollDelayMs        = 500,
-            bool                      waitForAutoPartNumber = false,
-            DocumentType              documentType          = DocumentType.Unknown)
+            IPropertyMappingProvider? mappingProvider            = null,
+            int                       ipnPollDelayMs             = 500,
+            bool                      waitForServerAssignedIpn = false,
+            DocumentType              documentType               = DocumentType.Unknown)
         {
-            _client                = client;
-            _propertyService       = propertyService;
-            _mappingProvider       = mappingProvider;
-            _ipnPollDelayMs        = ipnPollDelayMs;
-            _waitForAutoPartNumber = waitForAutoPartNumber;
-            PartName               = initialName;
+            _client                   = client;
+            _propertyService          = propertyService;
+            _mappingProvider          = mappingProvider;
+            _ipnPollDelayMs           = ipnPollDelayMs;
+            _waitForServerAssignedIpn = waitForServerAssignedIpn;
+            PartName                  = initialName;
 
             // Seed the type flags from the SolidWorks document type, but keep both editable.
             Assembly  = documentType == DocumentType.Assembly;
@@ -263,8 +300,9 @@ namespace SwInventreeAddin.UI
         {
             if (!CanCreate()) return;
 
-            IsBusy     = true;
-            StatusText = "Checking part number\u2026";
+            IsBusy      = true;
+            IpnErrorText = string.Empty;
+            StatusText  = "Checking IPN\u2026";
 
             try
             {
@@ -281,7 +319,7 @@ namespace SwInventreeAddin.UI
                     {
                         RunOnUiThread(() =>
                         {
-                            StatusText = $"Part number '{ipnToSubmit}' already exists. Enter a different part number.";
+                            StatusText = $"IPN '{ipnToSubmit}' already exists. Enter a different IPN.";
                             IsBusy     = false;
                         });
                         return;
@@ -318,7 +356,7 @@ namespace SwInventreeAddin.UI
 
                 // InvenTree plugins generate the IPN asynchronously after the POST.
                 // Poll only when the toggle is enabled and the user didn't supply an IPN.
-                bool pollEnabled = _waitForAutoPartNumber && ipnToSubmit == null;
+                bool pollEnabled = _waitForServerAssignedIpn && ipnToSubmit == null;
                 if (pollEnabled && string.IsNullOrEmpty(part.Ipn))
                 {
                     const int maxAttempts = 20;
@@ -326,7 +364,7 @@ namespace SwInventreeAddin.UI
                     {
                         int secondsLeft = (maxAttempts - i) / 2;
                         RunOnUiThread(() => StatusText =
-                            $"Waiting for part number from server\u2026 ({secondsLeft}s)");
+                            $"Waiting for server-assigned IPN\u2026 ({secondsLeft}s)");
                         await Task.Delay(_ipnPollDelayMs).ConfigureAwait(false);
                         part = await _client.GetPartByPkAsync(pk).ConfigureAwait(false);
                     }
@@ -347,7 +385,7 @@ namespace SwInventreeAddin.UI
 
                     // Show "refresh manually" only if the poll actually ran but IPN didn't arrive.
                     if (string.IsNullOrEmpty(ipn) && pollEnabled)
-                        StatusText = "Part created. Part number not yet generated \u2014 refresh manually once the server assigns it.";
+                        StatusText = "Part created. IPN not yet generated \u2014 refresh manually once the server assigns it.";
 
                     IsBusy = false;
                     PartCreated?.Invoke(this, part ?? new InventreePart { Pk = pk, Name = name });
@@ -357,10 +395,54 @@ namespace SwInventreeAddin.UI
             {
                 RunOnUiThread(() =>
                 {
-                    StatusText = $"Error: {ex.Message}";
-                    IsBusy     = false;
+                    var ipnError = ExtractIpnError(ex.Message);
+                    if (!string.IsNullOrEmpty(ipnError))
+                    {
+                        IpnErrorText = ipnError;
+                        StatusText   = ipnError;
+                    }
+                    else
+                    {
+                        StatusText = $"Error: {ex.Message}";
+                    }
+                    IsBusy = false;
                 });
             }
+        }
+
+        // ── Helpers ───────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Attempts to extract the first IPN field error from an InvenTree validation
+        /// response embedded in an exception message.
+        /// </summary>
+        private static string ExtractIpnError(string message)
+        {
+            var jsonStart = message.IndexOf('{');
+            if (jsonStart < 0) return string.Empty;
+
+            try
+            {
+                var json = message.Substring(jsonStart);
+                using var doc = JsonDocument.Parse(json);
+                if (doc.RootElement.TryGetProperty("ipn", out var ipnErrors) &&
+                    ipnErrors.ValueKind == JsonValueKind.Array)
+                {
+                    var errors = new List<string>();
+                    foreach (var element in ipnErrors.EnumerateArray())
+                    {
+                        if (element.ValueKind == JsonValueKind.String)
+                            errors.Add(element.GetString() ?? string.Empty);
+                    }
+                    return string.Join(" ", errors);
+                }
+            }
+            catch
+            {
+                // Ignore malformed JSON; the caller will show the raw message.
+            }
+
+            return string.Empty;
         }
 
         // ── Threading helper ──────────────────────────────────────────────────

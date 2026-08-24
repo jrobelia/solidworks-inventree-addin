@@ -20,8 +20,8 @@ namespace SwInventreeAddin.UI
         private IPropertyMappingProvider          _mappingProvider;
 
         private (string Url, string ApiKey, string Username, string Password,
-                 string SharedPath, string BomKeyword, bool UseLocalMapping,
-                 bool WaitForAutoPartNumber) _savedSnapshot;
+                 string SharedPath, string BomKeyword, bool UseLocalMapping) _savedSnapshot;
+        private bool _savedWaitForAutoPartNumber = true;
 
         /// <summary>
         /// Raised after Apply successfully saves settings, so the caller can update
@@ -56,8 +56,6 @@ namespace SwInventreeAddin.UI
             BomKeywordBox.TextChanged   += (_, __) => RefreshButtonStates();
             LocalRadio.Checked          += (_, __) => RefreshButtonStates();
             SharedRadio.Checked         += (_, __) => RefreshButtonStates();
-            WaitForAutoPartNumberBox.Checked   += (_, __) => RefreshButtonStates();
-            WaitForAutoPartNumberBox.Unchecked += (_, __) => RefreshButtonStates();
 
             // Centre over SolidWorks main window
             try
@@ -80,7 +78,7 @@ namespace SwInventreeAddin.UI
                         SharedPathBox.Text = config.MappingSourcePath;
 
                     BomKeywordBox.Text = config.BomKeyword ?? "inventree";
-                    WaitForAutoPartNumberBox.IsChecked = config.WaitForAutoPartNumber;
+                    _savedWaitForAutoPartNumber = config.WaitForAutoPartNumber;
                 }
             }
             catch { /* corrupt settings — user can re-enter */ }
@@ -97,10 +95,9 @@ namespace SwInventreeAddin.UI
 
         // ── Dirty-state tracking ───────────────────────────────────────────────
 
-        private (string, string, string, string, string, string, bool, bool) CaptureSnapshot() =>
+        private (string, string, string, string, string, string, bool) CaptureSnapshot() =>
             (UrlBox.Text.Trim(), ApiBox.Text.Trim(), UsernameBox.Text.Trim(), PasswordBox.Password,
-             SharedPathBox.Text.Trim(), BomKeywordBox.Text.Trim(), LocalRadio.IsChecked == true,
-             WaitForAutoPartNumberBox.IsChecked == true);
+             SharedPathBox.Text.Trim(), BomKeywordBox.Text.Trim(), LocalRadio.IsChecked == true);
 
         private void RefreshButtonStates()
         {
@@ -294,7 +291,7 @@ namespace SwInventreeAddin.UI
                     BomKeyword        = string.IsNullOrWhiteSpace(BomKeywordBox.Text)
                                             ? "inventree"
                                             : BomKeywordBox.Text.Trim(),
-                    WaitForAutoPartNumber = WaitForAutoPartNumberBox.IsChecked == true,
+                    WaitForAutoPartNumber = _savedWaitForAutoPartNumber,
                 });
 
                 _mappingProvider = new PropertyMappingProvider(sharedPath);

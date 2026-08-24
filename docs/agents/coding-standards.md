@@ -61,6 +61,45 @@ Rules:
 
 ---
 
+## Module Design
+
+Design **deep modules**: a lot of behaviour behind a small interface, placed at a clean **seam**, testable through that interface. This gives callers **leverage**, maintainers **locality**, and the codebase **testability**.
+
+### Vocabulary
+
+- **Module** — the umbrella term for anything with an interface and an implementation: a function, class, package, or cross-layer slice.
+- **Interface** — everything a caller must know to use the module correctly: signatures, invariants, ordering constraints, error modes, configuration, and performance.
+- **Depth** — behaviour per unit of interface. A module is **deep** when a large amount of behaviour sits behind a small interface, **shallow** when the interface is nearly as complex as the implementation.
+- **Seam** — the place where a module's interface lives; where behaviour can change without editing the caller.
+- **Adapter** — a concrete implementation at a seam. `InventreeHttpClient` and `StubInventreeClient` both satisfy `IInventreeClient`; `SwDocumentPropertyService` and `StubDocumentPropertyService` both satisfy `IDocumentPropertyService`; `SwAssemblyBomService` and `StubAssemblyBomService` both satisfy `IAssemblyBomService`; `SwViewportCaptureService` and `StubViewportCaptureService` both satisfy `IViewportCaptureService`.
+- **Leverage** — more capability per unit of interface learned.
+- **Locality** — bugs, knowledge, and verification concentrated in one place.
+
+### Design tests
+
+- **The deletion test.** Deleting the module should force its complexity back onto callers; if it only passes through, it is shallow.
+- **The interface is the test surface.** Callers and tests cross the same seam.
+- **One adapter means a hypothetical seam. Two adapters means a real one.** Introduce an interface only when a production adapter and a test adapter both sit at the seam.
+- **Depth is a property of the interface, not the implementation.** A module can be composed internally; the caller must not see the parts.
+- **YAGNI and simplicity.** Only deepen a module or introduce a seam where the code has already shown a need: multiple callers, real test variation, or repeated change. Prefer a boring, direct implementation until the simple version leaks complexity or forces duplication.
+
+### Applying it here
+
+The rules in this file are consequences of this philosophy:
+
+- **Interfaces for all cross-layer dependencies** create real seams. `IInventreeClient`, `IDocumentPropertyService`, `IAssemblyBomService`, and `IViewportCaptureService` each have production and `Stub*` test adapters.
+- **No static state** keeps module interfaces explicit.
+- **No business logic in UI code** puts depth behind services and ViewModels, not in XAML code-behind. A `Part Sync` module exposes `Fetch`, `Apply`, and `Push`; a `BOM Compare` module hides SolidWorks BOM table traversal and InvenTree diff logic behind `Compare` and `Push`.
+- **Accept dependencies, don't create them.** Prefer `public SomeService(IInventreeClient client)` over constructing `new InventreeHttpClient()` inside the class.
+
+Before adding a public method or class, ask:
+
+1. Can I reduce the number of methods?
+2. Can I simplify the parameters?
+3. Can I hide more complexity inside?
+
+---
+
 ## Code Quality Rules
 
 - **No business logic in UI code.** ViewModels call services; services own logic. XAML code-behind only wires events and delegates to the ViewModel.
@@ -96,3 +135,8 @@ Rules:
 - New properties using `PropertyChanged?.Invoke(...)` directly instead of the `Set<T>` helper.
 - Data-bound `ObservableCollection` updated with `Clear()` + multiple `Add()` instead of in-place updates or a single `Reset` — risks re-entrant WPF layout crashes during host repaint callbacks.
 - Domain terminology violations: `Load` instead of `Fetch`, `sync` instead of `Apply`/`Push`, `part number` instead of `IPN`.
+- Shallow modules where the interface is nearly as complex as the implementation (pass-throughs, thin wrappers).
+- Missing locality: business logic or state duplicated across callers instead of living in a deep module.
+- Hypothetical seams: a new cross-layer dependency with an interface but no `Stub*` test adapter.
+- Tests that bypass the seam and exercise internal helpers rather than the module's public interface.
+- New modules or seams introduced before the code shows a real need for them (YAGNI / over-engineering).

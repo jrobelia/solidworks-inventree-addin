@@ -16,19 +16,32 @@ Approve this grouping, or merge/split groups before we continue?
 
 ## Full test plan
 
+Use the **compact format** for plan approval. One line per step. Include preconditions inline only when they are not `none` or when the user needs them to understand the step. Separate the action and the expected result with `→`. Use the **detailed format** only if the user asks to expand a step before the walk.
+
+### Compact format
+
 ```
 Here is the test plan — N Test Groups, N steps total.
 
+**Group 1: #12 — Add save button** (3 steps)
+1. [Step title]: [precondition if non-none] [action] → [observable result]
+
+**Group 2: #15, #16 — Profile edit and display** (5 steps)
+1. ...
+
+Ready to start? Approve, edit, reorder, or expand before we continue.
+```
+
+### Detailed format
+
+Use this when the user asks to expand a step before the walk, or when presenting a step during the walk.
+
+```
 **Group 1: #12 — Add save button** (3 steps)
 1. [Step title]
    - Preconditions: [setup needed, or "none"]
    - Action: [user action in the SolidWorks InvenTree Add-In GUI]
    - Expected: [observable result]
-
-**Group 2: #15, #16 — Profile edit and display** (5 steps)
-1. ...
-
-Ready to start? Approve, edit, or reorder before we continue.
 ```
 
 ## GUI functionality testing

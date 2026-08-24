@@ -36,23 +36,16 @@ If tests fail, stop and ask the user to fix the branch before QA.
 
 ## 4. Verify the built assembly version matches the git-derived version
 
-For features that display a version or build identifier, confirm the add-in assembly is stamped with a version that reflects the current branch. For example, `v2.0.0-107-gce8b2dc` should produce assembly version `2.0.0.107`.
-
-Get the git-derived version:
+Run the preflight version check from `SwInventreeAddin\VerifyVersionMatch.ps1`. It compares the git-derived version (from `SwInventreeAddin\SetGitVersion.ps1`) with the built assembly version and prints one line.
 
 ```powershell
-$gitDesc = git describe --tags --always
-$gitVersion = if ($gitDesc -match '^v?(\d+)\.(\d+)\.(\d+)(?:-(\d+))?') { $rev = if ($matches[4]) { $matches[4] } else { 0 }; "$($matches[1]).$($matches[2]).$($matches[3]).$rev" } else { 'unknown' }
-$gitVersion
+powershell -NoProfile -File "SwInventreeAddin\VerifyVersionMatch.ps1"
 ```
 
-Get the built assembly version:
+- `OK: 2.0.0.138` — the versions match; continue.
+- `MISMATCH: git 2.0.0.138 vs assembly 1.0.0.0` — the build pipeline may be defaulting the version. Stop and ask the user to fix the branch before QA.
 
-```powershell
-[System.Reflection.AssemblyName]::GetAssemblyName("$(Get-Location)\SwInventreeAddin\bin\Debug\net48\SwInventreeAddin.dll").Version.ToString()
-```
-
-The two values must match. If they do not, the build pipeline may be defaulting to `1.0.0.0`. Stop and ask the user to fix the branch before QA.
+If the git tag is missing (e.g., a shallow clone or no tags), both sides resolve to `0.0.0.0` and the script still reports `OK`. For QA on a development branch this is expected to match the tag-derived version.
 
 ## 5. Verify the registered add-in path
 

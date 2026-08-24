@@ -84,13 +84,19 @@ Include at least one edge case per feature area. See [CHECKLIST.md](CHECKLIST.md
 
 If the change touches the **Task Pane**, a **dialog**, a **control**, or a **data-bound property**, add a GUI functionality group using the categories and example in the GUI functionality testing section of [TEST-PLAN.md](TEST-PLAN.md).
 
-Present the full plan using the [TEST-PLAN.md](TEST-PLAN.md) plan format. Print the full plan in the chat response first, then ask the user to reply with approve/edit/reorder. Do not use `ask_user_question` for long plan approvals — the question dialog can hide the previous chat and make the plan hard to review.
+Present the test plan using the **compact format** in [TEST-PLAN.md](TEST-PLAN.md): one line per step, preconditions inline only when non-trivial, and `→` separating the action from the expected result. Print the compact plan in the chat response first, then ask the user to reply with approve/edit/reorder/expand. Do not use `ask_user_question` for long plan approvals — the question dialog can hide the previous chat and make the plan hard to review. Expand to the detailed format only if the user asks before the walk.
 
 ## 4. Preflight
 
 Run the preflight in [PREFLIGHT.md](PREFLIGHT.md) before the GUI test pass. Stop if the build or test run fails and ask the user to fix the branch before QA.
 
 ## 5. Walk the steps
+
+### Severity reminder
+
+Before presenting the first step, print the Severity Guide table from [CHECKLIST.md](CHECKLIST.md) as a reminder of what each issue level means. Ask the user to confirm they are ready to begin testing.
+
+### Present one step at a time
 
 Present one step at a time from the approved plan. Print the full step (preconditions, action, and expected result) to the chat panel as the assistant's message first. Only after the step is visible in chat, call `ask_user_question` with a concise prompt:
 

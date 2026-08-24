@@ -29,9 +29,9 @@ namespace SwInventreeAddin.Tests
 
         private CreatePartViewModel CreateVm(
             string name = DefaultName,
-            bool waitForAutoPartNumber = false,
+            bool waitForServerAssignedIpn = false,
             DocumentType documentType = DocumentType.Part) =>
-            new CreatePartViewModel(_client, _propertyService, name, ipnPollDelayMs: 0, waitForAutoPartNumber: waitForAutoPartNumber, documentType: documentType);
+            new CreatePartViewModel(_client, _propertyService, name, ipnPollDelayMs: 0, waitForServerAssignedIpn: waitForServerAssignedIpn, documentType: documentType);
 
         private static CategoryNode MakeNode(int pk = 1, string name = "Resistors") =>
             new CategoryNode(new InventreeCategory { Pk = pk, Name = name });
@@ -284,7 +284,7 @@ namespace SwInventreeAddin.Tests
             _propertyService.Seed("Description", string.Empty);
 
             InventreePart? raisedPart = null;
-            var vm = CreateVm(waitForAutoPartNumber: true);
+            var vm = CreateVm(waitForServerAssignedIpn: true);
             vm.PartCreated += (_, p) => raisedPart = p;
             vm.SelectedCategory = MakeNode(pk: 7);
 
@@ -308,7 +308,7 @@ namespace SwInventreeAddin.Tests
             _client.QueuePartByPkResponses(emptyParts);
             _propertyService.Seed("PartNo", string.Empty);
 
-            var vm = CreateVm(waitForAutoPartNumber: true);
+            var vm = CreateVm(waitForServerAssignedIpn: true);
             vm.SelectedCategory = MakeNode(pk: 7);
             await vm.CreateAsync();
 
@@ -356,7 +356,7 @@ namespace SwInventreeAddin.Tests
             _propertyService.Seed("Description", string.Empty);
 
             InventreePart? raisedPart = null;
-            var vm = CreateVm(waitForAutoPartNumber: false);
+            var vm = CreateVm(waitForServerAssignedIpn: false);
             vm.PartCreated      += (_, p) => raisedPart = p;
             vm.SelectedCategory  = MakeNode();
             await vm.CreateAsync();
@@ -375,7 +375,7 @@ namespace SwInventreeAddin.Tests
             _client.PkToReturnOnCreate = newPk;
             _client.PartByPkToReturn   = new InventreePart { Pk = newPk, Ipn = string.Empty, Name = "IPN-less Part" };
 
-            var vm = CreateVm(waitForAutoPartNumber: false);
+            var vm = CreateVm(waitForServerAssignedIpn: false);
             vm.SelectedCategory = MakeNode();
             await vm.CreateAsync();
 
@@ -393,7 +393,7 @@ namespace SwInventreeAddin.Tests
             _propertyService.Seed("Description", string.Empty);
 
             InventreePart? raisedPart = null;
-            var vm = CreateVm(waitForAutoPartNumber: true);
+            var vm = CreateVm(waitForServerAssignedIpn: true);
             vm.PartCreated      += (_, p) => raisedPart = p;
             vm.SelectedCategory  = MakeNode();
             vm.IpnEntry          = "FAB-123";
@@ -467,6 +467,109 @@ namespace SwInventreeAddin.Tests
             {
                 SynchronizationContext.SetSynchronizationContext(previousContext);
             }
+        }
+
+        // ── Wait for server-assigned IPN ───────────────────────────────────────
+
+        [Test]
+        public void WaitForServerAssignedIpn_DefaultsToConstructorArgument()
+        {
+            var vmOn  = CreateVm(waitForServerAssignedIpn: true);
+            var vmOff = CreateVm(waitForServerAssignedIpn: false);
+
+            Assert.That(vmOn.WaitForServerAssignedIpn,  Is.True);
+            Assert.That(vmOff.WaitForServerAssignedIpn, Is.False);
+        }
+
+        [Test]
+        public void WaitForServerAssignedIpn_CanBeChanged()
+        {
+            var vm = CreateVm(waitForServerAssignedIpn: true);
+            vm.WaitForServerAssignedIpn = false;
+
+            Assert.That(vm.WaitForServerAssignedIpn, Is.False);
+        }
+
+        [Test]
+        public void IsWaitForServerIpnEnabled_WhenIpnEntryBlank_IsTrue()
+        {
+            var vm = CreateVm();
+            Assert.That(vm.IsWaitForServerIpnEnabled, Is.True);
+        }
+
+        [Test]
+        public void IsWaitForServerIpnEnabled_WhenIpnEntryNotBlank_IsFalse()
+        {
+            var vm = CreateVm();
+            vm.IpnEntry = "FAB-001";
+
+            Assert.That(vm.IsWaitForServerIpnEnabled, Is.False);
+        }
+
+        [Test]
+        public void IsWaitForServerIpnEnabled_WhenIpnEntryCleared_ReturnsTrue()
+        {
+            var vm = CreateVm();
+            vm.IpnEntry = "FAB-001";
+            vm.IpnEntry = string.Empty;
+
+            Assert.That(vm.IsWaitForServerIpnEnabled, Is.True);
+        }
+
+        [Test]
+        public void WaitForServerAssignedIpn_WhenIpnEntryCleared_PreservesRememberedState()
+        {
+            var vm = CreateVm(waitForServerAssignedIpn: true);
+            vm.IpnEntry = "FAB-001";
+
+            Assert.That(vm.WaitForServerAssignedIpn, Is.True);
+
+            vm.IpnEntry = string.Empty;
+
+            Assert.That(vm.WaitForServerAssignedIpn, Is.True);
+        }
+
+        [Test]
+        public async Task CreateAsync_RejectedIpn_SetsIpnErrorText_AndDoesNotRaisePartCreated()
+        {
+            const string errorBody = @"{""ipn"": [""IPN does not match required pattern.""]}";
+            _client.ThrowOnCreateException = new HttpRequestException(
+                $"InvenTree API returned 400 BadRequest: {errorBody}");
+
+            InventreePart? raisedPart = null;
+            var vm = CreateVm();
+            vm.PartCreated      += (_, p) => raisedPart = p;
+            vm.SelectedCategory  = MakeNode();
+            vm.IpnEntry          = "BAD-IPN";
+
+            await vm.CreateAsync();
+
+            Assert.That(raisedPart, Is.Null);
+            Assert.That(vm.IpnErrorText, Does.Contain("IPN does not match required pattern"));
+            Assert.That(vm.StatusText,   Does.Contain("IPN does not match required pattern"));
+            Assert.That(vm.IsBusy,       Is.False);
+        }
+
+        [Test]
+        public async Task CreateAsync_RejectedIpn_WhenIpnEdited_ClearsIpnErrorText()
+        {
+            const string errorBody = @"{""ipn"": [""IPN does not match required pattern.""]}";
+            _client.ThrowOnCreateException = new HttpRequestException(
+                $"InvenTree API returned 400 BadRequest: {errorBody}");
+
+            var vm = CreateVm();
+            vm.SelectedCategory = MakeNode();
+            vm.IpnEntry = "BAD-IPN";
+            await vm.CreateAsync();
+
+            Assert.That(vm.IpnErrorText, Does.Contain("IPN does not match required pattern"));
+
+            _client.ThrowOnCreateException = null;
+            _client.PkToReturnOnCreate = 99;
+            _client.PartByPkToReturn = new InventreePart { Pk = 99, Ipn = "GOOD-001", Name = "Good Part" };
+            vm.IpnEntry = "GOOD-001";
+
+            Assert.That(vm.IpnErrorText, Is.Empty);
         }
 
         // ── Part flags ─────────────────────────────────────────────────────────
