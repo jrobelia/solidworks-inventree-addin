@@ -517,16 +517,43 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void WaitForServerAssignedIpn_WhenIpnEntryCleared_PreservesRememberedState()
+        public void WaitForServerAssignedIpn_WhenIpnEntryBecomesNonBlank_UnchecksAndRemembersOriginal()
         {
             var vm = CreateVm(waitForServerAssignedIpn: true);
             vm.IpnEntry = "FAB-001";
 
-            Assert.That(vm.WaitForServerAssignedIpn, Is.True);
+            Assert.That(vm.IsWaitForServerIpnEnabled, Is.False);
+            Assert.That(vm.WaitForServerAssignedIpn, Is.False);
 
             vm.IpnEntry = string.Empty;
 
             Assert.That(vm.WaitForServerAssignedIpn, Is.True);
+        }
+
+        [Test]
+        public void WaitForServerAssignedIpn_WhenToggledWhileBlank_RemembersUserChoice()
+        {
+            var vm = CreateVm(waitForServerAssignedIpn: true);
+            vm.WaitForServerAssignedIpn = false;
+
+            vm.IpnEntry = "FAB-001";
+            Assert.That(vm.WaitForServerAssignedIpn, Is.False);
+
+            vm.IpnEntry = string.Empty;
+            Assert.That(vm.WaitForServerAssignedIpn, Is.False);
+        }
+
+        [Test]
+        public void WaitForServerAssignedIpn_WhenInitiallyFalse_StaysFalseAfterEditAndClear()
+        {
+            var vm = CreateVm(waitForServerAssignedIpn: false);
+            Assert.That(vm.WaitForServerAssignedIpn, Is.False);
+
+            vm.IpnEntry = "FAB-001";
+            Assert.That(vm.WaitForServerAssignedIpn, Is.False);
+
+            vm.IpnEntry = string.Empty;
+            Assert.That(vm.WaitForServerAssignedIpn, Is.False);
         }
 
         [Test]

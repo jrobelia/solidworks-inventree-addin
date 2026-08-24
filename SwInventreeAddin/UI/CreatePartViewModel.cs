@@ -55,10 +55,25 @@ namespace SwInventreeAddin.UI
             get => _ipnEntry;
             set
             {
-                if (!Equals(_ipnEntry, value))
+                var changed = !Equals(_ipnEntry, value);
+                if (changed)
                     Set(ref _ipnErrorText, string.Empty, nameof(IpnErrorText));
+
+                var wasBlank = string.IsNullOrWhiteSpace(_ipnEntry);
+                var isBlank  = string.IsNullOrWhiteSpace(value);
+
                 Set(ref _ipnEntry, value);
-                Set(ref _isWaitForServerIpnEnabled, string.IsNullOrWhiteSpace(value), nameof(IsWaitForServerIpnEnabled));
+                Set(ref _isWaitForServerIpnEnabled, isBlank, nameof(IsWaitForServerIpnEnabled));
+
+                if (wasBlank && !isBlank)
+                {
+                    _waitForServerAssignedIpnRemembered = _waitForServerAssignedIpn;
+                    Set(ref _waitForServerAssignedIpn, false, nameof(WaitForServerAssignedIpn));
+                }
+                else if (!wasBlank && isBlank)
+                {
+                    Set(ref _waitForServerAssignedIpn, _waitForServerAssignedIpnRemembered, nameof(WaitForServerAssignedIpn));
+                }
             }
         }
 
@@ -163,14 +178,21 @@ namespace SwInventreeAddin.UI
         }
 
         private bool _waitForServerAssignedIpn;
+        private bool _waitForServerAssignedIpnRemembered;
         /// <summary>
         /// When true, the dialog waits and polls for a server-assigned IPN before closing.
         /// When false, the part is created without waiting.
+        /// Remembered while the IPN field is blank so it can be restored when the field is cleared.
         /// </summary>
         public bool WaitForServerAssignedIpn
         {
             get => _waitForServerAssignedIpn;
-            set => Set(ref _waitForServerAssignedIpn, value);
+            set
+            {
+                Set(ref _waitForServerAssignedIpn, value);
+                if (_isWaitForServerIpnEnabled)
+                    _waitForServerAssignedIpnRemembered = value;
+            }
         }
 
         private bool _isWaitForServerIpnEnabled = true;
@@ -210,8 +232,9 @@ namespace SwInventreeAddin.UI
             _propertyService          = propertyService;
             _mappingProvider          = mappingProvider;
             _ipnPollDelayMs           = ipnPollDelayMs;
-            _waitForServerAssignedIpn = waitForServerAssignedIpn;
-            PartName                  = initialName;
+            _waitForServerAssignedIpn           = waitForServerAssignedIpn;
+            _waitForServerAssignedIpnRemembered = waitForServerAssignedIpn;
+            PartName                            = initialName;
 
             // Seed the type flags from the SolidWorks document type, but keep both editable.
             Assembly  = documentType == DocumentType.Assembly;
