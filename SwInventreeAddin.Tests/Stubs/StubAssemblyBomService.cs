@@ -14,8 +14,8 @@ namespace SwInventreeAddin.Tests.Stubs
 
         public bool HasBomTable(string keyword) => HasBomTableResult;
 
-        public (string TableName, bool NeedsRebuild) GetBomInfo(string keyword)
-            => ("BOM1", false);
+        public string GetBomTableName(string keyword)
+            => "BOM1";
 
         public IReadOnlyList<SwBomLine> GetBomLines(string keyword, PropertyMappingConfig mapping)
         {

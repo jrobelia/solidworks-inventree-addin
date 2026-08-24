@@ -51,14 +51,6 @@
                            FontSize="11"
                            Foreground="#FF666666"
                            VerticalAlignment="Center"/>
-                <TextBlock x:Name="RebuildDot"
-                           Text="&#x25CF;"
-                           FontSize="9"
-                           VerticalAlignment="Center"
-                           Margin="12,0,4,0"/>
-                <TextBlock x:Name="RebuildStatus"
-                           FontSize="11"
-                           VerticalAlignment="Center"/>
             </StackPanel>
 
             <!-- Bulk-select toolbar -->
