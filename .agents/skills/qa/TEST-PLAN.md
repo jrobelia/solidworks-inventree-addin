@@ -16,7 +16,7 @@ Approve this grouping, or merge/split groups before we continue?
 
 ## Full test plan
 
-Use the **compact format** for plan approval. One line per step. Include preconditions inline only when they are not `none` or when the user needs them to understand the step. Separate the action and the expected result with `→`. Use the **detailed format** only if the user asks to expand a step before the walk.
+Use the **compact format** for plan approval: titles only. Show the group and step titles so the user can quickly confirm the plan covers the issue changes. The full step detail (preconditions, action, expected) lives in the **detailed format**, which the agent uses during the walk or on an explicit `expand` request.
 
 ### Compact format
 
@@ -24,12 +24,14 @@ Use the **compact format** for plan approval. One line per step. Include precond
 Here is the test plan — N Test Groups, N steps total.
 
 **Group 1: #12 — Add save button** (3 steps)
-1. [Step title]: [precondition if non-none] [action] → [observable result]
+1. [Step title]
+2. [Step title]
+3. [Step title]
 
 **Group 2: #15, #16 — Profile edit and display** (5 steps)
 1. ...
 
-Ready to start? Approve, edit, reorder, or expand before we continue.
+Ready to start? Approve, edit, reorder, or expand any group/step.
 ```
 
 ### Detailed format

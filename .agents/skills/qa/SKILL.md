@@ -84,7 +84,7 @@ Include at least one edge case per feature area. See [CHECKLIST.md](CHECKLIST.md
 
 If the change touches the **Task Pane**, a **dialog**, a **control**, or a **data-bound property**, add a GUI functionality group using the categories and example in the GUI functionality testing section of [TEST-PLAN.md](TEST-PLAN.md).
 
-Present the test plan using the **compact format** in [TEST-PLAN.md](TEST-PLAN.md): one line per step, preconditions inline only when non-trivial, and `→` separating the action from the expected result. Print the compact plan in the chat response first, then ask the user to reply with approve/edit/reorder/expand. Do not use `ask_user_question` for long plan approvals — the question dialog can hide the previous chat and make the plan hard to review. Expand to the detailed format only if the user asks before the walk.
+Present the test plan using the **compact format** in [TEST-PLAN.md](TEST-PLAN.md): group titles and step titles only. The full step detail (preconditions, action, expected) belongs in the detailed format and is used during the walk or when the user asks to expand. Print the compact plan in the chat response first, then ask the user to reply with approve/edit/reorder/expand. Do not use `ask_user_question` for long plan approvals — the question dialog can hide the previous chat and make the plan hard to review.
 
 ## 4. Preflight
 
