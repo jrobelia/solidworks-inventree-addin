@@ -9,7 +9,7 @@ triggers: ["user"]
 
 `/build` turns a spec and its child tickets into a reviewed, test-passing draft PR. It sits between `/to-tickets` and `/qa` and replaces `/implement`.
 
-`grill-with-docs → to-spec → to-tickets → build → qa → triage`
+`grill-with-docs → to-spec → to-tickets → build → qa`
 
 ## Inputs
 
@@ -28,7 +28,7 @@ If the parent spec or child tickets are missing or ambiguous, ask the user.
 - The current branch must be a feature branch; if it is `main`/`master`, stop and ask the user to check out a feature branch.
 - Limit a batch to 3-5 tickets; if more are found, ask the user to split the work.
 - The PR base is the branch `/build` was invoked from. If `PARENT_BRANCH` is not `main`/`master`, warn the user and confirm they want a chained PR.
-- Open a draft PR and leave it for review.
+- Open a draft PR and hand off to `/qa`.
 
 ## Loop
 
