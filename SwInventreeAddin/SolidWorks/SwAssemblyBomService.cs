@@ -16,15 +16,10 @@ namespace SwInventreeAddin.SolidWorks
         public bool HasBomTable(string keyword) =>
             FindBomTableAnnotation(keyword) != null;
 
-        public (string TableName, bool NeedsRebuild) GetBomInfo(string keyword)
+        public string GetBomInfo(string keyword)
         {
-            var doc = _swApp.IActiveDoc2 as IModelDoc2;
-            bool needsRebuild = doc?.Extension?.NeedsRebuild ?? false;
-
             var feature = FindBomFeature(keyword);
-            string tableName = feature?.Name ?? keyword;
-
-            return (tableName, needsRebuild);
+            return feature?.Name ?? keyword;
         }
 
         public IReadOnlyList<SwBomLine> GetBomLines(string keyword, PropertyMappingConfig mapping)
