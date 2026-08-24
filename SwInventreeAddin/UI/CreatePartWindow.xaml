@@ -90,7 +90,7 @@
                              BorderBrush="{StaticResource BrushBorder}"
                              BorderThickness="1"
                              Background="Transparent" />
-                    <TextBlock Text="leave blank for InvenTree auto-assign"
+                    <TextBlock Text="Can leave blank if server auto-assigns IPNs"
                                Foreground="{StaticResource BrushSubtle}"
                                FontSize="{StaticResource FontSizeBody}"
                                Padding="6,4"
@@ -131,14 +131,10 @@
                           Content="Wait for server-assigned IPN before closing"
                           IsChecked="{Binding WaitForServerAssignedIpn, Mode=TwoWay}"
                           IsEnabled="{Binding IsWaitForServerIpnEnabled}"
+                          ToolTipService.ShowOnDisabled="True"
+                          ToolTip="When checked, the dialog polls InvenTree for an auto-generated IPN before closing. Ignored when an IPN is entered."
                           FontSize="{StaticResource FontSizeBody}"
                           Margin="0,4,0,0" />
-
-                <TextBlock Text="When checked, the dialog polls InvenTree for an auto-generated IPN before closing. Clear the IPN field to enable this. Uncheck to create the part without waiting."
-                           Foreground="{StaticResource BrushSubtle}"
-                           FontSize="{StaticResource FontSizeBody}"
-                           TextWrapping="Wrap"
-                           Margin="20,0,0,0" />
             </StackPanel>
 
             <TextBlock Grid.Row="4"
