@@ -16,7 +16,7 @@ namespace SwInventreeAddin.SolidWorks
         public bool HasBomTable(string keyword) =>
             FindBomTableAnnotation(keyword) != null;
 
-        public string GetBomInfo(string keyword)
+        public string GetBomTableName(string keyword)
         {
             var feature = FindBomFeature(keyword);
             return feature?.Name ?? keyword;

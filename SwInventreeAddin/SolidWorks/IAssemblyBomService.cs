@@ -15,7 +15,7 @@ namespace SwInventreeAddin.SolidWorks
         /// <summary>
         /// Returns the feature name of the matched BOM table.
         /// </summary>
-        string GetBomInfo(string keyword);
+        string GetBomTableName(string keyword);
 
         /// <summary>
         /// Scrapes rows from the first BOM table whose name contains the keyword.

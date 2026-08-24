@@ -186,7 +186,7 @@ namespace SwInventreeAddin.UI
             var bomVm   = new BomCompareViewModel(
                 _client, _assemblyBomService, mapping, pk, _bomKeyword);
 
-            var tableName = _assemblyBomService.GetBomInfo(_bomKeyword);
+            var tableName = _assemblyBomService.GetBomTableName(_bomKeyword);
             var window  = new BomCompareWindow(bomVm, _vm.PartNumber, _vm.NamePreview,
                                                tableName);
             try
