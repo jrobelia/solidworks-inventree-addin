@@ -6,11 +6,11 @@ disable-model-invocation: true
 
 # QA
 
-Human-in-the-loop verification for the SolidWorks InvenTree Add-In. QA sits after `/build` and before `/triage`:
+Human-in-the-loop verification for the SolidWorks InvenTree Add-In. QA sits after `/build` and is the final step before merge:
 
-`grill-with-docs → to-spec → to-tickets → build → qa → triage`
+`grill-with-docs → to-spec → to-tickets → build → qa`
 
-QA orients from the current branch, proposes Test Groups, builds a GUI-focused test plan, runs the preflight, walks the user through each step, labels verified issues, and files failures for triage.
+QA orients from the current branch, proposes Test Groups, builds a GUI-focused test plan, runs the preflight, walks the user through each step, labels verified issues, files failures, and hands off to the `git` skill for merge when QA passes.
 
 ## References
 
@@ -21,6 +21,7 @@ QA orients from the current branch, proposes Test Groups, builds a GUI-focused t
 - `docs/agents/domain.md` and `CONTEXT.md` — domain vocabulary
 - `docs/agents/issue-tracker.md` — `gh` CLI conventions
 - `docs/agents/triage-labels.md` — label vocabulary
+- [`git`](../git/SKILL.md) — PR merge and branch cleanup
 
 ## Scope
 
@@ -84,7 +85,7 @@ Include at least one edge case per feature area. See [CHECKLIST.md](CHECKLIST.md
 
 If the change touches the **Task Pane**, a **dialog**, a **control**, or a **data-bound property**, add a GUI functionality group using the categories and example in the GUI functionality testing section of [TEST-PLAN.md](TEST-PLAN.md).
 
-Present the test plan using the **compact format** in [TEST-PLAN.md](TEST-PLAN.md): one line per step, preconditions inline only when non-trivial, and `→` separating the action from the expected result. Print the compact plan in the chat response first, then ask the user to reply with approve/edit/reorder/expand. Do not use `ask_user_question` for long plan approvals — the question dialog can hide the previous chat and make the plan hard to review. Expand to the detailed format only if the user asks before the walk.
+Present the test plan using the **compact format** in [TEST-PLAN.md](TEST-PLAN.md): group titles and step titles only. The full step detail (preconditions, action, expected) belongs in the detailed format and is used during the walk or when the user asks to expand. Print the compact plan in the chat response first, then ask the user to reply with approve/edit/reorder/expand. Do not use `ask_user_question` for long plan approvals — the question dialog can hide the previous chat and make the plan hard to review.
 
 ## 4. Preflight
 
@@ -111,7 +112,7 @@ Interpret the answer. If the result is unclear, confirm before moving on:
 ### On Fail
 
 1. Ask for the severity: P0, P1, P2, or P3. See [CHECKLIST.md](CHECKLIST.md).
-2. If a PR is in context, ask whether the failure is **PR-blocking** or **follow-up**.
+2. If a PR is in context, ask whether the failure is **PR-blocking** or **follow-up**. Track this for the end-of-QA decision.
 3. Explore the codebase only to understand the domain area. Write the failure in domain terms from `CONTEXT.md`; leave out file paths, line numbers, and module names.
 4. File the issue immediately using the [BUG-REPORT.md](BUG-REPORT.md) template and `gh issue create`. Apply the labels `bug,needs-triage`.
 5. Continue with the next step.
@@ -132,10 +133,25 @@ When a Test Group completes:
 - If any steps were skipped, ask: "Some steps were skipped — mark issue(s) #N (and #M…) as `qa-verified` anyway?" Apply the label based on the answer.
 
 Apply `qa-verified` as each group completes, not at the end of the session.
+Track whether any PR-blocking failure was filed; this blocks the PR from being promoted at the end of QA.
 
-## 7. End summary
+## 7. Ready for review and merge
 
-After all Test Groups are resolved, print a closing summary:
+After all Test Groups are resolved:
+
+- If **no PR-blocking failures** were filed, the PR is eligible to leave draft:
+  1. Run:
+     ```powershell
+     gh pr ready <number>
+     ```
+  2. Ask the user: "QA passed with no blocking issues. Merge this PR now?"
+  3. If the user confirms, follow the `git` skill's **Merging a PR** procedure. Do not inline the merge command or branch cleanup here.
+  4. If the user declines, stop with the PR marked ready for review.
+- If **any PR-blocking failure** was filed, leave the PR in draft. Summarize the blocking issue(s) and stop without asking to merge.
+
+## 8. End summary
+
+After the PR has been promoted, merged, or left in draft, print a closing summary:
 
 ```
 Session complete.
@@ -144,6 +160,5 @@ Session complete.
   Skipped: N steps
   qa-verified groups: #12, #15/#16
   Failure issues filed: #34 (PR-blocking: …), #35 (follow-up: …)
+  PR status: draft / ready for review / merged
 ```
-
-QA ends with the summary. The merge is the human's responsibility.

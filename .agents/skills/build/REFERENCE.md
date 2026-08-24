@@ -86,7 +86,7 @@ For each finding:
 - Changed GUI flows and edge cases.
 - `### Review notes` from `/code-review`, including any deferred or escalated findings.
 - `### Deferred and follow-up issues` — list any YELLOW findings intentionally deferred (with the user's explicit agreement and reason) and any RED findings converted into follow-up issues with their issue numbers.
-- `Run /qa on this branch.`
+- `Run /qa on this branch. /qa will take the PR out of draft if QA passes and ask whether to merge.`
 
 ## Diff-size guard
 
