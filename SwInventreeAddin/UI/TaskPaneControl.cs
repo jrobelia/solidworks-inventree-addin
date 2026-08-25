@@ -94,7 +94,7 @@ namespace SwInventreeAddin.UI
         {
             if (_client == null || _assemblyBomService == null) return;
 
-            var preFlightCheck = new BomCompareReadinessCheck(_vm);
+            var preFlightCheck = new BomCompareReadinessCheck(_vm, _assemblyBomService, _bomKeyword);
             BomCompareReadiness readiness;
             try
             {
@@ -179,6 +179,12 @@ namespace SwInventreeAddin.UI
                     }
                     break;
                 }
+
+                case BomCompareOutcome.BomTableMissing:
+                {
+                    new BomTableMissingDialog(_bomKeyword, SolidWorksWindowHandle.Get()).ShowDialog();
+                    return;
+                }
             }
 
             int pk      = _vm.CurrentInvenTreePk;
@@ -232,5 +238,6 @@ namespace SwInventreeAddin.UI
             _bomKeyword         = keyword;
         }
     }
+
 }
 

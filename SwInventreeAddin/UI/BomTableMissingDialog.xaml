@@ -1,0 +1,66 @@
+<Window
+    x:Class="SwInventreeAddin.UI.BomTableMissingDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="{Binding Title}"
+    Width="460"
+    SizeToContent="Height"
+    ResizeMode="NoResize"
+    WindowStartupLocation="Manual"
+    ShowInTaskbar="False"
+    Opacity="0"
+    FontFamily="Segoe UI"
+    FontSize="12">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="DesignTokens.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <StackPanel>
+
+        <!-- Blue header stripe -->
+        <Border Height="4" Background="{StaticResource BrushAccentBlue}" />
+
+        <Grid Margin="20,16,20,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Standard warning icon -->
+            <TextBlock Grid.Column="0"
+                       Grid.Row="0"
+                       Text="&#xE7BA;"
+                       FontFamily="Segoe MDL2 Assets"
+                       FontSize="32"
+                       Foreground="{StaticResource BrushStatusWarning}"
+                       Margin="0,0,16,0"
+                       VerticalAlignment="Top" />
+
+            <TextBlock Grid.Column="1"
+                       Grid.Row="0"
+                       Text="{Binding Message}"
+                       TextWrapping="Wrap"
+                       Foreground="{StaticResource BrushForeground}" />
+
+            <Button Grid.Column="1"
+                    Grid.Row="1"
+                    Style="{StaticResource PrimaryButtonStyle}"
+                    HorizontalAlignment="Right"
+                    Width="70"
+                    IsDefault="True"
+                    IsCancel="True"
+                    Content="OK"
+                    Margin="0,16,0,0" />
+
+        </Grid>
+    </StackPanel>
+</Window>
