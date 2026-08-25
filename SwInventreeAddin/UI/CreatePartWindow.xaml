@@ -134,7 +134,17 @@
                           ToolTipService.ShowOnDisabled="True"
                           ToolTip="When checked, the dialog polls InvenTree for an auto-generated IPN before closing. Ignored when an IPN is entered."
                           FontSize="{StaticResource FontSizeBody}"
-                          Margin="0,4,0,0" />
+                          Margin="0,4,0,0">
+                    <CheckBox.Style>
+                        <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+                            <Style.Triggers>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Opacity" Value="0.4" />
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </CheckBox.Style>
+                </CheckBox>
             </StackPanel>
 
             <TextBlock Grid.Row="4"
