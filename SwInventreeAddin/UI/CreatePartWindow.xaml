@@ -90,7 +90,7 @@
                              BorderBrush="{StaticResource BrushBorder}"
                              BorderThickness="1"
                              Background="Transparent" />
-                    <TextBlock Text="Can leave blank if server auto-assigns IPNs"
+                    <TextBlock Text="Optional - leave blank for auto IPN"
                                Foreground="{StaticResource BrushSubtle}"
                                FontSize="{StaticResource FontSizeBody}"
                                Padding="6,4"
