@@ -24,7 +24,7 @@ namespace SwInventreeAddin.UI
 
             _vm.ConfirmPush = (newCount, conflictCount) =>
                 System.Windows.Forms.MessageBox.Show(
-                    MessageBoxOwner(),
+                    WindowHandleOwner.FromSolidWorks(),
                     $"Push {newCount} new line(s) and update {conflictCount} conflict(s) to InvenTree?",
                     "Confirm BOM Push",
                     System.Windows.Forms.MessageBoxButtons.YesNo,
@@ -46,7 +46,7 @@ namespace SwInventreeAddin.UI
             catch (Exception ex)
             {
                 System.Windows.Forms.MessageBox.Show(
-                    MessageBoxOwner(),
+                    WindowHandleOwner.FromSolidWorks(),
                     $"Failed to load BOM data:{System.Environment.NewLine}{ex.Message}",
                     "BOM Load Error",
                     System.Windows.Forms.MessageBoxButtons.OK,
@@ -87,7 +87,7 @@ namespace SwInventreeAddin.UI
             catch (Exception ex)
             {
                 System.Windows.Forms.MessageBox.Show(
-                    MessageBoxOwner(),
+                    WindowHandleOwner.FromSolidWorks(),
                     $"Failed to push BOM:{System.Environment.NewLine}{ex.Message}",
                     "BOM Push Error",
                     System.Windows.Forms.MessageBoxButtons.OK,
@@ -99,11 +99,6 @@ namespace SwInventreeAddin.UI
         {
             Close();
         }
-
-        /// <summary>Returns a Win32 owner handle suitable for centering a WinForms
-        /// message box over the SolidWorks main window.</summary>
-        private static System.Windows.Forms.IWin32Window MessageBoxOwner()
-            => new WindowHandleOwner(SolidWorksWindowHandle.Get());
 
         // Synchronise the group-header overlay widths with the DataGrid's actual column widths.
         // Columns: 0-2 = left zone (grey), 3-5 = SolidWorks (blue), 6-9 = InvenTree (yellow).

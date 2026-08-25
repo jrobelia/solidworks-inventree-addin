@@ -173,9 +173,8 @@ namespace SwInventreeAddin.AddIn
             }
             catch (Exception ex)
             {
-                var owner = new WindowHandleOwner(SolidWorksWindowHandle.Get());
                 System.Windows.Forms.MessageBox.Show(
-                    owner,
+                    WindowHandleOwner.FromSolidWorks(),
                     $"InvenTree add-in failed to load:{System.Environment.NewLine}{ex.Message}",
                     "InvenTree Add-In Error",
                     System.Windows.Forms.MessageBoxButtons.OK,
