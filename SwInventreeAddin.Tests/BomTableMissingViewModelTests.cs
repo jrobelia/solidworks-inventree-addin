@@ -13,7 +13,6 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(vm.Message, Does.Contain("inventree"));
             Assert.That(vm.Message, Does.Contain("BOM Sync"));
-            Assert.That(vm.Message, Does.Contain("BOM Table Keyword"));
         }
 
         [Test]
