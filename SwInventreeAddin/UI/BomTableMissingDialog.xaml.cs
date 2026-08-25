@@ -11,14 +11,26 @@ namespace SwInventreeAddin.UI
     /// </summary>
     public partial class BomTableMissingDialog : Window
     {
+        private const uint SwpNoSize     = 0x0001;
+        private const uint SwpNoZOrder   = 0x0004;
+        private const uint SwpNoActivate = 0x0010;
+
         private readonly IntPtr _ownerHandle;
 
         [DllImport("user32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
-        [DllImport("user32.dll")]
-        private static extern uint GetDpiForWindow(IntPtr hWnd);
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool SetWindowPos(
+            IntPtr hWnd,
+            IntPtr hWndInsertAfter,
+            int x,
+            int y,
+            int cx,
+            int cy,
+            uint flags);
 
         [StructLayout(LayoutKind.Sequential)]
         private struct RECT
@@ -50,38 +62,36 @@ namespace SwInventreeAddin.UI
             }
             catch { /* cosmetic only */ }
 
-            Loaded += OnLoaded;
+            SourceInitialized += OnSourceInitialized;
         }
 
-        private void OnLoaded(object sender, RoutedEventArgs e)
+        private void OnSourceInitialized(object sender, EventArgs e)
         {
             try
             {
-                if (_ownerHandle == IntPtr.Zero || !GetWindowRect(_ownerHandle, out var ownerRect))
+                var dialogHandle = new WindowInteropHelper(this).Handle;
+                if (_ownerHandle == IntPtr.Zero || dialogHandle == IntPtr.Zero ||
+                    !GetWindowRect(_ownerHandle, out var ownerRect) ||
+                    !GetWindowRect(dialogHandle, out var dialogRect))
                     return;
 
-                uint dpi;
-                try
-                {
-                    dpi = GetDpiForWindow(_ownerHandle);
-                }
-                catch (EntryPointNotFoundException)
-                {
-                    dpi = 96;
-                }
+                int ownerWidth   = ownerRect.Right - ownerRect.Left;
+                int ownerHeight  = ownerRect.Bottom - ownerRect.Top;
+                int dialogWidth  = dialogRect.Right - dialogRect.Left;
+                int dialogHeight = dialogRect.Bottom - dialogRect.Top;
+                int left         = ownerRect.Left + (ownerWidth - dialogWidth) / 2;
+                int top          = ownerRect.Top + (ownerHeight - dialogHeight) / 2;
 
-                if (dpi == 0)
-                    dpi = 96;
-
-                double scale = dpi / 96.0;
-                double centerX = (ownerRect.Left + ownerRect.Right) / 2.0;
-                double centerY = (ownerRect.Top + ownerRect.Bottom) / 2.0;
-
-                // WPF Left/Top are device-independent units. Convert from the owner's
-                // monitor pixels (which are what GetWindowRect returns) using the
-                // owner's monitor scale, then subtract half the dialog size in DIPs.
-                Left = (centerX / scale) - (ActualWidth / 2.0);
-                Top  = (centerY / scale) - (ActualHeight / 2.0);
+                // Keep the centering calculation and movement in one native coordinate
+                // system so mixed-DPI monitor origins are not converted as WPF DIPs.
+                _ = SetWindowPos(
+                    dialogHandle,
+                    IntPtr.Zero,
+                    left,
+                    top,
+                    0,
+                    0,
+                    SwpNoSize | SwpNoZOrder | SwpNoActivate);
             }
             finally
             {

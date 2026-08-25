@@ -38,13 +38,16 @@ namespace SwInventreeAddin.Tests
                 Width = 1000,
                 Height = 1000,
                 WindowState = FormWindowState.Maximized,
+                ShowInTaskbar = false,
+                Opacity = 0,
             };
             form.Show();
 
             var dialog = new BomTableMissingDialog("inventree", form.Handle);
             var tcs = new TaskCompletionSource<bool>();
 
-            dialog.Loaded += (s, e) =>
+            dialog.SourceInitialized += (s, e) => dialog.Opacity = 0;
+            dialog.ContentRendered += (s, e) =>
             {
                 var timer = new DispatcherTimer(DispatcherPriority.Render)
                 {
@@ -74,8 +77,8 @@ namespace SwInventreeAddin.Tests
 
                     try
                     {
-                        Assert.That(dx, Is.LessThan(50), $"Dialog is horizontally off by {dx} pixels");
-                        Assert.That(dy, Is.LessThan(50), $"Dialog is vertically off by {dy} pixels");
+                        Assert.That(dx, Is.LessThan(5), $"Dialog is horizontally off by {dx} pixels");
+                        Assert.That(dy, Is.LessThan(5), $"Dialog is vertically off by {dy} pixels");
                         tcs.SetResult(true);
                     }
                     catch (Exception ex)
