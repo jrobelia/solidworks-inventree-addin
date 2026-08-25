@@ -41,7 +41,7 @@ Run the commands from `docs/agents/coding-standards.md` before every commit, aft
 
 ## Code review invocation
 
-The two-axis review needs a fixed point and its source material up front. The preferred path uses the custom subagent profiles `code-review-standards` and `code-review-spec`; it falls back to the `/code-review` skill if either profile is missing or a custom subagent fails.
+The two-axis review needs a fixed point and its source material up front. Use the paths below in order: `run_subagent` is preferred, the Devin cloud child-session fallback covers environments where `run_subagent` is unavailable, and the in-session `/code-review` skill is the last resort.
 
 1. Pre-compute:
    - `git diff <PRE_BUILD_SHA>...HEAD`
@@ -50,7 +50,7 @@ The two-axis review needs a fixed point and its source material up front. The pr
    - the Fowler smell baseline from the `code-review` skill
    - the full body of the parent spec and any child tickets being reviewed.
 2. Determine whether the custom profiles exist at `.devin/agents/code-review-standards.md` and `.devin/agents/code-review-spec.md`.
-3. If the profiles exist, run them in parallel with `run_subagent`:
+3. **Preferred: `run_subagent`.** If the profiles exist and `run_subagent` is available, run them in parallel:
 
    - **Standards subagent** (`profile: code-review-standards`, `is_background=true`):
      - Paste the diff, commit list, `docs/agents/coding-standards.md`, and Fowler smell baseline.
@@ -58,11 +58,16 @@ The two-axis review needs a fixed point and its source material up front. The pr
      - Paste the diff, commit list, and the parent spec contents.
 
    Both prompts already contain all needed context; the subagents should not call `read` or `exec`.
-4. **Fallback to `/code-review`.** Use the existing `/code-review` path (or `subagent_general` in the foreground per `docs/agents/code-review-known-issues.md`) when:
-   - either custom profile file is missing, or
-   - a custom subagent fails, requests more context, emits a tool-denial error, or returns incomplete output.
+4. **Fallback: Devin cloud child sessions.** If the profiles exist but `run_subagent` is unavailable (tool-denial, schema not loaded, etc.), run the two axes in parallel Devin cloud sessions via `devin_mcp`:
 
-5. Parse the subagent responses for `## Standards` and `## Spec` headings and translate each finding's severity into the RED / YELLOW / GREEN classification in `## Review classification`.
+   - Create each session with `devin_mcp(command="call_tool", tool_name="devin_session_create", tool_args={"task": "code-review-standards", "mode": "general", "repos": ["jrobelia/solidworks-inventree-addin"], "prompt": "<pasted full prompt>"})` and a matching `code-review-spec` session.
+   - The returned `session_id` is bare; `devin_session_interact` and `devin_session_gather` require the `devin-` prefix (e.g. `"devin-<session_id>"`).
+   - Poll with `devin_session_interact` (`action: "get_messages"`) or block with `devin_session_gather` until both sessions return a `## Standards` or `## Spec` block.
+   - Pass all diff, commit list, and axis-specific context inline in the prompt. Do **not** use `file:///C:/...` URIs; child sessions cannot resolve Windows file URIs.
+   - If a session stalls, send it a `message` via `devin_session_interact` and continue polling.
+5. **Fallback: `/code-review`.** If the profiles are missing, or both parallel methods fail, use the existing `/code-review` path (or `subagent_general` in the foreground per `docs/agents/code-review-known-issues.md`).
+
+6. Parse the responses for `## Standards` and `## Spec` headings and translate each finding's severity into the RED / YELLOW / GREEN classification in `## Review classification`.
 
 ## Review classification
 
