@@ -31,6 +31,12 @@ namespace SwInventreeAddin.Bom
         /// before opening BOM Compare.
         /// </summary>
         SwIsNewer,
+
+        /// <summary>
+        /// No SolidWorks BOM table matching the configured keyword was found in the active
+        /// assembly. The caller should warn the user and not open BOM Compare.
+        /// </summary>
+        BomTableMissing,
     }
 
     internal sealed class BomCompareReadiness

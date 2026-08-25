@@ -94,7 +94,7 @@ namespace SwInventreeAddin.UI
         {
             if (_client == null || _assemblyBomService == null) return;
 
-            var preFlightCheck = new BomCompareReadinessCheck(_vm);
+            var preFlightCheck = new BomCompareReadinessCheck(_vm, _assemblyBomService, _bomKeyword);
             BomCompareReadiness readiness;
             try
             {
@@ -179,6 +179,18 @@ namespace SwInventreeAddin.UI
                     }
                     break;
                 }
+
+                case BomCompareOutcome.BomTableMissing:
+                {
+                    var owner = new WindowHandleOwner(SolidWorksWindowHandle.Get());
+                    System.Windows.Forms.MessageBox.Show(
+                        owner,
+                        $"No BOM table containing '{_bomKeyword}' was found in the active assembly.",
+                        "BOM Compare",
+                        System.Windows.Forms.MessageBoxButtons.OK,
+                        System.Windows.Forms.MessageBoxIcon.Warning);
+                    return;
+                }
             }
 
             int pk      = _vm.CurrentInvenTreePk;
@@ -231,6 +243,15 @@ namespace SwInventreeAddin.UI
             _assemblyBomService = bomService;
             _bomKeyword         = keyword;
         }
+    }
+
+    /// <summary>Wraps an arbitrary Win32 window handle so it can be used as the owner of
+    /// a WinForms message box, which centres the dialog over that window.</summary>
+    internal sealed class WindowHandleOwner : System.Windows.Forms.IWin32Window
+    {
+        public IntPtr Handle { get; }
+
+        public WindowHandleOwner(IntPtr handle) => Handle = handle;
     }
 }
 

@@ -1,21 +1,30 @@
 using System;
 using System.Threading.Tasks;
+using SwInventreeAddin.SolidWorks;
 
 namespace SwInventreeAddin.Bom
 {
     /// <summary>
     /// Evaluates whether a BOM Compare can proceed given the current Task Pane state.
-    /// Encapsulates the four pre-flight rules that gate the BOM Compare workflow:
+    /// Encapsulates the pre-flight rules that gate the BOM Compare workflow:
     /// auto-fetch if the InvenTree PK is not yet in memory, PK-in-memory check,
-    /// PK-stamped-in-document check, and four-way revision comparison.
+    /// PK-stamped-in-document check, four-way revision comparison, and BOM table
+    /// existence for the configured keyword.
     /// </summary>
     internal sealed class BomCompareReadinessCheck
     {
         private readonly IBomReadinessSource _source;
+        private readonly IAssemblyBomService _bomService;
+        private readonly string              _bomKeyword;
 
-        public BomCompareReadinessCheck(IBomReadinessSource source)
+        public BomCompareReadinessCheck(
+            IBomReadinessSource source,
+            IAssemblyBomService bomService,
+            string bomKeyword)
         {
-            _source = source ?? throw new ArgumentNullException(nameof(source));
+            _source     = source     ?? throw new ArgumentNullException(nameof(source));
+            _bomService = bomService ?? throw new ArgumentNullException(nameof(bomService));
+            _bomKeyword = bomKeyword ?? throw new ArgumentNullException(nameof(bomKeyword));
         }
 
         /// <summary>
@@ -51,7 +60,9 @@ namespace SwInventreeAddin.Bom
                 RevisionOrder.ItIsNewer => new BomCompareReadiness(BomCompareOutcome.ItIsNewer,  partNumber, swRev, itRev),
                 RevisionOrder.Ambiguous => new BomCompareReadiness(BomCompareOutcome.Ambiguous,  partNumber, swRev, itRev),
                 RevisionOrder.SwIsNewer => new BomCompareReadiness(BomCompareOutcome.SwIsNewer,  partNumber, swRev, itRev),
-                _                       => new BomCompareReadiness(BomCompareOutcome.Ready,      partNumber, swRev, itRev),
+                _ => _bomService.HasBomTable(_bomKeyword)
+                    ? new BomCompareReadiness(BomCompareOutcome.Ready,      partNumber, swRev, itRev)
+                    : new BomCompareReadiness(BomCompareOutcome.BomTableMissing, partNumber, swRev, itRev),
             };
         }
 
