@@ -10,6 +10,8 @@ namespace SwInventreeAddin.Tests
     [TestFixture]
     public class BomCompareReadinessCheckTests
     {
+        private const string DefaultBomKeyword = "inventree";
+
         // -- Stub ---------------------------------------------------------------
 
         // -- Helpers ------------------------------------------------------------
@@ -54,7 +56,7 @@ namespace SwInventreeAddin.Tests
         public async Task CheckAsync_PkInMemory_DoesNotFetch()
         {
             var source = new StubSource { CurrentInvenTreePk = 42, CurrentPk = "42" };
-            var check  = new BomCompareReadinessCheck(source, CreateBomService(), "inventree");
+            var check  = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
 
             await check.CheckAsync();
 
@@ -65,7 +67,7 @@ namespace SwInventreeAddin.Tests
         public async Task CheckAsync_PkNotInMemory_AutoFetches()
         {
             var source = new StubSource { CurrentInvenTreePk = 0 };
-            var check  = new BomCompareReadinessCheck(source, CreateBomService(), "inventree");
+            var check  = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
 
             await check.CheckAsync();
 
@@ -76,7 +78,7 @@ namespace SwInventreeAddin.Tests
         public async Task CheckAsync_StillNoPkAfterFetch_ReturnsPkNotFound()
         {
             var source = new StubSource { CurrentInvenTreePk = 0 };
-            var check  = new BomCompareReadinessCheck(source, CreateBomService(), "inventree");
+            var check  = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
 
@@ -92,7 +94,7 @@ namespace SwInventreeAddin.Tests
                 CurrentPk          = string.Empty,
             };
             source.OnFetch = () => source.CurrentInvenTreePk = 99;
-            var check = new BomCompareReadinessCheck(source, CreateBomService(), "inventree");
+            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
 
@@ -109,7 +111,7 @@ namespace SwInventreeAddin.Tests
                 CurrentRevision    = "A",
                 RevisionPreview    = "A",
             };
-            var check = new BomCompareReadinessCheck(source, CreateBomService(), "inventree");
+            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
 
@@ -126,7 +128,7 @@ namespace SwInventreeAddin.Tests
                 CurrentRevision    = "A",
                 RevisionPreview    = "B",
             };
-            var check = new BomCompareReadinessCheck(source, CreateBomService(), "inventree");
+            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
 
@@ -143,7 +145,7 @@ namespace SwInventreeAddin.Tests
                 CurrentRevision    = "B",
                 RevisionPreview    = "A",
             };
-            var check = new BomCompareReadinessCheck(source, CreateBomService(), "inventree");
+            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
 
@@ -161,7 +163,7 @@ namespace SwInventreeAddin.Tests
                 CurrentRevision    = "1.0",
                 RevisionPreview    = "A",
             };
-            var check = new BomCompareReadinessCheck(source, CreateBomService(), "inventree");
+            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
 
@@ -178,7 +180,7 @@ namespace SwInventreeAddin.Tests
                 CurrentRevision    = "B",
                 RevisionPreview    = "A",
             };
-            var check = new BomCompareReadinessCheck(source, CreateBomService(), "inventree");
+            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
 
@@ -196,7 +198,7 @@ namespace SwInventreeAddin.Tests
                 CurrentRevision    = "A",
                 RevisionPreview    = "A",
             };
-            var check = new BomCompareReadinessCheck(source, CreateBomService(false), "inventree");
+            var check = new BomCompareReadinessCheck(source, CreateBomService(false), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
 
@@ -208,7 +210,7 @@ namespace SwInventreeAddin.Tests
         {
             var source = new StubSource { CurrentInvenTreePk = 0 };
             source.OnFetch = () => source.CurrentInvenTreePk = 99;
-            var check = new BomCompareReadinessCheck(source, CreateBomService(false), "inventree");
+            var check = new BomCompareReadinessCheck(source, CreateBomService(false), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
 
@@ -223,7 +225,7 @@ namespace SwInventreeAddin.Tests
         public async Task PushRevisionAsync_DelegatesToSource()
         {
             var source = new StubSource();
-            var check  = new BomCompareReadinessCheck(source, CreateBomService(), "inventree");
+            var check  = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
 
             await check.PushRevisionAsync();
 
@@ -235,14 +237,21 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void Constructor_NullSource_Throws()
         {
-            Assert.That(() => new BomCompareReadinessCheck(null!, CreateBomService(), "inventree"),
+            Assert.That(() => new BomCompareReadinessCheck(null!, CreateBomService(), DefaultBomKeyword),
                 Throws.ArgumentNullException);
         }
 
         [Test]
         public void Constructor_NullBomService_Throws()
         {
-            Assert.That(() => new BomCompareReadinessCheck(new StubSource(), null!, "inventree"),
+            Assert.That(() => new BomCompareReadinessCheck(new StubSource(), null!, DefaultBomKeyword),
+                Throws.ArgumentNullException);
+        }
+
+        [Test]
+        public void Constructor_NullBomKeyword_Throws()
+        {
+            Assert.That(() => new BomCompareReadinessCheck(new StubSource(), CreateBomService(), null!),
                 Throws.ArgumentNullException);
         }
     }
