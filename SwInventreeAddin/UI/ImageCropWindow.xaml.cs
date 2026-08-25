@@ -39,32 +39,22 @@ namespace SwInventreeAddin.UI
             SquareLockCheck.Checked   += (s, e) => _geo.SquareLock = true;
             SquareLockCheck.Unchecked += (s, e) => _geo.SquareLock = false;
 
-            // Restore saved bounds (or centre on screen) before the window appears
-            Loaded  += OnLoaded;
-            Closing += OnClosing;
-        }
-
-        private void OnLoaded(object sender, RoutedEventArgs e)
-        {
-            // Restore saved size (width/height only)
+            // Restore saved size (width/height only) so CenterOwner uses the user's preferred size.
             if (CropWindowBounds.TryLoad(out var b))
             {
                 Width  = b[2];
                 Height = b[3];
             }
 
-            // Always centre on primary screen (SystemParameters is DIP-based, matching WPF Left/Top)
-            var workArea = SystemParameters.WorkArea;
-            Left = workArea.Left + (workArea.Width  - Width)  / 2.0;
-            Top  = workArea.Top  + (workArea.Height - Height) / 2.0;
-
-            // Try to set SolidWorks as owner (cosmetic — keeps dialog in front)
+            // Centre over the SolidWorks main window.
             try
             {
                 var helper = new System.Windows.Interop.WindowInteropHelper(this);
                 helper.Owner = SolidWorksWindowHandle.Get();
             }
             catch { /* cosmetic */ }
+
+            Closing += OnClosing;
         }
 
         private void OnClosing(object sender, System.ComponentModel.CancelEventArgs e)

@@ -6,7 +6,7 @@
     Width="480"
     SizeToContent="Height"
     ResizeMode="NoResize"
-    WindowStartupLocation="CenterScreen"
+    WindowStartupLocation="CenterOwner"
     FontFamily="Segoe UI"
     FontSize="12">
 

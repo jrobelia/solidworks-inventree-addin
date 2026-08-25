@@ -23,11 +23,12 @@ namespace SwInventreeAddin.UI
             catch { /* cosmetic */ }
 
             _vm.ConfirmPush = (newCount, conflictCount) =>
-                MessageBox.Show(
+                System.Windows.Forms.MessageBox.Show(
+                    MessageBoxOwner(),
                     $"Push {newCount} new line(s) and update {conflictCount} conflict(s) to InvenTree?",
                     "Confirm BOM Push",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question) == MessageBoxResult.Yes;
+                    System.Windows.Forms.MessageBoxButtons.YesNo,
+                    System.Windows.Forms.MessageBoxIcon.Question) == System.Windows.Forms.DialogResult.Yes;
 
             DataContext = _vm;
             AssemblyIpn.Text  = assemblyIpn;
@@ -44,9 +45,12 @@ namespace SwInventreeAddin.UI
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
+                System.Windows.Forms.MessageBox.Show(
+                    MessageBoxOwner(),
                     $"Failed to load BOM data:{System.Environment.NewLine}{ex.Message}",
-                    "BOM Load Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    "BOM Load Error",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Error);
             }
         }
 
@@ -82,9 +86,12 @@ namespace SwInventreeAddin.UI
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
+                System.Windows.Forms.MessageBox.Show(
+                    MessageBoxOwner(),
                     $"Failed to push BOM:{System.Environment.NewLine}{ex.Message}",
-                    "BOM Push Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    "BOM Push Error",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Error);
             }
         }
 
@@ -92,6 +99,11 @@ namespace SwInventreeAddin.UI
         {
             Close();
         }
+
+        /// <summary>Returns a Win32 owner handle suitable for centering a WinForms
+        /// message box over the SolidWorks main window.</summary>
+        private static System.Windows.Forms.IWin32Window MessageBoxOwner()
+            => new WindowHandleOwner(SolidWorksWindowHandle.Get());
 
         // Synchronise the group-header overlay widths with the DataGrid's actual column widths.
         // Columns: 0-2 = left zone (grey), 3-5 = SolidWorks (blue), 6-9 = InvenTree (yellow).

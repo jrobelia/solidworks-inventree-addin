@@ -5,7 +5,7 @@
     Title="Crop Image for InvenTree"
     Width="900" Height="700"
     MinWidth="600" MinHeight="400"
-    WindowStartupLocation="Manual"
+    WindowStartupLocation="CenterOwner"
     FontFamily="Segoe UI"
     FontSize="12">
 
