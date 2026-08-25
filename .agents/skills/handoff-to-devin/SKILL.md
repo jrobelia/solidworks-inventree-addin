@@ -23,13 +23,14 @@ triggers: ["user"]
 2. **Include a "suggested skills" section.** Name any repo skills the next agent should invoke (e.g. `build`, `qa`, `solidworks-inventree-testing`).
 3. **Reference existing artifacts.** Do not duplicate content already captured in specs, plans, ADRs, issues, commits, diffs, or PRs. Point to them by path or URL.
 4. **Redact secrets.** Remove API keys, passwords, PII, or session-specific tokens from the summary.
-5. **Start the Devin Cloud session.** Call `devin_session_create` with a single session:
-   - `prompt`: the handoff summary.
+5. **Capture the current branch.** Add a `Working branch:` line near the top of the handoff summary. If the working branch is a local feature branch, push it to origin before starting the handoff so the child session can fetch it.
+6. **Start the Devin Cloud session.** Call `devin_session_create` with a single session:
+   - `prompt`: the handoff summary. Include an explicit first instruction for the child session: `Start by running: git fetch origin && git checkout <working-branch>`.
    - `repos`: `["jrobelia/solidworks-inventree-addin"]` if not already inherited.
    - `platform`: `"windows"` when the work touches the SolidWorks add-in; otherwise inherit from the parent session.
    - `tags`: include `["handoff"]`.
    - `title`: a short, descriptive title based on the user's argument.
-6. **Return the new session URL** to the user.
+7. **Return the new session URL** to the user.
 
 ## Notes
 
