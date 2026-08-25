@@ -32,7 +32,9 @@ namespace SwInventreeAddin.UI
 
             Message = $"No BOM table containing '{bomKeyword}' was found in the active assembly." +
                       $"{System.Environment.NewLine}{System.Environment.NewLine}" +
-                      $"Change the BOM Table Keyword under Settings → BOM Sync.";
+                      $"Create a BOM table with '{bomKeyword}' in its name to compare with InvenTree." +
+                      $"{System.Environment.NewLine}" +
+                      $"The BOM Table Keyword can be changed under Settings → BOM Sync.";
         }
     }
 }

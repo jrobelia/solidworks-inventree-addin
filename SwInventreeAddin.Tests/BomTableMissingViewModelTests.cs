@@ -12,6 +12,7 @@ namespace SwInventreeAddin.Tests
             var vm = new BomTableMissingViewModel("inventree");
 
             Assert.That(vm.Message, Does.Contain("inventree"));
+            Assert.That(vm.Message, Does.Contain("Create a BOM table"));
             Assert.That(vm.Message, Does.Contain("BOM Sync"));
         }
 
