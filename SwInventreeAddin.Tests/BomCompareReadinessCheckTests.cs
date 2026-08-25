@@ -203,6 +203,20 @@ namespace SwInventreeAddin.Tests
             Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.BomTableMissing));
         }
 
+        [Test]
+        public async Task CheckAsync_NoBomTable_PkNotInMemory_DoesNotFetch()
+        {
+            var source = new StubSource { CurrentInvenTreePk = 0 };
+            source.OnFetch = () => source.CurrentInvenTreePk = 99;
+            var check = new BomCompareReadinessCheck(source, CreateBomService(false), "inventree");
+
+            var result = await check.CheckAsync();
+
+            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.BomTableMissing));
+            Assert.That(source.FetchCalled, Is.False);
+            Assert.That(source.CurrentInvenTreePk, Is.EqualTo(0));
+        }
+
         // -- PushRevisionAsync --------------------------------------------------
 
         [Test]
