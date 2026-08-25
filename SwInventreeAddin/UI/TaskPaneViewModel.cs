@@ -836,47 +836,43 @@ namespace SwInventreeAddin.UI
             return missing;
         }
 
-        /// <summary>Writes only the Name field to the SolidWorks document.</summary>
+        /// <summary>Writes only the Name field to the SolidWorks document and refreshes the preview from the written value.</summary>
         public void ApplyNameToDocument()
         {
             if (_session == null) return;
             var missing = FindMissingProperties(new[] { GetMappingOrDefault().NameProperty });
             if (missing.Count > 0 && !ConfirmMissingProperties(missing)) return;
-            _session.ApplyName();
-            RefreshCurrentProperties();
+            CurrentName = _session.ApplyName();
             SetStatus("Name applied.", StatusSeverity.Success);
         }
 
-        /// <summary>Writes only the Notes field to the SolidWorks document.</summary>
+        /// <summary>Writes only the Notes field to the SolidWorks document and refreshes the preview from the written value.</summary>
         public void ApplyNotesToDocument()
         {
             if (_session == null) return;
             var missing = FindMissingProperties(new[] { GetMappingOrDefault().NotesProperty });
             if (missing.Count > 0 && !ConfirmMissingProperties(missing)) return;
-            _session.ApplyNotes();
-            RefreshCurrentProperties();
+            CurrentNotes = _session.ApplyNotes();
             SetStatus("Notes applied.", StatusSeverity.Success);
         }
 
-        /// <summary>Writes only the Description field to the SolidWorks document.</summary>
+        /// <summary>Writes only the Description field to the SolidWorks document and refreshes the preview from the written value.</summary>
         public void ApplyDescriptionToDocument()
         {
             if (_session == null) return;
             var missing = FindMissingProperties(new[] { GetMappingOrDefault().DescriptionProperty });
             if (missing.Count > 0 && !ConfirmMissingProperties(missing)) return;
-            _session.ApplyDescription();
-            RefreshCurrentProperties();
+            CurrentDescription = _session.ApplyDescription();
             SetStatus("Description applied.", StatusSeverity.Success);
         }
 
-        /// <summary>Writes the InvenTree PK property to the SolidWorks document.</summary>
+        /// <summary>Writes the InvenTree PK property to the SolidWorks document and refreshes the preview from the written value.</summary>
         public void ApplyPkToDocument()
         {
             if (_session == null) return;
             var missing = FindMissingProperties(new[] { GetMappingOrDefault().PkProperty });
             if (missing.Count > 0 && !ConfirmMissingProperties(missing)) return;
-            _session.ApplyPk();
-            RefreshCurrentProperties();
+            CurrentPk = _session.ApplyPk();
             SetStatus("InvenTree PK applied.", StatusSeverity.Success);
         }
 

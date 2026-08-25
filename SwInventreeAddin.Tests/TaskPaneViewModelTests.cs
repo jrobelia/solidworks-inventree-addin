@@ -364,6 +364,72 @@ namespace SwInventreeAddin.Tests
             Assert.That(_vm.CurrentPk, Is.EqualTo("42"));
         }
 
+        // ── Apply with stale read (assembly caching bug) ──────────────────────
+
+        [Test]
+        public async Task ApplyNameToDocument_WhenGetCustomPropertyIsStale_UsesWrittenValue()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+            _propertyService.Seed("Description", "stale name");
+            _propertyService.ReturnStaleReads = true;
+            _propertyService.StaleValue = "stale name";
+
+            _vm.ApplyNameToDocument();
+
+            Assert.That(_vm.CurrentName, Is.EqualTo("Resistor 10k"));
+            Assert.That(_vm.NameMatch, Is.True);
+        }
+
+        [Test]
+        public async Task ApplyNotesToDocument_WhenGetCustomPropertyIsStale_UsesWrittenValue()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+            _propertyService.Seed("Notes", "stale notes");
+            _propertyService.ReturnStaleReads = true;
+            _propertyService.StaleValue = "stale notes";
+
+            _vm.ApplyNotesToDocument();
+
+            Assert.That(_vm.CurrentNotes, Is.EqualTo("SMD 0402"));
+            Assert.That(_vm.NotesMatch, Is.True);
+        }
+
+        [Test]
+        public async Task ApplyDescriptionToDocument_WhenGetCustomPropertyIsStale_UsesWrittenValue()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+            _propertyService.Seed("Description Long", "stale description");
+            _propertyService.ReturnStaleReads = true;
+            _propertyService.StaleValue = "stale description";
+
+            _vm.ApplyDescriptionToDocument();
+
+            Assert.That(_vm.CurrentDescription, Is.EqualTo("10k ohm 1% 0402"));
+            Assert.That(_vm.DescriptionMatch, Is.True);
+        }
+
+        [Test]
+        public async Task ApplyPkToDocument_WhenGetCustomPropertyIsStale_UsesWrittenValue()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+            _propertyService.Seed("InvenTree PK", "9999");
+            _propertyService.ReturnStaleReads = true;
+            _propertyService.StaleValue = "9999";
+
+            _vm.ApplyPkToDocument();
+
+            Assert.That(_vm.CurrentPk, Is.EqualTo("42"));
+            Assert.That(_vm.PkMatch, Is.True);
+        }
+
         // ── PushDescription ───────────────────────────────────────────────────
 
         [Test]

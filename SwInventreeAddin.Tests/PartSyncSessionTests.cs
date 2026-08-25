@@ -183,6 +183,48 @@ namespace SwInventreeAddin.Tests
                         Is.EqualTo(SamplePart.Pk.ToString()));
         }
 
+        // ── Apply returns written value ─────────────────────────────────────────
+
+        [Test]
+        public void ApplyName_ReturnsWrittenValue()
+        {
+            var session = CreateSession();
+
+            var value = session.ApplyName();
+
+            Assert.That(value, Is.EqualTo(SamplePart.Name));
+        }
+
+        [Test]
+        public void ApplyNotes_ReturnsWrittenValue()
+        {
+            var session = CreateSession();
+
+            var value = session.ApplyNotes();
+
+            Assert.That(value, Is.EqualTo(SamplePart.Notes));
+        }
+
+        [Test]
+        public void ApplyDescription_ReturnsWrittenValue()
+        {
+            var session = CreateSession();
+
+            var value = session.ApplyDescription();
+
+            Assert.That(value, Is.EqualTo(SamplePart.Description));
+        }
+
+        [Test]
+        public void ApplyPk_ReturnsWrittenValue()
+        {
+            var session = CreateSession();
+
+            var value = session.ApplyPk();
+
+            Assert.That(value, Is.EqualTo(SamplePart.Pk.ToString()));
+        }
+
         // ── GetMissingApplyProperties ─────────────────────────────────────────
 
         [Test]
