@@ -55,21 +55,34 @@ namespace SwInventreeAddin
             _propertyService.SetCustomProperty(_mapping.DescriptionProperty, Part.Description);
         }
 
-        /// <summary>Writes only the Name field to the SolidWorks document.</summary>
-        public void ApplyName() =>
+        /// <summary>Writes only the Name field to the SolidWorks document and returns the written value.</summary>
+        public string ApplyName()
+        {
             _propertyService.SetCustomProperty(_mapping.NameProperty, Part.Name);
+            return Part.Name;
+        }
 
-        /// <summary>Writes only the Notes field to the SolidWorks document.</summary>
-        public void ApplyNotes() =>
+        /// <summary>Writes only the Notes field to the SolidWorks document and returns the written value.</summary>
+        public string ApplyNotes()
+        {
             _propertyService.SetCustomProperty(_mapping.NotesProperty, Part.Notes);
+            return Part.Notes;
+        }
 
-        /// <summary>Writes only the Description field to the SolidWorks document.</summary>
-        public void ApplyDescription() =>
+        /// <summary>Writes only the Description field to the SolidWorks document and returns the written value.</summary>
+        public string ApplyDescription()
+        {
             _propertyService.SetCustomProperty(_mapping.DescriptionProperty, Part.Description);
+            return Part.Description;
+        }
 
-        /// <summary>Writes the InvenTree PK to the SolidWorks document.</summary>
-        public void ApplyPk() =>
-            _propertyService.SetCustomProperty(_mapping.PkProperty, Part.Pk.ToString());
+        /// <summary>Writes the InvenTree PK to the SolidWorks document and returns the written value.</summary>
+        public string ApplyPk()
+        {
+            var value = Part.Pk.ToString();
+            _propertyService.SetCustomProperty(_mapping.PkProperty, value);
+            return value;
+        }
 
         /// <summary>
         /// Returns property names mapped to <paramref name="propertyName"/> that don't yet
