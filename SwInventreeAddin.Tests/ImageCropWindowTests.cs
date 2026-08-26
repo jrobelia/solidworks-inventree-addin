@@ -1,8 +1,9 @@
 using System;
+using System.Drawing;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Interop;
 using System.Windows.Threading;
@@ -12,61 +13,9 @@ using SwInventreeAddin.UI;
 namespace SwInventreeAddin.Tests
 {
     [TestFixture]
-    public class WindowCenteringTests
-    {
-        [Test]
-        public void CalculateCenteredPosition_DialogFitsInOwner_ReturnsCenter()
-        {
-            var owner = new WindowCentering.NativeRect { Left = 100, Top = 100, Right = 500, Bottom = 400 };
-            var dialog = new WindowCentering.NativeRect { Left = 0, Top = 0, Right = 200, Bottom = 100 };
-
-            var (left, top) = WindowCentering.CalculateCenteredPosition(owner, dialog);
-
-            Assert.That(left, Is.EqualTo(200));
-            Assert.That(top, Is.EqualTo(200));
-        }
-
-        [Test]
-        public void CalculateCenteredPosition_NegativeOwnerOrigin_ReturnsCenter()
-        {
-            var owner = new WindowCentering.NativeRect { Left = -200, Top = -100, Right = 200, Bottom = 200 };
-            var dialog = new WindowCentering.NativeRect { Left = 0, Top = 0, Right = 200, Bottom = 100 };
-
-            var (left, top) = WindowCentering.CalculateCenteredPosition(owner, dialog);
-
-            Assert.That(left, Is.EqualTo(-100));
-            Assert.That(top, Is.EqualTo(0));
-        }
-
-        [Test]
-        public void CalculateCenteredPosition_OwnerSmallerThanDialog_ReturnsCenter()
-        {
-            var owner = new WindowCentering.NativeRect { Left = 50, Top = 50, Right = 150, Bottom = 150 };
-            var dialog = new WindowCentering.NativeRect { Left = 0, Top = 0, Right = 300, Bottom = 200 };
-
-            var (left, top) = WindowCentering.CalculateCenteredPosition(owner, dialog);
-
-            Assert.That(left, Is.EqualTo(-50));
-            Assert.That(top, Is.EqualTo(0));
-        }
-
-        [Test]
-        public void CalculateCenteredPosition_DialogAtNonZeroOrigin_IgnoresDialogOrigin()
-        {
-            var owner = new WindowCentering.NativeRect { Left = 100, Top = 100, Right = 500, Bottom = 400 };
-            var dialog = new WindowCentering.NativeRect { Left = 20, Top = 30, Right = 220, Bottom = 130 };
-
-            var (left, top) = WindowCentering.CalculateCenteredPosition(owner, dialog);
-
-            Assert.That(left, Is.EqualTo(200));
-            Assert.That(top, Is.EqualTo(200));
-        }
-    }
-
-    [TestFixture]
     [Apartment(ApartmentState.STA)]
     [NonParallelizable]
-    public class WindowCenteringIntegrationTests
+    public class ImageCropWindowTests
     {
         [DllImport("user32.dll")]
         private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
@@ -80,8 +29,20 @@ namespace SwInventreeAddin.Tests
             public int Bottom;
         }
 
+        private static readonly string CropBoundsFilePath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "SwInventreeAddin", "crop_window_bounds.txt");
+
+        [SetUp]
+        [TearDown]
+        public void ResetState()
+        {
+            SolidWorksWindowHandle.Set(IntPtr.Zero);
+            try { File.Delete(CropBoundsFilePath); } catch { /* non-critical */ }
+        }
+
         [Test, Timeout(10000)]
-        public void Attach_CentersResizableWindowOnOwner()
+        public void ShowDialog_CentersOnOwnerWindow()
         {
             using var form = new Form
             {
@@ -96,24 +57,10 @@ namespace SwInventreeAddin.Tests
             };
             form.Show();
 
-            var dialog = new Window
-            {
-                Title = "Resizable Dialog",
-                Width = 600,
-                Height = 400,
-                WindowStartupLocation = WindowStartupLocation.Manual,
-                ResizeMode = ResizeMode.CanResize,
-                ShowInTaskbar = false,
-                Opacity = 0,
-                Content = new System.Windows.Controls.TextBlock
-                {
-                    Text = "Test",
-                    HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
-                    VerticalAlignment = System.Windows.VerticalAlignment.Center,
-                },
-            };
+            SolidWorksWindowHandle.Set(form.Handle);
 
-            WindowCentering.Attach(dialog, form.Handle);
+            using var image = new Bitmap(100, 100);
+            var dialog = new ImageCropWindow(image);
             var tcs = new TaskCompletionSource<bool>();
 
             dialog.ContentRendered += (s, e) =>

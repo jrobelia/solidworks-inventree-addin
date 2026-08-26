@@ -68,12 +68,13 @@ namespace SwInventreeAddin.UI
 
         /// <summary>
         /// Sets the Win32 owner of <paramref name="window"/> to <paramref name="ownerHandle"/>
-        /// and centers the window on that owner before it is rendered.
+        /// and centers the window on that owner once it has rendered.
         /// </summary>
         /// <remarks>
-        /// Centering runs in <see cref="Window.SourceInitialized"/> so the window can be
-        /// positioned before it appears. <see cref="Window.UpdateLayout"/> is called first so
-        /// <c>SizeToContent</c> dialogs have a final size by the time <c>GetWindowRect</c> runs.
+        /// Centering runs in <see cref="Window.ContentRendered"/> so the native window has its
+        /// final size, including the non-client area of resizable windows.
+        /// <see cref="Window.UpdateLayout"/> is called first so <c>SizeToContent</c> dialogs
+        /// have their final height by the time <c>GetWindowRect</c> runs.
         /// The window starts at <c>Opacity="0"</c> and is revealed only after positioning.
         /// </remarks>
         public static void Attach(Window window, IntPtr ownerHandle)
@@ -89,7 +90,7 @@ namespace SwInventreeAddin.UI
             }
             catch { /* cosmetic only */ }
 
-            window.SourceInitialized += (s, e) => Center(window, ownerHandle);
+            window.ContentRendered += (s, e) => Center(window, ownerHandle);
         }
 
         // ── Private implementation ────────────────────────────────────────────
