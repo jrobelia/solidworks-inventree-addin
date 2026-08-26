@@ -1,5 +1,9 @@
 # Code-review skill — known environment issues
 
+## Manual (author) reviews don't work
+
+The agent that wrote the code is the wrong agent to review it. Manual reviews by the authoring agent rarely catch the same assumptions and shortcuts that produced the code. Every code review must be run by an independent reviewer — a subagent if you are working locally, or a child session on Devin Cloud. That separation is what makes the findings worth acting on.
+
 The `/build` workflow runs a two-axis review by default using the custom subagent profiles `code-review-standards` and `code-review-spec` under `.devin/agents/`. Both profiles have `allowed-tools: []`, so they can run in the background without `read`/`exec` permission prompts. The parent `/build` agent pre-computes and pastes the diff, commit list, standards context, and spec contents into each subagent prompt.
 
 ## Default path: custom profiles in the background
