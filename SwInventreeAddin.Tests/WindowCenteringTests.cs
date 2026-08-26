@@ -83,17 +83,7 @@ namespace SwInventreeAddin.Tests
         [Test, Timeout(10000)]
         public void Attach_CentersResizableWindowOnOwner()
         {
-            using var form = new Form
-            {
-                StartPosition = FormStartPosition.Manual,
-                Left = 100,
-                Top = 100,
-                Width = 1000,
-                Height = 1000,
-                WindowState = FormWindowState.Maximized,
-                ShowInTaskbar = false,
-                Opacity = 0,
-            };
+            using var form = CreateOwnerForm();
             form.Show();
 
             var dialog = new Window
@@ -113,6 +103,50 @@ namespace SwInventreeAddin.Tests
                 },
             };
 
+            RunCenteringTest(dialog, form);
+        }
+
+        [Test, Timeout(10000)]
+        public void Attach_CentersNoResizeWindowOnOwner()
+        {
+            using var form = CreateOwnerForm();
+            form.Show();
+
+            var dialog = new Window
+            {
+                Title = "NoResize Dialog",
+                Width = 500,
+                Height = 350,
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                ResizeMode = ResizeMode.NoResize,
+                ShowInTaskbar = false,
+                Opacity = 0,
+                Content = new System.Windows.Controls.TextBlock
+                {
+                    Text = "Test",
+                    HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+                    VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                },
+            };
+
+            RunCenteringTest(dialog, form);
+        }
+
+        private static Form CreateOwnerForm()
+            => new Form
+            {
+                StartPosition = FormStartPosition.Manual,
+                Left = 100,
+                Top = 100,
+                Width = 1000,
+                Height = 1000,
+                WindowState = FormWindowState.Maximized,
+                ShowInTaskbar = false,
+                Opacity = 0,
+            };
+
+        private static void RunCenteringTest(Window dialog, Form form)
+        {
             WindowCentering.Attach(dialog, form.Handle);
             var tcs = new TaskCompletionSource<bool>();
 
