@@ -81,6 +81,93 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test, Timeout(10000)]
+        public void Attach_CentersSizeToContentWindow_AfterContentResizesAfterContentRendered()
+        {
+            using var form = CreateOwnerForm();
+            form.Show();
+
+            var textBlock = new System.Windows.Controls.TextBlock
+            {
+                Text = string.Empty,
+                Background = System.Windows.Media.Brushes.White,
+            };
+
+            var dialog = new Window
+            {
+                Title = "SizeToContent Dialog",
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                ResizeMode = ResizeMode.CanResize,
+                SizeToContent = SizeToContent.WidthAndHeight,
+                ShowInTaskbar = false,
+                Opacity = 0,
+                Content = textBlock,
+            };
+
+            // WindowCentering must be attached before the test's own ContentRendered handler.
+            WindowCentering.Attach(dialog, form.Handle);
+
+            dialog.ContentRendered += (s, e) =>
+            {
+                // Resize the content at a low dispatcher priority, after the window's
+                // initial render. A robust centering helper must re-center once the
+                // SizeToContent window reaches its final size.
+                dialog.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    textBlock.Text =
+                        "This sentence is intentionally wider than an empty TextBlock so " +
+                        "the SizeToContent window grows after ContentRendered has already " +
+                        "centered it once.";
+                }), DispatcherPriority.Background);
+            };
+
+            var tcs = new TaskCompletionSource<bool>();
+            var timer = new DispatcherTimer(DispatcherPriority.ApplicationIdle)
+            {
+                Interval = TimeSpan.FromMilliseconds(300),
+            };
+
+            timer.Tick += (s2, e2) =>
+            {
+                timer.Stop();
+
+                _ = GetWindowRect(form.Handle, out var ownerRect);
+                var helper = new WindowInteropHelper(dialog);
+                _ = GetWindowRect(helper.Handle, out var dialogRect);
+
+                var ownerCenterX = ownerRect.Left + (ownerRect.Right - ownerRect.Left) / 2;
+                var ownerCenterY = ownerRect.Top + (ownerRect.Bottom - ownerRect.Top) / 2;
+                var dialogCenterX = dialogRect.Left + (dialogRect.Right - dialogRect.Left) / 2;
+                var dialogCenterY = dialogRect.Top + (dialogRect.Bottom - dialogRect.Top) / 2;
+
+                TestContext.WriteLine($"Owner rect: {ownerRect.Left},{ownerRect.Top},{ownerRect.Right},{ownerRect.Bottom}");
+                TestContext.WriteLine($"Dialog rect: {dialogRect.Left},{dialogRect.Top},{dialogRect.Right},{dialogRect.Bottom}");
+
+                var dx = Math.Abs(dialogCenterX - ownerCenterX);
+                var dy = Math.Abs(dialogCenterY - ownerCenterY);
+
+                try
+                {
+                    Assert.That(dx, Is.LessThan(5), $"Dialog is horizontally off by {dx} pixels");
+                    Assert.That(dy, Is.LessThan(5), $"Dialog is vertically off by {dy} pixels");
+                    tcs.SetResult(true);
+                }
+                catch (Exception ex)
+                {
+                    tcs.SetException(ex);
+                }
+
+                dialog.Close();
+                form.Close();
+            };
+
+            // Start the verification timer after the dialog has rendered once.
+            dialog.ContentRendered += (s, e) => timer.Start();
+
+            dialog.ShowDialog();
+            tcs.Task.Wait();
+        }
+
+        [Test, Timeout(10000)]
         [TestCase(ResizeMode.CanResize)]
         [TestCase(ResizeMode.NoResize)]
         public void Attach_CentersWindowOnOwner(ResizeMode resizeMode)
