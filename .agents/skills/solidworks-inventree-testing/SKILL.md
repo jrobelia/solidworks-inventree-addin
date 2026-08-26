@@ -96,6 +96,77 @@ static void Main()
 }
 ```
 
+## Hosting the Task Pane for Apply-button testing
+
+`TaskPaneView` is a `UserControl`, so it can be hosted inside a temporary WPF window.
+This is useful for verifying `TaskPaneViewModel` states such as `CurrentName`,
+`CurrentDescription`, `CurrentNotes`, `CurrentPk`, and their `*Match` indicators.
+
+1. Create a temporary WPF project as above.
+2. Add a `Window` containing the `TaskPaneView` control.
+3. Implement `DummyClient` and a richer `DummyPropertyService`:
+
+```csharp
+class DummyPropertyService : IDocumentPropertyService
+{
+    private readonly Dictionary<string, string> _properties = new();
+
+    public DocumentType DocumentTypeToReturn { get; set; } = DocumentType.Assembly;
+    public bool ReturnStaleReads { get; set; }
+    public string StaleValue { get; set; } = string.Empty;
+
+    public DocumentType GetDocumentType() => DocumentTypeToReturn;
+    public void Seed(string name, string value) => _properties[name] = value;
+
+    public string GetCustomProperty(string name) =>
+        ReturnStaleReads ? StaleValue
+                       : _properties.TryGetValue(name, out var v) ? v : string.Empty;
+
+    public void SetCustomProperty(string name, string value) => _properties[name] = value;
+    public bool PropertyExists(string name) => _properties.ContainsKey(name);
+}
+```
+
+4. Seed stale SW values, set `ReturnStaleReads = true`, fetch a part, then click each
+   `Apply to SW Doc` command. The `DummyPropertyService` will keep returning the
+   configured `StaleValue` on every read-back, simulating the cached-assembly bug.
+5. After applying all four fields, turn `ReturnStaleReads` off and click
+   `Load Properties from InvenTree` to prove `RefreshCurrentProperties` still works.
+
+### Capturing the full TaskPaneView
+
+Because `TaskPaneView` is inside a `ScrollViewer`, a live window will clip rows.
+For deterministic screenshots, host the `TaskPaneView` in a temporary off-screen
+`Window` with `SizeToContent = SizeToContent.WidthAndHeight`, measure/arrange it
+with infinite size, and render it with `RenderTargetBitmap`. This captures the
+whole control at its desired height.
+
+```csharp
+var taskPane = new TaskPaneView { DataContext = viewModel };
+var captureWindow = new Window
+{
+    Content = taskPane,
+    SizeToContent = SizeToContent.WidthAndHeight,
+    WindowStyle = WindowStyle.None,
+    AllowsTransparency = true,
+    ShowInTaskbar = false,
+    Left = -20000,
+    Top = -20000,
+    Opacity = 0.01
+};
+captureWindow.Show();
+captureWindow.UpdateLayout();
+taskPane.UpdateLayout();
+
+taskPane.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+var width = Math.Max((int)taskPane.DesiredSize.Width, 440);
+var height = Math.Max((int)taskPane.DesiredSize.Height, 600);
+taskPane.Arrange(new Rect(0, 0, width, height));
+
+var bmp = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+bmp.Render(taskPane);
+```
+
 ## What this proves and what it does not
 
 - Proves: XAML layout, control bindings, placeholder/tooltip text, enabled/disabled state, and viewmodel logic all work as intended.

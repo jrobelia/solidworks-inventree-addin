@@ -12,12 +12,18 @@ namespace SwInventreeAddin.Tests.Stubs
         /// <summary>Set this to control what GetDocumentType() returns in tests. Defaults to Part.</summary>
         public DocumentType DocumentTypeToReturn { get; set; } = DocumentType.Part;
 
+        /// <summary>When true, GetCustomProperty returns StaleValue to simulate SW's stale read after a set on assemblies.</summary>
+        public bool ReturnStaleReads { get; set; }
+
+        /// <summary>The stale value GetCustomProperty returns when ReturnStaleReads is true.</summary>
+        public string StaleValue { get; set; } = string.Empty;
+
         public DocumentType GetDocumentType() => DocumentTypeToReturn;
 
         public void Seed(string name, string value) => _properties[name] = value;
 
         public string GetCustomProperty(string name) =>
-            _properties.TryGetValue(name, out var val) ? val : string.Empty;
+            ReturnStaleReads ? StaleValue : _properties.TryGetValue(name, out var val) ? val : string.Empty;
 
         public void SetCustomProperty(string name, string value)
         {

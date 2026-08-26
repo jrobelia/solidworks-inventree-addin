@@ -191,12 +191,7 @@ namespace SwInventreeAddin.UI
 
                 case BomCompareOutcome.BomTableMissing:
                 {
-                    System.Windows.Forms.MessageBox.Show(
-                        WindowHandleOwner.FromSolidWorks(),
-                        $"No BOM table containing '{_bomKeyword}' was found in the active assembly.",
-                        "BOM Compare",
-                        System.Windows.Forms.MessageBoxButtons.OK,
-                        System.Windows.Forms.MessageBoxIcon.Warning);
+                    new BomTableMissingDialog(_bomKeyword, SolidWorksWindowHandle.Get()).ShowDialog();
                     return;
                 }
             }
@@ -255,14 +250,14 @@ namespace SwInventreeAddin.UI
     }
 
     /// <summary>Wraps an arbitrary Win32 window handle so it can be used as the owner of
-    /// a WinForms message box, which centres the dialog over that window.</summary>
+    /// a WinForms message box, which parents the dialog for modality and z-order.</summary>
     internal sealed class WindowHandleOwner : System.Windows.Forms.IWin32Window
     {
         public IntPtr Handle { get; }
 
         public WindowHandleOwner(IntPtr handle) => Handle = handle;
 
-        /// <summary>Returns an owner centred over the SolidWorks main window.</summary>
+        /// <summary>Returns an owner parented to the SolidWorks main window.</summary>
         public static System.Windows.Forms.IWin32Window FromSolidWorks()
             => new WindowHandleOwner(SolidWorksWindowHandle.Get());
     }
