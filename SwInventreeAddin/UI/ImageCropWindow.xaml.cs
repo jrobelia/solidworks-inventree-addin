@@ -46,7 +46,6 @@ namespace SwInventreeAddin.UI
                 Height = b[3];
             }
 
-            // Parent and center over the SolidWorks main window.
             WindowCentering.Attach(this, SolidWorksWindowHandle.Get());
 
             Closing += OnClosing;

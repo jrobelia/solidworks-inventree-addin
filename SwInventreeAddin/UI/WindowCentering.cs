@@ -10,11 +10,15 @@ namespace SwInventreeAddin.UI
     /// native screen coordinates. This works around WPF <c>CenterOwner</c> not correctly
     /// centering on a non-WPF, maximised, multi-monitor / high-DPI owner.
     /// </summary>
-    internal static class WindowCentering
+    public static class WindowCentering
     {
+        // ── Constants ─────────────────────────────────────────────────────────
+
         private const uint SwpNoSize     = 0x0001;
         private const uint SwpNoZOrder   = 0x0004;
         private const uint SwpNoActivate = 0x0010;
+
+        // ── Native interop ────────────────────────────────────────────────────
 
         [DllImport("user32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
@@ -32,7 +36,7 @@ namespace SwInventreeAddin.UI
             uint flags);
 
         [StructLayout(LayoutKind.Sequential)]
-        internal struct RECT
+        public struct RECT
         {
             public int Left;
             public int Top;
@@ -40,17 +44,22 @@ namespace SwInventreeAddin.UI
             public int Bottom;
         }
 
+        // ── Public interface ──────────────────────────────────────────────────
+
         /// <summary>
         /// Sets the Win32 owner of <paramref name="window"/> to <paramref name="ownerHandle"/>
-        /// and arranges for the window to be manually centered on that owner once its
-        /// <see cref="Window.SourceInitialized"/> event fires.
+        /// and centers the window on that owner when its content is first rendered.
         /// </summary>
+        /// <remarks>
+        /// Centering is deferred until <see cref="Window.ContentRendered"/> so the final
+        /// size is known for <c>SizeToContent</c> dialogs. The window starts at
+        /// <c>Opacity="0"</c> and is revealed only after positioning, avoiding a flash.
+        /// </remarks>
         public static void Attach(Window window, IntPtr ownerHandle)
         {
             if (window == null)
                 throw new ArgumentNullException(nameof(window));
 
-            // Set the owner for modality and z-order. If this fails, the window still works.
             try
             {
                 var helper = new WindowInteropHelper(window);
@@ -59,9 +68,36 @@ namespace SwInventreeAddin.UI
             }
             catch { /* cosmetic only */ }
 
-            // The captured owner handle will be used in SourceInitialized to center the window.
-            window.SourceInitialized += (s, e) => Center(window, ownerHandle);
+            EventHandler? handler = null;
+            handler = (s, e) =>
+            {
+                if (s is Window w)
+                {
+                    w.ContentRendered -= handler!;
+                    Center(w, ownerHandle);
+                }
+            };
+            window.ContentRendered += handler;
         }
+
+        /// <summary>
+        /// Calculates the top-left screen coordinates that center a dialog over its owner.
+        /// The dialog's own origin is ignored; only its width and height matter.
+        /// </summary>
+        public static (int left, int top) CalculateCenteredPosition(RECT ownerRect, RECT dialogRect)
+        {
+            int ownerWidth   = ownerRect.Right  - ownerRect.Left;
+            int ownerHeight  = ownerRect.Bottom - ownerRect.Top;
+            int dialogWidth  = dialogRect.Right - dialogRect.Left;
+            int dialogHeight = dialogRect.Bottom - dialogRect.Top;
+
+            int left = ownerRect.Left + (ownerWidth  - dialogWidth)  / 2;
+            int top  = ownerRect.Top  + (ownerHeight - dialogHeight) / 2;
+
+            return (left, top);
+        }
+
+        // ── Private implementation ────────────────────────────────────────────
 
         private static void Center(Window window, IntPtr ownerHandle)
         {
@@ -90,23 +126,6 @@ namespace SwInventreeAddin.UI
                 // avoids a brief flash at a wrong location before the manual centering runs.
                 window.Opacity = 1.0;
             }
-        }
-
-        /// <summary>
-        /// Calculates the top-left screen coordinates that center a dialog over its owner.
-        /// The dialog's own origin is ignored; only its width and height matter.
-        /// </summary>
-        internal static (int left, int top) CalculateCenteredPosition(RECT ownerRect, RECT dialogRect)
-        {
-            int ownerWidth   = ownerRect.Right  - ownerRect.Left;
-            int ownerHeight  = ownerRect.Bottom - ownerRect.Top;
-            int dialogWidth  = dialogRect.Right - dialogRect.Left;
-            int dialogHeight = dialogRect.Bottom - dialogRect.Top;
-
-            int left = ownerRect.Left + (ownerWidth  - dialogWidth)  / 2;
-            int top  = ownerRect.Top  + (ownerHeight - dialogHeight) / 2;
-
-            return (left, top);
         }
     }
 }

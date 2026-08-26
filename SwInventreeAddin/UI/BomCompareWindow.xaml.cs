@@ -15,7 +15,6 @@ namespace SwInventreeAddin.UI
             InitializeComponent();
             _vm = vm;
 
-            // Parent and center over the SolidWorks main window.
             WindowCentering.Attach(this, SolidWorksWindowHandle.Get());
 
             _vm.ConfirmPush = (newCount, conflictCount) =>

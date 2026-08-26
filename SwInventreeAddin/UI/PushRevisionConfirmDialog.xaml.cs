@@ -23,7 +23,6 @@ namespace SwInventreeAddin.UI
             MessageText.Text                  = message;
             IncludeImageCheckBox.IsChecked    = imageCheckedByDefault;
 
-            // Parent and center over the SolidWorks main window.
             WindowCentering.Attach(this, SolidWorksWindowHandle.Get());
         }
 

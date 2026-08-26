@@ -57,7 +57,6 @@ namespace SwInventreeAddin.UI
             LocalRadio.Checked          += (_, __) => RefreshButtonStates();
             SharedRadio.Checked         += (_, __) => RefreshButtonStates();
 
-            // Parent and center over the SolidWorks main window.
             WindowCentering.Attach(this, SolidWorksWindowHandle.Get());
 
             // Pre-fill server credentials
