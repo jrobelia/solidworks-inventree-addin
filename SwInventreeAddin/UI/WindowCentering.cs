@@ -107,8 +107,25 @@ namespace SwInventreeAddin.UI
             }
             catch { /* cosmetic only */ }
 
-            window.SourceInitialized += (s, e) => OnSourceInitialized(window, ownerHandle);
-            window.ContentRendered   += (s, e) => OnContentRendered(window, ownerHandle);
+            // Each of these events is a one-time signal. Capture the delegates so we can
+            // remove them after they fire and avoid creating extra timers if
+            // ContentRendered is raised again later.
+            EventHandler? sourceHandler = null;
+            sourceHandler = (s, e) =>
+            {
+                window.SourceInitialized -= sourceHandler;
+                OnSourceInitialized(window, ownerHandle);
+            };
+
+            EventHandler? contentHandler = null;
+            contentHandler = (s, e) =>
+            {
+                window.ContentRendered -= contentHandler;
+                OnContentRendered(window, ownerHandle);
+            };
+
+            window.SourceInitialized += sourceHandler;
+            window.ContentRendered   += contentHandler;
         }
 
         // ── Private implementation ────────────────────────────────────────────
