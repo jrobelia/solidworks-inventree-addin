@@ -81,44 +81,20 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test, Timeout(10000)]
-        public void Attach_CentersResizableWindowOnOwner()
+        [TestCase(ResizeMode.CanResize)]
+        [TestCase(ResizeMode.NoResize)]
+        public void Attach_CentersWindowOnOwner(ResizeMode resizeMode)
         {
             using var form = CreateOwnerForm();
             form.Show();
 
             var dialog = new Window
             {
-                Title = "Resizable Dialog",
+                Title = $"{resizeMode} Dialog",
                 Width = 600,
                 Height = 400,
                 WindowStartupLocation = WindowStartupLocation.Manual,
-                ResizeMode = ResizeMode.CanResize,
-                ShowInTaskbar = false,
-                Opacity = 0,
-                Content = new System.Windows.Controls.TextBlock
-                {
-                    Text = "Test",
-                    HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
-                    VerticalAlignment = System.Windows.VerticalAlignment.Center,
-                },
-            };
-
-            RunCenteringTest(dialog, form);
-        }
-
-        [Test, Timeout(10000)]
-        public void Attach_CentersNoResizeWindowOnOwner()
-        {
-            using var form = CreateOwnerForm();
-            form.Show();
-
-            var dialog = new Window
-            {
-                Title = "NoResize Dialog",
-                Width = 500,
-                Height = 350,
-                WindowStartupLocation = WindowStartupLocation.Manual,
-                ResizeMode = ResizeMode.NoResize,
+                ResizeMode = resizeMode,
                 ShowInTaskbar = false,
                 Opacity = 0,
                 Content = new System.Windows.Controls.TextBlock
