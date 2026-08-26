@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
 using System.Windows.Media;
 using SwInventreeAddin.Config;
 
@@ -17,10 +18,22 @@ namespace SwInventreeAddin.UI
     {
         private readonly IPropertyMappingProvider _provider;
 
-        public PropertyMappingEditorWindow(IPropertyMappingProvider provider)
+        /// <summary>
+        /// Creates the mapping editor.
+        /// </summary>
+        /// <param name="provider">The mapping provider.</param>
+        /// <param name="ownerWindow">The parent window. If null, the SolidWorks main window is used.</param>
+        public PropertyMappingEditorWindow(IPropertyMappingProvider provider, Window? ownerWindow = null)
         {
             _provider = provider;
             InitializeComponent();
+
+            Owner = ownerWindow;
+
+            var ownerHandle = ownerWindow != null
+                ? new WindowInteropHelper(ownerWindow).Handle
+                : SolidWorksWindowHandle.Get();
+            WindowCentering.Attach(this, ownerHandle);
 
             var mapping = _provider.GetMapping();
             IpnPropertyBox.Text         = mapping.IpnProperty         ?? string.Empty;

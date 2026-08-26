@@ -15,12 +15,8 @@ namespace SwInventreeAddin.UI
             InitializeComponent();
             _vm = vm;
 
-            try
-            {
-                var helper = new System.Windows.Interop.WindowInteropHelper(this);
-                helper.Owner = SolidWorksWindowHandle.Get();
-            }
-            catch { /* cosmetic */ }
+            // Parent and center over the SolidWorks main window.
+            WindowCentering.Attach(this, SolidWorksWindowHandle.Get());
 
             _vm.ConfirmPush = (newCount, conflictCount) =>
                 System.Windows.Forms.MessageBox.Show(

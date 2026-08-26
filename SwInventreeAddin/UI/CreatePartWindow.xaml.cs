@@ -17,12 +17,8 @@ namespace SwInventreeAddin.UI
         {
             InitializeComponent();
 
-            try
-            {
-                var helper = new System.Windows.Interop.WindowInteropHelper(this);
-                helper.Owner = SolidWorksWindowHandle.Get();
-            }
-            catch { /* cosmetic only */ }
+            // Parent and center over the SolidWorks main window.
+            WindowCentering.Attach(this, SolidWorksWindowHandle.Get());
         }
 
         /// <summary>
