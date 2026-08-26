@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using SwInventreeAddin.Bom;
 using SwInventreeAddin.Config;
@@ -86,6 +87,7 @@ namespace SwInventreeAddin.UI
         private readonly PropertyMappingConfig _mapping;
         private readonly int                   _assemblyPk;
         private readonly string                _bomKeyword;
+        private readonly SynchronizationContext? _uiContext;
 
         public ObservableCollection<BomDiffLineViewModel> Lines { get; } =
             new ObservableCollection<BomDiffLineViewModel>();
@@ -122,6 +124,7 @@ namespace SwInventreeAddin.UI
             _mapping    = mapping;
             _assemblyPk = assemblyPk;
             _bomKeyword = bomKeyword;
+            _uiContext  = SynchronizationContext.Current;
         }
 
         public async Task LoadAsync()
@@ -134,11 +137,16 @@ namespace SwInventreeAddin.UI
                 var lupTask = BuildIpnLookupAsync(swLines);
                 await Task.WhenAll(itTask, lupTask).ConfigureAwait(false);
                 return (itTask.Result, lupTask.Result);
+            }).ConfigureAwait(false);
+
+            // Diff is pure logic; the resulting UI-bound update must happen on the UI thread.
+            RunOnUiThread(() =>
+            {
+                var diff = BomDiffEngine.Diff(swLines, itLines, lookup);
+                RebindLines(diff);
+                StatusText = string.Empty;
+                if (!string.IsNullOrEmpty(_sortColumn)) ApplySort();
             });
-            var diff = BomDiffEngine.Diff(swLines, itLines, lookup);
-            RebindLines(diff);
-            StatusText = string.Empty;
-            if (!string.IsNullOrEmpty(_sortColumn)) ApplySort();
         }
 
         public async Task PushAsync()
@@ -333,6 +341,14 @@ namespace SwInventreeAddin.UI
 
             Lines.Clear();
             foreach (var item in sorted) Lines.Add(item);
+        }
+
+        private void RunOnUiThread(Action action)
+        {
+            if (_uiContext != null)
+                _uiContext.Send(_ => action(), null);
+            else
+                action();
         }
     }
 }
