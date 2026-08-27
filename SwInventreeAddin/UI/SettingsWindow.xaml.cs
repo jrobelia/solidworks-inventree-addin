@@ -57,13 +57,7 @@ namespace SwInventreeAddin.UI
             LocalRadio.Checked          += (_, __) => RefreshButtonStates();
             SharedRadio.Checked         += (_, __) => RefreshButtonStates();
 
-            // Centre over SolidWorks main window
-            try
-            {
-                var helper = new System.Windows.Interop.WindowInteropHelper(this);
-                helper.Owner = SolidWorksWindowHandle.Get();
-            }
-            catch { /* cosmetic */ }
+            WindowCentering.Attach(this, SolidWorksWindowHandle.Get());
 
             // Pre-fill server credentials
             try
@@ -152,7 +146,7 @@ namespace SwInventreeAddin.UI
 
         private void EditMappings_Click(object sender, RoutedEventArgs e)
         {
-            var editor = new PropertyMappingEditorWindow(_mappingProvider) { Owner = this };
+            var editor = new PropertyMappingEditorWindow(_mappingProvider, this);
             editor.ShowDialog();
             RefreshMappingStatus();
         }

@@ -4,7 +4,9 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="BOM Comparison"
     Width="960" Height="620"
-    WindowStartupLocation="CenterScreen"
+    WindowStartupLocation="Manual"
+    ShowInTaskbar="False"
+    Opacity="0"
     FontFamily="Segoe UI"
     FontSize="12"
     Loaded="Window_Loaded">

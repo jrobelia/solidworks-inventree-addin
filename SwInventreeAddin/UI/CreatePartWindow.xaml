@@ -6,7 +6,9 @@
     Width="720"
     Height="640"
     ResizeMode="NoResize"
-    WindowStartupLocation="CenterScreen"
+    WindowStartupLocation="Manual"
+    ShowInTaskbar="False"
+    Opacity="0"
     FontFamily="Segoe UI"
     FontSize="12">
 

@@ -23,14 +23,7 @@ namespace SwInventreeAddin.UI
             MessageText.Text                  = message;
             IncludeImageCheckBox.IsChecked    = imageCheckedByDefault;
 
-            // Attempt to set SolidWorks as the owner window so the dialog
-            // centres over it rather than the primary monitor centre.
-            try
-            {
-                var helper = new System.Windows.Interop.WindowInteropHelper(this);
-                helper.Owner = SolidWorksWindowHandle.Get();
-            }
-            catch { /* cosmetic only */ }
+            WindowCentering.Attach(this, SolidWorksWindowHandle.Get());
         }
 
         private void Push_Click(object sender, RoutedEventArgs e)
