@@ -58,13 +58,18 @@ The two-axis review needs a fixed point and its source material up front. Use th
      - Paste the diff, commit list, and the parent spec contents.
 
    Both prompts already contain all needed context; the subagents should not call `read` or `exec`.
-4. **Fallback: Devin cloud child sessions.** If the profiles exist but `run_subagent` is unavailable (tool-denial, schema not loaded, etc.), run the two axes in parallel Devin cloud sessions via `devin_mcp`:
+4. **Fallback: Devin cloud child sessions.** If the profiles exist but `run_subagent` is unavailable (tool-denial, schema not loaded, etc.), run the two axes in parallel Devin cloud sessions via the `devin_session_create` MCP tool:
 
-   - Create each session with `devin_mcp(command="call_tool", tool_name="devin_session_create", tool_args={"task": "code-review-standards", "mode": "general", "repos": ["jrobelia/solidworks-inventree-addin"], "prompt": "<pasted full prompt>"})` and a matching `code-review-spec` session.
-   - The returned `session_id` is bare; `devin_session_interact` and `devin_session_gather` require the `devin-` prefix (e.g. `"devin-<session_id>"`).
-   - Poll with `devin_session_interact` (`action: "get_messages"`) or block with `devin_session_gather` until both sessions return a `## Standards` or `## Spec` block.
+   - Create each session with `devin_session_create`. The `prompt` must contain the full text of the matching `.devin/agents/code-review-*.md` profile followed by the pre-computed context blocks. Use a `title` like `"code-review-standards"` / `"code-review-spec"`. If the tool supports batch creation, pass `sessions: [{...}, {...}]` to create both at once.
+
+     - **Standards:** `prompt` = full `code-review-standards.md` profile + `DIFF:` + `COMMITS:` + `STANDARDS:` + `SMELLS:`
+     - **Spec:** `prompt` = full `code-review-spec.md` profile + `DIFF:` + `COMMITS:` + `SPEC:`
+
+   - The returned `session_id` is bare; prefix it with `devin-` for all subsequent calls (e.g. `"devin-<session_id>"`).
+   - Block until both sessions settle with `devin_session_gather`, passing `session_ids: ["devin-<id>", "devin-<id>"]`.
+   - Read the final output or messages from each session and extract the `## Standards` or `## Spec` block.
+   - If a session stalls, nudge it with `devin_session_interact` (`action: "message"`) or read its messages with `devin_session_interact` (`action: "get_messages"`) or `devin_session_events`.
    - Pass all diff, commit list, and axis-specific context inline in the prompt. Do **not** use `file:///C:/...` URIs; child sessions cannot resolve Windows file URIs.
-   - If a session stalls, send it a `message` via `devin_session_interact` and continue polling.
 5. **Fallback: `/code-review`.** If the profiles are missing, or both parallel methods fail, use the existing `/code-review` path (or `subagent_general` in the foreground per `docs/agents/code-review-known-issues.md`).
 
 6. Parse the responses for `## Standards` and `## Spec` headings and translate each finding's severity into the RED / YELLOW / GREEN classification in `## Review classification`.

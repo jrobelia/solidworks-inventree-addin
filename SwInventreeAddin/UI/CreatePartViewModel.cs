@@ -238,7 +238,7 @@ namespace SwInventreeAddin.UI
 
             // Seed the type flags from the SolidWorks document type, but keep both editable.
             Assembly  = documentType == DocumentType.Assembly;
-            Component = documentType == DocumentType.Part;
+            Component = documentType == DocumentType.Part || documentType == DocumentType.Assembly;
         }
 
         // ── Methods ───────────────────────────────────────────────────────────

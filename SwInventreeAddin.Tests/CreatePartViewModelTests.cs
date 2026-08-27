@@ -616,12 +616,12 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void Defaults_ForAssemblyDocument_AssemblyOn_ComponentOff_OthersOff()
+        public void Defaults_ForAssemblyDocument_AssemblyOn_ComponentOn_OthersOff()
         {
             var vm = CreateVm(documentType: DocumentType.Assembly);
 
             Assert.That(vm.Assembly, Is.True);
-            Assert.That(vm.Component, Is.False);
+            Assert.That(vm.Component, Is.True);
             Assert.That(vm.Purchaseable, Is.False);
             Assert.That(vm.Salable, Is.False);
             Assert.That(vm.Trackable, Is.False);
@@ -674,7 +674,7 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(_client.LastCreateFlags, Is.Not.Null);
             Assert.That(_client.LastCreateFlags!.Assembly, Is.True);
-            Assert.That(_client.LastCreateFlags.Component, Is.False);
+            Assert.That(_client.LastCreateFlags.Component, Is.True);
             Assert.That(_client.LastCreateFlags.Purchaseable, Is.True);
             Assert.That(_client.LastCreateFlags.Salable, Is.False);
             Assert.That(_client.LastCreateFlags.Trackable, Is.True);
