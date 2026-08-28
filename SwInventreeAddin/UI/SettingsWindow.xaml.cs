@@ -14,10 +14,23 @@ namespace SwInventreeAddin.UI
     /// </summary>
     public partial class SettingsWindow : Window
     {
-        private readonly IConfigProvider          _configProvider;
-        private readonly IInventreeTokenService   _tokenService;
-        private readonly IVersionInfo             _versionInfo;
-        private IPropertyMappingProvider          _mappingProvider;
+        private readonly IConfigProvider                            _configProvider;
+        private readonly ISettingsApplyService                      _settingsApplyService;
+        private readonly IVersionInfo                               _versionInfo;
+        private readonly System.Func<string?, IPropertyMappingProvider> _mappingProviderFactory;
+        private IPropertyMappingProvider                            _mappingProvider;
+
+        /// <summary>
+        /// The most recent main status text set by <see cref="SetStatus"/>.
+        /// Exposed for unit-test verification; do not bind against it.
+        /// </summary>
+        public string? StatusMessage { get; private set; }
+
+        /// <summary>
+        /// The most recent mapping status text set by <see cref="RefreshMappingStatus"/>.
+        /// Exposed for unit-test verification; do not bind against it.
+        /// </summary>
+        public string? MappingStatusMessage { get; private set; }
 
         private (string Url, string ApiKey, string Username, string Password,
                  string SharedPath, string BomKeyword, bool UseLocalMapping) _savedSnapshot;
@@ -33,18 +46,22 @@ namespace SwInventreeAddin.UI
                               IPropertyMappingProvider mappingProvider,
                               IVersionInfo versionInfo)
             : this(configProvider, mappingProvider, versionInfo,
-                   new InventreeTokenService(new HttpClient())) { }
+                   new SettingsApplyService(configProvider,
+                                            new InventreeTokenService(new HttpClient())),
+                   sourcePath => new PropertyMappingProvider(sourcePath)) { }
 
         internal SettingsWindow(IConfigProvider configProvider,
                                 IPropertyMappingProvider mappingProvider,
                                 IVersionInfo versionInfo,
-                                IInventreeTokenService tokenService)
+                                ISettingsApplyService settingsApplyService,
+                                System.Func<string?, IPropertyMappingProvider> mappingProviderFactory)
         {
-            _configProvider  = configProvider;
-            _mappingProvider = mappingProvider;
-            _versionInfo     = versionInfo;
-            _tokenService    = tokenService;
-            DataContext      = _versionInfo;
+            _configProvider         = configProvider;
+            _mappingProvider        = mappingProvider;
+            _versionInfo            = versionInfo;
+            _settingsApplyService   = settingsApplyService;
+            _mappingProviderFactory = mappingProviderFactory;
+            DataContext             = _versionInfo;
 
             InitializeComponent();
 
@@ -153,47 +170,64 @@ namespace SwInventreeAddin.UI
 
         // ── Mapping status bar ────────────────────────────────────────────────
 
-        private void RefreshMappingStatus()
+        /// <summary>
+        /// Refreshes the mapping status bar. Catches mapping provider errors,
+        /// shows a red error stripe, and returns <c>false</c>.
+        /// </summary>
+        private bool RefreshMappingStatus()
         {
-            EditMappingsButton.IsEnabled = !_mappingProvider.IsReadOnly;
-
-            // Show the appropriate radio checked state
-            var config = TryGetConfig();
-            bool hasSharedPath = config != null && !string.IsNullOrEmpty(config.MappingSourcePath);
-            SharedRadio.IsChecked = hasSharedPath;
-            LocalRadio.IsChecked  = !hasSharedPath;
-
-            // Set stripe colour and status text
-            Brush stripeColor;
-            string statusText;
-
-            // Check for schema version mismatch
-            var mapping = _mappingProvider.GetMapping();
-            bool schemaMismatch = mapping.SchemaVersion != PropertyMappingConfig.CurrentSchemaVersion;
-
-            if (schemaMismatch)
+            try
             {
-                stripeColor = (Brush)FindResource("BrushStatusWarning");
-                statusText  = "Schema version mismatch \u2014 review mappings";
-            }
-            else if (_mappingProvider.IsReadOnly)
-            {
-                stripeColor = (Brush)FindResource("BrushStatusSuccess");
-                statusText  = "Loaded from shared file";
-            }
-            else if (System.IO.File.Exists(_mappingProvider.LocalFilePath))
-            {
-                stripeColor = (Brush)FindResource("BrushStatusSuccess");
-                statusText  = "Using local mappings";
-            }
-            else
-            {
-                stripeColor = (Brush)FindResource("BrushSectionHeader");
-                statusText  = "No mappings configured";
-            }
+                EditMappingsButton.IsEnabled = !_mappingProvider.IsReadOnly;
 
-            MappingStatusStripe.Background = stripeColor;
-            MappingStatusText.Text         = statusText;
+                // Show the appropriate radio checked state
+                var config = TryGetConfig();
+                bool hasSharedPath = config != null && !string.IsNullOrEmpty(config.MappingSourcePath);
+                SharedRadio.IsChecked = hasSharedPath;
+                LocalRadio.IsChecked  = !hasSharedPath;
+
+                // Set stripe colour and status text
+                Brush stripeColor;
+                string statusText;
+
+                // Check for schema version mismatch
+                var mapping = _mappingProvider.GetMapping();
+                bool schemaMismatch = mapping.SchemaVersion != PropertyMappingConfig.CurrentSchemaVersion;
+
+                if (schemaMismatch)
+                {
+                    stripeColor = (Brush)FindResource("BrushStatusWarning");
+                    statusText  = "Schema version mismatch \u2014 review mappings";
+                }
+                else if (_mappingProvider.IsReadOnly)
+                {
+                    stripeColor = (Brush)FindResource("BrushStatusSuccess");
+                    statusText  = "Loaded from shared file";
+                }
+                else if (System.IO.File.Exists(_mappingProvider.LocalFilePath))
+                {
+                    stripeColor = (Brush)FindResource("BrushStatusSuccess");
+                    statusText  = "Using local mappings";
+                }
+                else
+                {
+                    stripeColor = (Brush)FindResource("BrushSectionHeader");
+                    statusText  = "No mappings configured";
+                }
+
+                MappingStatusStripe.Background = stripeColor;
+                MappingStatusText.Text         = statusText;
+                MappingStatusMessage           = statusText;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                EditMappingsButton.IsEnabled   = false;
+                MappingStatusStripe.Background = (Brush)FindResource("BrushStatusError");
+                MappingStatusText.Text         = ex.Message;
+                MappingStatusMessage           = ex.Message;
+                return false;
+            }
         }
 
         private ServerConfig? TryGetConfig()
@@ -204,42 +238,32 @@ namespace SwInventreeAddin.UI
 
         // ── Shared helper ─────────────────────────────────────────────────────
 
-        private async System.Threading.Tasks.Task<string> ResolveApiKeyAsync()
+        /// <summary>
+        /// Builds a <see cref="SettingsApplyInput"/> from the current UI fields.
+        /// </summary>
+        private SettingsApplyInput BuildInput()
         {
-            var url      = UrlBox.Text.Trim();
-            var username = UsernameBox.Text.Trim();
-            var password = PasswordBox.Password;
-            var rawKey   = ApiBox.Text.Trim();
+            string? sharedPath = (SharedRadio.IsChecked == true)
+                ? (string.IsNullOrWhiteSpace(SharedPathBox.Text) ? null : SharedPathBox.Text.Trim())
+                : null;
 
-            if (string.IsNullOrWhiteSpace(url))
-                throw new InvalidOperationException("Server URL is required.");
-
-            if (!url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException(
-                    "Server URL must begin with https:// \u2014 a plain http:// connection is not secure.");
-
-            if (!string.IsNullOrWhiteSpace(username) || !string.IsNullOrWhiteSpace(password))
+            return new SettingsApplyInput
             {
-                if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
-                    throw new InvalidOperationException("Enter both username and password.");
-
-                SetStatus("Signing in\u2026", error: false);
-                return await _tokenService.GetTokenAsync(url, username, password)
-                                          .ConfigureAwait(true);
-            }
-
-            if (!string.IsNullOrWhiteSpace(rawKey))
-                return rawKey;
-
-            throw new InvalidOperationException(
-                "Enter a username and password, or expand Advanced and paste an API key.");
+                Url                   = UrlBox.Text.Trim(),
+                Username              = UsernameBox.Text.Trim(),
+                Password              = PasswordBox.Password,
+                RawApiKey             = ApiBox.Text.Trim(),
+                SharedMappingPath     = sharedPath,
+                BomKeyword            = BomKeywordBox.Text,
+                WaitForAutoPartNumber = _savedWaitForAutoPartNumber,
+            };
         }
 
         // ── Save ──────────────────────────────────────────────────────────────
 
         private async void Save_Click(object sender, RoutedEventArgs e)
         {
-            if (!await ApplySettingsCore()) return;
+            if (!await ApplySettingsAsync()) return;
             DialogResult = true;
         }
 
@@ -247,7 +271,7 @@ namespace SwInventreeAddin.UI
 
         private async void Apply_Click(object sender, RoutedEventArgs e)
         {
-            if (!await ApplySettingsCore()) return;
+            if (!await ApplySettingsAsync()) return;
             SetStatus("\u2713  Settings applied.", error: false, success: true);
         }
 
@@ -256,48 +280,41 @@ namespace SwInventreeAddin.UI
         /// <summary>
         /// Resolves credentials, persists server config, rebuilds the mapping provider,
         /// refreshes the status bar, and fires <see cref="MappingApplied"/>.
-        /// Returns true on success, false if an error was shown to the user.
+        /// Returns <c>true</c> on success, <c>false</c> if an error was shown to the user.
         /// </summary>
-        private async System.Threading.Tasks.Task<bool> ApplySettingsCore()
+        public async System.Threading.Tasks.Task<bool> ApplySettingsAsync()
         {
-            string apiKey;
             try
             {
-                apiKey = await ResolveApiKeyAsync().ConfigureAwait(true);
+                await _settingsApplyService.ApplyAsync(BuildInput()).ConfigureAwait(true);
             }
-            catch (InvalidOperationException ex)
+            catch (SettingsApplyException ex)
             {
                 SetStatus(ex.Message, error: true);
                 return false;
             }
 
-            string? sharedPath = (SharedRadio.IsChecked == true)
-                ? (string.IsNullOrWhiteSpace(SharedPathBox.Text) ? null : SharedPathBox.Text.Trim())
-                : null;
+            var input     = BuildInput();
+            string? sharedPath = input.SharedMappingPath;
 
             try
             {
-                _configProvider.SaveServerConfig(new ServerConfig
+                _mappingProvider = _mappingProviderFactory(sharedPath);
+                if (!RefreshMappingStatus())
                 {
-                    Url               = UrlBox.Text.Trim(),
-                    ApiKey            = apiKey,
-                    MappingSourcePath = sharedPath,
-                    BomKeyword        = string.IsNullOrWhiteSpace(BomKeywordBox.Text)
-                                            ? "inventree"
-                                            : BomKeywordBox.Text.Trim(),
-                    WaitForAutoPartNumber = _savedWaitForAutoPartNumber,
-                });
+                    SetStatus(MappingStatusMessage ?? "Failed to load mapping file.", error: true);
+                    return false;
+                }
 
-                _mappingProvider = new PropertyMappingProvider(sharedPath);
-                RefreshMappingStatus();
                 MappingApplied?.Invoke(this, _mappingProvider);
                 _savedSnapshot = CaptureSnapshot();
                 RefreshButtonStates();
+                SetStatus("\u2713  Settings applied.", error: false, success: true);
                 return true;
             }
             catch (Exception ex)
             {
-                SetStatus($"Failed to save settings: {ex.Message}", error: true);
+                SetStatus($"Failed to load mapping file: {ex.Message}", error: true);
                 return false;
             }
         }
@@ -316,7 +333,8 @@ namespace SwInventreeAddin.UI
             string apiKey;
             try
             {
-                apiKey = await ResolveApiKeyAsync().ConfigureAwait(true);
+                apiKey = await _settingsApplyService.ResolveApiKeyAsync(BuildInput())
+                                                   .ConfigureAwait(true);
             }
             catch (InvalidOperationException ex)
             {
@@ -353,6 +371,7 @@ namespace SwInventreeAddin.UI
 
         private void SetStatus(string text, bool error, bool success = false)
         {
+            StatusMessage = text;
             StatusText.Text = text;
             StatusText.Foreground =
                 error   ? new SolidColorBrush(Color.FromRgb(180, 40, 0))

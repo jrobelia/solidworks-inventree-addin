@@ -12,6 +12,9 @@ namespace SwInventreeAddin.Config
     ///   1. Source path configured and file exists → use it (read-only).
     ///   2. Local file exists → use it (editable).
     ///   3. Neither → write defaults to local path and return them (first run).
+    ///
+    /// File I/O, JSON, and access failures are wrapped in
+    /// <see cref="InvalidOperationException"/> messages that name the offending path.
     /// </summary>
     public class PropertyMappingProvider : IPropertyMappingProvider
     {
@@ -42,7 +45,7 @@ namespace SwInventreeAddin.Config
         {
             // Source path takes priority when configured and the file exists.
             if (!string.IsNullOrEmpty(_sourcePath) && File.Exists(_sourcePath))
-                return Load(_sourcePath);
+                return Load(_sourcePath!);
 
             if (File.Exists(_localPath))
                 return Load(_localPath);
@@ -56,10 +59,28 @@ namespace SwInventreeAddin.Config
         /// <inheritdoc/>
         public void SaveMapping(PropertyMappingConfig config)
         {
-            EnsureDirectory(_localPath);
-            var json = JsonSerializer.Serialize(config,
-                new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(_localPath, json, Encoding.UTF8);
+            try
+            {
+                EnsureDirectory(_localPath);
+                var json = JsonSerializer.Serialize(config,
+                    new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(_localPath, json, Encoding.UTF8);
+            }
+            catch (IOException ex)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to save mapping file: {_localPath}", ex);
+            }
+            catch (JsonException ex)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to save mapping file: {_localPath}", ex);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to save mapping file: {_localPath}", ex);
+            }
         }
 
         /// <inheritdoc/>
@@ -69,7 +90,7 @@ namespace SwInventreeAddin.Config
                 throw new InvalidOperationException(
                     "No source path is configured or the source file does not exist.");
 
-            var config = Load(_sourcePath);
+            var config = Load(_sourcePath!);
             SaveMapping(config);
         }
 
@@ -77,21 +98,42 @@ namespace SwInventreeAddin.Config
 
         private static PropertyMappingConfig Load(string path)
         {
-            var json   = File.ReadAllText(path, Encoding.UTF8);
-            var config = JsonSerializer.Deserialize<PropertyMappingConfig>(json)
-                ?? new PropertyMappingConfig();
+            if (path == null)
+                throw new ArgumentNullException(nameof(path));
 
-            if (string.Compare(config.SchemaVersion, "3", StringComparison.Ordinal) < 0)
+            try
             {
-                var defaults = new PropertyMappingConfig();
-                if (string.IsNullOrEmpty(config.BomColumnIpn))       config.BomColumnIpn       = defaults.BomColumnIpn;
-                if (string.IsNullOrEmpty(config.BomColumnQty))       config.BomColumnQty       = defaults.BomColumnQty;
-                if (string.IsNullOrEmpty(config.BomColumnReference)) config.BomColumnReference = defaults.BomColumnReference;
-                if (string.IsNullOrEmpty(config.BomColumnNote))      config.BomColumnNote      = defaults.BomColumnNote;
-                config.SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion;
-            }
+                var json   = File.ReadAllText(path, Encoding.UTF8);
+                var config = JsonSerializer.Deserialize<PropertyMappingConfig>(json)
+                    ?? new PropertyMappingConfig();
 
-            return config;
+                if (string.Compare(config.SchemaVersion, "3", StringComparison.Ordinal) < 0)
+                {
+                    var defaults = new PropertyMappingConfig();
+                    if (string.IsNullOrEmpty(config.BomColumnIpn))       config.BomColumnIpn       = defaults.BomColumnIpn;
+                    if (string.IsNullOrEmpty(config.BomColumnQty))       config.BomColumnQty       = defaults.BomColumnQty;
+                    if (string.IsNullOrEmpty(config.BomColumnReference)) config.BomColumnReference = defaults.BomColumnReference;
+                    if (string.IsNullOrEmpty(config.BomColumnNote))      config.BomColumnNote      = defaults.BomColumnNote;
+                    config.SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion;
+                }
+
+                return config;
+            }
+            catch (IOException ex)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to load mapping file: {path}", ex);
+            }
+            catch (JsonException ex)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to parse mapping file: {path}", ex);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to load mapping file: {path}", ex);
+            }
         }
 
         private static void EnsureDirectory(string filePath)
