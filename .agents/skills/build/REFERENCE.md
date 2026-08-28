@@ -42,7 +42,7 @@ Order child tickets by dependency per `docs/agents/issue-tracker.md`.
 
 ## Build and test commands
 
-Run the commands from `docs/agents/coding-standards.md` before every commit, after any review fix, and once more before opening the PR. If either command fails, fix the failure before proceeding.
+Run the commands from `docs/agents/coding-standards.md` before every commit, after any review fix, and once more before opening the PR. If `dotnet build "SwInventreeAddin/SwInventreeAddin.csproj"` fails on the final copy to `bin\Debug\net48\SwInventreeAddin.dll` because SolidWorks has it locked, use `dotnet test "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj" --disable-build-servers` as the primary loop. It compiles the same add-in code into `bin_unit_test` and never touches the locked `bin\Debug` assembly.
 
 ## Code review invocation
 
