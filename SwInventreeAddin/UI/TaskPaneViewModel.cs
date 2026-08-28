@@ -453,7 +453,18 @@ namespace SwInventreeAddin.UI
                 return;
             }
 
-            var mapping    = GetMappingOrDefault();
+            PropertyMappingConfig mapping;
+            try
+            {
+                mapping = GetMappingOrDefault();
+            }
+            catch (InvalidOperationException ex)
+            {
+                ClearAll();
+                SetStatus(ex.Message, StatusSeverity.Error);
+                return;
+            }
+
             var partNo     = _propertyService.GetCustomProperty(mapping.IpnProperty);
             var pkRaw      = _propertyService.GetCustomProperty(mapping.PkProperty);
             bool pkPresent = int.TryParse(pkRaw, out int pkVal) && pkVal > 0;
@@ -490,7 +501,15 @@ namespace SwInventreeAddin.UI
                 }
                 else
                 {
-                    RefreshCurrentProperties();
+                    try
+                    {
+                        RefreshCurrentProperties();
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        SetStatus(ex.Message, StatusSeverity.Error);
+                        return;
+                    }
                     NotifySessionProperties();
                 }
 
@@ -522,7 +541,15 @@ namespace SwInventreeAddin.UI
             _isDocumentOpen          = true;
             PartNumber               = partNo;
             PropertiesSectionVisible = true;
-            RefreshCurrentProperties();
+            try
+            {
+                RefreshCurrentProperties();
+            }
+            catch (InvalidOperationException ex)
+            {
+                SetStatus(ex.Message, StatusSeverity.Error);
+                return;
+            }
 
             // Restore FetchEnabled / CreatePartEnabled / status after ClearSession.
             if (_client == null)
@@ -1083,9 +1110,17 @@ namespace SwInventreeAddin.UI
         public void UpdateMapping(IPropertyMappingProvider provider)
         {
             _mappingProvider = provider;
-            CheckMappingSchema();
-            if (_propertiesSectionVisible)
-                RefreshCurrentProperties();
+
+            try
+            {
+                CheckMappingSchema();
+                if (_propertiesSectionVisible)
+                    RefreshCurrentProperties();
+            }
+            catch (InvalidOperationException ex)
+            {
+                SetStatus(ex.Message, StatusSeverity.Error);
+            }
         }
 
         private PropertyMappingConfig GetMappingOrDefault() =>
@@ -1095,17 +1130,25 @@ namespace SwInventreeAddin.UI
         {
             if (_mappingProvider == null) return;
 
-            var mapping = _mappingProvider.GetMapping();
-            if (mapping.SchemaVersion != ExpectedMappingSchemaVersion)
+            try
             {
-                _schemaMismatchActive = true;
-                SetStatus("Mapping schema mismatch \u2014 review Settings",
-                          StatusSeverity.Warning);
+                var mapping = _mappingProvider.GetMapping();
+                if (mapping.SchemaVersion != ExpectedMappingSchemaVersion)
+                {
+                    _schemaMismatchActive = true;
+                    SetStatus("Mapping schema mismatch \u2014 review Settings",
+                              StatusSeverity.Warning);
+                }
+                else if (_schemaMismatchActive)
+                {
+                    _schemaMismatchActive = false;
+                    SetStatus(string.Empty, StatusSeverity.None);
+                }
             }
-            else if (_schemaMismatchActive)
+            catch (InvalidOperationException ex)
             {
                 _schemaMismatchActive = false;
-                SetStatus(string.Empty, StatusSeverity.None);
+                SetStatus(ex.Message, StatusSeverity.Error);
             }
         }
 

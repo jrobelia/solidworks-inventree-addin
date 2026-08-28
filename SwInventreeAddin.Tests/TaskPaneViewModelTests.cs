@@ -104,6 +104,22 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public void OnInitialisation_WhenMappingProviderThrows_SetsMappingErrorStatus()
+        {
+            var mappingProvider = new StubPropertyMappingProvider
+            {
+                ThrowOnGet = new System.InvalidOperationException(
+                    "Failed to load mapping file: C:\\temp\\bad.json"),
+            };
+            _propertyService.Seed("PartNo", "R-10K-0402");
+
+            _vm = new TaskPaneViewModel(_client, _propertyService, null, mappingProvider, null);
+
+            Assert.That(_vm.StatusText, Does.Contain("Failed to load mapping file"));
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Error));
+        }
+
+        [Test]
         public void OnInitialisation_WhenMappingSchemaIsOlder_ShowsSchemaMismatchWarning()
         {
             var mappingProvider = new StubPropertyMappingProvider
