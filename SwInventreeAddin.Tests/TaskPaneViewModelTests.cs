@@ -103,6 +103,20 @@ namespace SwInventreeAddin.Tests
             Assert.That(_vm.FetchEnabled, Is.True);
         }
 
+        [Test]
+        public void OnInitialisation_WhenMappingSchemaIsOlder_ShowsSchemaMismatchWarning()
+        {
+            var mappingProvider = new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig { SchemaVersion = "1" },
+            };
+            _propertyService.Seed("PartNo", "R-10K-0402");
+            _vm = new TaskPaneViewModel(_client, _propertyService, null, mappingProvider, null);
+
+            Assert.That(_vm.StatusText, Does.Contain("schema mismatch").IgnoreCase);
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+        }
+
         // ── After successful fetch ─────────────────────────────────────────────
 
         [Test]

@@ -106,14 +106,13 @@ namespace SwInventreeAddin.Config
                 var config = JsonSerializer.Deserialize<PropertyMappingConfig>(json)
                     ?? new PropertyMappingConfig();
 
-                if (string.Compare(config.SchemaVersion, "3", StringComparison.Ordinal) < 0)
+                if (string.Compare(config.SchemaVersion, PropertyMappingConfig.CurrentSchemaVersion, StringComparison.Ordinal) < 0)
                 {
                     var defaults = new PropertyMappingConfig();
                     if (string.IsNullOrEmpty(config.BomColumnIpn))       config.BomColumnIpn       = defaults.BomColumnIpn;
                     if (string.IsNullOrEmpty(config.BomColumnQty))       config.BomColumnQty       = defaults.BomColumnQty;
                     if (string.IsNullOrEmpty(config.BomColumnReference)) config.BomColumnReference = defaults.BomColumnReference;
                     if (string.IsNullOrEmpty(config.BomColumnNote))      config.BomColumnNote      = defaults.BomColumnNote;
-                    config.SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion;
                 }
 
                 return config;

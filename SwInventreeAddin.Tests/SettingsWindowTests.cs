@@ -34,6 +34,24 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public void Constructor_WhenLocalMappingFileHasOlderSchema_ShowsSchemaMismatchWarning()
+        {
+            var v1Json = @"{
+                ""SchemaVersion"": ""1"",
+                ""IpnProperty"": ""PartNo"",
+                ""NameProperty"": ""Description"",
+                ""NotesProperty"": ""Notes"",
+                ""RevisionProperty"": ""Revision""
+            }";
+            File.WriteAllText(_localMappingPath, v1Json);
+            var mappingProvider = new PropertyMappingProvider(_localMappingPath, null);
+
+            var window = CreateWindow(mappingProvider: mappingProvider);
+
+            Assert.That(GetText(window, "MappingStatusText"), Does.Contain("Schema version mismatch"));
+        }
+
+        [Test]
         public void Constructor_WhenMappingProviderThrowsOnGetMapping_SetsRedMappingStatusAndDoesNotCrash()
         {
             var mappingProvider = new StubPropertyMappingProvider

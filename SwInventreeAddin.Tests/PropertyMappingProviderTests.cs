@@ -261,7 +261,7 @@ namespace SwInventreeAddin.Tests
         // ── BOM column migration ──────────────────────────────────────────────
 
         [Test]
-        public void GetMapping_SchemaV1File_ReceivesBomColumnDefaults()
+        public void GetMapping_SchemaV1File_ReceivesBomColumnDefaults_And_RetainsFileSchemaVersion()
         {
             var v1Json = @"{
                 ""SchemaVersion"": ""1"",
@@ -276,10 +276,12 @@ namespace SwInventreeAddin.Tests
             Assert.That(config.BomColumnQty,       Is.EqualTo("Qty, Quantity"));
             Assert.That(config.BomColumnReference, Is.EqualTo("Reference"));
             Assert.That(config.BomColumnNote,      Is.EqualTo("Note, Notes"));
+            Assert.That(config.SchemaVersion,      Is.EqualTo("1"),
+                "The on-disk schema version must be returned unchanged so the UI can warn about a mismatch.");
         }
 
         [Test]
-        public void GetMapping_SchemaV2File_ReceivesBomColumnDefaults()
+        public void GetMapping_SchemaV2File_ReceivesBomColumnDefaults_And_RetainsFileSchemaVersion()
         {
             var v2Json = @"{
                 ""SchemaVersion"": ""2"",
@@ -294,6 +296,8 @@ namespace SwInventreeAddin.Tests
             var config = new PropertyMappingProvider(_localPath, null).GetMapping();
             Assert.That(config.BomColumnIpn, Is.EqualTo("IPN, Part IPN, Internal Part Number, Part Number"));
             Assert.That(config.BomColumnQty, Is.EqualTo("Qty, Quantity"));
+            Assert.That(config.SchemaVersion, Is.EqualTo("2"),
+                "The on-disk schema version must be returned unchanged so the UI can warn about a mismatch.");
         }
 
         [Test]
