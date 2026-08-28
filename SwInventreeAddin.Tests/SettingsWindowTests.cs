@@ -43,7 +43,7 @@ namespace SwInventreeAddin.Tests
 
             var window = CreateWindow(mappingProvider: mappingProvider);
 
-            Assert.That(window.MappingStatusMessage, Does.Contain("Failed to load mapping file"));
+            Assert.That(window.MappingStatusText.Text, Does.Contain("Failed to load mapping file"));
         }
 
         [Test]
@@ -61,8 +61,8 @@ namespace SwInventreeAddin.Tests
             bool result = await window.ApplySettingsAsync();
 
             Assert.That(result, Is.False);
-            Assert.That(window.StatusMessage, Does.Contain("Failed to save server settings"));
-            Assert.That(window.StatusMessage, Does.Contain("stub config failure"));
+            Assert.That(window.StatusText.Text, Does.Contain("Failed to save server settings"));
+            Assert.That(window.StatusText.Text, Does.Contain("stub config failure"));
         }
 
         [Test]
@@ -83,7 +83,7 @@ namespace SwInventreeAddin.Tests
             bool result = await window.ApplySettingsAsync();
 
             Assert.That(result, Is.False);
-            Assert.That(window.StatusMessage, Does.Contain("Failed to load mapping file"));
+            Assert.That(window.StatusText.Text, Does.Contain("Failed to load mapping file"));
         }
 
         [Test]
@@ -100,7 +100,7 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(result, Is.True);
             Assert.That(firedProvider, Is.SameAs(mappingProvider));
-            Assert.That(window.StatusMessage, Does.Contain("Settings applied"));
+            Assert.That(window.StatusText.Text, Does.Contain("Settings applied"));
         }
 
         // ── Helpers ───────────────────────────────────────────────────────────

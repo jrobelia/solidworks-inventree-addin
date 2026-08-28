@@ -68,6 +68,7 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBlock x:Name="StatusText"
+                           x:FieldModifier="internal"
                            Grid.Column="0"
                            VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis"
@@ -188,6 +189,7 @@
                     <Border x:Name="MappingStatusStripe" Grid.Column="0"
                             Background="{StaticResource BrushSectionHeader}" />
                     <TextBlock x:Name="MappingStatusText"
+                               x:FieldModifier="internal"
                                Grid.Column="1"
                                VerticalAlignment="Center"
                                Margin="8,0,4,0"

@@ -1,3 +1,4 @@
+using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace SwInventreeAddin.Config
@@ -20,5 +21,12 @@ namespace SwInventreeAddin.Config
         /// "Failed to save server settings".
         /// </summary>
         Task ApplyAsync(SettingsApplyInput input);
+
+        /// <summary>
+        /// Resolves the API key for the supplied <paramref name="input"/> and uses the
+        /// provided <paramref name="client"/> to check whether the InvenTree server is
+        /// reachable. Throws <see cref="System.InvalidOperationException"/> on failure.
+        /// </summary>
+        Task TestConnectionAsync(SettingsApplyInput input, HttpClient client);
     }
 }

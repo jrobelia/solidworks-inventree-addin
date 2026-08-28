@@ -1,4 +1,5 @@
 using System;
+using System.Net.Http;
 using System.Threading.Tasks;
 using SwInventreeAddin.InvenTree;
 
@@ -61,10 +62,7 @@ namespace SwInventreeAddin.Config
             }
             catch (Exception ex)
             {
-                throw new SettingsApplyException(
-                    $"Failed to save server settings: {ex.Message}",
-                    SettingsApplyErrorKind.Config,
-                    ex);
+                throw ConfigError(ex);
             }
 
             try
@@ -82,11 +80,51 @@ namespace SwInventreeAddin.Config
             }
             catch (Exception ex)
             {
-                throw new SettingsApplyException(
-                    $"Failed to save server settings: {ex.Message}",
-                    SettingsApplyErrorKind.Config,
-                    ex);
+                throw ConfigError(ex);
             }
         }
+
+        /// <inheritdoc/>
+        public async Task TestConnectionAsync(SettingsApplyInput input, HttpClient client)
+        {
+            if (client == null)
+                throw new ArgumentNullException(nameof(client));
+
+            string apiKey;
+            try
+            {
+                apiKey = await ResolveApiKeyAsync(input).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                throw ConfigError(ex);
+            }
+
+            client.BaseAddress = new Uri(input.Url.Trim());
+            client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Token", apiKey);
+
+            HttpResponseMessage response;
+            try
+            {
+                response = await client.GetAsync("api/part/?limit=1").ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException(
+                    $"Could not reach the InvenTree server. Check the URL and network connection. ({ex.Message})",
+                    ex);
+            }
+
+            if (!response.IsSuccessStatusCode)
+                throw new InvalidOperationException(
+                    $"Server responded: {(int)response.StatusCode} {response.ReasonPhrase}");
+        }
+
+        private static SettingsApplyException ConfigError(Exception ex)
+            => new SettingsApplyException(
+                $"Failed to save server settings: {ex.Message}",
+                SettingsApplyErrorKind.Config,
+                ex);
     }
 }

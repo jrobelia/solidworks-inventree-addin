@@ -19,18 +19,6 @@ namespace SwInventreeAddin.UI
         private readonly System.Func<string?, IPropertyMappingProvider>   _mappingProviderFactory;
         private          IPropertyMappingProvider                         _mappingProvider;
 
-        /// <summary>
-        /// The most recent main status text set by <see cref="SetStatus"/>.
-        /// Exposed for unit-test verification; do not bind against it.
-        /// </summary>
-        internal string? StatusMessage { get; private set; }
-
-        /// <summary>
-        /// The most recent mapping status text set by <see cref="RefreshMappingStatus"/>.
-        /// Exposed for unit-test verification; do not bind against it.
-        /// </summary>
-        internal string? MappingStatusMessage { get; private set; }
-
         private (string Url, string ApiKey, string Username, string Password,
                  string SharedPath, string BomKeyword, bool UseLocalMapping) _savedSnapshot;
         private bool _savedWaitForAutoPartNumber = true;
@@ -208,15 +196,20 @@ namespace SwInventreeAddin.UI
 
                 MappingStatusStripe.Background = stripeColor;
                 MappingStatusText.Text         = statusText;
-                MappingStatusMessage           = statusText;
                 return true;
+            }
+            catch (InvalidOperationException ex)
+            {
+                EditMappingsButton.IsEnabled   = false;
+                MappingStatusStripe.Background = (Brush)FindResource("BrushStatusError");
+                MappingStatusText.Text         = ex.Message;
+                return false;
             }
             catch (Exception ex)
             {
                 EditMappingsButton.IsEnabled   = false;
                 MappingStatusStripe.Background = (Brush)FindResource("BrushStatusError");
-                MappingStatusText.Text         = ex.Message;
-                MappingStatusMessage           = ex.Message;
+                MappingStatusText.Text         = $"Failed to load mapping file: {ex.Message}";
                 return false;
             }
         }
@@ -263,7 +256,7 @@ namespace SwInventreeAddin.UI
         private async void Apply_Click(object sender, RoutedEventArgs e)
         {
             if (!await ApplySettingsAsync()) return;
-            SetStatus("\u2713  Settings applied.", error: false, success: true);
+            this.Dispatcher.Invoke(() => SetStatus("\u2713  Settings applied.", error: false, success: true));
         }
 
         // ── Shared settings save + notify ─────────────────────────────────────
@@ -275,37 +268,48 @@ namespace SwInventreeAddin.UI
         /// </summary>
         public async System.Threading.Tasks.Task<bool> ApplySettingsAsync()
         {
+            var input = BuildInput();
+
             try
             {
-                await _settingsApplyService.ApplyAsync(BuildInput()).ConfigureAwait(true);
+                await _settingsApplyService.ApplyAsync(input).ConfigureAwait(false);
             }
             catch (SettingsApplyException ex)
             {
-                SetStatus(ex.Message, error: true);
+                this.Dispatcher.Invoke(() => SetStatus(ex.Message, error: true));
                 return false;
             }
 
-            var input     = BuildInput();
-            string? sharedPath = input.SharedMappingPath;
+            try
+            {
+                _mappingProvider = _mappingProviderFactory(input.SharedMappingPath);
+                bool mappingOk   = this.Dispatcher.Invoke(() => RefreshMappingStatus());
+                if (!mappingOk)
+                {
+                    this.Dispatcher.Invoke(() => SetStatus(MappingStatusText.Text, error: true));
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                this.Dispatcher.Invoke(() => SetStatus($"Failed to load mapping file: {ex.Message}", error: true));
+                return false;
+            }
 
             try
             {
-                _mappingProvider = _mappingProviderFactory(sharedPath);
-                if (!RefreshMappingStatus())
+                this.Dispatcher.Invoke(() =>
                 {
-                    SetStatus(MappingStatusMessage ?? "Failed to load mapping file.", error: true);
-                    return false;
-                }
-
-                MappingApplied?.Invoke(this, _mappingProvider);
-                _savedSnapshot = CaptureSnapshot();
-                RefreshButtonStates();
-                SetStatus("\u2713  Settings applied.", error: false, success: true);
+                    MappingApplied?.Invoke(this, _mappingProvider);
+                    _savedSnapshot = CaptureSnapshot();
+                    RefreshButtonStates();
+                    SetStatus("\u2713  Settings applied.", error: false, success: true);
+                });
                 return true;
             }
             catch (Exception ex)
             {
-                SetStatus($"Failed to load mapping file: {ex.Message}", error: true);
+                this.Dispatcher.Invoke(() => SetStatus($"Failed to apply settings: {ex.Message}", error: true));
                 return false;
             }
         }
@@ -321,40 +325,25 @@ namespace SwInventreeAddin.UI
 
         private async void Test_Click(object sender, RoutedEventArgs e)
         {
-            string apiKey;
             try
             {
-                apiKey = await _settingsApplyService.ResolveApiKeyAsync(BuildInput())
-                                                   .ConfigureAwait(true);
+                using (var client = new HttpClient())
+                {
+                    await _settingsApplyService.TestConnectionAsync(BuildInput(), client)
+                                               .ConfigureAwait(false);
+                }
+
+                this.Dispatcher.Invoke(() =>
+                    SetStatus("\u2713  Connection successful.", error: false, success: true));
             }
             catch (InvalidOperationException ex)
             {
-                SetStatus(ex.Message, error: true);
-                return;
-            }
-
-            SetStatus("Testing\u2026", error: false);
-
-            try
-            {
-                var url = UrlBox.Text.Trim();
-                using (var client = new HttpClient())
-                {
-                    client.BaseAddress = new Uri(url);
-                    client.DefaultRequestHeaders.Authorization =
-                        new System.Net.Http.Headers.AuthenticationHeaderValue("Token", apiKey);
-                    var response = await client.GetAsync("api/part/?limit=1").ConfigureAwait(true);
-
-                    if (response.IsSuccessStatusCode)
-                        SetStatus("\u2713  Connection successful.", error: false, success: true);
-                    else
-                        SetStatus($"Server responded: {(int)response.StatusCode} {response.ReasonPhrase}",
-                                  error: true);
-                }
+                this.Dispatcher.Invoke(() => SetStatus(ex.Message, error: true));
             }
             catch (Exception ex)
             {
-                SetStatus($"Connection failed: {ex.Message}", error: true);
+                this.Dispatcher.Invoke(() =>
+                    SetStatus($"Connection failed: {ex.Message}", error: true));
             }
         }
 
@@ -362,7 +351,6 @@ namespace SwInventreeAddin.UI
 
         private void SetStatus(string text, bool error, bool success = false)
         {
-            StatusMessage = text;
             StatusText.Text = text;
             StatusText.Foreground =
                 error   ? new SolidColorBrush(Color.FromRgb(180, 40, 0))

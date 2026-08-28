@@ -45,14 +45,23 @@ namespace SwInventreeAddin.Config
         {
             // Source path takes priority when configured and the file exists.
             if (!string.IsNullOrEmpty(_sourcePath) && File.Exists(_sourcePath))
-                return Load(_sourcePath!);
+                return Fetch(_sourcePath!);
 
             if (File.Exists(_localPath))
-                return Load(_localPath);
+                return Fetch(_localPath);
 
             // First run — write defaults so the user has a file to edit.
             var defaults = new PropertyMappingConfig();
-            SaveMapping(defaults);
+            try
+            {
+                SaveMapping(defaults);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to load mapping file: {_localPath}", ex);
+            }
+
             return defaults;
         }
 
@@ -66,7 +75,7 @@ namespace SwInventreeAddin.Config
                     new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(_localPath, json, Encoding.UTF8);
             }
-            catch (Exception ex) when (ex is IOException || ex is JsonException || ex is UnauthorizedAccessException)
+            catch (Exception ex)
             {
                 throw new InvalidOperationException(
                     $"Failed to save mapping file: {_localPath}", ex);
@@ -80,13 +89,13 @@ namespace SwInventreeAddin.Config
                 throw new InvalidOperationException(
                     "No source path is configured or the source file does not exist.");
 
-            var config = Load(_sourcePath!);
+            var config = Fetch(_sourcePath!);
             SaveMapping(config);
         }
 
         // ── Private helpers ───────────────────────────────────────────────────
 
-        private static PropertyMappingConfig Load(string path)
+        private static PropertyMappingConfig Fetch(string path)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
@@ -109,12 +118,10 @@ namespace SwInventreeAddin.Config
 
                 return config;
             }
-            catch (Exception ex) when (ex is IOException || ex is JsonException || ex is UnauthorizedAccessException)
+            catch (Exception ex)
             {
-                var message = (ex is JsonException)
-                    ? $"Failed to parse mapping file: {path}"
-                    : $"Failed to load mapping file: {path}";
-                throw new InvalidOperationException(message, ex);
+                throw new InvalidOperationException(
+                    $"Failed to load mapping file: {path}", ex);
             }
         }
 
