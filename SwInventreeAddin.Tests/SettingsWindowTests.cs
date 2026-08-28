@@ -121,14 +121,67 @@ namespace SwInventreeAddin.Tests
             Assert.That(GetText(window, "StatusText"), Does.Contain("Settings applied"));
         }
 
+        [Test]
+        public async Task ApplySettingsAsync_WhenStatusTextIsLong_ToolTipContainsFullMessage()
+        {
+            var longMessage = "Failed to save server settings: Server URL must begin with https:// "
+                              + "-- a plain http:// connection is not secure. "
+                              + new string('x', 200);
+            var applyService = new StubSettingsApplyService
+            {
+                ExceptionToThrowOnApply = new SettingsApplyException(longMessage),
+            };
+
+            var window = CreateWindow(applyService: applyService);
+            await window.ApplySettingsAsync();
+
+            Assert.That(GetToolTipText(window, "StatusText"), Is.EqualTo(longMessage));
+        }
+
+        [Test]
+        public void Constructor_WhenMappingStatusTextIsLong_ToolTipContainsFullMessage()
+        {
+            var longMessage = "Failed to load mapping file: C:\\temp\\very-long-path-that-exceeds-the-status-bar-width.json "
+                              + new string('x', 200);
+            var mappingProvider = new StubPropertyMappingProvider
+            {
+                LocalFilePath = _localMappingPath,
+                ThrowOnGet = new InvalidOperationException(longMessage),
+            };
+
+            var window = CreateWindow(mappingProvider: mappingProvider);
+
+            Assert.That(GetToolTipText(window, "MappingStatusText"), Is.EqualTo(longMessage));
+        }
+
         // ── Helpers ───────────────────────────────────────────────────────────
 
         private static string GetText(Window window, string name)
         {
+            var textBlock = GetTextBlock(window, name);
+            return textBlock.Text ?? string.Empty;
+        }
+
+        private static string GetToolTipText(Window window, string name)
+        {
+            var textBlock = GetTextBlock(window, name);
+            var toolTip = ToolTipService.GetToolTip(textBlock);
+
+            if (toolTip is TextBlock tipBlock)
+                return tipBlock.Text ?? string.Empty;
+
+            if (toolTip is ToolTip tip && tip.Content is TextBlock contentBlock)
+                return contentBlock.Text ?? string.Empty;
+
+            return toolTip?.ToString() ?? string.Empty;
+        }
+
+        private static TextBlock GetTextBlock(Window window, string name)
+        {
             var element = System.Windows.LogicalTreeHelper.FindLogicalNode(window, name);
             var textBlock = element as TextBlock;
             Assert.That(textBlock, Is.Not.Null, $"Could not find TextBlock named '{name}'.");
-            return textBlock!.Text ?? string.Empty;
+            return textBlock!;
         }
 
         private SettingsWindow CreateWindow(

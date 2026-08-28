@@ -1,6 +1,7 @@
 using System;
 using System.Net.Http;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using Microsoft.Win32;
 using SwInventreeAddin;
@@ -192,21 +193,21 @@ namespace SwInventreeAddin.UI
                 }
 
                 MappingStatusStripe.Background = stripeColor;
-                MappingStatusText.Text         = statusText;
+                SetStatusTextWithToolTip(MappingStatusText, statusText);
                 return true;
             }
             catch (InvalidOperationException ex)
             {
                 EditMappingsButton.IsEnabled   = false;
                 MappingStatusStripe.Background = (Brush)FindResource("BrushStatusError");
-                MappingStatusText.Text         = ex.Message;
+                SetStatusTextWithToolTip(MappingStatusText, ex.Message);
                 return false;
             }
             catch (Exception ex)
             {
                 EditMappingsButton.IsEnabled   = false;
                 MappingStatusStripe.Background = (Brush)FindResource("BrushStatusError");
-                MappingStatusText.Text         = $"Failed to load mapping file: {ex.Message}";
+                SetStatusTextWithToolTip(MappingStatusText, $"Failed to load mapping file: {ex.Message}");
                 return false;
             }
         }
@@ -348,11 +349,29 @@ namespace SwInventreeAddin.UI
 
         private void SetStatus(string text, bool error, bool success = false)
         {
-            StatusText.Text = text;
+            SetStatusTextWithToolTip(StatusText, text);
             StatusText.Foreground =
                 error   ? new SolidColorBrush(Color.FromRgb(180, 40, 0))
                 : success ? new SolidColorBrush(Color.FromRgb(0, 130, 60))
                 :           (Brush)FindResource("BrushSubtle");
+        }
+
+        /// <summary>
+        /// Sets a status <see cref="TextBlock"/> text and attaches a wrapping tooltip
+        /// with the full message so long errors remain readable without resizing the window.
+        /// </summary>
+        private static void SetStatusTextWithToolTip(TextBlock textBlock, string text)
+        {
+            textBlock.Text = text;
+            textBlock.ToolTip = new ToolTip
+            {
+                Content = new TextBlock
+                {
+                    Text = text,
+                    TextWrapping = TextWrapping.Wrap,
+                    MaxWidth = 440,
+                },
+            };
         }
     }
 }
