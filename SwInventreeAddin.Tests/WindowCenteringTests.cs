@@ -167,6 +167,24 @@ namespace SwInventreeAddin.Tests
             tcs.Task.Wait();
         }
 
+        [Test]
+        public void Attach_PlacesWindowOffScreenBeforeShow()
+        {
+            var dialog = new Window
+            {
+                Width = 400,
+                Height = 300,
+                ShowInTaskbar = false,
+                Opacity = 0,
+            };
+
+            WindowCentering.Attach(dialog, IntPtr.Zero);
+
+            Assert.That(dialog.WindowStartupLocation, Is.EqualTo(WindowStartupLocation.Manual));
+            Assert.That(dialog.Left, Is.EqualTo(WindowCentering.HiddenLeft));
+            Assert.That(dialog.Top,  Is.EqualTo(WindowCentering.HiddenTop));
+        }
+
         [Test, Timeout(10000)]
         [TestCase(ResizeMode.CanResize)]
         [TestCase(ResizeMode.NoResize)]

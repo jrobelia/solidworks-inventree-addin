@@ -24,8 +24,8 @@ namespace SwInventreeAddin.UI
         private const int PollingIntervalMs   = 50;
 
         // Far off-screen so no frame is visible before the centered position is known.
-        private const int HiddenLeft = -32000;
-        private const int HiddenTop  = -32000;
+        internal const int HiddenLeft = -32000;
+        internal const int HiddenTop  = -32000;
 
         // ── Native interop ────────────────────────────────────────────────────
 
@@ -104,6 +104,14 @@ namespace SwInventreeAddin.UI
                 var helper = new WindowInteropHelper(window);
                 if (ownerHandle != IntPtr.Zero)
                     helper.Owner = ownerHandle;
+            }
+            catch { /* cosmetic only */ }
+
+            try
+            {
+                window.WindowStartupLocation = WindowStartupLocation.Manual;
+                window.Left = HiddenLeft;
+                window.Top  = HiddenTop;
             }
             catch { /* cosmetic only */ }
 
