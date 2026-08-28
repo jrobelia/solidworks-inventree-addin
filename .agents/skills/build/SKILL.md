@@ -36,8 +36,8 @@ Do not move to the next step until the **Done when** criterion for the current s
 
 1. Identify the parent spec and child tickets from the user's input (see `REFERENCE.md` for the input cases and `docs/agents/issue-tracker.md` for the shared conventions). If only a parent spec is given, find its child issues and confirm the batch. If inputs are missing, ask.
    **Done when:** the parent spec and all child tickets are identified and the user has confirmed the batch.
-2. Load the context files listed in `REFERENCE.md`.
-   **Done when:** every file in `REFERENCE.md` `## Context files` has been loaded.
+2. Load the context files and design vocabulary listed in `REFERENCE.md`.
+   **Done when:** every file in `REFERENCE.md` `## Context files` has been loaded and the design vocabulary in `## Design vocabulary` has been consulted.
 3. Verify the working tree is clean. If `git status --short` is non-empty, stop and ask the user to commit or stash their changes before `/build` starts.
    **Done when:** `git status --short` returns no output.
 4. Capture the current branch as `PARENT_BRANCH` and the current commit as `PRE_BUILD_SHA`.
@@ -45,11 +45,11 @@ Do not move to the next step until the **Done when** criterion for the current s
 5. Create the build branch from `PARENT_BRANCH` using the naming rules in `REFERENCE.md`.
    **Done when:** the new branch exists, is checked out, and is based on `PARENT_BRANCH`.
 6. **Run the `/tdd` red-green loop for each ticket** in dependency order:
-   - **Propose the public seam.** State the recommended seam in domain language and give a one-sentence rationale. If two or more seams are equally good, present the candidates and ask which to use; otherwise pause and ask the user to confirm the recommended seam before proceeding.
+   - **Propose the public seam and justify its depth.** Before proposing, read `docs/agents/coding-standards.md` `## Module Design` and consult the `/codebase-design` skill it points to. State the recommended seam in domain language and give a one-sentence rationale. Then give a depth check: the public interface surface, the production and test adapters that will sit at the seam, the complexity the module hides from callers, and the deletion test (if the module were removed, would its complexity reappear across callers?). If the interface is nearly as complex as the implementation, the seam is shallow — go back and find a deeper cut. If two or more seams are equally good, present the candidates with the same depth check and ask which to use; otherwise pause and ask the user to confirm the recommended seam before proceeding.
    - **Run `/tdd` — red first, then green.** Invoke the `/tdd` skill and do not skip the red → green loop. If the ticket is build-system, CI, or documentation-only and the spec explicitly states no new unit tests, run the build and test commands from `REFERENCE.md` in place of the `/tdd` red-green loop and state why in the response. If `/tdd` exits with failing tests, fix the failures and re-run it before proceeding. If you cannot make it green, stop and ask.
    - Run the build and test commands from `REFERENCE.md`. If either fails, fix before proceeding.
    - Commit with a message that references the ticket. Default to one logical commit per ticket; use multiple commits only if the ticket has clearly separate logical steps and the user agrees. Include the parent spec reference in the first commit so `/code-review` can locate it.
-   **Done when:** every ticket has a user-confirmed seam, a green `/tdd` red-green loop (or documented build-only equivalent), passing build/test, and a reference commit on the build branch.
+   **Done when:** every ticket has a user-confirmed seam that has passed a depth check, a green `/tdd` red-green loop (or documented build-only equivalent), passing build/test, and a reference commit on the build branch.
 7. Run the build and test commands once more. If either fails, fix before proceeding.
    **Done when:** both commands exit successfully on the full branch.
 8. Run the two-axis review from `PRE_BUILD_SHA` per `REFERENCE.md`. Pre-compute the diff, commit list, standards context, and originating spec context. Use the `run_subagent` path when it is available; otherwise use the Devin cloud child-session fallback in `REFERENCE.md`. Aggregate the `## Standards` and `## Spec` findings.

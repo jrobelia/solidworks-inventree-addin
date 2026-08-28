@@ -11,7 +11,7 @@ A C# WPF add-in for SolidWorks that bridges parts and assemblies to an InvenTree
 
 ## Where to look next
 
-- [Build, test, language, naming, and code-quality rules](docs/agents/coding-standards.md)
+- [Build, test, language, naming, and code-quality rules](docs/agents/coding-standards.md) — the `## Module Design` section is the local deep-module vocabulary and points to the `/codebase-design` skill for shared patterns
 - [Scope: what the add-in does and out-of-bounds](docs/agents/scope.md)
 - [User communication preferences](docs/agents/user-preferences.md)
 - [Domain glossary and ADRs](docs/agents/domain.md) — see also [CONTEXT.md](CONTEXT.md)

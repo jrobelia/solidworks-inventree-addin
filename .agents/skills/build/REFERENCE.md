@@ -3,15 +3,20 @@
 ## Skills to invoke
 
 - `/tdd` — red-green loop and seams.
+- `/codebase-design` — shared deep-module vocabulary and design-it-twice / deepening patterns; `docs/agents/coding-standards.md` `## Module Design` is the local source of truth and points here.
 - `/code-review` — two-axis (Standards / Spec) review (fallback when the custom subagent profiles below are absent).
 - `run_subagent` with profiles `code-review-standards` and `code-review-spec` — the preferred two-axis review when `.devin/agents/code-review-standards.md` and `.devin/agents/code-review-spec.md` exist.
 
 ## Context files
 
 - `docs/agents/issue-tracker.md` — GitHub conventions and parent/child issue conventions.
-- `docs/agents/coding-standards.md` — build/test commands and repo standards.
+- `docs/agents/coding-standards.md` — build/test commands, repo standards, and the deep-module design vocabulary in `## Module Design`.
 - `docs/agents/code-review-known-issues.md` — how to run `/code-review` subagents in this environment.
 - `CONTEXT.md` / `docs/agents/domain.md` — domain vocabulary.
+
+## Design vocabulary
+
+Read `docs/agents/coding-standards.md` `## Module Design` before proposing any public seam. It is the repo's local source of truth for module, interface, depth, seam, adapter, leverage, and locality, and for rules like the deletion test, "two adapters = real seam", and "depth is a property of the interface"; it also points to the `/codebase-design` skill for the shared vocabulary, design-it-twice patterns, and deepening guidance. Do not duplicate those definitions here.
 
 ## Inputs and issue hierarchy
 
