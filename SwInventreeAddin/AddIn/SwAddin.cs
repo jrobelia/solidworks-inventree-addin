@@ -322,12 +322,13 @@ namespace SwInventreeAddin.AddIn
             {
                 var tokenService    = new InventreeTokenService(settingsHttpClient);
                 var settingsService = new SettingsApplyService(_configProvider, tokenService);
+                var mappingFactory  = new PropertyMappingProviderFactory();
                 var form = new SettingsWindow(
                     _configProvider,
                     _mappingProvider,
                     new AssemblyVersionInfo(),
                     settingsService,
-                    sourcePath => new PropertyMappingProvider(sourcePath));
+                    mappingFactory);
                 form.MappingApplied += (_, provider) =>
                 {
                     _mappingProvider = provider;

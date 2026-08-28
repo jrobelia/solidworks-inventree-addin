@@ -13,11 +13,11 @@ namespace SwInventreeAddin.UI
     /// </summary>
     public partial class SettingsWindow : Window
     {
-        private readonly IConfigProvider                                  _configProvider;
-        private readonly ISettingsApplyService                            _settingsApplyService;
-        private readonly IVersionInfo                                     _versionInfo;
-        private readonly System.Func<string?, IPropertyMappingProvider>   _mappingProviderFactory;
-        private          IPropertyMappingProvider                         _mappingProvider;
+        private readonly IConfigProvider            _configProvider;
+        private readonly ISettingsApplyService      _settingsApplyService;
+        private readonly IVersionInfo               _versionInfo;
+        private readonly IMappingProviderFactory    _mappingProviderFactory;
+        private          IPropertyMappingProvider   _mappingProvider;
 
         private (string Url, string ApiKey, string Username, string Password,
                  string SharedPath, string BomKeyword, bool UseLocalMapping) _savedSnapshot;
@@ -33,7 +33,7 @@ namespace SwInventreeAddin.UI
                                 IPropertyMappingProvider mappingProvider,
                                 IVersionInfo versionInfo,
                                 ISettingsApplyService settingsApplyService,
-                                System.Func<string?, IPropertyMappingProvider> mappingProviderFactory)
+                                IMappingProviderFactory mappingProviderFactory)
         {
             _configProvider         = configProvider;
             _mappingProvider        = mappingProvider;
@@ -159,17 +159,14 @@ namespace SwInventreeAddin.UI
             {
                 EditMappingsButton.IsEnabled = !_mappingProvider.IsReadOnly;
 
-                // Show the appropriate radio checked state
                 var config = TryGetConfig();
                 bool hasSharedPath = config != null && !string.IsNullOrEmpty(config.MappingSourcePath);
                 SharedRadio.IsChecked = hasSharedPath;
                 LocalRadio.IsChecked  = !hasSharedPath;
 
-                // Set stripe colour and status text
                 Brush stripeColor;
                 string statusText;
 
-                // Check for schema version mismatch
                 var mapping = _mappingProvider.GetMapping();
                 bool schemaMismatch = mapping.SchemaVersion != PropertyMappingConfig.CurrentSchemaVersion;
 
@@ -282,7 +279,7 @@ namespace SwInventreeAddin.UI
 
             try
             {
-                _mappingProvider = _mappingProviderFactory(input.SharedMappingPath);
+                _mappingProvider = _mappingProviderFactory.Create(input.SharedMappingPath);
                 bool mappingOk   = this.Dispatcher.Invoke(() => RefreshMappingStatus());
                 if (!mappingOk)
                 {

@@ -26,7 +26,7 @@ namespace SwInventreeAddin.Tests
             var ex = Assert.ThrowsAsync<SettingsApplyException>(
                 () => service.ApplyAsync(CreateInput()));
 
-            Assert.That(ex.Message, Does.Contain("Failed to save server settings"));
+            Assert.That(ex!.Message, Does.Contain("Failed to save server settings"));
         }
 
         [Test]
@@ -43,7 +43,7 @@ namespace SwInventreeAddin.Tests
             var ex = Assert.ThrowsAsync<SettingsApplyException>(
                 () => service.ApplyAsync(input));
 
-            Assert.That(ex.Message, Does.Contain("Failed to save server settings"));
+            Assert.That(ex!.Message, Does.Contain("Failed to save server settings"));
         }
 
         [Test]
@@ -93,7 +93,7 @@ namespace SwInventreeAddin.Tests
             var ex = Assert.ThrowsAsync<SettingsApplyException>(
                 () => service.ApplyAsync(input));
 
-            Assert.That(ex.Message, Does.Contain("https://"));
+            Assert.That(ex!.Message, Does.Contain("https://"));
         }
 
         [Test]
@@ -122,7 +122,7 @@ namespace SwInventreeAddin.Tests
             var ex = Assert.ThrowsAsync<InvalidOperationException>(
                 () => service.TestConnectionAsync(CreateInput(), client));
 
-            Assert.That(ex.Message, Does.Contain("Server responded"));
+            Assert.That(ex!.Message, Does.Contain("Server responded"));
         }
 
         [Test]
@@ -138,7 +138,7 @@ namespace SwInventreeAddin.Tests
             var ex = Assert.ThrowsAsync<InvalidOperationException>(
                 () => service.TestConnectionAsync(CreateInput(), client));
 
-            Assert.That(ex.Message, Does.Contain("Could not reach"));
+            Assert.That(ex!.Message, Does.Contain("Could not reach"));
         }
 
         private static SettingsApplyInput CreateInput()

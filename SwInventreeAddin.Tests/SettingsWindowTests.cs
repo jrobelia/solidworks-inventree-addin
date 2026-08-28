@@ -78,7 +78,7 @@ namespace SwInventreeAddin.Tests
             var window = CreateWindow(
                 applyService: applyService,
                 mappingProvider: new StubPropertyMappingProvider(),
-                mappingProviderFactory: _ => throwingProvider);
+                mappingProviderFactory: new StubMappingProviderFactory { Factory = _ => throwingProvider });
 
             bool result = await window.ApplySettingsAsync();
 
@@ -116,11 +116,14 @@ namespace SwInventreeAddin.Tests
         private SettingsWindow CreateWindow(
             IPropertyMappingProvider? mappingProvider = null,
             ISettingsApplyService? applyService = null,
-            Func<string?, IPropertyMappingProvider>? mappingProviderFactory = null)
+            IMappingProviderFactory? mappingProviderFactory = null)
         {
             mappingProvider        ??= new StubPropertyMappingProvider();
             applyService           ??= new StubSettingsApplyService();
-            mappingProviderFactory ??= _ => mappingProvider;
+            mappingProviderFactory ??= new StubMappingProviderFactory
+            {
+                Factory = _ => mappingProvider,
+            };
 
             var configProvider = new StubConfigProvider("https://example.com", "stub-key");
             var versionInfo    = new StubVersionInfo();
