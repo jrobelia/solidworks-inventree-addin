@@ -5,7 +5,6 @@ using System.Windows.Media;
 using Microsoft.Win32;
 using SwInventreeAddin;
 using SwInventreeAddin.Config;
-using SwInventreeAddin.InvenTree;
 
 namespace SwInventreeAddin.UI
 {
@@ -14,23 +13,23 @@ namespace SwInventreeAddin.UI
     /// </summary>
     public partial class SettingsWindow : Window
     {
-        private readonly IConfigProvider                            _configProvider;
-        private readonly ISettingsApplyService                      _settingsApplyService;
-        private readonly IVersionInfo                               _versionInfo;
-        private readonly System.Func<string?, IPropertyMappingProvider> _mappingProviderFactory;
-        private IPropertyMappingProvider                            _mappingProvider;
+        private readonly IConfigProvider                                  _configProvider;
+        private readonly ISettingsApplyService                            _settingsApplyService;
+        private readonly IVersionInfo                                     _versionInfo;
+        private readonly System.Func<string?, IPropertyMappingProvider>   _mappingProviderFactory;
+        private          IPropertyMappingProvider                         _mappingProvider;
 
         /// <summary>
         /// The most recent main status text set by <see cref="SetStatus"/>.
         /// Exposed for unit-test verification; do not bind against it.
         /// </summary>
-        public string? StatusMessage { get; private set; }
+        internal string? StatusMessage { get; private set; }
 
         /// <summary>
         /// The most recent mapping status text set by <see cref="RefreshMappingStatus"/>.
         /// Exposed for unit-test verification; do not bind against it.
         /// </summary>
-        public string? MappingStatusMessage { get; private set; }
+        internal string? MappingStatusMessage { get; private set; }
 
         private (string Url, string ApiKey, string Username, string Password,
                  string SharedPath, string BomKeyword, bool UseLocalMapping) _savedSnapshot;
@@ -41,14 +40,6 @@ namespace SwInventreeAddin.UI
         /// the live mapping provider without waiting for the dialog to close.
         /// </summary>
         public event EventHandler<IPropertyMappingProvider>? MappingApplied;
-
-        public SettingsWindow(IConfigProvider configProvider,
-                              IPropertyMappingProvider mappingProvider,
-                              IVersionInfo versionInfo)
-            : this(configProvider, mappingProvider, versionInfo,
-                   new SettingsApplyService(configProvider,
-                                            new InventreeTokenService(new HttpClient())),
-                   sourcePath => new PropertyMappingProvider(sourcePath)) { }
 
         internal SettingsWindow(IConfigProvider configProvider,
                                 IPropertyMappingProvider mappingProvider,

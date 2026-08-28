@@ -10,11 +10,5 @@ namespace SwInventreeAddin.Config
         /// Maps to a "Failed to save server settings" status message in the UI.
         /// </summary>
         Config,
-
-        /// <summary>
-        /// A mapping-file failure.
-        /// Maps to a "Failed to load mapping file" status message in the UI.
-        /// </summary>
-        Mapping,
     }
 }

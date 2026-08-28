@@ -13,9 +13,12 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task ApplyAsync_WhenConfigProviderThrows_ThrowsSettingsApplyExceptionWithConfigKind()
         {
-            var configProvider = new FailingConfigProvider("save failed");
-            var tokenService   = new StubInventreeTokenService { TokenToReturn = "token" };
-            var service        = new SettingsApplyService(configProvider, tokenService);
+            var configProvider = new StubConfigProvider("https://example.com", "key")
+            {
+                ThrowOnSave = new InvalidOperationException("save failed"),
+            };
+            var tokenService = new StubInventreeTokenService { TokenToReturn = "token" };
+            var service      = new SettingsApplyService(configProvider, tokenService);
 
             var ex = Assert.ThrowsAsync<SettingsApplyException>(
                 () => service.ApplyAsync(CreateInput()));
@@ -27,7 +30,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task ApplyAsync_WhenTokenResolutionFails_ThrowsSettingsApplyExceptionWithConfigKind()
         {
-            var configProvider = new StubConfigProvider("http://example.com", "key");
+            var configProvider = new StubConfigProvider("https://example.com", "key");
             var tokenService   = new StubInventreeTokenService(); // configured to fail
             var service        = new SettingsApplyService(configProvider, tokenService);
 
@@ -45,7 +48,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task ApplyAsync_WhenTokenSucceeds_SavesConfigWithResolvedToken()
         {
-            var configProvider = new StubConfigProvider("http://example.com", "key");
+            var configProvider = new StubConfigProvider("https://example.com", "key");
             var tokenService   = new StubInventreeTokenService { TokenToReturn = "resolved-token" };
             var service        = new SettingsApplyService(configProvider, tokenService);
 
@@ -62,7 +65,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task ApplyAsync_WhenRawApiKeyProvided_SavesConfigWithoutCallingTokenService()
         {
-            var configProvider = new StubConfigProvider("http://example.com", "key");
+            var configProvider = new StubConfigProvider("https://example.com", "key");
             var tokenService   = new StubInventreeTokenService { TokenToReturn = "should-not-be-used" };
             var service        = new SettingsApplyService(configProvider, tokenService);
 
@@ -103,23 +106,6 @@ namespace SwInventreeAddin.Tests
                 BomKeyword            = "inventree",
                 WaitForAutoPartNumber = true,
             };
-        }
-
-        private class FailingConfigProvider : IConfigProvider
-        {
-            private readonly string _message;
-
-            public FailingConfigProvider(string message)
-            {
-                _message = message;
-            }
-
-            public ServerConfig? GetServerConfig() => null;
-
-            public void SaveServerConfig(ServerConfig config)
-            {
-                throw new InvalidOperationException(_message);
-            }
         }
     }
 }

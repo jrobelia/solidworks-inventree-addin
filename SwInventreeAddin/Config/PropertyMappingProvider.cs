@@ -66,17 +66,7 @@ namespace SwInventreeAddin.Config
                     new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(_localPath, json, Encoding.UTF8);
             }
-            catch (IOException ex)
-            {
-                throw new InvalidOperationException(
-                    $"Failed to save mapping file: {_localPath}", ex);
-            }
-            catch (JsonException ex)
-            {
-                throw new InvalidOperationException(
-                    $"Failed to save mapping file: {_localPath}", ex);
-            }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex) when (ex is IOException || ex is JsonException || ex is UnauthorizedAccessException)
             {
                 throw new InvalidOperationException(
                     $"Failed to save mapping file: {_localPath}", ex);
@@ -119,20 +109,12 @@ namespace SwInventreeAddin.Config
 
                 return config;
             }
-            catch (IOException ex)
+            catch (Exception ex) when (ex is IOException || ex is JsonException || ex is UnauthorizedAccessException)
             {
-                throw new InvalidOperationException(
-                    $"Failed to load mapping file: {path}", ex);
-            }
-            catch (JsonException ex)
-            {
-                throw new InvalidOperationException(
-                    $"Failed to parse mapping file: {path}", ex);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                throw new InvalidOperationException(
-                    $"Failed to load mapping file: {path}", ex);
+                var message = (ex is JsonException)
+                    ? $"Failed to parse mapping file: {path}"
+                    : $"Failed to load mapping file: {path}";
+                throw new InvalidOperationException(message, ex);
             }
         }
 

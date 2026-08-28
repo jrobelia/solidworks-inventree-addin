@@ -35,8 +35,11 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void Constructor_WhenMappingProviderThrowsOnGetMapping_SetsRedMappingStatusAndDoesNotCrash()
         {
-            var mappingProvider = new ThrowingPropertyMappingProvider(_localMappingPath,
-                new InvalidOperationException("Failed to load mapping file: C:\\temp\\missing.json"));
+            var mappingProvider = new StubPropertyMappingProvider
+            {
+                LocalFilePath = _localMappingPath,
+                ThrowOnGet = new InvalidOperationException("Failed to load mapping file: C:\\temp\\missing.json"),
+            };
 
             var window = CreateWindow(mappingProvider: mappingProvider);
 
@@ -66,8 +69,11 @@ namespace SwInventreeAddin.Tests
         public async Task ApplySettingsAsync_WhenMappingProviderThrowsOnRefresh_SetsMappingFileStatus()
         {
             var applyService = new StubSettingsApplyService();
-            var throwingProvider = new ThrowingPropertyMappingProvider(_localMappingPath,
-                new InvalidOperationException("Failed to load mapping file: C:\\temp\\bad.json"));
+            var throwingProvider = new StubPropertyMappingProvider
+            {
+                LocalFilePath = _localMappingPath,
+                ThrowOnGet = new InvalidOperationException("Failed to load mapping file: C:\\temp\\bad.json"),
+            };
 
             var window = CreateWindow(
                 applyService: applyService,
@@ -117,25 +123,6 @@ namespace SwInventreeAddin.Tests
                 versionInfo,
                 applyService,
                 mappingProviderFactory);
-        }
-
-        private class ThrowingPropertyMappingProvider : IPropertyMappingProvider
-        {
-            private readonly string _localFilePath;
-            private readonly Exception _exception;
-
-            public ThrowingPropertyMappingProvider(string localFilePath, Exception exception)
-            {
-                _localFilePath = localFilePath;
-                _exception     = exception;
-            }
-
-            public bool IsReadOnly => false;
-            public string LocalFilePath => _localFilePath;
-
-            public PropertyMappingConfig GetMapping() => throw _exception;
-            public void SaveMapping(PropertyMappingConfig config) => throw _exception;
-            public void CopyToLocal() => throw _exception;
         }
     }
 }

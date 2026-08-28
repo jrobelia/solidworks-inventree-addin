@@ -9,8 +9,8 @@ namespace SwInventreeAddin.Config
     /// </summary>
     public class SettingsApplyService : ISettingsApplyService
     {
-        private readonly IConfigProvider _configProvider;
-        private readonly IInventreeTokenService _tokenService;
+        private readonly IConfigProvider          _configProvider;
+        private readonly IInventreeTokenService   _tokenService;
 
         /// <summary>Uses the supplied config and token services.</summary>
         public SettingsApplyService(IConfigProvider configProvider, IInventreeTokenService tokenService)

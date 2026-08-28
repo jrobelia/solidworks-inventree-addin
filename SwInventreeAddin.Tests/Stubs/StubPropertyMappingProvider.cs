@@ -15,16 +15,32 @@ namespace SwInventreeAddin.Tests.Stubs
         public PropertyMappingConfig? LastSaved        { get; private set; }
         public bool                   CopyToLocalCalled { get; private set; }
 
-        public PropertyMappingConfig GetMapping() => Config;
+        public System.Exception? ThrowOnGet  { get; set; }
+        public System.Exception? ThrowOnSave { get; set; }
+        public System.Exception? ThrowOnCopyToLocal { get; set; }
+
+        public PropertyMappingConfig GetMapping()
+        {
+            if (ThrowOnGet != null)
+                throw ThrowOnGet;
+
+            return Config;
+        }
 
         public void SaveMapping(PropertyMappingConfig config)
         {
+            if (ThrowOnSave != null)
+                throw ThrowOnSave;
+
             LastSaved = config;
             Config    = config;
         }
 
         public void CopyToLocal()
         {
+            if (ThrowOnCopyToLocal != null)
+                throw ThrowOnCopyToLocal;
+
             CopyToLocalCalled = true;
             IsReadOnly        = false;
         }
