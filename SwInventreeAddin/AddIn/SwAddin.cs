@@ -318,25 +318,37 @@ namespace SwInventreeAddin.AddIn
                 return;
             }
 
-            var form = new SettingsWindow(_configProvider, _mappingProvider, new AssemblyVersionInfo());
-            form.MappingApplied += (_, provider) =>
+            using (var settingsHttpClient = new System.Net.Http.HttpClient())
             {
-                _mappingProvider = provider;
-                _taskPaneControl?.UpdateMapping(provider);
-            };
-            if (form.ShowDialog() != true) return;
+                var tokenService    = new InventreeTokenService(settingsHttpClient);
+                var settingsService = new SettingsApplyService(_configProvider, tokenService);
+                var mappingFactory  = new PropertyMappingProviderFactory();
+                var form = new SettingsWindow(
+                    _configProvider,
+                    _mappingProvider,
+                    new AssemblyVersionInfo(),
+                    settingsService,
+                    mappingFactory);
+                form.MappingApplied += (_, provider) =>
+                {
+                    _mappingProvider = provider;
+                    _taskPaneControl?.UpdateMapping(provider);
+                };
 
-            // MappingApplied already updated _mappingProvider and refreshed the task pane.
-            // Only rebuild the HTTP client with the saved credentials.
-            var newConfig = _configProvider.GetServerConfig();
-            if (newConfig == null) return;
+                if (form.ShowDialog() != true) return;
 
-            _httpClient?.Dispose();
-            _httpClient             = new System.Net.Http.HttpClient();
-            _httpClient.BaseAddress = new System.Uri(newConfig.Url);
-            var newClient = new InventreeHttpClient(_httpClient, newConfig.ApiKey);
-            _taskPaneControl?.UpdateClient(newClient);
-            _taskPaneControl?.UpdateWaitForAutoPartNumber(newConfig.WaitForAutoPartNumber);
+                // MappingApplied already updated _mappingProvider and refreshed the task pane.
+                // Only rebuild the HTTP client with the saved credentials.
+                var newConfig = _configProvider.GetServerConfig();
+                if (newConfig == null) return;
+
+                _httpClient?.Dispose();
+                _httpClient             = new System.Net.Http.HttpClient();
+                _httpClient.BaseAddress = new System.Uri(newConfig.Url);
+                var newClient = new InventreeHttpClient(_httpClient, newConfig.ApiKey);
+                _taskPaneControl?.UpdateClient(newClient);
+                _taskPaneControl?.UpdateWaitForAutoPartNumber(newConfig.WaitForAutoPartNumber);
+            }
         }
     }
 }

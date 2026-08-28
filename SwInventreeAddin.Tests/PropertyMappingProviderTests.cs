@@ -114,6 +114,67 @@ namespace SwInventreeAddin.Tests
             Assert.That(provider.IsReadOnly, Is.False);
         }
 
+        // ── Error handling ────────────────────────────────────────────────────
+
+        [Test]
+        public void GetMapping_WhenLocalFileContainsInvalidJson_ThrowsInvalidOperationExceptionWithPath()
+        {
+            File.WriteAllText(_localPath, "not valid json");
+
+            Assert.That(() => new PropertyMappingProvider(_localPath, null).GetMapping(),
+                Throws.TypeOf<InvalidOperationException>().With.Message.Contains(_localPath));
+        }
+
+        [Test]
+        public void GetMapping_WhenSourceFileContainsInvalidJson_ThrowsInvalidOperationExceptionWithPath()
+        {
+            File.WriteAllText(_sourcePath, "not valid json");
+
+            Assert.That(() => new PropertyMappingProvider(_localPath, _sourcePath).GetMapping(),
+                Throws.TypeOf<InvalidOperationException>().With.Message.Contains(_sourcePath));
+        }
+
+        [Test]
+        public void GetMapping_WhenLocalFileIsLocked_ThrowsInvalidOperationExceptionWithPath()
+        {
+            using var stream = new FileStream(_localPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
+            var content = System.Text.Encoding.UTF8.GetBytes("{}");
+            stream.Write(content, 0, content.Length);
+            stream.Flush();
+
+            Assert.That(() => new PropertyMappingProvider(_localPath, null).GetMapping(),
+                Throws.TypeOf<InvalidOperationException>().With.Message.Contains(_localPath));
+        }
+
+        [Test]
+        public void SaveMapping_WhenFileIsReadOnly_ThrowsInvalidOperationExceptionWithPath()
+        {
+            var provider = new PropertyMappingProvider(_localPath, null);
+            provider.SaveMapping(new PropertyMappingConfig());
+            File.SetAttributes(_localPath, FileAttributes.ReadOnly);
+
+            try
+            {
+                Assert.That(() => provider.SaveMapping(new PropertyMappingConfig { IpnProperty = "Changed" }),
+                    Throws.TypeOf<InvalidOperationException>().With.Message.Contains(_localPath));
+            }
+            finally
+            {
+                File.SetAttributes(_localPath, FileAttributes.Normal);
+            }
+        }
+
+        [Test]
+        public void SaveMapping_WhenPathIsAFileUsedAsDirectory_ThrowsInvalidOperationExceptionWithPath()
+        {
+            // Create a file whose name will be treated as a directory by SaveMapping.
+            var badPath = Path.Combine(_localPath, "mapping.json");
+            File.WriteAllText(_localPath, "blocking the directory");
+
+            Assert.That(() => new PropertyMappingProvider(badPath, null).SaveMapping(new PropertyMappingConfig()),
+                Throws.TypeOf<InvalidOperationException>().With.Message.Contains(badPath));
+        }
+
         // ── SaveMapping ───────────────────────────────────────────────────────
 
         [Test]

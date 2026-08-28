@@ -10,10 +10,16 @@ namespace SwInventreeAddin.Config
         /// Returns the current mapping.
         /// Resolution: source path first (when configured and file exists), then local file,
         /// then first-run defaults (writes defaults to local path and returns them).
+        /// Throws <see cref="System.InvalidOperationException"/> if the mapping file cannot be
+        /// read or parsed, naming the offending path.
         /// </summary>
         PropertyMappingConfig GetMapping();
 
-        /// <summary>Persists the mapping to the local file path.</summary>
+        /// <summary>
+        /// Persists the mapping to the local file path.
+        /// Throws <see cref="System.InvalidOperationException"/> if the file cannot be
+        /// written or created, naming the offending path.
+        /// </summary>
         void SaveMapping(PropertyMappingConfig config);
 
         /// <summary>

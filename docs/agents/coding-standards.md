@@ -98,6 +98,8 @@ Before adding a public method or class, ask:
 2. Can I simplify the parameters?
 3. Can I hide more complexity inside?
 
+For the shared vocabulary, design-it-twice patterns, and deepening guidance, consult the `/codebase-design` skill. This `## Module Design` section remains the repo's local source of truth; do not duplicate those definitions elsewhere.
+
 ---
 
 ## Code Quality Rules

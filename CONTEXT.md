@@ -20,6 +20,10 @@ _Avoid_: custom property, SW property
 The user-configurable JSON file that maps InvenTree field names (name, notes, revision, description, IPN) to corresponding SolidWorks Document Property names.
 _Avoid_: field mapping, property config
 
+**Mapping Schema Version**:
+A version marker inside the Property Mapping JSON file. When the marker is older or newer than the add-in's current format, the **Settings** window and **Task Pane** show a warning, but the add-in continues to work by filling missing fields with defaults and preserving unknown keys.
+_Avoid_: schema, mapping version
+
 **Task Pane**:
 The persistent SolidWorks side panel that hosts the add-in UI.
 _Avoid_: sidebar, panel, control
