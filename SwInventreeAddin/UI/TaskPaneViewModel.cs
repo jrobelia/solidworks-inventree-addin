@@ -664,7 +664,7 @@ namespace SwInventreeAddin.UI
             {
                 RefreshCurrentProperties();
             }
-            catch (InvalidOperationException ex) when (IsMappingFileError(ex))
+            catch (InvalidOperationException ex)
             {
                 RunOnUiThread(() => SetStatus(ex.Message, StatusSeverity.Error));
                 return;
@@ -1090,9 +1090,6 @@ namespace SwInventreeAddin.UI
 
         private PropertyMappingConfig GetMappingOrDefault() =>
             _mappingProvider?.GetMapping() ?? new PropertyMappingConfig();
-
-        private static bool IsMappingFileError(InvalidOperationException ex) =>
-            ex.Message.IndexOf("mapping file", StringComparison.OrdinalIgnoreCase) >= 0;
 
         private void CheckMappingSchema()
         {
