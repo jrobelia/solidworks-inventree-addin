@@ -21,38 +21,6 @@ namespace SwInventreeAddin.Config
         }
 
         /// <inheritdoc/>
-        public async Task<string> ResolveApiKeyAsync(SettingsApplyInput input)
-        {
-            var url = input.Url.Trim();
-
-            if (string.IsNullOrWhiteSpace(url))
-                throw new InvalidOperationException("Server URL is required.");
-
-            if (!url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException(
-                    "Server URL must begin with https:// — a plain http:// connection is not secure.");
-
-            var username = input.Username.Trim();
-            var password = input.Password;
-            var rawKey   = input.RawApiKey.Trim();
-
-            if (!string.IsNullOrWhiteSpace(username) || !string.IsNullOrWhiteSpace(password))
-            {
-                if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
-                    throw new InvalidOperationException("Enter both username and password.");
-
-                return await _tokenService.GetTokenAsync(url, username, password)
-                                          .ConfigureAwait(false);
-            }
-
-            if (!string.IsNullOrWhiteSpace(rawKey))
-                return rawKey;
-
-            throw new InvalidOperationException(
-                "Enter a username and password, or expand Advanced and paste an API key.");
-        }
-
-        /// <inheritdoc/>
         public async Task ApplyAsync(SettingsApplyInput input)
         {
             string apiKey;
@@ -90,15 +58,7 @@ namespace SwInventreeAddin.Config
             if (client == null)
                 throw new ArgumentNullException(nameof(client));
 
-            string apiKey;
-            try
-            {
-                apiKey = await ResolveApiKeyAsync(input).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                throw ConfigError(ex);
-            }
+            string apiKey = await ResolveApiKeyAsync(input).ConfigureAwait(false);
 
             client.BaseAddress = new Uri(input.Url.Trim());
             client.DefaultRequestHeaders.Authorization =
@@ -121,10 +81,40 @@ namespace SwInventreeAddin.Config
                     $"Server responded: {(int)response.StatusCode} {response.ReasonPhrase}");
         }
 
+        // ── Private helpers ───────────────────────────────────────────────────
+
+        private async Task<string> ResolveApiKeyAsync(SettingsApplyInput input)
+        {
+            var url = input.Url.Trim();
+
+            if (string.IsNullOrWhiteSpace(url))
+                throw new InvalidOperationException("Server URL is required.");
+
+            if (!url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException(
+                    "Server URL must begin with https:// — a plain http:// connection is not secure.");
+
+            var username = input.Username.Trim();
+            var password = input.Password;
+            var rawKey   = input.RawApiKey.Trim();
+
+            if (!string.IsNullOrWhiteSpace(username) || !string.IsNullOrWhiteSpace(password))
+            {
+                if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+                    throw new InvalidOperationException("Enter both username and password.");
+
+                return await _tokenService.GetTokenAsync(url, username, password)
+                                          .ConfigureAwait(false);
+            }
+
+            if (!string.IsNullOrWhiteSpace(rawKey))
+                return rawKey;
+
+            throw new InvalidOperationException(
+                "Enter a username and password, or expand Advanced and paste an API key.");
+        }
+
         private static SettingsApplyException ConfigError(Exception ex)
-            => new SettingsApplyException(
-                $"Failed to save server settings: {ex.Message}",
-                SettingsApplyErrorKind.Config,
-                ex);
+            => new SettingsApplyException($"Failed to save server settings: {ex.Message}", ex);
     }
 }

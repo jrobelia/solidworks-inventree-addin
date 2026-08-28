@@ -3,6 +3,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using NUnit.Framework;
 using SwInventreeAddin.Config;
 using SwInventreeAddin.InvenTree;
@@ -43,7 +44,7 @@ namespace SwInventreeAddin.Tests
 
             var window = CreateWindow(mappingProvider: mappingProvider);
 
-            Assert.That(window.MappingStatusText.Text, Does.Contain("Failed to load mapping file"));
+            Assert.That(GetText(window, "MappingStatusText"), Does.Contain("Failed to load mapping file"));
         }
 
         [Test]
@@ -52,8 +53,7 @@ namespace SwInventreeAddin.Tests
             var applyService = new StubSettingsApplyService
             {
                 ExceptionToThrowOnApply = new SettingsApplyException(
-                    "Failed to save server settings: stub config failure",
-                    SettingsApplyErrorKind.Config),
+                    "Failed to save server settings: stub config failure"),
             };
 
             var window = CreateWindow(applyService: applyService);
@@ -61,8 +61,8 @@ namespace SwInventreeAddin.Tests
             bool result = await window.ApplySettingsAsync();
 
             Assert.That(result, Is.False);
-            Assert.That(window.StatusText.Text, Does.Contain("Failed to save server settings"));
-            Assert.That(window.StatusText.Text, Does.Contain("stub config failure"));
+            Assert.That(GetText(window, "StatusText"), Does.Contain("Failed to save server settings"));
+            Assert.That(GetText(window, "StatusText"), Does.Contain("stub config failure"));
         }
 
         [Test]
@@ -83,7 +83,7 @@ namespace SwInventreeAddin.Tests
             bool result = await window.ApplySettingsAsync();
 
             Assert.That(result, Is.False);
-            Assert.That(window.StatusText.Text, Does.Contain("Failed to load mapping file"));
+            Assert.That(GetText(window, "StatusText"), Does.Contain("Failed to load mapping file"));
         }
 
         [Test]
@@ -100,10 +100,18 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(result, Is.True);
             Assert.That(firedProvider, Is.SameAs(mappingProvider));
-            Assert.That(window.StatusText.Text, Does.Contain("Settings applied"));
+            Assert.That(GetText(window, "StatusText"), Does.Contain("Settings applied"));
         }
 
         // ── Helpers ───────────────────────────────────────────────────────────
+
+        private static string GetText(Window window, string name)
+        {
+            var element = System.Windows.LogicalTreeHelper.FindLogicalNode(window, name);
+            var textBlock = element as TextBlock;
+            Assert.That(textBlock, Is.Not.Null, $"Could not find TextBlock named '{name}'.");
+            return textBlock!.Text ?? string.Empty;
+        }
 
         private SettingsWindow CreateWindow(
             IPropertyMappingProvider? mappingProvider = null,

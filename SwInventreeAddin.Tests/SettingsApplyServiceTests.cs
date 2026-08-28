@@ -1,4 +1,7 @@
 using System;
+using System.Net;
+using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using SwInventreeAddin.Config;
@@ -11,7 +14,7 @@ namespace SwInventreeAddin.Tests
     public class SettingsApplyServiceTests
     {
         [Test]
-        public async Task ApplyAsync_WhenConfigProviderThrows_ThrowsSettingsApplyExceptionWithConfigKind()
+        public async Task ApplyAsync_WhenConfigProviderThrows_ThrowsSettingsApplyException()
         {
             var configProvider = new StubConfigProvider("https://example.com", "key")
             {
@@ -23,12 +26,11 @@ namespace SwInventreeAddin.Tests
             var ex = Assert.ThrowsAsync<SettingsApplyException>(
                 () => service.ApplyAsync(CreateInput()));
 
-            Assert.That(ex!.ErrorKind, Is.EqualTo(SettingsApplyErrorKind.Config));
             Assert.That(ex.Message, Does.Contain("Failed to save server settings"));
         }
 
         [Test]
-        public async Task ApplyAsync_WhenTokenResolutionFails_ThrowsSettingsApplyExceptionWithConfigKind()
+        public async Task ApplyAsync_WhenTokenResolutionFails_ThrowsSettingsApplyException()
         {
             var configProvider = new StubConfigProvider("https://example.com", "key");
             var tokenService   = new StubInventreeTokenService(); // configured to fail
@@ -41,7 +43,6 @@ namespace SwInventreeAddin.Tests
             var ex = Assert.ThrowsAsync<SettingsApplyException>(
                 () => service.ApplyAsync(input));
 
-            Assert.That(ex!.ErrorKind, Is.EqualTo(SettingsApplyErrorKind.Config));
             Assert.That(ex.Message, Does.Contain("Failed to save server settings"));
         }
 
@@ -80,7 +81,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public async Task ApplyAsync_WhenUrlIsHttp_ThrowsSettingsApplyExceptionWithConfigKind()
+        public async Task ApplyAsync_WhenUrlIsHttp_ThrowsSettingsApplyException()
         {
             var configProvider = new StubConfigProvider("http://example.com", "key");
             var tokenService   = new StubInventreeTokenService { TokenToReturn = "token" };
@@ -92,8 +93,52 @@ namespace SwInventreeAddin.Tests
             var ex = Assert.ThrowsAsync<SettingsApplyException>(
                 () => service.ApplyAsync(input));
 
-            Assert.That(ex!.ErrorKind, Is.EqualTo(SettingsApplyErrorKind.Config));
             Assert.That(ex.Message, Does.Contain("https://"));
+        }
+
+        [Test]
+        public async Task TestConnectionAsync_WhenServerReturnsOk_Completes()
+        {
+            var configProvider = new StubConfigProvider("https://example.com", "key");
+            var tokenService   = new StubInventreeTokenService { TokenToReturn = "token" };
+            var service        = new SettingsApplyService(configProvider, tokenService);
+
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "[]");
+            using var client = new HttpClient(handler) { BaseAddress = new Uri("https://example.com/") };
+
+            Assert.DoesNotThrowAsync(() => service.TestConnectionAsync(CreateInput(), client));
+        }
+
+        [Test]
+        public void TestConnectionAsync_WhenServerReturnsError_ThrowsInvalidOperationException()
+        {
+            var configProvider = new StubConfigProvider("https://example.com", "key");
+            var tokenService   = new StubInventreeTokenService { TokenToReturn = "token" };
+            var service        = new SettingsApplyService(configProvider, tokenService);
+
+            var handler = new StubHttpMessageHandler(HttpStatusCode.Unauthorized, "Unauthorized");
+            using var client = new HttpClient(handler) { BaseAddress = new Uri("https://example.com/") };
+
+            var ex = Assert.ThrowsAsync<InvalidOperationException>(
+                () => service.TestConnectionAsync(CreateInput(), client));
+
+            Assert.That(ex.Message, Does.Contain("Server responded"));
+        }
+
+        [Test]
+        public void TestConnectionAsync_WhenHttpRequestThrows_ThrowsInvalidOperationException()
+        {
+            var configProvider = new StubConfigProvider("https://example.com", "key");
+            var tokenService   = new StubInventreeTokenService { TokenToReturn = "token" };
+            var service        = new SettingsApplyService(configProvider, tokenService);
+
+            var handler = new FailingHttpMessageHandler(new HttpRequestException("connection refused"));
+            using var client = new HttpClient(handler) { BaseAddress = new Uri("https://example.com/") };
+
+            var ex = Assert.ThrowsAsync<InvalidOperationException>(
+                () => service.TestConnectionAsync(CreateInput(), client));
+
+            Assert.That(ex.Message, Does.Contain("Could not reach"));
         }
 
         private static SettingsApplyInput CreateInput()
@@ -106,6 +151,22 @@ namespace SwInventreeAddin.Tests
                 BomKeyword            = "inventree",
                 WaitForAutoPartNumber = true,
             };
+        }
+
+        private sealed class FailingHttpMessageHandler : HttpMessageHandler
+        {
+            private readonly Exception _exception;
+
+            public FailingHttpMessageHandler(Exception exception)
+            {
+                _exception = exception;
+            }
+
+            protected override Task<HttpResponseMessage> SendAsync(
+                HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                throw _exception;
+            }
         }
     }
 }

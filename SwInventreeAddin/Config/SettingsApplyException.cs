@@ -8,25 +8,16 @@ namespace SwInventreeAddin.Config
     /// </summary>
     public class SettingsApplyException : InvalidOperationException
     {
-        /// <summary>Classifies the failure for status-message selection.</summary>
-        public SettingsApplyErrorKind ErrorKind { get; }
+        /// <summary>
+        /// Creates a new exception with the given human-readable message.
+        /// </summary>
+        public SettingsApplyException(string message)
+            : base(message) { }
 
         /// <summary>
-        /// Creates a new exception with the given human-readable message and error kind.
+        /// Creates a new exception with the given message and inner exception.
         /// </summary>
-        public SettingsApplyException(string message, SettingsApplyErrorKind kind)
-            : base(message)
-        {
-            ErrorKind = kind;
-        }
-
-        /// <summary>
-        /// Creates a new exception with the given message, error kind, and inner exception.
-        /// </summary>
-        public SettingsApplyException(string message, SettingsApplyErrorKind kind, Exception inner)
-            : base(message, inner)
-        {
-            ErrorKind = kind;
-        }
+        public SettingsApplyException(string message, Exception inner)
+            : base(message, inner) { }
     }
 }
