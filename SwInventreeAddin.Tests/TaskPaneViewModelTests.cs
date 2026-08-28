@@ -246,6 +246,22 @@ namespace SwInventreeAddin.Tests
             Assert.That(_vm.StatusText, Does.Contain("Error").IgnoreCase);
         }
 
+        [Test]
+        public async Task WhenMappingProviderThrows_FetchPartAsync_SetsMappingErrorStatus()
+        {
+            var mappingProvider = new StubPropertyMappingProvider();
+            _propertyService.Seed("PartNo", "R-10K-0402");
+            _vm = new TaskPaneViewModel(_client, _propertyService, null, mappingProvider, null);
+
+            mappingProvider.ThrowOnGet = new System.InvalidOperationException(
+                "Failed to load mapping file: C:\\temp\\bad.json");
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.StatusText, Does.Contain("Failed to load mapping file"));
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Error));
+        }
+
         // ── ClearAll ──────────────────────────────────────────────────────────
 
         [Test]

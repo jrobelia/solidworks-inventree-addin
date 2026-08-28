@@ -660,7 +660,15 @@ namespace SwInventreeAddin.UI
         /// </summary>
         public async Task FetchPartAsync()
         {
-            RefreshCurrentProperties();
+            try
+            {
+                RefreshCurrentProperties();
+            }
+            catch (InvalidOperationException ex) when (IsMappingFileError(ex))
+            {
+                RunOnUiThread(() => SetStatus(ex.Message, StatusSeverity.Error));
+                return;
+            }
 
             // ── LINKED-by-PK path ─────────────────────────────────────────────
             if (_documentPkPresent && _documentPk > 0)
@@ -1082,6 +1090,9 @@ namespace SwInventreeAddin.UI
 
         private PropertyMappingConfig GetMappingOrDefault() =>
             _mappingProvider?.GetMapping() ?? new PropertyMappingConfig();
+
+        private static bool IsMappingFileError(InvalidOperationException ex) =>
+            ex.Message.IndexOf("mapping file", StringComparison.OrdinalIgnoreCase) >= 0;
 
         private void CheckMappingSchema()
         {
