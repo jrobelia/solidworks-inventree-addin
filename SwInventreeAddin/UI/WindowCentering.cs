@@ -81,8 +81,11 @@ namespace SwInventreeAddin.UI
         /// </summary>
         /// <remarks>
         /// <para>
-        /// The window starts at <c>Opacity="0"</c>, is moved far off-screen at
-        /// <see cref="Window.SourceInitialized"/>, then centered in
+        /// The window starts at <c>Opacity="0"</c>. It is placed far off-screen by setting
+        /// <see cref="Window.WindowStartupLocation"/> to <c>Manual</c> and <see cref="Window.Left"/>/
+        /// <see cref="Window.Top"/> before <c>Show()</c>, then again via <c>SetWindowPos</c> at
+        /// <see cref="Window.SourceInitialized"/>, so the first visible frame is never drawn at a
+        /// default location. The window is then centered and revealed once it stabilizes in
         /// <see cref="Window.ContentRendered"/>.
         /// </para>
         /// <para>

@@ -180,9 +180,10 @@ namespace SwInventreeAddin.Tests
 
             WindowCentering.Attach(dialog, IntPtr.Zero);
 
-            Assert.That(dialog.WindowStartupLocation, Is.EqualTo(WindowStartupLocation.Manual));
-            Assert.That(dialog.Left, Is.EqualTo(WindowCentering.HiddenLeft));
-            Assert.That(dialog.Top,  Is.EqualTo(WindowCentering.HiddenTop));
+            Assert.That((dialog.WindowStartupLocation, dialog.Left, dialog.Top),
+                        Is.EqualTo((WindowStartupLocation.Manual,
+                                    (double)WindowCentering.HiddenLeft,
+                                    (double)WindowCentering.HiddenTop)));
         }
 
         [Test, Timeout(10000)]
