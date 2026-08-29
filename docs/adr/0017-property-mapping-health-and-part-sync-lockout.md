@@ -18,6 +18,14 @@ The **Property Mapping** JSON file now drives all Part Sync and BOM Compare oper
 - The editor exposes **BOM Column Aliases** for the four fields we currently use: IPN, Qty, Reference, Note. Aliases are comma-separated and validated before save.
 - Duplicate non-blank SolidWorks Document Property names in the same mapping make the mapping `Invalid`.
 
+## Lessons from PR #131
+
+- **Catch mapping errors in one place, not in every UI call site.** Catching `InvalidOperationException` around multiple calls to `GetMapping()` and `RefreshCurrentProperties()` scattered the error handling and made it easy for one path to clear a warning that another path had just set.
+- **Do not backfill missing fields with defaults at runtime.** Backfilling `BomColumn*` defaults made the mapping look configured when the file was missing them, so the editor could not tell the engineer which fields were new.
+- **Do not mutate the runtime config object and use it as the editor’s draft.** Mutating the in-memory `PropertyMappingConfig` in the provider meant the editor had no clean draft to save or discard.
+- **The add-in’s own writes must not trigger a full Task Pane refresh.** Document-property-changed events caused by `Apply` were handled the same as user edits, which cleared status and could reset the part session.
+- **Tooltip tests must assert the visible text, not the control type.** Tests that only verified the `ToolTip` content was a `TextBlock` passed while the UI rendered the type name, so the rendered text must be asserted through the public UI seam.
+
 ## Consequences
 
 - **Settings** and the **Task Pane** share one `MappingHealth` result and stay in sync.
