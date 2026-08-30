@@ -31,6 +31,12 @@ namespace SwInventreeAddin.Config
         /// <summary>Human-readable message that explains the current <see cref="Health"/>.</summary>
         public string? Message { get; }
 
+        /// <summary>
+        /// Human-readable message for the current <see cref="Health"/>.
+        /// Falls back to a default label when <see cref="Message"/> is <c>null</c>.
+        /// </summary>
+        public string MessageOrDefault => Message ?? GetDefaultMessage(Health);
+
         /// <summary>True when Apply, Push, Create Part, and BOM Compare are allowed.</summary>
         public bool CanUseForPartSync => Health == MappingHealth.Healthy;
 
@@ -39,5 +45,18 @@ namespace SwInventreeAddin.Config
 
         /// <summary>True when the mapping editor may be opened. Invalid mappings open read-only.</summary>
         public bool CanEdit => Health != MappingHealth.Invalid;
+
+        /// <summary>
+        /// Returns the default human-readable label for the supplied <see cref="MappingHealth"/>.
+        /// Used as a fallback when no caller-supplied <see cref="Message"/> is available.
+        /// </summary>
+        internal static string GetDefaultMessage(MappingHealth health) =>
+            health switch
+            {
+                MappingHealth.Healthy     => "Mapping file is up to date and valid.",
+                MappingHealth.NeedsUpgrade => "Mapping schema mismatch \u2014 review Settings",
+                MappingHealth.NewerSchema => "The mapping file uses a newer schema than this add-in. Upgrade the add-in to enable writes.",
+                _                         => "The mapping configuration is invalid.",
+            };
     }
 }

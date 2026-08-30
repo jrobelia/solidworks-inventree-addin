@@ -43,8 +43,7 @@ namespace SwInventreeAddin.Tests.Stubs
             var result = GetMappingResult();
 
             if (result.Health == MappingHealth.Invalid)
-                throw new InvalidOperationException(
-                    result.Message ?? "The mapping configuration is invalid.");
+                throw new InvalidOperationException(result.MessageOrDefault);
 
             return result.Config;
         }

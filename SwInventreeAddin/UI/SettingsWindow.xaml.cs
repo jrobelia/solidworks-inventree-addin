@@ -177,11 +177,9 @@ namespace SwInventreeAddin.UI
                     _                          => (Brush?)FindResource("BrushStatusError"),
                 };
 
-                string statusText = GetStatusText(result);
-
                 MappingStatusStripe.Background = stripeColor;
-                MappingStatusText.Text         = statusText;
-                MappingStatusText.ToolTip      = statusText;
+                MappingStatusText.Text         = result.MessageOrDefault;
+                MappingStatusText.ToolTip      = result.MessageOrDefault;
                 return true;
             }
             catch (InvalidOperationException ex)
@@ -200,25 +198,6 @@ namespace SwInventreeAddin.UI
                 MappingStatusText.ToolTip      = MappingStatusText.Text;
                 return false;
             }
-        }
-
-        /// <summary>
-        /// Returns the human-readable text for the mapping status bar.
-        /// Uses <see cref="MappingResult.Message"/> when available, otherwise falls back
-        /// to a short label derived from the <see cref="MappingHealth"/>.
-        /// </summary>
-        private static string GetStatusText(MappingResult result)
-        {
-            if (!string.IsNullOrEmpty(result.Message))
-                return result.Message!;
-
-            return result.Health switch
-            {
-                MappingHealth.Healthy     => "Mapping file is up to date and valid.",
-                MappingHealth.NeedsUpgrade => "Mapping schema is out of date.",
-                MappingHealth.NewerSchema => "Mapping schema is newer than this add-in.",
-                _                         => "The mapping configuration is invalid.",
-            };
         }
 
         private ServerConfig? TryGetConfig()

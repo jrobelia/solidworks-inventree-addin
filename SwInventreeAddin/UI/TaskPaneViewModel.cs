@@ -1165,18 +1165,15 @@ namespace SwInventreeAddin.UI
             {
                 case MappingHealth.Invalid:
                     _schemaMismatchActive = true;
-                    SetStatus(_mappingResult.Message ?? "The mapping configuration is invalid.",
-                              StatusSeverity.Error);
+                    SetStatus(_mappingResult.MessageOrDefault, StatusSeverity.Error);
                     break;
                 case MappingHealth.NeedsUpgrade:
                     _schemaMismatchActive = true;
-                    SetStatus(_mappingResult.Message ?? "Mapping schema mismatch \u2014 review Settings",
-                              StatusSeverity.Warning);
+                    SetStatus(_mappingResult.MessageOrDefault, StatusSeverity.Warning);
                     break;
                 case MappingHealth.NewerSchema:
                     _schemaMismatchActive = true;
-                    SetStatus(_mappingResult.Message ?? "The mapping file uses a newer schema than this add-in. Upgrade the add-in to enable writes.",
-                              StatusSeverity.Warning);
+                    SetStatus(_mappingResult.MessageOrDefault, StatusSeverity.Warning);
                     break;
                 default:
                     if (_schemaMismatchActive)

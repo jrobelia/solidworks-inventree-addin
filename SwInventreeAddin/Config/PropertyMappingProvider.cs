@@ -75,7 +75,7 @@ namespace SwInventreeAddin.Config
                 resolvedPath = _localPath;
                 var defaults = PropertyMappingConfig.WithDefaults();
                 SaveMapping(defaults);
-                return new MappingResult(MappingHealth.Healthy, defaults);
+                return new MappingResult(MappingHealth.Healthy, defaults, MappingResult.GetDefaultMessage(MappingHealth.Healthy));
             }
             catch (Exception ex)
             {
@@ -93,8 +93,7 @@ namespace SwInventreeAddin.Config
             var result = GetMappingResult();
 
             if (result.Health == MappingHealth.Invalid)
-                throw new InvalidOperationException(
-                    result.Message ?? "The mapping configuration is invalid.");
+                throw new InvalidOperationException(result.MessageOrDefault);
 
             return result.Config;
         }
@@ -164,20 +163,20 @@ namespace SwInventreeAddin.Config
 
             var comparison = CompareSchemaVersions(config.SchemaVersion, currentVersion);
             if (comparison == 0)
-                return new MappingResult(MappingHealth.Healthy, config);
+                return new MappingResult(MappingHealth.Healthy, config, MappingResult.GetDefaultMessage(MappingHealth.Healthy));
 
             if (comparison > 0)
                 return new MappingResult(
                     MappingHealth.NewerSchema,
                     config,
-                    "The mapping file uses a newer schema than this add-in. Upgrade the add-in to enable writes.");
+                    MappingResult.GetDefaultMessage(MappingHealth.NewerSchema));
 
             // Older, unversioned (null/empty), or unparseable non-empty schema version.
             if (comparison < 0 || string.IsNullOrWhiteSpace(config.SchemaVersion))
                 return new MappingResult(
                     MappingHealth.NeedsUpgrade,
                     config,
-                    "Mapping schema mismatch \u2014 review Settings");
+                    MappingResult.GetDefaultMessage(MappingHealth.NeedsUpgrade));
 
             return new MappingResult(
                 MappingHealth.Invalid,

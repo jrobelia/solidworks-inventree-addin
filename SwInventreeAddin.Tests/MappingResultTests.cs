@@ -73,5 +73,13 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(result.CanFetch, Is.True);
         }
+
+        [Test]
+        public void MessageOrDefault_WhenMessageIsNull_FallsBackToHealthLabel()
+        {
+            var result = new MappingResult(MappingHealth.Healthy, PropertyMappingConfig.WithDefaults());
+
+            Assert.That(result.MessageOrDefault, Is.EqualTo("Mapping file is up to date and valid."));
+        }
     }
 }
