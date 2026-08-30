@@ -39,6 +39,7 @@ namespace SwInventreeAddin.UI
         private readonly IViewportCaptureService? _viewportService;
         private IPropertyMappingProvider?         _mappingProvider;
         private readonly IConfigProvider?         _configProvider;
+        private EventHandler?                     _mappingChangedHandler;
 
         /// <summary>Raised when the user triggers the Settings action.</summary>
         public event EventHandler? SettingsRequested;
@@ -413,6 +414,7 @@ namespace SwInventreeAddin.UI
             _uiContext       = SynchronizationContext.Current;
 
             LoadPartNumber();
+            AttachMappingProvider();
         }
 
         // ── Commands (called by WPF bindings and forwarded by the shim) ───────
@@ -1097,12 +1099,40 @@ namespace SwInventreeAddin.UI
         /// </summary>
         public void UpdateMapping(IPropertyMappingProvider provider)
         {
+            DetachMappingProvider();
             _mappingProvider = provider;
             RefreshMappingResult();
             RefreshStatus();
             RefreshCommandStates();
             if (_propertiesSectionVisible)
                 RefreshCurrentProperties();
+            AttachMappingProvider();
+        }
+
+        private void AttachMappingProvider()
+        {
+            if (_mappingProvider == null) return;
+
+            _mappingChangedHandler ??= (_, __) => OnMappingChanged();
+            _mappingProvider.MappingChanged += _mappingChangedHandler;
+        }
+
+        private void DetachMappingProvider()
+        {
+            if (_mappingProvider != null && _mappingChangedHandler != null)
+                _mappingProvider.MappingChanged -= _mappingChangedHandler;
+        }
+
+        private void OnMappingChanged()
+        {
+            RunOnUiThread(() =>
+            {
+                RefreshMappingResult();
+                if (_propertiesSectionVisible)
+                    RefreshCurrentProperties();
+                RefreshCommandStates();
+                RefreshStatus();
+            });
         }
 
         private MappingResult GetMappingResultOrDefault() =>

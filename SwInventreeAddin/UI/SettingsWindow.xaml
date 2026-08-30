@@ -187,13 +187,20 @@
                     </Grid.ColumnDefinitions>
                     <Border x:Name="MappingStatusStripe" Grid.Column="0"
                             Background="{StaticResource BrushSectionHeader}" />
-                    <TextBlock x:Name="MappingStatusText"
-                               Grid.Column="1"
-                               VerticalAlignment="Center"
-                               Margin="8,0,4,0"
-                               FontSize="{StaticResource FontSizeBody}"
-                               TextTrimming="CharacterEllipsis"
-                               Foreground="{StaticResource BrushForeground}" />
+                    <TextBox x:Name="MappingStatusText"
+                             Grid.Column="1"
+                             VerticalAlignment="Center"
+                             Margin="8,0,4,0"
+                             FontSize="{StaticResource FontSizeBody}"
+                             Foreground="{StaticResource BrushForeground}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             Padding="0"
+                             IsReadOnly="True"
+                             IsReadOnlyCaretVisible="False"
+                             IsTabStop="False"
+                             Focusable="True"
+                             TextWrapping="NoWrap" />
                 </Grid>
             </Border>
 

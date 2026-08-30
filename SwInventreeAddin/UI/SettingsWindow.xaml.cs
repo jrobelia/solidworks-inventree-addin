@@ -22,6 +22,7 @@ namespace SwInventreeAddin.UI
         private (string Url, string ApiKey, string Username, string Password,
                  string SharedPath, string BomKeyword, bool UseLocalMapping) _savedSnapshot;
         private bool _savedWaitForAutoPartNumber = true;
+        private EventHandler? _mappingChangedHandler;
 
         /// <summary>
         /// Raised after Apply successfully saves settings, so the caller can update
@@ -78,6 +79,8 @@ namespace SwInventreeAddin.UI
 
             // Set Edit Mappings button state and mapping status bar
             RefreshMappingStatus();
+            AttachMappingChanged();
+            Closed += (_, __) => DetachMappingChanged();
 
             _savedSnapshot = CaptureSnapshot();
             RefreshButtonStates();
@@ -150,49 +153,35 @@ namespace SwInventreeAddin.UI
         // ── Mapping status bar ────────────────────────────────────────────────
 
         /// <summary>
-        /// Refreshes the mapping status bar. Catches mapping provider errors,
-        /// shows a red error stripe, and returns <c>false</c>.
+        /// Refreshes the mapping status bar from <see cref="IPropertyMappingProvider.GetMappingResult()"/>.
+        /// Catches mapping provider errors, shows a red error stripe, and returns <c>false</c>.
         /// </summary>
         private bool RefreshMappingStatus()
         {
             try
             {
-                EditMappingsButton.IsEnabled = !_mappingProvider.IsReadOnly;
+                var result = _mappingProvider.GetMappingResult();
+
+                EditMappingsButton.IsEnabled = result.CanEdit && !_mappingProvider.IsReadOnly;
 
                 var config = TryGetConfig();
                 bool hasSharedPath = config != null && !string.IsNullOrEmpty(config.MappingSourcePath);
                 SharedRadio.IsChecked = hasSharedPath;
                 LocalRadio.IsChecked  = !hasSharedPath;
 
-                Brush stripeColor;
-                string statusText;
+                Brush? stripeColor = result.Health switch
+                {
+                    MappingHealth.Healthy      => (Brush?)FindResource("BrushStatusSuccess"),
+                    MappingHealth.NeedsUpgrade => (Brush?)FindResource("BrushStatusWarning"),
+                    MappingHealth.NewerSchema  => (Brush?)FindResource("BrushStatusWarning"),
+                    _                          => (Brush?)FindResource("BrushStatusError"),
+                };
 
-                var mapping = _mappingProvider.GetMapping();
-                bool schemaMismatch = mapping.SchemaVersion != PropertyMappingConfig.CurrentSchemaVersion;
-
-                if (schemaMismatch)
-                {
-                    stripeColor = (Brush)FindResource("BrushStatusWarning");
-                    statusText  = "Schema version mismatch \u2014 review mappings";
-                }
-                else if (_mappingProvider.IsReadOnly)
-                {
-                    stripeColor = (Brush)FindResource("BrushStatusSuccess");
-                    statusText  = "Loaded from shared file";
-                }
-                else if (System.IO.File.Exists(_mappingProvider.LocalFilePath))
-                {
-                    stripeColor = (Brush)FindResource("BrushStatusSuccess");
-                    statusText  = "Using local mappings";
-                }
-                else
-                {
-                    stripeColor = (Brush)FindResource("BrushSectionHeader");
-                    statusText  = "No mappings configured";
-                }
+                string statusText = GetStatusText(result);
 
                 MappingStatusStripe.Background = stripeColor;
                 MappingStatusText.Text         = statusText;
+                MappingStatusText.ToolTip      = statusText;
                 return true;
             }
             catch (InvalidOperationException ex)
@@ -200,6 +189,7 @@ namespace SwInventreeAddin.UI
                 EditMappingsButton.IsEnabled   = false;
                 MappingStatusStripe.Background = (Brush)FindResource("BrushStatusError");
                 MappingStatusText.Text         = ex.Message;
+                MappingStatusText.ToolTip      = ex.Message;
                 return false;
             }
             catch (Exception ex)
@@ -207,8 +197,28 @@ namespace SwInventreeAddin.UI
                 EditMappingsButton.IsEnabled   = false;
                 MappingStatusStripe.Background = (Brush)FindResource("BrushStatusError");
                 MappingStatusText.Text         = $"Failed to load mapping file: {ex.Message}";
+                MappingStatusText.ToolTip      = MappingStatusText.Text;
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Returns the human-readable text for the mapping status bar.
+        /// Uses <see cref="MappingResult.Message"/> when available, otherwise falls back
+        /// to a short label derived from the <see cref="MappingHealth"/>.
+        /// </summary>
+        private static string GetStatusText(MappingResult result)
+        {
+            if (!string.IsNullOrEmpty(result.Message))
+                return result.Message!;
+
+            return result.Health switch
+            {
+                MappingHealth.Healthy     => "Mapping file is up to date and valid.",
+                MappingHealth.NeedsUpgrade => "Mapping schema is out of date.",
+                MappingHealth.NewerSchema => "Mapping schema is newer than this add-in.",
+                _                         => "The mapping configuration is invalid.",
+            };
         }
 
         private ServerConfig? TryGetConfig()
@@ -279,8 +289,17 @@ namespace SwInventreeAddin.UI
 
             try
             {
+                var previousProvider = _mappingProvider;
                 _mappingProvider = _mappingProviderFactory.Create(input.SharedMappingPath);
+
                 bool mappingOk   = this.Dispatcher.Invoke(() => RefreshMappingStatus());
+
+                this.Dispatcher.Invoke(() =>
+                {
+                    DetachMappingChanged(previousProvider);
+                    AttachMappingChanged();
+                });
+
                 if (!mappingOk)
                 {
                     this.Dispatcher.Invoke(() => SetStatus(MappingStatusText.Text, error: true));
@@ -342,6 +361,32 @@ namespace SwInventreeAddin.UI
                 this.Dispatcher.Invoke(() =>
                     SetStatus($"Connection failed: {ex.Message}", error: true));
             }
+        }
+
+        // ── Mapping change notifications ──────────────────────────────────────
+
+        private void AttachMappingChanged()
+        {
+            _mappingChangedHandler ??= (_, __) => OnMappingChanged();
+            _mappingProvider.MappingChanged += _mappingChangedHandler;
+        }
+
+        private void DetachMappingChanged(IPropertyMappingProvider? provider = null)
+        {
+            provider ??= _mappingProvider;
+            if (provider != null && _mappingChangedHandler != null)
+                provider.MappingChanged -= _mappingChangedHandler;
+        }
+
+        private void OnMappingChanged()
+        {
+            if (!CheckAccess())
+            {
+                this.Dispatcher.Invoke(() => RefreshMappingStatus());
+                return;
+            }
+
+            RefreshMappingStatus();
         }
 
         // ── Status bar ────────────────────────────────────────────────────────

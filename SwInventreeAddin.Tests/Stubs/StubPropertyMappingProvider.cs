@@ -24,6 +24,9 @@ namespace SwInventreeAddin.Tests.Stubs
 
         public event EventHandler? MappingChanged;
 
+        /// <summary>Raises <see cref="MappingChanged"/> so tests can simulate an external save/copy.</summary>
+        public void RaiseMappingChanged() => MappingChanged?.Invoke(this, EventArgs.Empty);
+
         public MappingResult GetMappingResult()
         {
             if (ThrowOnGet != null)

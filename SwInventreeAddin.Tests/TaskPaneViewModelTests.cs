@@ -1008,6 +1008,115 @@ namespace SwInventreeAddin.Tests
             Assert.That(_vm.CurrentRevision, Is.EqualTo("B"));
         }
 
+        // ── MappingChanged ─────────────────────────────────────────────────────
+
+        [Test]
+        public void MappingChanged_RefreshesStatusAndCommandStates()
+        {
+            var provider = new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig
+                {
+                    SchemaVersion    = PropertyMappingConfig.CurrentSchemaVersion,
+                    IpnProperty      = "PartNo",
+                    NameProperty     = "Description",
+                    NotesProperty    = "Notes",
+                    RevisionProperty = "Revision",
+                    DescriptionProperty = "Description Long",
+                    PkProperty       = "InvenTree PK"
+                }
+            };
+            _propertyService.Seed("PartNo", "R-10K-0402");
+            _vm = new TaskPaneViewModel(_client, _propertyService, null, provider);
+
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.None));
+
+            provider.Config.SchemaVersion = "2";
+            provider.SaveMapping(provider.Config);
+
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+            Assert.That(_vm.StatusText, Does.Contain("schema mismatch"));
+            Assert.That(_vm.FetchEnabled, Is.True);
+        }
+
+        [Test]
+        public async Task MappingChanged_AfterFetch_ToNewerSchema_DisablesWritesButKeepsFetch()
+        {
+            _client.PartToReturn = SamplePart;
+
+            var provider = new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig
+                {
+                    SchemaVersion    = PropertyMappingConfig.CurrentSchemaVersion,
+                    IpnProperty      = "PartNo",
+                    NameProperty     = "Description",
+                    NotesProperty    = "Notes",
+                    RevisionProperty = "Revision",
+                    DescriptionProperty = "Description Long",
+                    PkProperty       = "InvenTree PK"
+                }
+            };
+            _propertyService.Seed("PartNo", "R-10K-0402");
+            _vm = new TaskPaneViewModel(_client, _propertyService, null, provider);
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.ApplyEnabled, Is.True);
+            Assert.That(_vm.FetchEnabled, Is.True);
+
+            provider.Config.SchemaVersion = "4";
+            provider.SaveMapping(provider.Config);
+
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+            Assert.That(_vm.StatusText, Does.Contain("newer").IgnoreCase);
+            Assert.That(_vm.StatusText, Does.Contain("upgrade the add-in").IgnoreCase);
+            Assert.That(_vm.FetchEnabled, Is.True);
+            Assert.That(_vm.ApplyEnabled, Is.False);
+            Assert.That(_vm.BomButtonEnabled, Is.False);
+        }
+
+        [Test]
+        public void MappingChanged_AfterUpdateMapping_UsesNewProvider()
+        {
+            _vm = CreateVmWithMapping(ipn: "R-10K-0402");
+
+            var newProvider = new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig { SchemaVersion = "4" }
+            };
+
+            _vm.UpdateMapping(newProvider);
+
+            newProvider.Config.SchemaVersion = "2";
+            newProvider.SaveMapping(newProvider.Config);
+
+            Assert.That(_vm.StatusText, Does.Contain("schema mismatch"));
+        }
+
+        [Test]
+        public void MappingChanged_AfterUpdateMapping_DetachesFromOldProvider()
+        {
+            var oldProvider = new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion }
+            };
+            _propertyService.Seed("PartNo", "R-10K-0402");
+            _vm = new TaskPaneViewModel(_client, _propertyService, null, oldProvider);
+
+            _vm.UpdateMapping(new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion }
+            });
+
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.None));
+
+            oldProvider.Config.SchemaVersion = "4";
+            oldProvider.SaveMapping(oldProvider.Config);
+
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.None));
+        }
+
         // ── Task 4-B: Info panel display properties ────────────────────────────
 
         [Test]
