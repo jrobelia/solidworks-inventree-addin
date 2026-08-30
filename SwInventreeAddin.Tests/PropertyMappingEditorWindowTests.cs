@@ -97,7 +97,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void IpnTextBox_BoundToIpnPlaceholder()
+        public void PropertyTextBoxes_BoundToPlaceholdersAndValues()
         {
             var provider = new StubPropertyMappingProvider
             {
@@ -105,6 +105,7 @@ namespace SwInventreeAddin.Tests
                 {
                     SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion,
                     IpnProperty = "MyIPN",
+                    NameProperty = "MyName",
                     BomColumnIpn = "IPN",
                     BomColumnQty = "Qty",
                     BomColumnReference = "Reference",
@@ -115,15 +116,12 @@ namespace SwInventreeAddin.Tests
             var window = new PropertyMappingEditorWindow(provider);
             var vm = (MappingEditorViewModel)window.DataContext;
 
-            var ipnBox = FindTextBoxes(window)
-                .FirstOrDefault(tb => (tb.Tag as string) == vm.IpnPlaceholder);
-
-            Assert.That(ipnBox, Is.Not.Null);
-            Assert.That(ipnBox!.Text, Is.EqualTo("MyIPN"));
+            AssertTextBox(window, vm.IpnPlaceholder, "MyIPN");
+            AssertTextBox(window, vm.NamePlaceholder, "MyName");
         }
 
         [Test]
-        public void BomIpnTextBox_MissingField_IsEmptyAndHasPlaceholderText()
+        public void BomColumnTextBoxes_MissingFields_AreEmptyAndShowPlaceholders()
         {
             var provider = new StubPropertyMappingProvider
             {
@@ -142,10 +140,19 @@ namespace SwInventreeAddin.Tests
             var window = new PropertyMappingEditorWindow(provider);
             var vm = (MappingEditorViewModel)window.DataContext;
 
-            var bomIpnBox = FindTextBoxes(window)
-                .FirstOrDefault(tb => (tb.Tag as string) == vm.BomColumnIpnPlaceholder && string.IsNullOrEmpty(tb.Text));
+            AssertTextBox(window, vm.BomColumnIpnPlaceholder, "");
+            AssertTextBox(window, vm.BomColumnQtyPlaceholder, "");
+            AssertTextBox(window, vm.BomColumnReferencePlaceholder, "");
+            AssertTextBox(window, vm.BomColumnNotePlaceholder, "");
+        }
 
-            Assert.That(bomIpnBox, Is.Not.Null);
+        private static void AssertTextBox(DependencyObject window, string placeholder, string expectedText)
+        {
+            var box = FindTextBoxes(window)
+                .FirstOrDefault(tb => (tb.Tag as string) == placeholder);
+
+            Assert.That(box, Is.Not.Null, $"No TextBox found with placeholder '{placeholder}'.");
+            Assert.That(box!.Text, Is.EqualTo(expectedText));
         }
 
         // ── Helpers ────────────────────────────────────────────────────────────

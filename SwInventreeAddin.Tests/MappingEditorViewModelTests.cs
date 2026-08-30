@@ -11,22 +11,19 @@ namespace SwInventreeAddin.Tests
     [TestFixture]
     public class MappingEditorViewModelTests
     {
-        private string _localPath  = null!;
-        private string _sourcePath = null!;
+        private string _localPath = null!;
 
         [SetUp]
         public void SetUp()
         {
-            var tmp    = Path.GetTempPath();
-            _localPath  = Path.Combine(tmp, $"mapping_editor_local_{Guid.NewGuid():N}.json");
-            _sourcePath = Path.Combine(tmp, $"mapping_editor_source_{Guid.NewGuid():N}.json");
+            var tmp = Path.GetTempPath();
+            _localPath = Path.Combine(tmp, $"mapping_editor_local_{Guid.NewGuid():N}.json");
         }
 
         [TearDown]
         public void TearDown()
         {
-            if (File.Exists(_localPath))  File.Delete(_localPath);
-            if (File.Exists(_sourcePath)) File.Delete(_sourcePath);
+            if (File.Exists(_localPath)) File.Delete(_localPath);
         }
 
         // ── Constructor and placeholders ───────────────────────────────────────
@@ -406,6 +403,24 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(vm.CanCopyToLocal, Is.False);
             Assert.That(vm.CopyToLocalInstruction, Is.Not.Null.And.Contains("Local in Settings").IgnoreCase);
+        }
+
+        [Test]
+        public void CopyToLocal_WhenProviderThrows_ClearsInstructionAndSetsErrorMessage()
+        {
+            var provider = new StubPropertyMappingProvider
+            {
+                IsReadOnly = true,
+                Config = new PropertyMappingConfig { SchemaVersion = "2" },
+                ThrowOnCopyToLocal = new InvalidOperationException("Source file missing.")
+            };
+
+            var vm = new MappingEditorViewModel(provider);
+            vm.CopyToLocal();
+
+            Assert.That(vm.CopyToLocalInstruction, Is.Null);
+            Assert.That(vm.ErrorMessage, Is.EqualTo("Source file missing."));
+            Assert.That(vm.CanCopyToLocal, Is.True);
         }
 
         // ── Helpers ────────────────────────────────────────────────────────────

@@ -58,8 +58,8 @@ namespace SwInventreeAddin.UI
 
         // ── Defaults ───────────────────────────────────────────────────────────
 
-        private static readonly PropertyMappingConfig DefaultConfig
-            = PropertyMappingConfig.WithDefaults();
+        private static PropertyMappingConfig DefaultConfig()
+            => PropertyMappingConfig.WithDefaults();
 
         // ── Constructors ───────────────────────────────────────────────────────
 
@@ -141,17 +141,17 @@ namespace SwInventreeAddin.UI
             set => Set(ref _bomColumnNote, value);
         }
 
-        public string IpnPlaceholder         => DefaultConfig.IpnProperty!;
-        public string NamePlaceholder        => DefaultConfig.NameProperty!;
-        public string DescriptionPlaceholder => DefaultConfig.DescriptionProperty!;
-        public string RevisionPlaceholder    => DefaultConfig.RevisionProperty!;
-        public string NotesPlaceholder       => DefaultConfig.NotesProperty!;
-        public string PkPlaceholder          => DefaultConfig.PkProperty!;
+        public string IpnPlaceholder         => DefaultConfig().IpnProperty!;
+        public string NamePlaceholder        => DefaultConfig().NameProperty!;
+        public string DescriptionPlaceholder => DefaultConfig().DescriptionProperty!;
+        public string RevisionPlaceholder    => DefaultConfig().RevisionProperty!;
+        public string NotesPlaceholder       => DefaultConfig().NotesProperty!;
+        public string PkPlaceholder          => DefaultConfig().PkProperty!;
 
-        public string BomColumnIpnPlaceholder       => DefaultConfig.BomColumnIpn!;
-        public string BomColumnQtyPlaceholder       => DefaultConfig.BomColumnQty!;
-        public string BomColumnReferencePlaceholder => DefaultConfig.BomColumnReference!;
-        public string BomColumnNotePlaceholder      => DefaultConfig.BomColumnNote!;
+        public string BomColumnIpnPlaceholder       => DefaultConfig().BomColumnIpn!;
+        public string BomColumnQtyPlaceholder       => DefaultConfig().BomColumnQty!;
+        public string BomColumnReferencePlaceholder => DefaultConfig().BomColumnReference!;
+        public string BomColumnNotePlaceholder      => DefaultConfig().BomColumnNote!;
 
         public bool IsReadOnly => _isReadOnly;
 
@@ -225,6 +225,8 @@ namespace SwInventreeAddin.UI
         /// </summary>
         public void CopyToLocal()
         {
+            ErrorMessage = null;
+
             try
             {
                 _provider.CopyToLocal();
@@ -241,13 +243,13 @@ namespace SwInventreeAddin.UI
 
         // ── Validation ─────────────────────────────────────────────────────────
 
-        private static string? Validate(PropertyMappingConfig draft)
+        private string? Validate(PropertyMappingConfig draft)
         {
             var aliasError = ValidateBomAliases(draft);
             if (!string.IsNullOrEmpty(aliasError))
                 return aliasError;
 
-            var result = PropertyMappingProvider.Classify(draft, string.Empty);
+            var result = _provider.ValidateMapping(draft);
             if (result.Health == MappingHealth.Invalid)
                 return result.MessageOrDefault;
 

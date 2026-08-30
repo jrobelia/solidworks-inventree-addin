@@ -48,6 +48,9 @@ namespace SwInventreeAddin.Tests.Stubs
             return result.Config;
         }
 
+        public MappingResult ValidateMapping(PropertyMappingConfig config)
+            => PropertyMappingProvider.Classify(config, LocalFilePath);
+
         public void SaveMapping(PropertyMappingConfig config)
         {
             if (ThrowOnSave != null)

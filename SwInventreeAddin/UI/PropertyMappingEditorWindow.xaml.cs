@@ -168,18 +168,5 @@ namespace SwInventreeAddin.UI
             }
         }
 
-        // ── Helpers ────────────────────────────────────────────────────────────
-
-        /// <summary>
-        /// Returns true when any two non-blank names in <paramref name="names"/> are
-        /// equal (case-insensitive). Blank/whitespace entries are ignored (unmapped fields).
-        /// Public so unit tests in a separate assembly can call it without STA.
-        /// </summary>
-        public static bool HasDuplicatePropertyNames(IEnumerable<string> names)
-        {
-            var seen = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
-            return names.Where(n => !string.IsNullOrWhiteSpace(n))
-                        .Any(n => !seen.Add(n));
-        }
     }
 }

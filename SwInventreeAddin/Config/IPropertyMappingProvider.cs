@@ -33,6 +33,12 @@ namespace SwInventreeAddin.Config
         PropertyMappingConfig GetMapping();
 
         /// <summary>
+        /// Returns a <see cref="MappingResult"/> for the supplied draft without
+        /// persisting it, so the editor can validate a draft before saving.
+        /// </summary>
+        MappingResult ValidateMapping(PropertyMappingConfig config);
+
+        /// <summary>
         /// Persists the mapping to the local file path.
         /// Throws <see cref="System.InvalidOperationException"/> if the file cannot be
         /// written or created, naming the offending path.

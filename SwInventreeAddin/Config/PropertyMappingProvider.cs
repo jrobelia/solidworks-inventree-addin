@@ -99,6 +99,10 @@ namespace SwInventreeAddin.Config
         }
 
         /// <inheritdoc/>
+        public MappingResult ValidateMapping(PropertyMappingConfig config)
+            => Classify(config, _localPath);
+
+        /// <inheritdoc/>
         public void SaveMapping(PropertyMappingConfig config)
         {
             try
@@ -154,10 +158,10 @@ namespace SwInventreeAddin.Config
         {
             var duplicate = FindDuplicatePropertyName(config);
             if (duplicate != null)
-                return new MappingResult(
-                    MappingHealth.Invalid,
-                    config,
-                    $"Invalid mapping file: {path}. {duplicate}");
+            {
+                var location = string.IsNullOrWhiteSpace(path) ? "" : $"Invalid mapping file: {path}. ";
+                return new MappingResult(MappingHealth.Invalid, config, $"{location}{duplicate}");
+            }
 
             var currentVersion = PropertyMappingConfig.CurrentSchemaVersion;
 
@@ -178,10 +182,11 @@ namespace SwInventreeAddin.Config
                     config,
                     MappingResult.GetDefaultMessage(MappingHealth.NeedsUpgrade));
 
+            var badVersionLocation = string.IsNullOrWhiteSpace(path) ? "" : $"Invalid mapping file: {path}. ";
             return new MappingResult(
                 MappingHealth.Invalid,
                 config,
-                $"Invalid mapping file: {path}. Unrecognized schema version '{config.SchemaVersion}'.");
+                $"{badVersionLocation}Unrecognized schema version '{config.SchemaVersion}'.");
         }
 
         private static int? CompareSchemaVersions(string? fileVersion, string currentVersion)
