@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace SwInventreeAddin.Config
 {
@@ -21,6 +22,7 @@ namespace SwInventreeAddin.Config
     {
         private readonly string  _localPath;
         private readonly string? _sourcePath;
+        private readonly JsonSerializerOptions _saveOptions;
 
         /// <summary>Uses the default %APPDATA% local path and optional source path.</summary>
         public PropertyMappingProvider(string? sourcePath = null)
@@ -31,6 +33,11 @@ namespace SwInventreeAddin.Config
         {
             _localPath  = localPath;
             _sourcePath = sourcePath;
+            _saveOptions = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            };
         }
 
         /// <inheritdoc/>
@@ -66,7 +73,7 @@ namespace SwInventreeAddin.Config
 
                 // First run — write defaults so the user has a file to edit.
                 resolvedPath = _localPath;
-                var defaults = new PropertyMappingConfig();
+                var defaults = PropertyMappingConfig.WithDefaults();
                 SaveMapping(defaults);
                 return new MappingResult(MappingHealth.Healthy, defaults);
             }
@@ -98,8 +105,8 @@ namespace SwInventreeAddin.Config
             try
             {
                 EnsureDirectory(_localPath);
-                var json = JsonSerializer.Serialize(config,
-                    new JsonSerializerOptions { WriteIndented = true });
+                var normalized = NormalizeForSave(config);
+                var json = JsonSerializer.Serialize(normalized, _saveOptions);
                 File.WriteAllText(_localPath, json, Encoding.UTF8);
                 MappingChanged?.Invoke(this, EventArgs.Empty);
             }
@@ -134,6 +141,7 @@ namespace SwInventreeAddin.Config
                 var config = JsonSerializer.Deserialize<PropertyMappingConfig>(json)
                     ?? new PropertyMappingConfig();
 
+                config.ExtensionData ??= new Dictionary<string, JsonElement>();
                 return config;
             }
             catch (Exception ex)
@@ -143,7 +151,7 @@ namespace SwInventreeAddin.Config
             }
         }
 
-        private static MappingResult Classify(PropertyMappingConfig config, string path)
+        internal static MappingResult Classify(PropertyMappingConfig config, string path)
         {
             var duplicate = FindDuplicatePropertyName(config);
             if (duplicate != null)
@@ -197,6 +205,28 @@ namespace SwInventreeAddin.Config
             }
 
             return null;
+        }
+
+        private static PropertyMappingConfig NormalizeForSave(PropertyMappingConfig config)
+        {
+            static string? NullIfWhiteSpace(string? value) =>
+                string.IsNullOrWhiteSpace(value) ? null : value;
+
+            return new PropertyMappingConfig
+            {
+                SchemaVersion       = NullIfWhiteSpace(config.SchemaVersion),
+                IpnProperty         = NullIfWhiteSpace(config.IpnProperty),
+                NameProperty        = NullIfWhiteSpace(config.NameProperty),
+                NotesProperty       = NullIfWhiteSpace(config.NotesProperty),
+                RevisionProperty    = NullIfWhiteSpace(config.RevisionProperty),
+                DescriptionProperty = NullIfWhiteSpace(config.DescriptionProperty),
+                PkProperty          = NullIfWhiteSpace(config.PkProperty),
+                BomColumnIpn        = NullIfWhiteSpace(config.BomColumnIpn),
+                BomColumnQty        = NullIfWhiteSpace(config.BomColumnQty),
+                BomColumnReference  = NullIfWhiteSpace(config.BomColumnReference),
+                BomColumnNote       = NullIfWhiteSpace(config.BomColumnNote),
+                ExtensionData       = config.ExtensionData
+            };
         }
 
         private static void EnsureDirectory(string filePath)

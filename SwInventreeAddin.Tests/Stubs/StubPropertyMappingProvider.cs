@@ -9,7 +9,7 @@ namespace SwInventreeAddin.Tests.Stubs
     /// </summary>
     public class StubPropertyMappingProvider : IPropertyMappingProvider
     {
-        public PropertyMappingConfig Config       { get; set; } = new PropertyMappingConfig();
+        public PropertyMappingConfig Config       { get; set; } = PropertyMappingConfig.WithDefaults();
         public bool                  IsReadOnly   { get; set; } = false;
         public string                LocalFilePath { get; set; } = string.Empty;
         public MappingHealth         Health        { get; set; } = MappingHealth.Healthy;
@@ -29,7 +29,10 @@ namespace SwInventreeAddin.Tests.Stubs
             if (ThrowOnGet != null)
                 throw ThrowOnGet;
 
-            return new MappingResult(Health, Config, ErrorMessage);
+            if (Health == MappingHealth.Invalid)
+                return new MappingResult(MappingHealth.Invalid, Config, ErrorMessage);
+
+            return PropertyMappingProvider.Classify(Config, LocalFilePath);
         }
 
         public PropertyMappingConfig GetMapping()

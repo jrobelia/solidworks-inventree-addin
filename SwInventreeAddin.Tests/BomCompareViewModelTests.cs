@@ -22,7 +22,7 @@ namespace SwInventreeAddin.Tests
         {
             _client     = new StubInventreeClient();
             _bomService = new StubAssemblyBomService();
-            _mapping    = new PropertyMappingConfig();
+            _mapping    = PropertyMappingConfig.WithDefaults();
 
             // Default: assembly part exists and is flagged as Assembly so ApplyAsync guard passes.
             _client.PartByPkToReturn = new InventreePart { Assembly = true };

@@ -398,13 +398,15 @@ namespace SwInventreeAddin.UI
 
                 RunOnUiThread(() =>
                 {
-                    var mapping = _mappingProvider?.GetMapping() ?? new PropertyMappingConfig();
-                    _propertyService.SetCustomProperty(mapping.PkProperty, pk.ToString());
+                    var mapping = _mappingProvider?.GetMapping() ?? PropertyMappingConfig.WithDefaults();
+                    if (!string.IsNullOrEmpty(mapping.PkProperty))
+                        _propertyService.SetCustomProperty(mapping.PkProperty!, pk.ToString());
                     // Only write IPN if we actually received one — avoid blanking the property
                     // if the plugin timed out.
-                    if (!string.IsNullOrEmpty(ipn))
-                        _propertyService.SetCustomProperty(mapping.IpnProperty, ipn);
-                    _propertyService.SetCustomProperty(mapping.NameProperty, name);
+                    if (!string.IsNullOrEmpty(ipn) && !string.IsNullOrEmpty(mapping.IpnProperty))
+                        _propertyService.SetCustomProperty(mapping.IpnProperty!, ipn);
+                    if (!string.IsNullOrEmpty(mapping.NameProperty))
+                        _propertyService.SetCustomProperty(mapping.NameProperty!, name);
 
                     // Show "refresh manually" only if the poll actually ran but IPN didn't arrive.
                     if (string.IsNullOrEmpty(ipn) && pollEnabled)

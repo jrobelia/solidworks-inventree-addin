@@ -17,6 +17,7 @@ namespace SwInventreeAddin.UI
     public partial class PropertyMappingEditorWindow : Window
     {
         private readonly IPropertyMappingProvider _provider;
+        private readonly PropertyMappingConfig _originalMapping;
 
         /// <summary>
         /// Creates the mapping editor.
@@ -35,13 +36,13 @@ namespace SwInventreeAddin.UI
                 : SolidWorksWindowHandle.Get();
             WindowCentering.Attach(this, ownerHandle);
 
-            var mapping = _provider.GetMapping();
-            IpnPropertyBox.Text         = mapping.IpnProperty         ?? string.Empty;
-            NamePropertyBox.Text        = mapping.NameProperty         ?? string.Empty;
-            DescriptionPropertyBox.Text = mapping.DescriptionProperty  ?? string.Empty;
-            RevisionPropertyBox.Text    = mapping.RevisionProperty     ?? string.Empty;
-            NotesPropertyBox.Text       = mapping.NotesProperty        ?? string.Empty;
-            PkPropertyBox.Text          = mapping.PkProperty           ?? string.Empty;
+            _originalMapping = _provider.GetMapping();
+            IpnPropertyBox.Text         = _originalMapping.IpnProperty         ?? string.Empty;
+            NamePropertyBox.Text        = _originalMapping.NameProperty         ?? string.Empty;
+            DescriptionPropertyBox.Text = _originalMapping.DescriptionProperty  ?? string.Empty;
+            RevisionPropertyBox.Text    = _originalMapping.RevisionProperty     ?? string.Empty;
+            NotesPropertyBox.Text       = _originalMapping.NotesProperty        ?? string.Empty;
+            PkPropertyBox.Text          = _originalMapping.PkProperty           ?? string.Empty;
 
             if (_provider.IsReadOnly)
                 ApplyReadOnlyMode();
@@ -92,6 +93,11 @@ namespace SwInventreeAddin.UI
                     RevisionProperty    = RevisionPropertyBox.Text.Trim(),
                     NotesProperty       = NotesPropertyBox.Text.Trim(),
                     PkProperty          = PkPropertyBox.Text.Trim(),
+                    BomColumnIpn        = _originalMapping.BomColumnIpn,
+                    BomColumnQty        = _originalMapping.BomColumnQty,
+                    BomColumnReference  = _originalMapping.BomColumnReference,
+                    BomColumnNote       = _originalMapping.BomColumnNote,
+                    ExtensionData       = _originalMapping.ExtensionData,
                 });
             }
             catch (Exception ex)

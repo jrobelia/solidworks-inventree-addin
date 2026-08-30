@@ -60,10 +60,10 @@ namespace SwInventreeAddin.SolidWorks
                     if (components?.Length > 0 && components[0] is IComponent2 comp)
                     {
                         var model = comp.GetModelDoc2() as IModelDoc2;
-                        if (model != null)
+                        if (model != null && !string.IsNullOrEmpty(mapping.PkProperty))
                         {
                             var mgr = (ICustomPropertyManager)model.Extension.CustomPropertyManager[""];
-                            mgr.Get4(mapping.PkProperty, false, out _, out var resolved);
+                            mgr.Get4(mapping.PkProperty!, false, out _, out var resolved);
                             if (int.TryParse(resolved, out var pk) && pk > 0)
                                 line.SubPartPk = pk;
                         }
@@ -97,16 +97,16 @@ namespace SwInventreeAddin.SolidWorks
         {
             var feature    = FindBomFeature(keyword);
             var bomFeature = feature?.GetSpecificFeature2() as IBomFeature;
-            var annotations = (object[])bomFeature?.GetTableAnnotations();
+            var annotations = (object[]?)bomFeature?.GetTableAnnotations();
             if (annotations?.Length > 0)
                 return annotations[0] as IBomTableAnnotation;
             return null;
         }
 
-        private static int FindColumn(ITableAnnotation table, string aliasCsv)
+        private static int FindColumn(ITableAnnotation table, string? aliasCsv)
         {
             if (string.IsNullOrEmpty(aliasCsv)) return -1;
-            var aliases  = aliasCsv.Split(',').Select(a => a.Trim()).Where(a => a.Length > 0).ToArray();
+            var aliases  = aliasCsv!.Split(',').Select(a => a.Trim()).Where(a => a.Length > 0).ToArray();
             int colCount = table.ColumnCount;
             for (int col = 0; col < colCount; col++)
             {

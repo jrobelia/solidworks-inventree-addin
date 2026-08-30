@@ -50,29 +50,29 @@ namespace SwInventreeAddin
         /// <summary>Writes Name, Notes, and Description to the SolidWorks document.</summary>
         public void Apply()
         {
-            _propertyService.SetCustomProperty(_mapping.NameProperty,        Part.Name);
-            _propertyService.SetCustomProperty(_mapping.NotesProperty,       Part.Notes);
-            _propertyService.SetCustomProperty(_mapping.DescriptionProperty, Part.Description);
+            ApplyName();
+            ApplyNotes();
+            ApplyDescription();
         }
 
         /// <summary>Writes only the Name field to the SolidWorks document and returns the written value.</summary>
         public string ApplyName()
         {
-            _propertyService.SetCustomProperty(_mapping.NameProperty, Part.Name);
+            SetPropertyIfMapped(_mapping.NameProperty, Part.Name);
             return Part.Name;
         }
 
         /// <summary>Writes only the Notes field to the SolidWorks document and returns the written value.</summary>
         public string ApplyNotes()
         {
-            _propertyService.SetCustomProperty(_mapping.NotesProperty, Part.Notes);
+            SetPropertyIfMapped(_mapping.NotesProperty, Part.Notes);
             return Part.Notes;
         }
 
         /// <summary>Writes only the Description field to the SolidWorks document and returns the written value.</summary>
         public string ApplyDescription()
         {
-            _propertyService.SetCustomProperty(_mapping.DescriptionProperty, Part.Description);
+            SetPropertyIfMapped(_mapping.DescriptionProperty, Part.Description);
             return Part.Description;
         }
 
@@ -80,7 +80,7 @@ namespace SwInventreeAddin
         public string ApplyPk()
         {
             var value = Part.Pk.ToString();
-            _propertyService.SetCustomProperty(_mapping.PkProperty, value);
+            SetPropertyIfMapped(_mapping.PkProperty, value);
             return value;
         }
 
@@ -88,11 +88,11 @@ namespace SwInventreeAddin
         /// Returns property names mapped to <paramref name="propertyName"/> that don't yet
         /// exist in the SolidWorks document. Returns an empty list when the property exists.
         /// </summary>
-        public IReadOnlyList<string> GetMissingApplyProperties(string propertyName)
+        public IReadOnlyList<string> GetMissingApplyProperties(string? propertyName)
         {
             var missing = new List<string>();
-            if (!string.IsNullOrEmpty(propertyName) && !_propertyService.PropertyExists(propertyName))
-                missing.Add(propertyName);
+            if (!string.IsNullOrEmpty(propertyName) && !_propertyService.PropertyExists(propertyName!))
+                missing.Add(propertyName!);
             return missing;
         }
 
@@ -104,7 +104,9 @@ namespace SwInventreeAddin
         /// </summary>
         public async Task PushNameAsync()
         {
-            var value = _propertyService.GetCustomProperty(_mapping.NameProperty);
+            var value = GetPropertyIfMapped(_mapping.NameProperty);
+            if (value == null) return;
+
             await _client.UpdatePartNameAsync(Part.Pk, value).ConfigureAwait(false);
             Part.Name = value;
         }
@@ -115,7 +117,9 @@ namespace SwInventreeAddin
         /// </summary>
         public async Task PushNotesAsync()
         {
-            var value = _propertyService.GetCustomProperty(_mapping.NotesProperty);
+            var value = GetPropertyIfMapped(_mapping.NotesProperty);
+            if (value == null) return;
+
             await _client.UpdatePartNotesAsync(Part.Pk, value).ConfigureAwait(false);
             Part.Notes = value;
         }
@@ -126,7 +130,9 @@ namespace SwInventreeAddin
         /// </summary>
         public async Task PushDescriptionAsync()
         {
-            var value = _propertyService.GetCustomProperty(_mapping.DescriptionProperty);
+            var value = GetPropertyIfMapped(_mapping.DescriptionProperty);
+            if (value == null) return;
+
             await _client.UpdatePartDescriptionAsync(Part.Pk, value).ConfigureAwait(false);
             Part.Description = value;
         }
@@ -137,7 +143,9 @@ namespace SwInventreeAddin
         /// </summary>
         public async Task PushRevisionAsync()
         {
-            var value = _propertyService.GetCustomProperty(_mapping.RevisionProperty);
+            var value = GetPropertyIfMapped(_mapping.RevisionProperty);
+            if (value == null) return;
+
             await _client.UpdatePartRevisionAsync(Part.Pk, value).ConfigureAwait(false);
             Part.Revision = value;
         }
@@ -146,5 +154,18 @@ namespace SwInventreeAddin
 
         /// <summary>Updates the thumbnail bytes after a successful Push Image.</summary>
         public void SetThumbnail(byte[] bytes) => ThumbnailBytes = bytes;
+
+        // ── Helpers ───────────────────────────────────────────────────────────
+
+        private void SetPropertyIfMapped(string? propertyName, string value)
+        {
+            if (!string.IsNullOrEmpty(propertyName))
+                _propertyService.SetCustomProperty(propertyName!, value);
+        }
+
+        private string? GetPropertyIfMapped(string? propertyName) =>
+            string.IsNullOrEmpty(propertyName)
+                ? null
+                : _propertyService.GetCustomProperty(propertyName!);
     }
 }

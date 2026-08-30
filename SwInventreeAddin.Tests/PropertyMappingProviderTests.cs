@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using NUnit.Framework;
 using SwInventreeAddin.Config;
 
@@ -190,6 +191,20 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public void SaveMapping_SparseConfig_DoesNotInjectDefaults()
+        {
+            var provider = new PropertyMappingProvider(_localPath, null);
+
+            provider.SaveMapping(new PropertyMappingConfig { IpnProperty = "XPN" });
+            var json = File.ReadAllText(_localPath);
+
+            Assert.That(json, Does.Contain("\"IpnProperty\""));
+            Assert.That(json, Does.Not.Contain("\"SchemaVersion\""));
+            Assert.That(json, Does.Not.Contain("\"NameProperty\""));
+            Assert.That(json, Does.Not.Contain("\"BomColumnQty\""));
+        }
+
+        [Test]
         public void SaveMapping_CreatesDirectoryIfMissing()
         {
             var deepPath = Path.Combine(Path.GetTempPath(),
@@ -261,7 +276,7 @@ namespace SwInventreeAddin.Tests
         // ── BOM column migration ──────────────────────────────────────────────
 
         [Test]
-        public void GetMapping_SchemaV1File_ReceivesBomColumnDefaults()
+        public void GetMappingResult_SchemaV1File_DoesNotBackfillBomColumnDefaults()
         {
             var v1Json = @"{
                 ""SchemaVersion"": ""1"",
@@ -271,15 +286,16 @@ namespace SwInventreeAddin.Tests
                 ""RevisionProperty"": ""Revision""
             }";
             File.WriteAllText(_localPath, v1Json);
-            var config = new PropertyMappingProvider(_localPath, null).GetMapping();
-            Assert.That(config.BomColumnIpn,       Is.EqualTo("IPN, Part IPN, Internal Part Number, Part Number"));
-            Assert.That(config.BomColumnQty,       Is.EqualTo("Qty, Quantity"));
-            Assert.That(config.BomColumnReference, Is.EqualTo("Reference"));
-            Assert.That(config.BomColumnNote,      Is.EqualTo("Note, Notes"));
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.NeedsUpgrade));
+            Assert.That(result.Config.BomColumnIpn,       Is.Null);
+            Assert.That(result.Config.BomColumnQty,       Is.Null);
+            Assert.That(result.Config.BomColumnReference, Is.Null);
+            Assert.That(result.Config.BomColumnNote,      Is.Null);
         }
 
         [Test]
-        public void GetMapping_SchemaV2File_ReceivesBomColumnDefaults()
+        public void GetMappingResult_SchemaV2File_DoesNotBackfillBomColumnDefaults()
         {
             var v2Json = @"{
                 ""SchemaVersion"": ""2"",
@@ -291,16 +307,17 @@ namespace SwInventreeAddin.Tests
                 ""PkProperty"": ""InvenTree PK""
             }";
             File.WriteAllText(_localPath, v2Json);
-            var config = new PropertyMappingProvider(_localPath, null).GetMapping();
-            Assert.That(config.BomColumnIpn, Is.EqualTo("IPN, Part IPN, Internal Part Number, Part Number"));
-            Assert.That(config.BomColumnQty, Is.EqualTo("Qty, Quantity"));
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.NeedsUpgrade));
+            Assert.That(result.Config.BomColumnIpn, Is.Null);
+            Assert.That(result.Config.BomColumnQty, Is.Null);
         }
 
         [Test]
         public void GetMapping_BomColumnAliasCsv_IsSplitCaseInsensitively()
         {
-            var config = new PropertyMappingConfig();
-            var aliases = config.BomColumnQty
+            var config = PropertyMappingConfig.WithDefaults();
+            var aliases = config.BomColumnQty!
                 .Split(',')
                 .Select(s => s.Trim())
                 .ToList();
@@ -528,9 +545,13 @@ namespace SwInventreeAddin.Tests
 
         private static void WriteJson(string path, PropertyMappingConfig config)
         {
-            File.WriteAllText(path,
-                JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true }),
-                System.Text.Encoding.UTF8);
+            var merged = PropertyMappingConfig.WithDefaults(config);
+            var json = JsonSerializer.Serialize(merged, new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            });
+            File.WriteAllText(path, json, System.Text.Encoding.UTF8);
         }
     }
 }

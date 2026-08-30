@@ -96,6 +96,11 @@ namespace SwInventreeAddin.UI
         {
             if (_client == null || _assemblyBomService == null) return;
 
+            var mappingResult = _mappingProvider?.GetMappingResult()
+                ?? new MappingResult(MappingHealth.Healthy, PropertyMappingConfig.WithDefaults());
+            if (!mappingResult.CanUseForPartSync)
+                return;
+
             var preFlightCheck = new BomCompareReadinessCheck(_vm, _assemblyBomService, _bomKeyword);
             BomCompareReadiness readiness;
             try
@@ -197,9 +202,8 @@ namespace SwInventreeAddin.UI
             }
 
             int pk      = _vm.CurrentInvenTreePk;
-            var mapping = _mappingProvider?.GetMapping() ?? new PropertyMappingConfig();
             var bomVm   = new BomCompareViewModel(
-                _client, _assemblyBomService, mapping, pk, _bomKeyword);
+                _client, _assemblyBomService, mappingResult.Config, pk, _bomKeyword);
 
             var tableName = _assemblyBomService.GetBomTableName(_bomKeyword);
             var window  = new BomCompareWindow(bomVm, _vm.PartNumber, _vm.NamePreview,
