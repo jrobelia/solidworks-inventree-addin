@@ -1124,11 +1124,8 @@ namespace SwInventreeAddin.UI
                 ? string.Empty
                 : _propertyService.GetCustomProperty(propertyName!);
 
-        /// <summary>
-        /// Partial status refresh: ensures mapping-health status is always visible
-        /// after document/client state changes. Called from LoadPartNumber and
-        /// UpdateMapping to keep the status line in sync with the mapping provider.
-        /// </summary>
+        // Mapping-health warnings take precedence over document/client status messages,
+        // so any state change that could hide a schema mismatch must re-evaluate here.
         private void RefreshStatus()
         {
             if (_mappingProvider == null) return;

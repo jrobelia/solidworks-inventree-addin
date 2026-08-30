@@ -44,6 +44,27 @@ namespace SwInventreeAddin.Tests
             _vm = new TaskPaneViewModel(_client, _propertyService);
         }
 
+        private TaskPaneViewModel CreateVmWithMapping(
+            string?  partNo       = null,
+            string?  pk           = null,
+            string   schemaVersion = "2",
+            IInventreeClient? client = null,
+            DocumentType? docType = null)
+        {
+            var config = PropertyMappingConfig.WithDefaults();
+            config.SchemaVersion = schemaVersion;
+            var provider = new StubPropertyMappingProvider { Config = config };
+
+            if (docType != null)
+                _propertyService.DocumentTypeToReturn = docType.Value;
+            if (partNo != null)
+                _propertyService.Seed(config.IpnProperty!, partNo);
+            if (pk != null)
+                _propertyService.Seed(config.PkProperty!, pk);
+
+            return new TaskPaneViewModel(client ?? _client, _propertyService, null, provider);
+        }
+
         private async Task FetchSamplePart(Uri? partWebUrl = null)
         {
             _client.PartToReturn = SamplePart;
@@ -752,11 +773,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void LoadPartNumber_WithNeedsUpgradeMapping_SetsWarningStatus()
         {
-            _propertyService.Seed("PartNo", "R-10K-0402");
-            var config = PropertyMappingConfig.WithDefaults();
-            config.SchemaVersion = "2";
-            var provider = new StubPropertyMappingProvider { Config = config };
-            _vm = new TaskPaneViewModel(_client, _propertyService, null, provider);
+            _vm = CreateVmWithMapping(partNo: "R-10K-0402");
 
             _vm.LoadPartNumber();
 
@@ -767,11 +784,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void LoadPartNumber_NoDocument_WithNeedsUpgradeMapping_SetsWarningStatus()
         {
-            _propertyService.DocumentTypeToReturn = DocumentType.Unknown;
-            var config = PropertyMappingConfig.WithDefaults();
-            config.SchemaVersion = "2";
-            var provider = new StubPropertyMappingProvider { Config = config };
-            _vm = new TaskPaneViewModel(_client, _propertyService, null, provider);
+            _vm = CreateVmWithMapping(docType: DocumentType.Unknown);
 
             _vm.LoadPartNumber();
 
@@ -782,12 +795,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void LoadPartNumber_Unlinked_WithNeedsUpgradeMapping_SetsWarningStatus()
         {
-            _propertyService.Seed("PartNo", string.Empty);
-            _propertyService.Seed("InvenTree PK", string.Empty);
-            var config = PropertyMappingConfig.WithDefaults();
-            config.SchemaVersion = "2";
-            var provider = new StubPropertyMappingProvider { Config = config };
-            _vm = new TaskPaneViewModel(_client, _propertyService, null, provider);
+            _vm = CreateVmWithMapping(partNo: string.Empty, pk: string.Empty);
 
             _vm.LoadPartNumber();
 
@@ -798,11 +806,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void LoadPartNumber_Drawing_WithNeedsUpgradeMapping_SetsWarningStatus()
         {
-            _propertyService.DocumentTypeToReturn = DocumentType.Drawing;
-            var config = PropertyMappingConfig.WithDefaults();
-            config.SchemaVersion = "2";
-            var provider = new StubPropertyMappingProvider { Config = config };
-            _vm = new TaskPaneViewModel(_client, _propertyService, null, provider);
+            _vm = CreateVmWithMapping(docType: DocumentType.Drawing);
 
             _vm.LoadPartNumber();
 
@@ -813,12 +817,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void LoadPartNumber_LinkedByPk_WithNeedsUpgradeMapping_SetsWarningStatus()
         {
-            _propertyService.Seed("PartNo", string.Empty);
-            _propertyService.Seed("InvenTree PK", "12345");
-            var config = PropertyMappingConfig.WithDefaults();
-            config.SchemaVersion = "2";
-            var provider = new StubPropertyMappingProvider { Config = config };
-            _vm = new TaskPaneViewModel(_client, _propertyService, null, provider);
+            _vm = CreateVmWithMapping(partNo: string.Empty, pk: "12345");
 
             _vm.LoadPartNumber();
 
@@ -829,12 +828,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void UpdateClient_WithNeedsUpgradeMapping_SetsWarningStatus()
         {
-            _propertyService.Seed("PartNo", string.Empty);
-            _propertyService.Seed("InvenTree PK", string.Empty);
-            var config = PropertyMappingConfig.WithDefaults();
-            config.SchemaVersion = "2";
-            var provider = new StubPropertyMappingProvider { Config = config };
-            _vm = new TaskPaneViewModel(null, _propertyService, null, provider);
+            _vm = CreateVmWithMapping(partNo: string.Empty, pk: string.Empty, client: null);
 
             _vm.UpdateClient(new StubInventreeClient());
 
