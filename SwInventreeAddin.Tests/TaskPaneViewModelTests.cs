@@ -720,11 +720,11 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void OnInitialisation_MappingSchemaVersionMismatch_SetsWarningStatus()
+        public void OnInitialisation_MappingSchemaNeedsUpgrade_SetsWarningStatus()
         {
             var provider = new StubPropertyMappingProvider
             {
-                Config = new PropertyMappingConfig { SchemaVersion = "99" }
+                Config = new PropertyMappingConfig { SchemaVersion = "2" }
             };
             _propertyService.Seed("PartNo", "");
             _vm = new TaskPaneViewModel(_client, _propertyService, null, provider);
@@ -734,17 +734,135 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void UpdateMapping_SchemaVersionMismatch_SetsWarningStatus()
+        public void OnInitialisation_MappingSchemaNewer_SetsWarningStatusWithUpgradePrompt()
+        {
+            var provider = new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig { SchemaVersion = "4" }
+            };
+            _propertyService.Seed("PartNo", "");
+            _vm = new TaskPaneViewModel(_client, _propertyService, null, provider);
+
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+            Assert.That(_vm.StatusText,     Does.Contain("newer").IgnoreCase);
+            Assert.That(_vm.StatusText,     Does.Contain("upgrade the add-in").IgnoreCase);
+        }
+
+        [Test]
+        public void UpdateMapping_SchemaNeedsUpgrade_SetsWarningStatus()
         {
             CreateVm();
             var provider = new StubPropertyMappingProvider
             {
-                Config = new PropertyMappingConfig { SchemaVersion = "99" }
+                Config = new PropertyMappingConfig { SchemaVersion = "2" }
             };
 
             _vm.UpdateMapping(provider);
 
             Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+            Assert.That(_vm.StatusText,     Does.Contain("schema mismatch"));
+        }
+
+        [Test]
+        public void UpdateMapping_SchemaNeedsUpgrade_LeavesFetchEnabled()
+        {
+            CreateVm();
+            var provider = new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig { SchemaVersion = "2" }
+            };
+
+            _vm.UpdateMapping(provider);
+
+            Assert.That(_vm.FetchEnabled, Is.True);
+        }
+
+        [Test]
+        public void UpdateMapping_SchemaNewer_ShowsUpgradePrompt()
+        {
+            CreateVm();
+            var provider = new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig { SchemaVersion = "4" }
+            };
+
+            _vm.UpdateMapping(provider);
+
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+            Assert.That(_vm.StatusText,     Does.Contain("newer").IgnoreCase);
+            Assert.That(_vm.StatusText,     Does.Contain("upgrade the add-in").IgnoreCase);
+        }
+
+        [Test]
+        public void UpdateMapping_SchemaNewer_FetchEnabledButWritesDisabled()
+        {
+            CreateVm();
+            var provider = new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig { SchemaVersion = "4" }
+            };
+
+            _vm.UpdateMapping(provider);
+
+            Assert.That(_vm.FetchEnabled,      Is.True);
+            Assert.That(_vm.CreatePartEnabled, Is.False);
+            Assert.That(_vm.ApplyEnabled,      Is.False);
+            Assert.That(_vm.BomButtonEnabled,  Is.False);
+        }
+
+        [Test]
+        public void UpdateMapping_SchemaInvalid_SetsErrorStatus()
+        {
+            CreateVm();
+            var provider = new StubPropertyMappingProvider
+            {
+                Health = MappingHealth.Invalid,
+                Message = "Invalid mapping file"
+            };
+
+            _vm.UpdateMapping(provider);
+
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Error));
+            Assert.That(_vm.StatusText,     Does.Contain("Invalid").IgnoreCase);
+        }
+
+        [Test]
+        public void UpdateMapping_SchemaInvalid_DisablesAllActions()
+        {
+            CreateVm();
+            var provider = new StubPropertyMappingProvider
+            {
+                Health = MappingHealth.Invalid,
+                Message = "Invalid mapping file"
+            };
+
+            _vm.UpdateMapping(provider);
+
+            Assert.That(_vm.FetchEnabled,      Is.False);
+            Assert.That(_vm.CreatePartEnabled, Is.False);
+            Assert.That(_vm.ApplyEnabled,      Is.False);
+            Assert.That(_vm.BomButtonEnabled,  Is.False);
+        }
+
+        [Test]
+        public async Task UpdateMapping_SchemaHealthy_WithSession_KeepsPartSyncActions()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            _vm.UpdateMapping(new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion }
+            });
+
+            Assert.That(_vm.ApplyEnabled,      Is.True);
+            Assert.That(_vm.PushNameEnabled,   Is.True);
+            Assert.That(_vm.PushNotesEnabled,  Is.True);
+            Assert.That(_vm.PushDescriptionEnabled, Is.True);
+            Assert.That(_vm.PushImageVisible,  Is.True);
+            Assert.That(_vm.BomButtonEnabled,  Is.False);
+            Assert.That(_vm.StatusSeverity,    Is.EqualTo(StatusSeverity.None));
         }
 
         [Test]
@@ -753,7 +871,7 @@ namespace SwInventreeAddin.Tests
             // Start with a mismatch, then update to a matching provider
             var bad = new StubPropertyMappingProvider
             {
-                Config = new PropertyMappingConfig { SchemaVersion = "99" }
+                Config = new PropertyMappingConfig { SchemaVersion = "2" }
             };
             _propertyService.Seed("PartNo", "");
             _vm = new TaskPaneViewModel(_client, _propertyService, null, bad);

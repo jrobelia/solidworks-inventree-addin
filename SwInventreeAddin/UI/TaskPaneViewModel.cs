@@ -273,13 +273,23 @@ namespace SwInventreeAddin.UI
             private set => Set(ref _createPartEnabled, value);
         }
 
+        private bool IsPartOrAssemblyDocument =>
+            _currentDocumentType == DocumentType.Part || _currentDocumentType == DocumentType.Assembly;
+
         private bool CanCreatePart() =>
             _client != null
             && string.IsNullOrEmpty(_partNumber)
             && _isDocumentOpen
             && !_documentPkPresent
-            && (_currentDocumentType == DocumentType.Part || _currentDocumentType == DocumentType.Assembly)
+            && IsPartOrAssemblyDocument
             && _mappingResult?.CanUseForPartSync == true;
+
+        private bool ShouldEnableFetch() =>
+            _client != null
+            && _isDocumentOpen
+            && IsPartOrAssemblyDocument
+            && _mappingResult?.CanFetch == true
+            && (_documentPkPresent || !string.IsNullOrEmpty(_partNumber));
 
         /// <summary>True when an assembly is open — shows the BOM section.</summary>
         public bool BomSectionVisible =>
@@ -587,6 +597,7 @@ namespace SwInventreeAddin.UI
             _client = newClient;
             ClearSession();
             LoadPartNumber();
+            CheckMappingSchema();
         }
 
         /// <summary>
@@ -1086,6 +1097,7 @@ namespace SwInventreeAddin.UI
             _mappingProvider = provider;
             RefreshMappingResult();
             CheckMappingSchema();
+            RefreshCommandStates();
             if (_propertiesSectionVisible)
                 RefreshCurrentProperties();
         }
@@ -1118,12 +1130,17 @@ namespace SwInventreeAddin.UI
             {
                 case MappingHealth.Invalid:
                     _schemaMismatchActive = true;
-                    SetStatus(_mappingResult.ErrorMessage ?? "The mapping configuration is invalid.",
+                    SetStatus(_mappingResult.Message ?? "The mapping configuration is invalid.",
                               StatusSeverity.Error);
                     break;
                 case MappingHealth.NeedsUpgrade:
                     _schemaMismatchActive = true;
-                    SetStatus("Mapping schema mismatch \u2014 review Settings",
+                    SetStatus(_mappingResult.Message ?? "Mapping schema mismatch \u2014 review Settings",
+                              StatusSeverity.Warning);
+                    break;
+                case MappingHealth.NewerSchema:
+                    _schemaMismatchActive = true;
+                    SetStatus(_mappingResult.Message ?? "The mapping file uses a newer schema than this add-in. Upgrade the add-in to enable writes.",
                               StatusSeverity.Warning);
                     break;
                 default:
@@ -1134,6 +1151,19 @@ namespace SwInventreeAddin.UI
                     }
                     break;
             }
+        }
+
+        /// <summary>
+        /// Recomputes all command enable/disable flags from the current document state and mapping health,
+        /// then raises the PropertyChanged events that keep the Task Pane buttons in sync.
+        /// </summary>
+        private void RefreshCommandStates()
+        {
+            FetchEnabled      = ShouldEnableFetch();
+            CreatePartEnabled = CanCreatePart();
+
+            NotifySessionProperties();
+            NotifyBomVisibility();
         }
 
         private void SetStatus(string text, StatusSeverity severity)

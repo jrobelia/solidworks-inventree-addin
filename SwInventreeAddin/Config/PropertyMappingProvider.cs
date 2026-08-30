@@ -94,7 +94,7 @@ namespace SwInventreeAddin.Config
 
             if (result.Health == MappingHealth.Invalid)
                 throw new InvalidOperationException(
-                    result.ErrorMessage ?? "The mapping configuration is invalid.");
+                    result.Message ?? "The mapping configuration is invalid.");
 
             return result.Config;
         }
@@ -160,13 +160,61 @@ namespace SwInventreeAddin.Config
                     config,
                     $"Invalid mapping file: {path}. {duplicate}");
 
-            if (string.Equals(
-                    config.SchemaVersion,
-                    PropertyMappingConfig.CurrentSchemaVersion,
-                    StringComparison.Ordinal))
+            var currentVersion = PropertyMappingConfig.CurrentSchemaVersion;
+
+            var comparison = CompareSchemaVersions(config.SchemaVersion, currentVersion);
+            if (comparison == 0)
                 return new MappingResult(MappingHealth.Healthy, config);
 
-            return new MappingResult(MappingHealth.NeedsUpgrade, config);
+            if (comparison > 0)
+                return new MappingResult(
+                    MappingHealth.NewerSchema,
+                    config,
+                    "The mapping file uses a newer schema than this add-in. Upgrade the add-in to enable writes.");
+
+            // Older, unversioned (null/empty), or unparseable non-empty schema version.
+            if (comparison < 0 || string.IsNullOrWhiteSpace(config.SchemaVersion))
+                return new MappingResult(
+                    MappingHealth.NeedsUpgrade,
+                    config,
+                    "Mapping schema mismatch \u2014 review Settings");
+
+            return new MappingResult(
+                MappingHealth.Invalid,
+                config,
+                $"Invalid mapping file: {path}. Unrecognized schema version '{config.SchemaVersion}'.");
+        }
+
+        private static int? CompareSchemaVersions(string? fileVersion, string currentVersion)
+        {
+            var fileVer    = TryParseSchemaVersion(fileVersion);
+            var currentVer = TryParseSchemaVersion(currentVersion);
+
+            if (fileVer == null || currentVer == null)
+                return null;
+
+            return new Version(fileVer!.Major, fileVer.Minor)
+                .CompareTo(new Version(currentVer!.Major, currentVer.Minor));
+        }
+
+        /// <summary>
+        /// Parses a schema version string for comparison.
+        /// Single-component versions like "3" are normalized to "3.0" so that
+        /// <see cref="Version"/> can compare them. Only major and minor are kept so
+        /// "3", "3.0" and "3.0.0" are treated as the same schema release while "3.1"
+        /// is correctly seen as newer.
+        /// </summary>
+        private static Version? TryParseSchemaVersion(string? version)
+        {
+            if (version == null || string.IsNullOrWhiteSpace(version))
+                return null;
+
+            var padded = version.Contains(".") ? version : version + ".0";
+
+            if (Version.TryParse(padded, out var parsed))
+                return new Version(parsed.Major, parsed.Minor);
+
+            return null;
         }
 
         private static string? FindDuplicatePropertyName(PropertyMappingConfig config)

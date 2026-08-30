@@ -396,6 +396,48 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(result.Health, Is.EqualTo(MappingHealth.NeedsUpgrade));
             Assert.That(result.Config.SchemaVersion, Is.EqualTo("2"));
+            Assert.That(result.Message, Does.Contain("schema mismatch").IgnoreCase);
+        }
+
+        [Test]
+        public void GetMappingResult_NewerSchemaVersion_ReturnsNewerSchema()
+        {
+            var newerJson = @"{
+                ""SchemaVersion"": ""4"",
+                ""IpnProperty"": ""PartNo"",
+                ""NameProperty"": ""Description"",
+                ""NotesProperty"": ""Notes"",
+                ""RevisionProperty"": ""Revision"",
+                ""DescriptionProperty"": ""Description Long"",
+                ""PkProperty"": ""InvenTree PK""
+            }";
+            File.WriteAllText(_localPath, newerJson);
+
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.NewerSchema));
+            Assert.That(result.Config.SchemaVersion, Is.EqualTo("4"),
+                "The runtime config should keep the file's original schema version.");
+        }
+
+        [Test]
+        public void GetMappingResult_NewerSchemaVersion_ExposesUpgradeMessage()
+        {
+            var newerJson = @"{
+                ""SchemaVersion"": ""4"",
+                ""IpnProperty"": ""PartNo"",
+                ""NameProperty"": ""Description"",
+                ""NotesProperty"": ""Notes"",
+                ""RevisionProperty"": ""Revision"",
+                ""DescriptionProperty"": ""Description Long"",
+                ""PkProperty"": ""InvenTree PK""
+            }";
+            File.WriteAllText(_localPath, newerJson);
+
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+
+            Assert.That(result.Message, Does.Contain("newer").IgnoreCase);
+            Assert.That(result.Message, Does.Contain("upgrade the add-in").IgnoreCase);
         }
 
         [Test]
@@ -406,7 +448,7 @@ namespace SwInventreeAddin.Tests
             var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
 
             Assert.That(result.Health, Is.EqualTo(MappingHealth.Invalid));
-            Assert.That(result.ErrorMessage, Does.Contain(_localPath));
+            Assert.That(result.Message, Does.Contain(_localPath));
             Assert.That(result.CanFetch, Is.False);
             Assert.That(result.CanUseForPartSync, Is.False);
             Assert.That(result.CanEdit, Is.False);
@@ -423,7 +465,37 @@ namespace SwInventreeAddin.Tests
             var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
 
             Assert.That(result.Health, Is.EqualTo(MappingHealth.Invalid));
-            Assert.That(result.ErrorMessage, Does.Contain(_localPath));
+            Assert.That(result.Message, Does.Contain(_localPath));
+        }
+
+        [Test]
+        public void GetMappingResult_MissingSchemaVersion_TreatedAsNeedsUpgrade()
+        {
+            var v1Json = @"{
+                ""IpnProperty"": ""PartNo"",
+                ""NameProperty"": ""Description"",
+                ""NotesProperty"": ""Notes"",
+                ""RevisionProperty"": ""Revision""
+            }";
+            File.WriteAllText(_localPath, v1Json);
+
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.NeedsUpgrade));
+        }
+
+        [Test]
+        public void GetMappingResult_UnparseableSchemaVersion_ReturnsInvalid()
+        {
+            File.WriteAllText(_localPath, @"{
+                ""SchemaVersion"": ""foo"",
+                ""IpnProperty"": ""PartNo""
+            }");
+
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.Invalid));
+            Assert.That(result.Message, Does.Contain("Unrecognized schema version").IgnoreCase);
         }
 
         [Test]
@@ -442,8 +514,8 @@ namespace SwInventreeAddin.Tests
             var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
 
             Assert.That(result.Health, Is.EqualTo(MappingHealth.Invalid));
-            Assert.That(result.ErrorMessage, Does.Contain("Description"));
-            Assert.That(result.ErrorMessage, Does.Contain("duplicate").IgnoreCase);
+            Assert.That(result.Message, Does.Contain("Description"));
+            Assert.That(result.Message, Does.Contain("duplicate").IgnoreCase);
         }
 
         [Test]
@@ -462,7 +534,7 @@ namespace SwInventreeAddin.Tests
             var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
 
             Assert.That(result.Health, Is.EqualTo(MappingHealth.Invalid));
-            Assert.That(result.ErrorMessage, Does.Contain("PartNo"));
+            Assert.That(result.Message, Does.Contain("PartNo"));
         }
 
         [Test]

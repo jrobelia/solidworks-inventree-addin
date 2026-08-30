@@ -13,7 +13,7 @@ namespace SwInventreeAddin.Tests.Stubs
         public bool                  IsReadOnly   { get; set; } = false;
         public string                LocalFilePath { get; set; } = string.Empty;
         public MappingHealth         Health        { get; set; } = MappingHealth.Healthy;
-        public string?               ErrorMessage   { get; set; }
+        public string?               Message        { get; set; }
 
         public PropertyMappingConfig? LastSaved        { get; private set; }
         public bool                   CopyToLocalCalled { get; private set; }
@@ -30,7 +30,7 @@ namespace SwInventreeAddin.Tests.Stubs
                 throw ThrowOnGet;
 
             if (Health == MappingHealth.Invalid)
-                return new MappingResult(MappingHealth.Invalid, Config, ErrorMessage);
+                return new MappingResult(MappingHealth.Invalid, Config, Message);
 
             return PropertyMappingProvider.Classify(Config, LocalFilePath);
         }
@@ -41,7 +41,7 @@ namespace SwInventreeAddin.Tests.Stubs
 
             if (result.Health == MappingHealth.Invalid)
                 throw new InvalidOperationException(
-                    result.ErrorMessage ?? "The mapping configuration is invalid.");
+                    result.Message ?? "The mapping configuration is invalid.");
 
             return result.Config;
         }
