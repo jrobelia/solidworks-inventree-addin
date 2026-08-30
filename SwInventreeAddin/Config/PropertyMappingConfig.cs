@@ -1,3 +1,7 @@
+using System.Collections.Generic;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 namespace SwInventreeAddin.Config
 {
     /// <summary>
@@ -35,5 +39,13 @@ namespace SwInventreeAddin.Config
         public string BomColumnQty       { get; set; } = "Qty, Quantity";
         public string BomColumnReference { get; set; } = "Reference";
         public string BomColumnNote      { get; set; } = "Note, Notes";
+
+        /// <summary>
+        /// Round-trips top-level JSON properties that the current add-in does not recognise.
+        /// Do not use directly; it is populated and read by the JSON serializer.
+        /// </summary>
+        [JsonExtensionData]
+        public Dictionary<string, JsonElement> ExtensionData { get; set; }
+            = new Dictionary<string, JsonElement>();
     }
 }

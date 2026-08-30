@@ -11,6 +11,8 @@ namespace SwInventreeAddin.Tests.Stubs
         public PropertyMappingConfig Config       { get; set; } = new PropertyMappingConfig();
         public bool                  IsReadOnly   { get; set; } = false;
         public string                LocalFilePath { get; set; } = string.Empty;
+        public MappingHealth         Health        { get; set; } = MappingHealth.Healthy;
+        public string?               ErrorMessage   { get; set; }
 
         public PropertyMappingConfig? LastSaved        { get; private set; }
         public bool                   CopyToLocalCalled { get; private set; }
@@ -18,6 +20,14 @@ namespace SwInventreeAddin.Tests.Stubs
         public System.Exception? ThrowOnGet  { get; set; }
         public System.Exception? ThrowOnSave { get; set; }
         public System.Exception? ThrowOnCopyToLocal { get; set; }
+
+        public MappingResult GetMappingResult()
+        {
+            if (ThrowOnGet != null)
+                throw ThrowOnGet;
+
+            return new MappingResult(Health, Config, ErrorMessage);
+        }
 
         public PropertyMappingConfig GetMapping()
         {

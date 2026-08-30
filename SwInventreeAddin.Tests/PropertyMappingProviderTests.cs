@@ -308,6 +308,195 @@ namespace SwInventreeAddin.Tests
             Assert.That(aliases, Does.Contain("Quantity"));
         }
 
+        // ── GetMappingResult / MappingHealth ──────────────────────────────────
+
+        [Test]
+        public void GetMappingResult_NoLocalNoSource_WritesDefaultsAndReturnsHealthy()
+        {
+            var provider = new PropertyMappingProvider(_localPath, null);
+
+            var result = provider.GetMappingResult();
+
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.Healthy));
+            Assert.That(result.CanUseForPartSync, Is.True);
+            Assert.That(result.CanFetch, Is.True);
+            Assert.That(result.CanEdit, Is.True);
+            Assert.That(File.Exists(_localPath), Is.True,
+                "First-run should have written defaults to local path.");
+            Assert.That(result.Config.SchemaVersion, Is.EqualTo(PropertyMappingConfig.CurrentSchemaVersion));
+        }
+
+        [Test]
+        public void GetMappingResult_LocalCurrentSchema_ReturnsHealthy()
+        {
+            WriteJson(_localPath, new PropertyMappingConfig { IpnProperty = "PartNo" });
+
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.Healthy));
+            Assert.That(result.Config.IpnProperty, Is.EqualTo("PartNo"));
+            Assert.That(result.CanUseForPartSync, Is.True);
+            Assert.That(result.CanEdit, Is.True);
+        }
+
+        [Test]
+        public void GetMappingResult_LocalSchemaV1_ReturnsNeedsUpgradeAndKeepsOriginalSchema()
+        {
+            var v1Json = @"{
+                ""SchemaVersion"": ""1"",
+                ""IpnProperty"": ""PartNo"",
+                ""NameProperty"": ""Description"",
+                ""NotesProperty"": ""Notes"",
+                ""RevisionProperty"": ""Revision""
+            }";
+            File.WriteAllText(_localPath, v1Json);
+
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.NeedsUpgrade));
+            Assert.That(result.Config.SchemaVersion, Is.EqualTo("1"),
+                "The runtime config should keep the file's original schema version, not silently upgrade it.");
+            Assert.That(result.CanFetch, Is.True);
+            Assert.That(result.CanUseForPartSync, Is.False);
+            Assert.That(result.CanEdit, Is.True);
+        }
+
+        [Test]
+        public void GetMappingResult_LocalSchemaV2_ReturnsNeedsUpgrade()
+        {
+            var v2Json = @"{
+                ""SchemaVersion"": ""2"",
+                ""IpnProperty"": ""PartNo"",
+                ""NameProperty"": ""Description"",
+                ""NotesProperty"": ""Notes"",
+                ""RevisionProperty"": ""Revision"",
+                ""DescriptionProperty"": ""Description Long"",
+                ""PkProperty"": ""InvenTree PK""
+            }";
+            File.WriteAllText(_localPath, v2Json);
+
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.NeedsUpgrade));
+            Assert.That(result.Config.SchemaVersion, Is.EqualTo("2"));
+        }
+
+        [Test]
+        public void GetMappingResult_InvalidJson_ReturnsInvalidWithPath()
+        {
+            File.WriteAllText(_localPath, "not valid json");
+
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.Invalid));
+            Assert.That(result.ErrorMessage, Does.Contain(_localPath));
+            Assert.That(result.CanFetch, Is.False);
+            Assert.That(result.CanUseForPartSync, Is.False);
+            Assert.That(result.CanEdit, Is.False);
+        }
+
+        [Test]
+        public void GetMappingResult_LockedFile_ReturnsInvalidWithPath()
+        {
+            using var stream = new FileStream(_localPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
+            var content = System.Text.Encoding.UTF8.GetBytes("{}");
+            stream.Write(content, 0, content.Length);
+            stream.Flush();
+
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.Invalid));
+            Assert.That(result.ErrorMessage, Does.Contain(_localPath));
+        }
+
+        [Test]
+        public void GetMappingResult_DuplicateDocumentPropertyNames_ReturnsInvalid()
+        {
+            File.WriteAllText(_localPath, @"{
+                ""SchemaVersion"": ""3"",
+                ""IpnProperty"": ""PartNo"",
+                ""NameProperty"": ""Description"",
+                ""NotesProperty"": ""Notes"",
+                ""RevisionProperty"": ""Revision"",
+                ""DescriptionProperty"": ""Description"",
+                ""PkProperty"": ""InvenTree PK""
+            }");
+
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.Invalid));
+            Assert.That(result.ErrorMessage, Does.Contain("Description"));
+            Assert.That(result.ErrorMessage, Does.Contain("duplicate").IgnoreCase);
+        }
+
+        [Test]
+        public void GetMappingResult_DuplicateIsCaseInsensitiveAndTrims()
+        {
+            File.WriteAllText(_localPath, @"{
+                ""SchemaVersion"": ""3"",
+                ""IpnProperty"": ""PartNo"",
+                ""NameProperty"": ""  partno  "",
+                ""NotesProperty"": ""Notes"",
+                ""RevisionProperty"": ""Revision"",
+                ""DescriptionProperty"": ""Description Long"",
+                ""PkProperty"": ""InvenTree PK""
+            }");
+
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.Invalid));
+            Assert.That(result.ErrorMessage, Does.Contain("PartNo"));
+        }
+
+        [Test]
+        public void GetMappingResult_SourceTakesPrecedenceForHealth()
+        {
+            WriteJson(_localPath,  new PropertyMappingConfig { SchemaVersion = "3", IpnProperty = "LocalIPN"  });
+            WriteJson(_sourcePath, new PropertyMappingConfig { SchemaVersion = "1", IpnProperty = "SourceIPN" });
+
+            var result = new PropertyMappingProvider(_localPath, _sourcePath).GetMappingResult();
+
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.NeedsUpgrade));
+            Assert.That(result.Config.IpnProperty, Is.EqualTo("SourceIPN"));
+            Assert.That(result.Config.SchemaVersion, Is.EqualTo("1"));
+        }
+
+        [Test]
+        public void GetMapping_PassThrough_ThrowsWhenResultIsInvalid()
+        {
+            File.WriteAllText(_localPath, "not valid json");
+
+            Assert.That(() => new PropertyMappingProvider(_localPath, null).GetMapping(),
+                Throws.TypeOf<InvalidOperationException>().With.Message.Contains(_localPath));
+        }
+
+        [Test]
+        public void SaveMapping_PreservesUnknownTopLevelKeys()
+        {
+            File.WriteAllText(_localPath, @"{
+                ""SchemaVersion"": ""3"",
+                ""IpnProperty"": ""PartNo"",
+                ""UnknownFutureKey"": ""future-value"",
+                ""AnotherUnknown"": 42
+            }");
+
+            var provider = new PropertyMappingProvider(_localPath, null);
+            var result   = provider.GetMappingResult();
+
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.Healthy));
+            Assert.That(result.Config.ExtensionData.ContainsKey("UnknownFutureKey"), Is.True);
+            Assert.That(result.Config.ExtensionData.ContainsKey("AnotherUnknown"), Is.True);
+
+            result.Config.IpnProperty = "NewPartNo";
+            provider.SaveMapping(result.Config);
+
+            var savedJson = File.ReadAllText(_localPath);
+            Assert.That(savedJson, Does.Contain("UnknownFutureKey"));
+            Assert.That(savedJson, Does.Contain("future-value"));
+            Assert.That(savedJson, Does.Contain("AnotherUnknown"));
+            Assert.That(savedJson, Does.Contain("NewPartNo"));
+        }
+
         // ── Helpers ───────────────────────────────────────────────────────────
 
         private static void WriteJson(string path, PropertyMappingConfig config)

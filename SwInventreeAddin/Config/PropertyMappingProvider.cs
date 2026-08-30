@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.Json;
@@ -41,28 +42,51 @@ namespace SwInventreeAddin.Config
         public string LocalFilePath => _localPath;
 
         /// <inheritdoc/>
-        public PropertyMappingConfig GetMapping()
+        public MappingResult GetMappingResult()
         {
-            // Source path takes priority when configured and the file exists.
-            if (!string.IsNullOrEmpty(_sourcePath) && File.Exists(_sourcePath))
-                return Fetch(_sourcePath!);
+            string? resolvedPath = null;
 
-            if (File.Exists(_localPath))
-                return Fetch(_localPath);
-
-            // First run — write defaults so the user has a file to edit.
-            var defaults = new PropertyMappingConfig();
             try
             {
+                // Source path takes priority when configured and the file exists.
+                if (!string.IsNullOrEmpty(_sourcePath) && File.Exists(_sourcePath))
+                {
+                    resolvedPath = _sourcePath;
+                    return Classify(Fetch(resolvedPath!), resolvedPath!);
+                }
+
+                if (File.Exists(_localPath))
+                {
+                    resolvedPath = _localPath;
+                    return Classify(Fetch(resolvedPath), resolvedPath);
+                }
+
+                // First run — write defaults so the user has a file to edit.
+                resolvedPath = _localPath;
+                var defaults = new PropertyMappingConfig();
                 SaveMapping(defaults);
+                return new MappingResult(MappingHealth.Healthy, defaults);
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException(
-                    $"Failed to load mapping file: {_localPath}", ex);
-            }
+                var message = ex is InvalidOperationException
+                    ? ex.Message
+                    : $"Failed to load mapping file: {resolvedPath ?? _localPath}";
 
-            return defaults;
+                return new MappingResult(MappingHealth.Invalid, new PropertyMappingConfig(), message);
+            }
+        }
+
+        /// <inheritdoc/>
+        public PropertyMappingConfig GetMapping()
+        {
+            var result = GetMappingResult();
+
+            if (result.Health == MappingHealth.Invalid)
+                throw new InvalidOperationException(
+                    result.ErrorMessage ?? "The mapping configuration is invalid.");
+
+            return result.Config;
         }
 
         /// <inheritdoc/>
@@ -106,16 +130,6 @@ namespace SwInventreeAddin.Config
                 var config = JsonSerializer.Deserialize<PropertyMappingConfig>(json)
                     ?? new PropertyMappingConfig();
 
-                if (string.Compare(config.SchemaVersion, "3", StringComparison.Ordinal) < 0)
-                {
-                    var defaults = new PropertyMappingConfig();
-                    if (string.IsNullOrEmpty(config.BomColumnIpn))       config.BomColumnIpn       = defaults.BomColumnIpn;
-                    if (string.IsNullOrEmpty(config.BomColumnQty))       config.BomColumnQty       = defaults.BomColumnQty;
-                    if (string.IsNullOrEmpty(config.BomColumnReference)) config.BomColumnReference = defaults.BomColumnReference;
-                    if (string.IsNullOrEmpty(config.BomColumnNote))      config.BomColumnNote      = defaults.BomColumnNote;
-                    config.SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion;
-                }
-
                 return config;
             }
             catch (Exception ex)
@@ -123,6 +137,62 @@ namespace SwInventreeAddin.Config
                 throw new InvalidOperationException(
                     $"Failed to load mapping file: {path}", ex);
             }
+        }
+
+        private static MappingResult Classify(PropertyMappingConfig config, string path)
+        {
+            var duplicate = FindDuplicatePropertyName(config);
+            if (duplicate != null)
+                return new MappingResult(
+                    MappingHealth.Invalid,
+                    config,
+                    $"Invalid mapping file: {path}. {duplicate}");
+
+            if (string.Equals(
+                    config.SchemaVersion,
+                    PropertyMappingConfig.CurrentSchemaVersion,
+                    StringComparison.Ordinal))
+                return new MappingResult(MappingHealth.Healthy, config);
+
+            return new MappingResult(MappingHealth.NeedsUpgrade, config);
+        }
+
+        private static string? FindDuplicatePropertyName(PropertyMappingConfig config)
+        {
+            var map = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+
+            void Add(string? name, string role)
+            {
+                if (name == null || string.IsNullOrWhiteSpace(name))
+                    return;
+
+                var key = name.Trim();
+                if (!map.TryGetValue(key, out var roles))
+                {
+                    roles = new List<string>();
+                    map[key] = roles;
+                }
+
+                roles.Add(role);
+            }
+
+            Add(config.IpnProperty,        "IPN");
+            Add(config.NameProperty,       "Name");
+            Add(config.NotesProperty,      "Notes");
+            Add(config.RevisionProperty,   "Revision");
+            Add(config.DescriptionProperty,"Description");
+            Add(config.PkProperty,         "InvenTree PK");
+
+            foreach (var kvp in map)
+            {
+                if (kvp.Value.Count > 1)
+                {
+                    return $"Duplicate SolidWorks Document Property name '{kvp.Key}' " +
+                           $"is used by {string.Join(" and ", kvp.Value)}.";
+                }
+            }
+
+            return null;
         }
 
         private static void EnsureDirectory(string filePath)

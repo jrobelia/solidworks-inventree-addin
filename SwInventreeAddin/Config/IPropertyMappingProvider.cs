@@ -7,11 +7,20 @@ namespace SwInventreeAddin.Config
     public interface IPropertyMappingProvider
     {
         /// <summary>
-        /// Returns the current mapping.
+        /// Returns the current mapping and its health.
         /// Resolution: source path first (when configured and file exists), then local file,
         /// then first-run defaults (writes defaults to local path and returns them).
-        /// Throws <see cref="System.InvalidOperationException"/> if the mapping file cannot be
-        /// read or parsed, naming the offending path.
+        /// Does not throw for corrupt or unreadable files; instead returns a
+        /// <see cref="MappingResult"/> whose <see cref="MappingHealth"/> is <see cref="MappingHealth.Invalid"/>.
+        /// </summary>
+        MappingResult GetMappingResult();
+
+        /// <summary>
+        /// Returns the current mapping configuration.
+        /// Resolution: source path first (when configured and file exists), then local file,
+        /// then first-run defaults (writes defaults to local path and returns them).
+        /// Throws <see cref="System.InvalidOperationException"/> if the mapping is
+        /// <see cref="MappingHealth.Invalid"/>, naming the offending path.
         /// </summary>
         PropertyMappingConfig GetMapping();
 
