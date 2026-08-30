@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using SwInventreeAddin.Config;
 using SwInventreeAddin.InvenTree;
+using SwInventreeAddin.SolidWorks;
 using SwInventreeAddin.Tests.Stubs;
 using SwInventreeAddin.UI;
 
@@ -746,6 +747,99 @@ namespace SwInventreeAddin.Tests
             Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
             Assert.That(_vm.StatusText,     Does.Contain("newer").IgnoreCase);
             Assert.That(_vm.StatusText,     Does.Contain("upgrade the add-in").IgnoreCase);
+        }
+
+        [Test]
+        public void LoadPartNumber_WithNeedsUpgradeMapping_SetsWarningStatus()
+        {
+            _propertyService.Seed("PartNo", "R-10K-0402");
+            var config = PropertyMappingConfig.WithDefaults();
+            config.SchemaVersion = "2";
+            var provider = new StubPropertyMappingProvider { Config = config };
+            _vm = new TaskPaneViewModel(_client, _propertyService, null, provider);
+
+            _vm.LoadPartNumber();
+
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+            Assert.That(_vm.StatusText, Does.Contain("schema mismatch"));
+        }
+
+        [Test]
+        public void LoadPartNumber_NoDocument_WithNeedsUpgradeMapping_SetsWarningStatus()
+        {
+            _propertyService.DocumentTypeToReturn = DocumentType.Unknown;
+            var config = PropertyMappingConfig.WithDefaults();
+            config.SchemaVersion = "2";
+            var provider = new StubPropertyMappingProvider { Config = config };
+            _vm = new TaskPaneViewModel(_client, _propertyService, null, provider);
+
+            _vm.LoadPartNumber();
+
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+            Assert.That(_vm.StatusText, Does.Contain("schema mismatch"));
+        }
+
+        [Test]
+        public void LoadPartNumber_Unlinked_WithNeedsUpgradeMapping_SetsWarningStatus()
+        {
+            _propertyService.Seed("PartNo", string.Empty);
+            _propertyService.Seed("InvenTree PK", string.Empty);
+            var config = PropertyMappingConfig.WithDefaults();
+            config.SchemaVersion = "2";
+            var provider = new StubPropertyMappingProvider { Config = config };
+            _vm = new TaskPaneViewModel(_client, _propertyService, null, provider);
+
+            _vm.LoadPartNumber();
+
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+            Assert.That(_vm.StatusText, Does.Contain("schema mismatch"));
+        }
+
+        [Test]
+        public void LoadPartNumber_Drawing_WithNeedsUpgradeMapping_SetsWarningStatus()
+        {
+            _propertyService.DocumentTypeToReturn = DocumentType.Drawing;
+            var config = PropertyMappingConfig.WithDefaults();
+            config.SchemaVersion = "2";
+            var provider = new StubPropertyMappingProvider { Config = config };
+            _vm = new TaskPaneViewModel(_client, _propertyService, null, provider);
+
+            _vm.LoadPartNumber();
+
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+            Assert.That(_vm.StatusText, Does.Contain("schema mismatch"));
+        }
+
+        [Test]
+        public void LoadPartNumber_LinkedByPk_WithNeedsUpgradeMapping_SetsWarningStatus()
+        {
+            _propertyService.Seed("PartNo", string.Empty);
+            _propertyService.Seed("InvenTree PK", "12345");
+            var config = PropertyMappingConfig.WithDefaults();
+            config.SchemaVersion = "2";
+            var provider = new StubPropertyMappingProvider { Config = config };
+            _vm = new TaskPaneViewModel(_client, _propertyService, null, provider);
+
+            _vm.LoadPartNumber();
+
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+            Assert.That(_vm.StatusText, Does.Contain("schema mismatch"));
+        }
+
+        [Test]
+        public void UpdateClient_WithNeedsUpgradeMapping_SetsWarningStatus()
+        {
+            _propertyService.Seed("PartNo", string.Empty);
+            _propertyService.Seed("InvenTree PK", string.Empty);
+            var config = PropertyMappingConfig.WithDefaults();
+            config.SchemaVersion = "2";
+            var provider = new StubPropertyMappingProvider { Config = config };
+            _vm = new TaskPaneViewModel(null, _propertyService, null, provider);
+
+            _vm.UpdateClient(new StubInventreeClient());
+
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+            Assert.That(_vm.StatusText, Does.Contain("schema mismatch"));
         }
 
         [Test]

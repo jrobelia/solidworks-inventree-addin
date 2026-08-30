@@ -413,7 +413,6 @@ namespace SwInventreeAddin.UI
             _uiContext       = SynchronizationContext.Current;
 
             LoadPartNumber();
-            CheckMappingSchema();
         }
 
         // ── Commands (called by WPF bindings and forwarded by the shim) ───────
@@ -456,6 +455,7 @@ namespace SwInventreeAddin.UI
                 ClearAll();
                 SetStatus("Drawings are not supported \u2014 open a part or assembly.",
                           StatusSeverity.Warning);
+                RefreshStatus();
                 return;
             }
 
@@ -463,6 +463,7 @@ namespace SwInventreeAddin.UI
             {
                 // No document open — Create is not meaningful.
                 ClearAll();
+                RefreshStatus();
                 return;
             }
 
@@ -489,6 +490,7 @@ namespace SwInventreeAddin.UI
                         SetStatus("No server configured \u2014 click \u2699 Settings to get started",
                                   StatusSeverity.Warning);
                     NotifyBomVisibility();
+                    RefreshStatus();
                     return;
                 }
 
@@ -524,6 +526,7 @@ namespace SwInventreeAddin.UI
                     SetStatus(string.Empty, StatusSeverity.None);
 
                 NotifyBomVisibility();
+                RefreshStatus();
                 return;
             }
 
@@ -553,6 +556,7 @@ namespace SwInventreeAddin.UI
             }
 
             NotifyBomVisibility();
+            RefreshStatus();
         }
 
         /// <summary>Resets the entire panel. Called when no document is active.</summary>
@@ -597,7 +601,6 @@ namespace SwInventreeAddin.UI
             _client = newClient;
             ClearSession();
             LoadPartNumber();
-            CheckMappingSchema();
         }
 
         /// <summary>
@@ -1096,7 +1099,7 @@ namespace SwInventreeAddin.UI
         {
             _mappingProvider = provider;
             RefreshMappingResult();
-            CheckMappingSchema();
+            RefreshStatus();
             RefreshCommandStates();
             if (_propertiesSectionVisible)
                 RefreshCurrentProperties();
@@ -1121,7 +1124,12 @@ namespace SwInventreeAddin.UI
                 ? string.Empty
                 : _propertyService.GetCustomProperty(propertyName!);
 
-        private void CheckMappingSchema()
+        /// <summary>
+        /// Partial status refresh: ensures mapping-health status is always visible
+        /// after document/client state changes. Called from LoadPartNumber and
+        /// UpdateMapping to keep the status line in sync with the mapping provider.
+        /// </summary>
+        private void RefreshStatus()
         {
             if (_mappingProvider == null) return;
 
