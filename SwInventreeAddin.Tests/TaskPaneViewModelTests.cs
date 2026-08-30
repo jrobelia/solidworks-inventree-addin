@@ -392,6 +392,78 @@ namespace SwInventreeAddin.Tests
             Assert.That(_vm.CurrentPk, Is.EqualTo("42"));
         }
 
+        // ── Document property changed ──────────────────────────────────────────
+
+        [Test]
+        public async Task OnDocumentPropertyChanged_AfterApplyName_KeepsPreviewAndStatus()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            _vm.ApplyNameToDocument();
+            Assert.That(_vm.StatusText, Does.Contain("applied"));
+
+            _vm.OnDocumentPropertyChanged("Description", SamplePart.Name);
+
+            Assert.That(_vm.PropertiesSectionVisible, Is.True);
+            Assert.That(_vm.NamePreview, Is.EqualTo(SamplePart.Name));
+            Assert.That(_vm.CurrentName, Is.EqualTo(SamplePart.Name));
+            Assert.That(_vm.NameMatch, Is.True);
+            Assert.That(_vm.StatusText, Does.Contain("applied"));
+        }
+
+        [Test]
+        public async Task OnDocumentPropertyChanged_AfterPushDescription_KeepsPreviewAndStatus()
+        {
+            _propertyService.Seed("Description Long", "Updated desc");
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            await _vm.PushDescriptionToInvenTreeAsync();
+            Assert.That(_vm.StatusText, Does.Contain("pushed"));
+
+            _vm.OnDocumentPropertyChanged("Description Long", "Updated desc");
+
+            Assert.That(_vm.PropertiesSectionVisible, Is.True);
+            Assert.That(_vm.DescriptionPreview, Is.EqualTo("Updated desc"));
+            Assert.That(_vm.CurrentDescription, Is.EqualTo("Updated desc"));
+            Assert.That(_vm.DescriptionMatch, Is.True);
+            Assert.That(_vm.StatusText, Does.Contain("pushed"));
+        }
+
+        [Test]
+        public async Task OnDocumentPropertyChanged_UserEditOfName_UpdatesMatchButDoesNotClearSession()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            _propertyService.Seed("Description", "User edited name");
+            _vm.OnDocumentPropertyChanged("Description", "User edited name");
+
+            Assert.That(_vm.PropertiesSectionVisible, Is.True);
+            Assert.That(_vm.NamePreview, Is.EqualTo(SamplePart.Name));
+            Assert.That(_vm.CurrentName, Is.EqualTo("User edited name"));
+            Assert.That(_vm.NameMatch, Is.False);
+        }
+
+        [Test]
+        public async Task OnDocumentPropertyChanged_IpnChanged_ClearsSession()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            _propertyService.Seed("PartNo", "NEW-IPN");
+            _vm.OnDocumentPropertyChanged("PartNo", "NEW-IPN");
+
+            Assert.That(_vm.NamePreview, Is.Empty);
+            Assert.That(_vm.PropertiesSectionVisible, Is.True);
+            Assert.That(_vm.PartNumber, Is.EqualTo("NEW-IPN"));
+        }
+
         // ── Apply with stale read (assembly caching bug) ──────────────────────
 
         [Test]

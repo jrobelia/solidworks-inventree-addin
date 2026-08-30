@@ -225,9 +225,10 @@ namespace SwInventreeAddin.UI
 
         // -- Delegation to ViewModel -------------------------------------------
 
-        public void LoadPartNumber()    => _vm.LoadPartNumber();
-        public void RefreshProperties() => _vm.RefreshCurrentProperties();
-        public void ClearAll()          => _vm.ClearAll();
+        public void LoadPartNumber()                                    => _vm.LoadPartNumber();
+        public void RefreshProperties()                                 => _vm.RefreshCurrentProperties();
+        public void ClearAll()                                          => _vm.ClearAll();
+        public void OnDocumentPropertyChanged(string name, string value) => _vm.OnDocumentPropertyChanged(name, value);
 
         public void UpdateClient(IInventreeClient? client)
         {

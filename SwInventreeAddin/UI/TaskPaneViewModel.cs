@@ -561,6 +561,95 @@ namespace SwInventreeAddin.UI
             RefreshStatus();
         }
 
+        /// <summary>
+        /// Called when a SolidWorks custom property is added or changed.
+        /// Distinguishes add-in writes from user edits and performs a light refresh
+        /// instead of a full <see cref="LoadPartNumber"/> reset when the mapping is healthy
+        /// and the document identity (IPN / InvenTree Part PK) has not changed.
+        /// </summary>
+        public void OnDocumentPropertyChanged(string propertyName, string newValue)
+        {
+            RefreshMappingResult();
+
+            if (_session == null || _mappingResult?.Health != MappingHealth.Healthy)
+            {
+                LoadPartNumber();
+                return;
+            }
+
+            var config = _mappingResult.Config;
+
+            // IPN and PK are identity properties: if they change to a different value,
+            // the document now refers to a different InvenTree part and the panel must reset.
+            if (PropertyNameEquals(config.IpnProperty, propertyName))
+            {
+                if (!ValuesMatch(newValue, _session.Part.Ipn))
+                {
+                    LoadPartNumber();
+                    return;
+                }
+
+                LightRefreshAfterDocumentChange();
+                return;
+            }
+
+            if (PropertyNameEquals(config.PkProperty, propertyName))
+            {
+                if (!ValuesMatch(newValue, _session.Part.Pk.ToString()))
+                {
+                    LoadPartNumber();
+                    return;
+                }
+
+                LightRefreshAfterDocumentChange();
+                return;
+            }
+
+            // Mapped non-identity properties: refresh from the document.
+            // If the new value does not match the fetched part, this is a user edit and
+            // any stale success status should be cleared.
+            if (PropertyNameEquals(config.NameProperty, propertyName)
+                || PropertyNameEquals(config.NotesProperty, propertyName)
+                || PropertyNameEquals(config.RevisionProperty, propertyName)
+                || PropertyNameEquals(config.DescriptionProperty, propertyName))
+            {
+                if (!ValuesMatch(newValue, GetExpectedValueFor(propertyName, config)))
+                    SetStatus(string.Empty, StatusSeverity.None);
+
+                LightRefreshAfterDocumentChange();
+                return;
+            }
+
+            // Changes to properties this mapping does not use have no effect on the panel.
+        }
+
+        private string? GetExpectedValueFor(string propertyName, PropertyMappingConfig config)
+        {
+            if (PropertyNameEquals(config.NameProperty, propertyName))        return _session!.Part.Name;
+            if (PropertyNameEquals(config.NotesProperty, propertyName))       return _session!.Part.Notes;
+            if (PropertyNameEquals(config.RevisionProperty, propertyName))    return _session!.Part.Revision;
+            if (PropertyNameEquals(config.DescriptionProperty, propertyName)) return _session!.Part.Description;
+            return null;
+        }
+
+        private static bool PropertyNameEquals(string? left, string? right)
+            => !string.IsNullOrEmpty(left)
+               && !string.IsNullOrEmpty(right)
+               && string.Equals(left, right, StringComparison.Ordinal);
+
+        private static bool ValuesMatch(string? left, string? right)
+            => string.Equals(left?.Trim(), right?.Trim(), StringComparison.Ordinal);
+
+        /// <summary>
+        /// Re-reads the current SolidWorks document properties and notifies the view
+        /// without the heavier work of <see cref="LoadPartNumber"/>.
+        /// </summary>
+        private void LightRefreshAfterDocumentChange()
+        {
+            RefreshCurrentProperties();
+            NotifySessionProperties();
+        }
+
         /// <summary>Resets the entire panel. Called when no document is active.</summary>
         public void ClearAll()
         {
