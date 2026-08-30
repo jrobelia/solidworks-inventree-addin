@@ -580,30 +580,12 @@ namespace SwInventreeAddin.UI
             var config = _mappingResult.Config;
 
             // IPN and PK are identity properties: if they change to a different value,
-            // the document now refers to a different InvenTree part and the panel must reset.
-            if (PropertyNameEquals(config.IpnProperty, propertyName))
-            {
-                if (!ValuesMatch(newValue, _session.Part.Ipn))
-                {
-                    LoadPartNumber();
-                    return;
-                }
-
-                LightRefreshAfterDocumentChange();
+            // the document now refers to a different InvenTree part and the Task Pane must reset.
+            if (HandleIdentityProperty(config.IpnProperty, propertyName, newValue, _session.Part.Ipn))
                 return;
-            }
 
-            if (PropertyNameEquals(config.PkProperty, propertyName))
-            {
-                if (!ValuesMatch(newValue, _session.Part.Pk.ToString()))
-                {
-                    LoadPartNumber();
-                    return;
-                }
-
-                LightRefreshAfterDocumentChange();
+            if (HandleIdentityProperty(config.PkProperty, propertyName, newValue, _session.Part.Pk.ToString()))
                 return;
-            }
 
             // Mapped non-identity properties: refresh from the document.
             // If the new value does not match the fetched part, this is a user edit and
@@ -617,7 +599,22 @@ namespace SwInventreeAddin.UI
                 return;
             }
 
-            // Changes to properties this mapping does not use have no effect on the panel.
+            // Changes to properties this mapping does not use have no effect on the Task Pane.
+        }
+
+        private bool HandleIdentityProperty(string? configProperty, string propertyName, string newValue, string? currentValue)
+        {
+            if (!PropertyNameEquals(configProperty, propertyName))
+                return false;
+
+            if (!ValuesMatch(newValue, currentValue))
+            {
+                LoadPartNumber();
+                return true;
+            }
+
+            LightRefreshAfterDocumentChange();
+            return true;
         }
 
         private bool TryGetPartValueFor(string propertyName, PropertyMappingConfig config, out string? value)
@@ -645,7 +642,7 @@ namespace SwInventreeAddin.UI
             NotifySessionProperties();
         }
 
-        /// <summary>Resets the entire panel. Called when no document is active.</summary>
+        /// <summary>Resets the entire Task Pane. Called when no document is active.</summary>
         public void ClearAll()
         {
             _isDocumentOpen          = false;
