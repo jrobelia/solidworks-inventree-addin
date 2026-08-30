@@ -45,7 +45,7 @@ namespace SwInventreeAddin.Tests
         }
 
         private TaskPaneViewModel CreateVmWithMapping(
-            string?  partNo       = null,
+            string?  ipn          = null,
             string?  pk           = null,
             string   schemaVersion = "2",
             IInventreeClient? client = null,
@@ -57,12 +57,18 @@ namespace SwInventreeAddin.Tests
 
             if (docType != null)
                 _propertyService.DocumentTypeToReturn = docType.Value;
-            if (partNo != null)
-                _propertyService.Seed(config.IpnProperty!, partNo);
+            if (ipn != null)
+                _propertyService.Seed(config.IpnProperty!, ipn);
             if (pk != null)
                 _propertyService.Seed(config.PkProperty!, pk);
 
             return new TaskPaneViewModel(client ?? _client, _propertyService, null, provider);
+        }
+
+        private void AssertMappingHealthWarning(string expectedText)
+        {
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+            Assert.That(_vm.StatusText, Does.Contain(expectedText));
         }
 
         private async Task FetchSamplePart(Uri? partWebUrl = null)
@@ -773,12 +779,11 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void LoadPartNumber_WithNeedsUpgradeMapping_SetsWarningStatus()
         {
-            _vm = CreateVmWithMapping(partNo: "R-10K-0402");
+            _vm = CreateVmWithMapping(ipn: "R-10K-0402");
 
             _vm.LoadPartNumber();
 
-            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
-            Assert.That(_vm.StatusText, Does.Contain("schema mismatch"));
+            AssertMappingHealthWarning("schema mismatch");
         }
 
         [Test]
@@ -788,19 +793,17 @@ namespace SwInventreeAddin.Tests
 
             _vm.LoadPartNumber();
 
-            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
-            Assert.That(_vm.StatusText, Does.Contain("schema mismatch"));
+            AssertMappingHealthWarning("schema mismatch");
         }
 
         [Test]
         public void LoadPartNumber_Unlinked_WithNeedsUpgradeMapping_SetsWarningStatus()
         {
-            _vm = CreateVmWithMapping(partNo: string.Empty, pk: string.Empty);
+            _vm = CreateVmWithMapping(ipn: string.Empty, pk: string.Empty);
 
             _vm.LoadPartNumber();
 
-            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
-            Assert.That(_vm.StatusText, Does.Contain("schema mismatch"));
+            AssertMappingHealthWarning("schema mismatch");
         }
 
         [Test]
@@ -810,30 +813,27 @@ namespace SwInventreeAddin.Tests
 
             _vm.LoadPartNumber();
 
-            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
-            Assert.That(_vm.StatusText, Does.Contain("schema mismatch"));
+            AssertMappingHealthWarning("schema mismatch");
         }
 
         [Test]
         public void LoadPartNumber_LinkedByPk_WithNeedsUpgradeMapping_SetsWarningStatus()
         {
-            _vm = CreateVmWithMapping(partNo: string.Empty, pk: "12345");
+            _vm = CreateVmWithMapping(ipn: string.Empty, pk: "12345");
 
             _vm.LoadPartNumber();
 
-            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
-            Assert.That(_vm.StatusText, Does.Contain("schema mismatch"));
+            AssertMappingHealthWarning("schema mismatch");
         }
 
         [Test]
         public void UpdateClient_WithNeedsUpgradeMapping_SetsWarningStatus()
         {
-            _vm = CreateVmWithMapping(partNo: string.Empty, pk: string.Empty, client: null);
+            _vm = CreateVmWithMapping(ipn: string.Empty, pk: string.Empty, client: null);
 
             _vm.UpdateClient(new StubInventreeClient());
 
-            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
-            Assert.That(_vm.StatusText, Does.Contain("schema mismatch"));
+            AssertMappingHealthWarning("schema mismatch");
         }
 
         [Test]
