@@ -10,14 +10,13 @@ using SwInventreeAddin.Config;
 namespace SwInventreeAddin.UI
 {
     /// <summary>
-    /// Modal dialog for viewing and editing the five InvenTree → SolidWorks property-name mappings.
-    /// Receives <see cref="IPropertyMappingProvider"/> and delegates all persistence to it.
-    /// Opens in read-only mode when <see cref="IPropertyMappingProvider.IsReadOnly"/> is true.
+    /// Modal dialog for viewing and editing the InvenTree → SolidWorks property-name mappings.
+    /// Receives <see cref="IPropertyMappingProvider"/> and delegates all persistence to the
+    /// <see cref="MappingEditorViewModel"/>.
     /// </summary>
     public partial class PropertyMappingEditorWindow : Window
     {
-        private readonly IPropertyMappingProvider _provider;
-        private readonly PropertyMappingConfig _originalMapping;
+        private readonly MappingEditorViewModel _viewModel;
 
         /// <summary>
         /// Creates the mapping editor.
@@ -26,7 +25,9 @@ namespace SwInventreeAddin.UI
         /// <param name="ownerWindow">The parent window. If null, the SolidWorks main window is used.</param>
         public PropertyMappingEditorWindow(IPropertyMappingProvider provider, Window? ownerWindow = null)
         {
-            _provider = provider;
+            _viewModel = new MappingEditorViewModel(provider);
+            DataContext = _viewModel;
+
             InitializeComponent();
 
             Owner = ownerWindow;
@@ -36,31 +37,82 @@ namespace SwInventreeAddin.UI
                 : SolidWorksWindowHandle.Get();
             WindowCentering.Attach(this, ownerHandle);
 
-            _originalMapping = _provider.GetMapping();
-            IpnPropertyBox.Text         = _originalMapping.IpnProperty         ?? string.Empty;
-            NamePropertyBox.Text        = _originalMapping.NameProperty         ?? string.Empty;
-            DescriptionPropertyBox.Text = _originalMapping.DescriptionProperty  ?? string.Empty;
-            RevisionPropertyBox.Text    = _originalMapping.RevisionProperty     ?? string.Empty;
-            NotesPropertyBox.Text       = _originalMapping.NotesProperty        ?? string.Empty;
-            PkPropertyBox.Text          = _originalMapping.PkProperty           ?? string.Empty;
+            _viewModel.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(MappingEditorViewModel.ErrorMessage))
+                    RefreshErrorText();
+                else if (e.PropertyName == nameof(MappingEditorViewModel.CopyToLocalInstruction))
+                    RefreshCopyToLocalInstruction();
+            };
 
-            if (_provider.IsReadOnly)
-                ApplyReadOnlyMode();
+            ApplyReadOnlyState();
         }
 
-        // ── Read-only mode ─────────────────────────────────────────────────────
+        // ── Read-only / copy-to-local state ────────────────────────────────────
 
-        private void ApplyReadOnlyMode()
+        private void ApplyReadOnlyState()
         {
-            ReadOnlyBanner.Visibility = Visibility.Visible;
-            SaveButton.IsEnabled      = false;
+            if (_viewModel.IsReadOnly)
+            {
+                SaveButton.IsEnabled = false;
+                SetReadOnlyBackground();
 
+                var copyVisible = _viewModel.CanCopyToLocal ||
+                                  !string.IsNullOrEmpty(_viewModel.CopyToLocalInstruction);
+
+                if (copyVisible)
+                {
+                    CopyToLocalPanel.Visibility = Visibility.Visible;
+                    CopyToLocalButton.Visibility = _viewModel.CanCopyToLocal
+                        ? Visibility.Visible
+                        : Visibility.Collapsed;
+                    ReadOnlyBanner.Visibility   = Visibility.Collapsed;
+                }
+                else
+                {
+                    CopyToLocalPanel.Visibility = Visibility.Collapsed;
+                    ReadOnlyBanner.Visibility   = Visibility.Visible;
+                    ReadOnlyBannerText.Text     =
+                        "Loaded from a shared file — switch to Local in Settings to edit mappings.";
+                }
+            }
+            else
+            {
+                SaveButton.IsEnabled        = true;
+                CopyToLocalPanel.Visibility = Visibility.Collapsed;
+                ReadOnlyBanner.Visibility   = Visibility.Collapsed;
+            }
+
+            RefreshErrorText();
+            RefreshCopyToLocalInstruction();
+        }
+
+        private void SetReadOnlyBackground()
+        {
             var greyBrush = TryFindResource("BrushSectionHeader") as Brush
                             ?? SystemColors.ControlBrush;
-            foreach (var box in MappingBoxes())
-            {
-                box.IsReadOnly = true;
+
+            foreach (var box in FindTextBoxesInTemplate())
                 box.Background = greyBrush;
+        }
+
+        private IEnumerable<TextBox> FindTextBoxesInTemplate()
+        {
+            return LogicalTreeHelper.GetChildren(this)
+                .OfType<DependencyObject>()
+                .SelectMany(FindVisualChildren<TextBox>);
+        }
+
+        private static IEnumerable<T> FindVisualChildren<T>(DependencyObject parent) where T : DependencyObject
+        {
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T typed)
+                    yield return typed;
+
+                foreach (var descendant in FindVisualChildren<T>(child))
+                    yield return descendant;
             }
         }
 
@@ -68,60 +120,55 @@ namespace SwInventreeAddin.UI
 
         private void Save_Click(object sender, RoutedEventArgs e)
         {
-            var names = MappingBoxes()
-                .Select(b => b.Text.Trim())
-                .ToList();
-
-            if (HasDuplicatePropertyNames(names))
-            {
-                ErrorText.Text =
-                    "Two or more fields share the same SolidWorks property name. Each name must be unique.";
-                ErrorText.Visibility = Visibility.Visible;
-                return;
-            }
-
-            ErrorText.Visibility = Visibility.Collapsed;
-
-            try
-            {
-                _provider.SaveMapping(new PropertyMappingConfig
-                {
-                    SchemaVersion       = PropertyMappingConfig.CurrentSchemaVersion,
-                    IpnProperty         = IpnPropertyBox.Text.Trim(),
-                    NameProperty        = NamePropertyBox.Text.Trim(),
-                    DescriptionProperty = DescriptionPropertyBox.Text.Trim(),
-                    RevisionProperty    = RevisionPropertyBox.Text.Trim(),
-                    NotesProperty       = NotesPropertyBox.Text.Trim(),
-                    PkProperty          = PkPropertyBox.Text.Trim(),
-                    BomColumnIpn        = _originalMapping.BomColumnIpn,
-                    BomColumnQty        = _originalMapping.BomColumnQty,
-                    BomColumnReference  = _originalMapping.BomColumnReference,
-                    BomColumnNote       = _originalMapping.BomColumnNote,
-                    ExtensionData       = _originalMapping.ExtensionData,
-                });
-            }
-            catch (Exception ex)
-            {
-                ErrorText.Text = $"Could not save mapping: {ex.Message}";
-                ErrorText.Visibility = Visibility.Visible;
-                return;
-            }
-
-            DialogResult = true;
+            if (_viewModel.Save())
+                DialogResult = true;
         }
 
         // ── Cancel ─────────────────────────────────────────────────────────────
 
         private void Cancel_Click(object sender, RoutedEventArgs e)
         {
+            _viewModel.Cancel();
             DialogResult = false;
         }
 
-        // ── Helpers ────────────────────────────────────────────────────────────
+        // ── Copy to local ──────────────────────────────────────────────────────
 
-        private IEnumerable<TextBox> MappingBoxes() =>
-            new[] { IpnPropertyBox, NamePropertyBox, DescriptionPropertyBox,
-                    RevisionPropertyBox, NotesPropertyBox, PkPropertyBox };
+        private void CopyToLocal_Click(object sender, RoutedEventArgs e)
+        {
+            _viewModel.CopyToLocal();
+            ApplyReadOnlyState();
+        }
+
+        // ── UI refresh ─────────────────────────────────────────────────────────
+
+        private void RefreshErrorText()
+        {
+            if (string.IsNullOrEmpty(_viewModel.ErrorMessage))
+            {
+                ErrorText.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                ErrorText.Text       = _viewModel.ErrorMessage;
+                ErrorText.Visibility = Visibility.Visible;
+            }
+        }
+
+        private void RefreshCopyToLocalInstruction()
+        {
+            if (string.IsNullOrEmpty(_viewModel.CopyToLocalInstruction))
+            {
+                CopyToLocalInstructionText.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                CopyToLocalInstructionText.Text       = _viewModel.CopyToLocalInstruction;
+                CopyToLocalInstructionText.Visibility = Visibility.Visible;
+            }
+        }
+
+        // ── Helpers ────────────────────────────────────────────────────────────
 
         /// <summary>
         /// Returns true when any two non-blank names in <paramref name="names"/> are
