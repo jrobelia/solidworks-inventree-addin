@@ -608,12 +608,9 @@ namespace SwInventreeAddin.UI
             // Mapped non-identity properties: refresh from the document.
             // If the new value does not match the fetched part, this is a user edit and
             // any stale success status should be cleared.
-            if (PropertyNameEquals(config.NameProperty, propertyName)
-                || PropertyNameEquals(config.NotesProperty, propertyName)
-                || PropertyNameEquals(config.RevisionProperty, propertyName)
-                || PropertyNameEquals(config.DescriptionProperty, propertyName))
+            if (TryGetPartValueFor(propertyName, config, out var expectedValue))
             {
-                if (!ValuesMatch(newValue, GetExpectedValueFor(propertyName, config)))
+                if (!ValuesMatch(newValue, expectedValue))
                     SetStatus(string.Empty, StatusSeverity.None);
 
                 LightRefreshAfterDocumentChange();
@@ -623,13 +620,15 @@ namespace SwInventreeAddin.UI
             // Changes to properties this mapping does not use have no effect on the panel.
         }
 
-        private string? GetExpectedValueFor(string propertyName, PropertyMappingConfig config)
+        private bool TryGetPartValueFor(string propertyName, PropertyMappingConfig config, out string? value)
         {
-            if (PropertyNameEquals(config.NameProperty, propertyName))        return _session!.Part.Name;
-            if (PropertyNameEquals(config.NotesProperty, propertyName))       return _session!.Part.Notes;
-            if (PropertyNameEquals(config.RevisionProperty, propertyName))    return _session!.Part.Revision;
-            if (PropertyNameEquals(config.DescriptionProperty, propertyName)) return _session!.Part.Description;
-            return null;
+            if (PropertyNameEquals(config.NameProperty, propertyName))        { value = _session!.Part.Name;        return true; }
+            if (PropertyNameEquals(config.NotesProperty, propertyName))       { value = _session!.Part.Notes;       return true; }
+            if (PropertyNameEquals(config.RevisionProperty, propertyName))    { value = _session!.Part.Revision;    return true; }
+            if (PropertyNameEquals(config.DescriptionProperty, propertyName)) { value = _session!.Part.Description; return true; }
+
+            value = null;
+            return false;
         }
 
         private static bool PropertyNameEquals(string? left, string? right)
@@ -640,10 +639,6 @@ namespace SwInventreeAddin.UI
         private static bool ValuesMatch(string? left, string? right)
             => string.Equals(left?.Trim(), right?.Trim(), StringComparison.Ordinal);
 
-        /// <summary>
-        /// Re-reads the current SolidWorks document properties and notifies the view
-        /// without the heavier work of <see cref="LoadPartNumber"/>.
-        /// </summary>
         private void LightRefreshAfterDocumentChange()
         {
             RefreshCurrentProperties();

@@ -38,9 +38,11 @@ namespace SwInventreeAddin.Tests
             _propertyService = new StubDocumentPropertyService();
         }
 
+        private static PropertyMappingConfig DefaultMapping => PropertyMappingConfig.WithDefaults();
+
         private void CreateVm(string seedPartNo = "R-10K-0402")
         {
-            _propertyService.Seed("PartNo", seedPartNo);
+            _propertyService.Seed(DefaultMapping.IpnProperty!, seedPartNo);
             _vm = new TaskPaneViewModel(_client, _propertyService);
         }
 
@@ -404,7 +406,7 @@ namespace SwInventreeAddin.Tests
             _vm.ApplyNameToDocument();
             Assert.That(_vm.StatusText, Does.Contain("applied"));
 
-            _vm.OnDocumentPropertyChanged("Description", SamplePart.Name);
+            _vm.OnDocumentPropertyChanged(DefaultMapping.NameProperty!, SamplePart.Name);
 
             Assert.That(_vm.PropertiesSectionVisible, Is.True);
             Assert.That(_vm.NamePreview, Is.EqualTo(SamplePart.Name));
@@ -416,7 +418,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task OnDocumentPropertyChanged_AfterPushDescription_KeepsPreviewAndStatus()
         {
-            _propertyService.Seed("Description Long", "Updated desc");
+            _propertyService.Seed(DefaultMapping.DescriptionProperty!, "Updated desc");
             _client.PartToReturn = SamplePart;
             CreateVm();
             await _vm.FetchPartAsync();
@@ -424,7 +426,7 @@ namespace SwInventreeAddin.Tests
             await _vm.PushDescriptionToInvenTreeAsync();
             Assert.That(_vm.StatusText, Does.Contain("pushed"));
 
-            _vm.OnDocumentPropertyChanged("Description Long", "Updated desc");
+            _vm.OnDocumentPropertyChanged(DefaultMapping.DescriptionProperty!, "Updated desc");
 
             Assert.That(_vm.PropertiesSectionVisible, Is.True);
             Assert.That(_vm.DescriptionPreview, Is.EqualTo("Updated desc"));
@@ -440,8 +442,8 @@ namespace SwInventreeAddin.Tests
             CreateVm();
             await _vm.FetchPartAsync();
 
-            _propertyService.Seed("Description", "User edited name");
-            _vm.OnDocumentPropertyChanged("Description", "User edited name");
+            _propertyService.Seed(DefaultMapping.NameProperty!, "User edited name");
+            _vm.OnDocumentPropertyChanged(DefaultMapping.NameProperty!, "User edited name");
 
             Assert.That(_vm.PropertiesSectionVisible, Is.True);
             Assert.That(_vm.NamePreview, Is.EqualTo(SamplePart.Name));
@@ -456,8 +458,8 @@ namespace SwInventreeAddin.Tests
             CreateVm();
             await _vm.FetchPartAsync();
 
-            _propertyService.Seed("PartNo", "NEW-IPN");
-            _vm.OnDocumentPropertyChanged("PartNo", "NEW-IPN");
+            _propertyService.Seed(DefaultMapping.IpnProperty!, "NEW-IPN");
+            _vm.OnDocumentPropertyChanged(DefaultMapping.IpnProperty!, "NEW-IPN");
 
             Assert.That(_vm.NamePreview, Is.Empty);
             Assert.That(_vm.PropertiesSectionVisible, Is.True);
