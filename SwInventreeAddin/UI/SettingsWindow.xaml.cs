@@ -152,10 +152,9 @@ namespace SwInventreeAddin.UI
 
         // ── Mapping status bar ────────────────────────────────────────────────
 
-        /// <summary>
-        /// Refreshes the mapping status bar from <see cref="IPropertyMappingProvider.GetMappingResult()"/>.
-        /// Catches mapping provider errors, shows a red error stripe, and returns <c>false</c>.
-        /// </summary>
+        // Re-renders the mapping status bar from IPropertyMappingProvider.GetMappingResult()
+        // whenever the provider or its underlying file changes, so the status, colour, and
+        // Edit Mappings button always reflect the current mapping health.
         private bool RefreshMappingStatus()
         {
             try
