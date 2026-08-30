@@ -1,3 +1,4 @@
+using System;
 using SwInventreeAddin.Config;
 
 namespace SwInventreeAddin.Tests.Stubs
@@ -21,6 +22,8 @@ namespace SwInventreeAddin.Tests.Stubs
         public System.Exception? ThrowOnSave { get; set; }
         public System.Exception? ThrowOnCopyToLocal { get; set; }
 
+        public event EventHandler? MappingChanged;
+
         public MappingResult GetMappingResult()
         {
             if (ThrowOnGet != null)
@@ -31,10 +34,13 @@ namespace SwInventreeAddin.Tests.Stubs
 
         public PropertyMappingConfig GetMapping()
         {
-            if (ThrowOnGet != null)
-                throw ThrowOnGet;
+            var result = GetMappingResult();
 
-            return Config;
+            if (result.Health == MappingHealth.Invalid)
+                throw new InvalidOperationException(
+                    result.ErrorMessage ?? "The mapping configuration is invalid.");
+
+            return result.Config;
         }
 
         public void SaveMapping(PropertyMappingConfig config)
@@ -44,6 +50,7 @@ namespace SwInventreeAddin.Tests.Stubs
 
             LastSaved = config;
             Config    = config;
+            MappingChanged?.Invoke(this, EventArgs.Empty);
         }
 
         public void CopyToLocal()
@@ -53,6 +60,7 @@ namespace SwInventreeAddin.Tests.Stubs
 
             CopyToLocalCalled = true;
             IsReadOnly        = false;
+            MappingChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 }

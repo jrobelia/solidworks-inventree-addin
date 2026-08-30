@@ -42,6 +42,9 @@ namespace SwInventreeAddin.Config
         public string LocalFilePath => _localPath;
 
         /// <inheritdoc/>
+        public event EventHandler? MappingChanged;
+
+        /// <inheritdoc/>
         public MappingResult GetMappingResult()
         {
             string? resolvedPath = null;
@@ -98,6 +101,7 @@ namespace SwInventreeAddin.Config
                 var json = JsonSerializer.Serialize(config,
                     new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(_localPath, json, Encoding.UTF8);
+                MappingChanged?.Invoke(this, EventArgs.Empty);
             }
             catch (Exception ex)
             {
@@ -181,7 +185,7 @@ namespace SwInventreeAddin.Config
             Add(config.NotesProperty,      "Notes");
             Add(config.RevisionProperty,   "Revision");
             Add(config.DescriptionProperty,"Description");
-            Add(config.PkProperty,         "InvenTree PK");
+            Add(config.PkProperty,         "InvenTree Part PK");
 
             foreach (var kvp in map)
             {

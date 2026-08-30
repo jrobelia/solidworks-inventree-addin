@@ -3,7 +3,7 @@ using System;
 namespace SwInventreeAddin.Config
 {
     /// <summary>
-    /// The result of evaluating a <see cref="PropertyMapping"/> file.
+    /// The result of evaluating a <see cref="PropertyMappingConfig"/>.
     /// Contains the loaded <see cref="PropertyMappingConfig"/> and the <see cref="MappingHealth"/>.
     /// </summary>
     public class MappingResult

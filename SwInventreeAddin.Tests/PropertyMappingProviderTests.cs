@@ -430,7 +430,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void GetMappingResult_DuplicateIsCaseInsensitiveAndTrims()
+        public void GetMappingResult_DuplicateIsCaseInsensitiveAndTrims_ReturnsInvalid()
         {
             File.WriteAllText(_localPath, @"{
                 ""SchemaVersion"": ""3"",
@@ -449,7 +449,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void GetMappingResult_SourceTakesPrecedenceForHealth()
+        public void GetMappingResult_SourceTakesPrecedenceForHealth_ReturnsNeedsUpgrade()
         {
             WriteJson(_localPath,  new PropertyMappingConfig { SchemaVersion = "3", IpnProperty = "LocalIPN"  });
             WriteJson(_sourcePath, new PropertyMappingConfig { SchemaVersion = "1", IpnProperty = "SourceIPN" });

@@ -1,3 +1,5 @@
+using System;
+
 namespace SwInventreeAddin.Config
 {
     /// <summary>
@@ -6,6 +8,12 @@ namespace SwInventreeAddin.Config
     /// </summary>
     public interface IPropertyMappingProvider
     {
+        /// <summary>
+        /// Raised when <see cref="SaveMapping"/> or <see cref="CopyToLocal"/> changes the file,
+        /// so shared consumers (Settings and Task Pane) can refresh from the same result.
+        /// </summary>
+        event EventHandler? MappingChanged;
+
         /// <summary>
         /// Returns the current mapping and its health.
         /// Resolution: source path first (when configured and file exists), then local file,
