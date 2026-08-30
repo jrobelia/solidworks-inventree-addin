@@ -497,6 +497,33 @@ namespace SwInventreeAddin.Tests
             Assert.That(savedJson, Does.Contain("NewPartNo"));
         }
 
+        [Test]
+        public void SaveMapping_RaisesMappingChanged()
+        {
+            var provider    = new PropertyMappingProvider(_localPath, null);
+            var raised      = false;
+            provider.MappingChanged += (s, e) => raised = true;
+
+            provider.SaveMapping(new PropertyMappingConfig { IpnProperty = "PartNo" });
+
+            Assert.That(raised, Is.True);
+        }
+
+        [Test]
+        public void CopyToLocal_RaisesMappingChanged()
+        {
+            WriteJson(_sourcePath, new PropertyMappingConfig { IpnProperty = "SourceIPN" });
+            var provider = new PropertyMappingProvider(_localPath, _sourcePath);
+
+            var raised = false;
+            provider.MappingChanged += (s, e) => raised = true;
+
+            provider.CopyToLocal();
+
+            Assert.That(raised, Is.True);
+            Assert.That(File.Exists(_localPath), Is.True);
+        }
+
         // ── Helpers ───────────────────────────────────────────────────────────
 
         private static void WriteJson(string path, PropertyMappingConfig config)
