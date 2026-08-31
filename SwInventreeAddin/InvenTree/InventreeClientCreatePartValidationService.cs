@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace SwInventreeAddin.InvenTree
@@ -21,9 +20,7 @@ namespace SwInventreeAddin.InvenTree
         }
 
         /// <inheritdoc/>
-        public async Task<IpnValidationResult> CheckIpnAvailableAsync(
-            string ipn,
-            CancellationToken cancellationToken = default)
+        public async Task<IpnValidationResult> CheckIpnAvailableAsync(string ipn)
         {
             if (string.IsNullOrWhiteSpace(ipn))
                 return IpnValidationResult.Available();

@@ -55,6 +55,17 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public void CheckIpnAvailableAsync_ClientThrows_PropagatesException()
+        {
+            _client.ThrowOnGetPartByIpn = new HttpRequestException("Stub: GetPartByIpn failed");
+
+            var ex = Assert.ThrowsAsync<HttpRequestException>(
+                () => _service.CheckIpnAvailableAsync("THROW"));
+
+            Assert.That(ex!.Message, Does.Contain("Stub"));
+        }
+
+        [Test]
         public void ExtractIpnError_JsonWithIpnArray_ReturnsJoinedErrors()
         {
             const string body = @"{""ipn"": [""Part with this IPN already exists."", ""IPN is required.""]}";

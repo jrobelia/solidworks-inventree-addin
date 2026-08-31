@@ -16,11 +16,12 @@ namespace SwInventreeAddin.UI
     /// </summary>
     public class TaskPaneControl : UserControl
     {
-        private readonly TaskPaneViewModel    _vm;
-        private IInventreeClient?             _client;
-        private IPropertyMappingProvider?     _mappingProvider;
-        private IAssemblyBomService?          _assemblyBomService;
-        private string                        _bomKeyword = "inventree";
+        private readonly TaskPaneViewModel             _vm;
+        private IInventreeClient?                      _client;
+        private ICreatePartValidationService?          _createPartValidator;
+        private IPropertyMappingProvider?              _mappingProvider;
+        private IAssemblyBomService?                   _assemblyBomService;
+        private string                                 _bomKeyword = "inventree";
 
         public event EventHandler? SettingsRequested;
 
@@ -36,16 +37,20 @@ namespace SwInventreeAddin.UI
             : this(client, propertyService, viewportService, null, null) { }
 
         public TaskPaneControl(
-            IInventreeClient?         client,
-            IDocumentPropertyService  propertyService,
-            IViewportCaptureService?  viewportService,
-            IPropertyMappingProvider? mappingProvider = null,
-            IConfigProvider?          configProvider = null)
+            IInventreeClient?              client,
+            IDocumentPropertyService       propertyService,
+            IViewportCaptureService?       viewportService,
+            IPropertyMappingProvider?      mappingProvider      = null,
+            IConfigProvider?               configProvider       = null,
+            ICreatePartValidationService?  createPartValidator  = null)
         {
-            _client          = client;
-            _mappingProvider = mappingProvider;
+            _client            = client;
+            _createPartValidator = createPartValidator ?? (client != null
+                ? new InventreeClientCreatePartValidationService(client)
+                : null);
+            _mappingProvider   = mappingProvider;
 
-            _vm = new TaskPaneViewModel(client, propertyService, viewportService, mappingProvider, configProvider);
+            _vm = new TaskPaneViewModel(client, propertyService, viewportService, mappingProvider, configProvider, _createPartValidator);
             _vm.SettingsRequested   += (s, e) => SettingsRequested?.Invoke(this, e);
             _vm.CompareBomRequested += OnCompareBomRequested;
             _vm.ConfirmMissingProperties = missing =>
@@ -233,7 +238,11 @@ namespace SwInventreeAddin.UI
         public void UpdateClient(IInventreeClient? client)
         {
             _client = client;
+            _createPartValidator = client != null
+                ? new InventreeClientCreatePartValidationService(client)
+                : null;
             _vm.UpdateClient(client);
+            _vm.UpdateCreatePartValidationService(_createPartValidator);
         }
 
         public void UpdateMapping(IPropertyMappingProvider provider)

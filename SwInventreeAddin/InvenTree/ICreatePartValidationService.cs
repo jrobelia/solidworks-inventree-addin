@@ -1,4 +1,3 @@
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace SwInventreeAddin.InvenTree
@@ -15,9 +14,7 @@ namespace SwInventreeAddin.InvenTree
         /// Returns an <see cref="IpnValidationResult.Unavailable"/> result when it is,
         /// and <see cref="IpnValidationResult.Available"/> when it is not.
         /// </summary>
-        Task<IpnValidationResult> CheckIpnAvailableAsync(
-            string ipn,
-            CancellationToken cancellationToken = default);
+        Task<IpnValidationResult> CheckIpnAvailableAsync(string ipn);
 
         /// <summary>
         /// Attempts to extract the first IPN field error from an InvenTree validation

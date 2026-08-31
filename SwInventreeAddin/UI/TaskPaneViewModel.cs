@@ -34,12 +34,13 @@ namespace SwInventreeAddin.UI
 
         // ── Dependencies ──────────────────────────────────────────────────────
 
-        private IInventreeClient?                 _client;
-        private readonly IDocumentPropertyService _propertyService;
-        private readonly IViewportCaptureService? _viewportService;
-        private IPropertyMappingProvider?         _mappingProvider;
-        private readonly IConfigProvider?         _configProvider;
-        private MappingChangedSubscription?       _mappingChangedSubscription;
+        private IInventreeClient?                       _client;
+        private readonly IDocumentPropertyService       _propertyService;
+        private readonly IViewportCaptureService?       _viewportService;
+        private IPropertyMappingProvider?               _mappingProvider;
+        private readonly IConfigProvider?               _configProvider;
+        private ICreatePartValidationService?           _validationService;
+        private MappingChangedSubscription?             _mappingChangedSubscription;
 
         /// <summary>Raised when the user triggers the Settings action.</summary>
         public event EventHandler? SettingsRequested;
@@ -400,17 +401,19 @@ namespace SwInventreeAddin.UI
 
         /// <summary>Full constructor used by the production add-in.</summary>
         public TaskPaneViewModel(
-            IInventreeClient?         client,
-            IDocumentPropertyService  propertyService,
-            IViewportCaptureService?  viewportService,
-            IPropertyMappingProvider? mappingProvider = null,
-            IConfigProvider?          configProvider  = null)
+            IInventreeClient?              client,
+            IDocumentPropertyService       propertyService,
+            IViewportCaptureService?       viewportService,
+            IPropertyMappingProvider?      mappingProvider      = null,
+            IConfigProvider?               configProvider       = null,
+            ICreatePartValidationService?  createPartValidator  = null)
         {
             _client          = client;
             _propertyService = propertyService;
             _viewportService = viewportService;
             _mappingProvider = mappingProvider;
             _configProvider  = configProvider;
+            _validationService = createPartValidator;
             _uiContext       = SynchronizationContext.Current;
 
             LoadPartNumber();
@@ -687,6 +690,12 @@ namespace SwInventreeAddin.UI
         }
 
         /// <summary>
+        /// Replaces the Create Part validation service, usually when the InvenTree client changes.
+        /// </summary>
+        public void UpdateCreatePartValidationService(ICreatePartValidationService? validator)
+            => _validationService = validator;
+
+        /// <summary>
         /// Creates and opens the Create Part dialog.
         /// Called from the WPF code-behind on the UI thread.
         /// The <paramref name="showDialog"/> delegate is responsible for
@@ -703,7 +712,7 @@ namespace SwInventreeAddin.UI
             var mapping = GetMappingOrDefault();
             var name    = GetCustomPropertyOrEmpty(mapping.NameProperty);
 
-            var validator = new InventreeClientCreatePartValidationService(_client);
+            var validator = _validationService ?? new InventreeClientCreatePartValidationService(_client);
             var vm = new CreatePartViewModel(_client, _propertyService, validator, name, _mappingProvider,
                                              waitForServerAssignedIpn: WaitForServerAssignedIpn,
                                              documentType: _currentDocumentType);

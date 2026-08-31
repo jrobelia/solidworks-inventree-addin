@@ -102,7 +102,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void GetServerConfig_LegacyWaitForAutoPartNumber_MigratesToWaitForServerAssignedIpn()
+        public void GetServerConfig_LegacyWaitForServerAssignedIpn_MigratesToNewKey()
         {
             var legacyJson =
                 "{\"Url\":\"http://example.com\",\"ApiKey\":\"key\",\"WaitForAutoPartNumber\":false}";

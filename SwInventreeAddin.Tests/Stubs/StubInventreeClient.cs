@@ -20,10 +20,12 @@ namespace SwInventreeAddin.Tests.Stubs
         public int            LastUploadedPk        { get; private set; }
         public byte[]?        LastUploadedImageData { get; private set; }
         public Exception?     ThrowOnUpload         { get; set; }
+        public Exception?     ThrowOnGetPartByIpn   { get; set; }
 
         public Task<InventreePart?> GetPartByIpnAsync(string ipn)
         {
             LastIpnRequested = ipn;
+            if (ThrowOnGetPartByIpn != null) throw ThrowOnGetPartByIpn;
             return ForceAsynchronous
                 ? Task.Run(() => PartToReturn)
                 : Task.FromResult(PartToReturn);

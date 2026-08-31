@@ -56,7 +56,7 @@ namespace SwInventreeAddin.Config
             {
                 var json = Encoding.UTF8.GetString(plainBytes);
                 var config = JsonSerializer.Deserialize<ServerConfig>(json);
-                MigrateLegacyWaitForAutoPartNumber(config, json);
+                MigrateLegacyWaitForServerAssignedIpn(config, json);
                 return config;
             }
             catch (Exception ex)
@@ -83,11 +83,11 @@ namespace SwInventreeAddin.Config
         }
 
         /// <summary>
-        /// Copies the legacy <c>WaitForAutoPartNumber</c> value into
+        /// Copies the legacy <c>WaitForAutoPartNumber</c> JSON value into
         /// <see cref="ServerConfig.WaitForServerAssignedIpn"/> when the new key
         /// is missing from the encrypted file.
         /// </summary>
-        private static void MigrateLegacyWaitForAutoPartNumber(ServerConfig? config, string json)
+        private static void MigrateLegacyWaitForServerAssignedIpn(ServerConfig? config, string json)
         {
             if (config == null) return;
 

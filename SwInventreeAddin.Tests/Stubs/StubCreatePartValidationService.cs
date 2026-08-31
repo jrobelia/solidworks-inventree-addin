@@ -1,4 +1,3 @@
-using System.Threading;
 using System.Threading.Tasks;
 using SwInventreeAddin.InvenTree;
 
@@ -20,9 +19,7 @@ namespace SwInventreeAddin.Tests.Stubs
 
         public string LastIpnChecked { get; private set; } = string.Empty;
 
-        public Task<IpnValidationResult> CheckIpnAvailableAsync(
-            string ipn,
-            CancellationToken cancellationToken = default)
+        public Task<IpnValidationResult> CheckIpnAvailableAsync(string ipn)
         {
             if (ThrowOnCheck != null)
                 throw ThrowOnCheck;
