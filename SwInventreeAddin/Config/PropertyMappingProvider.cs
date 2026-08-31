@@ -12,8 +12,9 @@ namespace SwInventreeAddin.Config
     ///
     /// Resolution order:
     ///   1. Source path configured and file exists → use it (read-only).
-    ///   2. Local file exists → use it (editable).
-    ///   3. Neither → write defaults to local path and return them (first run).
+    ///   2. Source path configured and file missing → <see cref="MappingHealth.Invalid"/> (terminal; no fallback).
+    ///   3. Local file exists → use it (editable).
+    ///   4. Neither → write defaults to local path and return them (first run).
     ///
     /// File I/O, JSON, and access failures are wrapped in
     /// <see cref="InvalidOperationException"/> messages that name the offending path.
@@ -59,10 +60,18 @@ namespace SwInventreeAddin.Config
             try
             {
                 // Source path takes priority when configured and the file exists.
-                if (!string.IsNullOrEmpty(_sourcePath) && File.Exists(_sourcePath))
+                if (!string.IsNullOrEmpty(_sourcePath))
                 {
-                    resolvedPath = _sourcePath;
-                    return Classify(Fetch(resolvedPath!), resolvedPath!);
+                    if (File.Exists(_sourcePath))
+                    {
+                        resolvedPath = _sourcePath;
+                        return Classify(Fetch(resolvedPath!), resolvedPath!);
+                    }
+
+                    return new MappingResult(
+                        MappingHealth.Invalid,
+                        new PropertyMappingConfig(),
+                        $"Source mapping file not found: {_sourcePath}");
                 }
 
                 if (File.Exists(_localPath))

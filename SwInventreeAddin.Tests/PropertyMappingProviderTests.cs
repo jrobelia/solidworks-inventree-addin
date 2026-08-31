@@ -85,6 +85,29 @@ namespace SwInventreeAddin.Tests
             Assert.That(result.Config.IpnProperty, Is.EqualTo("SourceIPN"));
         }
 
+        [Test]
+        public void GetMappingResult_SourceConfiguredButMissing_LocalExists_ReturnsInvalid()
+        {
+            WriteJson(_localPath, new PropertyMappingConfig { IpnProperty = "LocalIPN" });
+            // _sourcePath is intentionally not written.
+
+            var result = new PropertyMappingProvider(_localPath, _sourcePath).GetMappingResult();
+
+            AssertMissingSourceInvalid(result);
+        }
+
+        [Test]
+        public void GetMappingResult_SourceConfiguredButMissing_NoLocal_ReturnsInvalid()
+        {
+            // Both _sourcePath and _localPath intentionally not written.
+
+            var result = new PropertyMappingProvider(_localPath, _sourcePath).GetMappingResult();
+
+            AssertMissingSourceInvalid(result);
+            Assert.That(File.Exists(_localPath), Is.False,
+                "When a configured source path is missing, do not silently fall back to first-run defaults.");
+        }
+
         // ── IsReadOnly ────────────────────────────────────────────────────────
 
         [Test]
@@ -592,6 +615,13 @@ namespace SwInventreeAddin.Tests
         }
 
         // ── Helpers ───────────────────────────────────────────────────────────
+
+        private void AssertMissingSourceInvalid(MappingResult result)
+        {
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.Invalid));
+            Assert.That(result.Message, Does.Contain(_sourcePath),
+                "The user must be told which configured source file is missing.");
+        }
 
         private static void WriteJson(string path, PropertyMappingConfig config)
         {

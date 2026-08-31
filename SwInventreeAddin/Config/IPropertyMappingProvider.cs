@@ -4,7 +4,9 @@ namespace SwInventreeAddin.Config
 {
     /// <summary>
     /// Provides access to the property-name mapping configuration.
-    /// Resolution order: source path (if configured) → local file → first-run defaults.
+    /// Resolution order: source path (if configured and exists) →
+    /// configured-and-missing source path (<see cref="MappingHealth.Invalid"/>; terminal) →
+    /// local file (if exists) → first-run defaults.
     /// </summary>
     public interface IPropertyMappingProvider
     {
@@ -16,8 +18,9 @@ namespace SwInventreeAddin.Config
 
         /// <summary>
         /// Returns the current mapping and its health.
-        /// Resolution: source path first (when configured and file exists), then local file,
-        /// then first-run defaults (writes defaults to local path and returns them).
+        /// Resolution: source path first (when configured and file exists), then a configured
+        /// but missing source path (<see cref="MappingHealth.Invalid"/>; terminal, no fallback),
+        /// then local file, then first-run defaults (writes defaults to local path and returns them).
         /// Does not throw for corrupt or unreadable files; instead returns a
         /// <see cref="MappingResult"/> whose <see cref="MappingHealth"/> is <see cref="MappingHealth.Invalid"/>.
         /// </summary>
