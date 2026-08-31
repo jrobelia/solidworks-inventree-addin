@@ -27,6 +27,15 @@ namespace SwInventreeAddin.Tests
 
             // Default: assembly part exists and is flagged as Assembly so ApplyAsync guard passes.
             _client.PartByPkToReturn = new InventreePart { Assembly = true };
+
+            // Each test starts with the default (null) SynchronizationContext.
+            SynchronizationContext.SetSynchronizationContext(null);
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            SynchronizationContext.SetSynchronizationContext(null);
         }
 
         private BomCompareViewModel CreateVm(int assemblyPk = 42) =>
@@ -432,10 +441,9 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void PushAsync_MarshalsUiUpdatesToSynchronizationContext()
+        public async Task PushAsync_MarshalsUiUpdatesToSynchronizationContext()
         {
-            var originalContext = SynchronizationContext.Current;
-            var countingContext = new CountingSynchronizationContext();
+            var countingContext = new StubSynchronizationContext();
             SynchronizationContext.SetSynchronizationContext(countingContext);
 
             try
@@ -452,14 +460,14 @@ namespace SwInventreeAddin.Tests
                 var line = new BomDiffLineViewModel(diffLine) { IsChecked = true };
                 vm.Lines.Add(line);
 
-                vm.PushAsync().GetAwaiter().GetResult();
+                await vm.PushAsync();
 
                 Assert.That(countingContext.SendCount, Is.GreaterThan(0),
                     "UI-bound updates after HTTP awaits must be marshalled through the captured SynchronizationContext.");
             }
             finally
             {
-                SynchronizationContext.SetSynchronizationContext(originalContext);
+                SynchronizationContext.SetSynchronizationContext(null);
             }
         }
 
@@ -533,19 +541,6 @@ namespace SwInventreeAddin.Tests
                 Is.EqualTo(BomDiffState.NoIpn)
                     .Or.EqualTo(BomDiffState.IpnNotFound)
                     .Or.EqualTo(BomDiffState.Ambiguous));
-        }
-
-        private class CountingSynchronizationContext : SynchronizationContext
-        {
-            public int SendCount { get; private set; }
-
-            public override void Send(SendOrPostCallback d, object? state)
-            {
-                SendCount++;
-                d(state);
-            }
-
-            public override void Post(SendOrPostCallback d, object? state) => d(state);
         }
     }
 }

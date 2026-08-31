@@ -44,8 +44,8 @@ namespace SwInventreeAddin.UI
                     StatusTextBlock.Text = vm.StatusText;
             };
 
-            // Kick off the initial category fetch.
-            _ = vm.FetchRootCategoriesAsync();
+            // Kick off the initial category load.
+            _ = vm.LoadRootCategoriesAsync();
         }
 
         private void OnPartCreated(object sender, InventreePart part)
@@ -78,7 +78,7 @@ namespace SwInventreeAddin.UI
         {
             if (_vm == null) return;
             if ((sender as TreeViewItem)?.DataContext is CategoryNode node)
-                await _vm.FetchChildrenAsync(node);
+                await _vm.LoadChildrenAsync(node);
         }
     }
 }

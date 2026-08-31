@@ -83,10 +83,10 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.CreateEnabled, Is.False);
         }
 
-        // ── FetchRootCategoriesAsync ──────────────────────────────────────────
+        // ── LoadRootCategoriesAsync ──────────────────────────────────────────
 
         [Test]
-        public async Task FetchRootCategoriesAsync_PopulatesRootCategories()
+        public async Task LoadRootCategoriesAsync_PopulatesRootCategories()
         {
             _client.CategoriesToReturn = new List<InventreeCategory>
             {
@@ -99,7 +99,7 @@ namespace SwInventreeAddin.Tests
             int changes = 0;
             vm.RootCategories.CollectionChanged += (sender, e) => changes++;
 
-            await vm.FetchRootCategoriesAsync();
+            await vm.LoadRootCategoriesAsync();
 
             Assert.That(vm.RootCategories.Count, Is.EqualTo(2));
             Assert.That(vm.RootCategories[0].Category.Name, Is.EqualTo("Resistors"));
@@ -107,15 +107,15 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.RootCategories[0].Children.Count, Is.EqualTo(1));
             // HasChildren=false → no sentinel
             Assert.That(vm.RootCategories[1].Children.Count, Is.EqualTo(0));
-            Assert.That(changes, Is.EqualTo(1), "FetchRootCategoriesAsync should refresh RootCategories with a single CollectionChanged/Reset.");
+            Assert.That(changes, Is.EqualTo(1), "LoadRootCategoriesAsync should refresh RootCategories with a single CollectionChanged/Reset.");
         }
 
         [Test]
-        public async Task FetchRootCategoriesAsync_OnError_SetsStatusText()
+        public async Task LoadRootCategoriesAsync_OnError_SetsStatusText()
         {
             _client.ThrowOnGetCategories = true;
             var vm = CreateVm();
-            await vm.FetchRootCategoriesAsync();
+            await vm.LoadRootCategoriesAsync();
 
             Assert.That(vm.StatusText, Does.Contain("Error"));
             Assert.That(vm.IsBusy, Is.False);
@@ -123,7 +123,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public async Task FetchRootCategoriesAsync_WhenDone_ClearsIsLoadingCategories()
+        public async Task LoadRootCategoriesAsync_WhenDone_ClearsIsLoadingCategories()
         {
             _client.CategoriesToReturn = new List<InventreeCategory>
             {
@@ -131,7 +131,7 @@ namespace SwInventreeAddin.Tests
             };
 
             var vm = CreateVm();
-            await vm.FetchRootCategoriesAsync();
+            await vm.LoadRootCategoriesAsync();
 
             Assert.That(vm.IsLoadingCategories, Is.False);
         }
@@ -154,10 +154,10 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.IsLoadingCategories, Is.False);
         }
 
-        // ── FetchChildrenAsync ────────────────────────────────────────────────
+        // ── LoadChildrenAsync ────────────────────────────────────────────────
 
         [Test]
-        public async Task FetchChildrenAsync_HasSentinel_ReplacesWithChildren()
+        public async Task LoadChildrenAsync_HasSentinel_ReplacesWithChildren()
         {
             _client.CategoriesToReturn = new List<InventreeCategory>
             {
@@ -173,23 +173,23 @@ namespace SwInventreeAddin.Tests
             int changes = 0;
             node.Children.CollectionChanged += (sender, e) => changes++;
 
-            await vm.FetchChildrenAsync(node);
+            await vm.LoadChildrenAsync(node);
 
             Assert.That(node.Children.Count,                   Is.EqualTo(1));
             Assert.That(node.Children[0]!.Category.Name,       Is.EqualTo("SMD"));
             Assert.That(node.IsLoading,                        Is.False);
-            Assert.That(changes, Is.EqualTo(1), "FetchChildrenAsync should refresh Children with a single CollectionChanged/Reset.");
+            Assert.That(changes, Is.EqualTo(1), "LoadChildrenAsync should refresh Children with a single CollectionChanged/Reset.");
         }
 
         [Test]
-        public async Task FetchChildrenAsync_AlreadyLoaded_DoesNotCallClient()
+        public async Task LoadChildrenAsync_AlreadyLoaded_DoesNotCallClient()
         {
             // Node with no sentinel (already loaded / truly empty)
             var node = new CategoryNode(new InventreeCategory { Pk = 7, Name = "Resistors", HasChildren = false });
             Assert.That(node.Children.Count, Is.EqualTo(0));
 
             var vm = CreateVm();
-            await vm.FetchChildrenAsync(node);
+            await vm.LoadChildrenAsync(node);
 
             // GetCategoriesAsync should NOT have been called
             Assert.That(_client.LastGetCategoriesParentId, Is.Null);

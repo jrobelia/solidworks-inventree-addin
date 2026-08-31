@@ -40,12 +40,12 @@ namespace SwInventreeAddin.Tests
             var mappingProvider = new StubPropertyMappingProvider
             {
                 LocalFilePath = _localMappingPath,
-                ThrowOnGet = new InvalidOperationException("Failed to fetch mapping file: C:\\temp\\missing.json"),
+                ThrowOnGet = new InvalidOperationException("Failed to load mapping file: C:\\temp\\missing.json"),
             };
 
             var window = CreateWindow(mappingProvider: mappingProvider);
 
-            Assert.That(GetText(window, "MappingStatusText"), Does.Contain("Failed to fetch mapping file"));
+            Assert.That(GetText(window, "MappingStatusText"), Does.Contain("Failed to load mapping file"));
         }
 
         [Test]
@@ -73,7 +73,7 @@ namespace SwInventreeAddin.Tests
             var throwingProvider = new StubPropertyMappingProvider
             {
                 LocalFilePath = _localMappingPath,
-                ThrowOnGet = new InvalidOperationException("Failed to fetch mapping file: C:\\temp\\bad.json"),
+                ThrowOnGet = new InvalidOperationException("Failed to load mapping file: C:\\temp\\bad.json"),
             };
 
             var window = CreateWindow(
@@ -84,7 +84,7 @@ namespace SwInventreeAddin.Tests
             bool result = await window.ApplySettingsAsync();
 
             Assert.That(result, Is.False);
-            Assert.That(GetText(window, "StatusText"), Does.Contain("Failed to fetch mapping file"));
+            Assert.That(GetText(window, "StatusText"), Does.Contain("Failed to load mapping file"));
         }
 
         [Test]

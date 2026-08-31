@@ -8,7 +8,7 @@ using System.Text.Json.Serialization;
 namespace SwInventreeAddin.Config
 {
     /// <summary>
-    /// Fetches and saves the property-name mapping from/to a local JSON file.
+    /// Loads and saves the property-name mapping from/to a local JSON file.
     ///
     /// Resolution order:
     ///   1. Source path configured and file exists → use it (read-only).
@@ -65,7 +65,7 @@ namespace SwInventreeAddin.Config
                     if (File.Exists(_sourcePath))
                     {
                         resolvedPath = _sourcePath;
-                        return Classify(Fetch(resolvedPath!), resolvedPath!);
+                        return Classify(Load(resolvedPath!), resolvedPath!);
                     }
 
                     return new MappingResult(
@@ -77,7 +77,7 @@ namespace SwInventreeAddin.Config
                 if (File.Exists(_localPath))
                 {
                     resolvedPath = _localPath;
-                    return Classify(Fetch(resolvedPath), resolvedPath);
+                    return Classify(Load(resolvedPath), resolvedPath);
                 }
 
                 // First run — write defaults so the user has a file to edit.
@@ -90,7 +90,7 @@ namespace SwInventreeAddin.Config
             {
                 var message = ex is InvalidOperationException
                     ? ex.Message
-                    : $"Failed to fetch mapping file: {resolvedPath ?? _localPath}";
+                    : $"Failed to load mapping file: {resolvedPath ?? _localPath}";
 
                 return new MappingResult(MappingHealth.Invalid, new PropertyMappingConfig(), message);
             }
@@ -125,13 +125,13 @@ namespace SwInventreeAddin.Config
                 throw new InvalidOperationException(
                     "No source path is configured or the source file does not exist.");
 
-            var config = Fetch(_sourcePath!);
+            var config = Load(_sourcePath!);
             SaveMapping(config);
         }
 
         // ── Private helpers ───────────────────────────────────────────────────
 
-        private static PropertyMappingConfig Fetch(string path)
+        private static PropertyMappingConfig Load(string path)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
@@ -148,7 +148,7 @@ namespace SwInventreeAddin.Config
             catch (Exception ex)
             {
                 throw new InvalidOperationException(
-                    $"Failed to fetch mapping file: {path}", ex);
+                    $"Failed to load mapping file: {path}", ex);
             }
         }
 

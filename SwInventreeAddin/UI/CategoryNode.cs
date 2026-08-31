@@ -31,6 +31,8 @@ namespace SwInventreeAddin.UI
                 _children.Add(null!);
         }
 
+        // ── Bindable collections ─────────────────────────────────────────────
+
         private readonly BatchObservableCollection<CategoryNode?> _children =
             new BatchObservableCollection<CategoryNode?>();
 
@@ -39,6 +41,8 @@ namespace SwInventreeAddin.UI
         /// <summary>Batch-resets the children collection without re-entrant WPF layout passes.</summary>
         internal void ResetChildren(IEnumerable<CategoryNode?> items)
             => _children.Reset(items);
+
+        // ── State ────────────────────────────────────────────────────────────
 
         private bool _isExpanded;
         public bool IsExpanded

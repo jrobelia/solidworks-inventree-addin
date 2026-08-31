@@ -251,12 +251,12 @@ namespace SwInventreeAddin.UI
             && !string.IsNullOrWhiteSpace(_partName)
             && _selectedCategory != null;
 
-        /// <summary>Fetches top-level categories into RootCategories.</summary>
-        public async Task FetchRootCategoriesAsync()
+        /// <summary>Loads top-level categories into RootCategories.</summary>
+        public async Task LoadRootCategoriesAsync()
         {
             IsBusy             = true;
             IsLoadingCategories = true;
-            StatusText         = "Fetching categories\u2026";
+            StatusText         = "Loading categories\u2026";
 
             try
             {
@@ -269,7 +269,7 @@ namespace SwInventreeAddin.UI
             }
             catch (Exception ex)
             {
-                RunOnUiThread(() => StatusText = $"Error fetching categories: {ex.Message}");
+                RunOnUiThread(() => StatusText = $"Error loading categories: {ex.Message}");
             }
             finally
             {
@@ -282,10 +282,10 @@ namespace SwInventreeAddin.UI
         }
 
         /// <summary>
-        /// Called when the user expands a node that has not yet been fetched.
+        /// Called when the user expands a node that has not yet been loaded.
         /// Replaces the sentinel null child with real children.
         /// </summary>
-        public async Task FetchChildrenAsync(CategoryNode node)
+        public async Task LoadChildrenAsync(CategoryNode node)
         {
             // Already loaded (or truly empty) — sentinel is the single null element.
             if (node.Children.Count != 1 || node.Children[0] != null)
@@ -309,7 +309,7 @@ namespace SwInventreeAddin.UI
                 {
                     node.ResetChildren(Array.Empty<CategoryNode?>());
                     node.IsLoading = false;
-                    StatusText = $"Error fetching children: {ex.Message}";
+                    StatusText = $"Error loading children: {ex.Message}";
                 });
             }
         }
@@ -485,12 +485,21 @@ namespace SwInventreeAddin.UI
 
         // ── Threading helper ──────────────────────────────────────────────────
 
+        /// <summary>
+        /// UI-thread synchronisation context captured at construction.
+        /// Null when constructed on a thread-pool thread (unit tests) — in
+        /// that case RunOnUiThread executes actions inline.
+        /// </summary>
         private readonly SynchronizationContext? _uiContext
             = SynchronizationContext.Current;
 
+        /// <summary>
+        /// Posts <paramref name="action"/> to the captured UI context.
+        /// Runs inline when no context was captured or when already on the captured context.
+        /// </summary>
         private void RunOnUiThread(Action action)
         {
-            if (_uiContext != null)
+            if (_uiContext != null && SynchronizationContext.Current != _uiContext)
                 _uiContext.Post(_ => action(), null);
             else
                 action();

@@ -82,8 +82,12 @@ namespace SwInventreeAddin.UI
         private void Set<T>(ref T f, T v, [CallerMemberName] string? n = null)
         { if (Equals(f, v)) return; f = v; PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n)); }
 
+        // ── Bindable collections ─────────────────────────────────────────────
+
         private readonly BatchObservableCollection<BomDiffLineViewModel> _lines = new BatchObservableCollection<BomDiffLineViewModel>();
         public ObservableCollection<BomDiffLineViewModel> Lines => _lines;
+
+        // ── Dependencies ─────────────────────────────────────────────────────
 
         private readonly IInventreeClient      _client;
         private readonly IAssemblyBomService   _bomService;
@@ -91,6 +95,8 @@ namespace SwInventreeAddin.UI
         private readonly int                   _assemblyPk;
         private readonly string                _bomKeyword;
         private readonly SynchronizationContext? _uiContext;
+
+        // ── State ────────────────────────────────────────────────────────────
 
         private string _statusText    = string.Empty;
         private bool   _isPushing;
@@ -120,6 +126,8 @@ namespace SwInventreeAddin.UI
         /// </summary>
         public Func<int, int, bool> ConfirmPush { get; set; } = (_, __) => true;
 
+        // ── Constructors ─────────────────────────────────────────────────────
+
         public BomCompareViewModel(
             IInventreeClient      client,
             IAssemblyBomService   bomService,
@@ -134,6 +142,8 @@ namespace SwInventreeAddin.UI
             _bomKeyword = bomKeyword;
             _uiContext  = SynchronizationContext.Current;
         }
+
+        // ── Behaviour ────────────────────────────────────────────────────────
 
         public async Task LoadAsync()
         {
@@ -224,7 +234,7 @@ namespace SwInventreeAddin.UI
                 }
             }
 
-            // Update pushed rows in-place — no full re-fetch needed.
+            // Update pushed rows in-place — no full reload needed.
             RunOnUiThread(() =>
             {
                 foreach (var vm in succeededVms)
@@ -352,6 +362,8 @@ namespace SwInventreeAddin.UI
 
             _lines.Reset(sorted);
         }
+
+        // ── Helpers ──────────────────────────────────────────────────────────
 
         private void RunOnUiThread(Action action)
         {
