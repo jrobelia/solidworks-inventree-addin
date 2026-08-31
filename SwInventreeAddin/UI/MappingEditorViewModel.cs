@@ -46,10 +46,7 @@ namespace SwInventreeAddin.UI
         private readonly bool                     _isReadOnly;
         private readonly MappingHealth            _health;
 
-        private          bool                       _copyToLocalCompleted;
-
         private          string?                    _errorMessage;
-        private          string?                    _copyToLocalInstruction;
 
         // ── Defaults ───────────────────────────────────────────────────────────
 
@@ -149,21 +146,10 @@ namespace SwInventreeAddin.UI
 
         public bool IsReadOnly => _isReadOnly;
 
-        public bool CanCopyToLocal =>
-            _isReadOnly &&
-            _health == MappingHealth.NeedsUpgrade &&
-            !_copyToLocalCompleted;
-
         public string? ErrorMessage
         {
             get => _errorMessage;
             private set => Set(ref _errorMessage, value);
-        }
-
-        public string? CopyToLocalInstruction
-        {
-            get => _copyToLocalInstruction;
-            private set => Set(ref _copyToLocalInstruction, value);
         }
 
         // ── Commands ───────────────────────────────────────────────────────────
@@ -210,30 +196,7 @@ namespace SwInventreeAddin.UI
         public void Cancel()
         {
             ErrorMessage = null;
-            CopyToLocalInstruction = null;
             RevertToOriginal();
-        }
-
-        /// <summary>
-        /// Copies the shared mapping file to the local path and shows the
-        /// instruction to switch to Local in Settings.
-        /// </summary>
-        public void CopyToLocal()
-        {
-            ErrorMessage = null;
-
-            try
-            {
-                _provider.CopyToLocal();
-                _copyToLocalCompleted = true;
-                CopyToLocalInstruction =
-                    "A local copy has been saved. Close this editor and select Local in Settings to edit the mapping.";
-                OnPropertyChanged(nameof(CanCopyToLocal));
-            }
-            catch (Exception ex)
-            {
-                ErrorMessage = ex.Message;
-            }
         }
 
         // ── Validation ─────────────────────────────────────────────────────────

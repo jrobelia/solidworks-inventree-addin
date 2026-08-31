@@ -175,6 +175,21 @@
                 </Button>
             </Grid>
 
+            <!-- Copy to local action for shared mappings -->
+            <Button x:Name="CopyToLocalButton"
+                    Style="{StaticResource SecondaryButtonStyle}"
+                    HorizontalAlignment="Right"
+                    Width="120" Height="28"
+                    Margin="0,4,0,0"
+                    Visibility="Collapsed"
+                    Click="CopyToLocal_Click">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Copy to local" VerticalAlignment="Center" />
+                    <TextBlock Text="&#xE8C8;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                               VerticalAlignment="Center" Margin="6,0,0,0" />
+                </StackPanel>
+            </Button>
+
             <!-- Mapping status bar -->
             <Border x:Name="MappingStatusBar"
                     Height="32" Margin="0,8,0,0"

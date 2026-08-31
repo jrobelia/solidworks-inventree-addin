@@ -70,42 +70,6 @@
                        Margin="0,0,0,8"
                        TextWrapping="Wrap" />
 
-            <!-- Shared read-only older mapping banner (Copy to local) -->
-            <Border x:Name="CopyToLocalPanel"
-                    Visibility="Collapsed"
-                    Margin="0,0,0,8">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="4" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0" Background="{StaticResource BrushStatusWarning}" />
-                    <Border Grid.Column="1" Background="#FFF8E1">
-                        <StackPanel Margin="8,6,8,6">
-                            <TextBlock Text="This shared mapping is older than the current schema. Copy it to your local file to edit it."
-                                       TextWrapping="Wrap"
-                                       Foreground="{StaticResource BrushForeground}" />
-                            <Button x:Name="CopyToLocalButton"
-                                    Style="{StaticResource SecondaryButtonStyle}"
-                                    Width="140"
-                                    Margin="0,6,0,0"
-                                    Click="CopyToLocal_Click">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="Copy to local" VerticalAlignment="Center" />
-                                    <TextBlock Text="&#xE8C8;" FontFamily="Segoe MDL2 Assets" FontSize="13"
-                                               VerticalAlignment="Center" Margin="6,0,0,0" />
-                                </StackPanel>
-                            </Button>
-                            <TextBlock x:Name="CopyToLocalInstructionText"
-                                       Text="{Binding CopyToLocalInstruction}"
-                                       TextWrapping="Wrap"
-                                       Foreground="{StaticResource BrushForeground}"
-                                       Margin="0,4,0,0" />
-                        </StackPanel>
-                    </Border>
-                </Grid>
-            </Border>
-
             <!-- Read-only banner (shared, healthy or invalid mappings) -->
             <Border x:Name="ReadOnlyBanner"
                     Visibility="Collapsed"

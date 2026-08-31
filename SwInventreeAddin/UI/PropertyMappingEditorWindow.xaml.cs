@@ -41,8 +41,6 @@ namespace SwInventreeAddin.UI
             {
                 if (e.PropertyName == nameof(MappingEditorViewModel.ErrorMessage))
                     RefreshErrorText();
-                else if (e.PropertyName == nameof(MappingEditorViewModel.CopyToLocalInstruction))
-                    RefreshCopyToLocalInstruction();
             };
 
             ApplyReadOnlyState();
@@ -56,35 +54,17 @@ namespace SwInventreeAddin.UI
             {
                 SaveButton.IsEnabled = false;
                 SetReadOnlyBackground();
-
-                var copyVisible = _viewModel.CanCopyToLocal ||
-                                  !string.IsNullOrEmpty(_viewModel.CopyToLocalInstruction);
-
-                if (copyVisible)
-                {
-                    CopyToLocalPanel.Visibility = Visibility.Visible;
-                    CopyToLocalButton.Visibility = _viewModel.CanCopyToLocal
-                        ? Visibility.Visible
-                        : Visibility.Collapsed;
-                    ReadOnlyBanner.Visibility   = Visibility.Collapsed;
-                }
-                else
-                {
-                    CopyToLocalPanel.Visibility = Visibility.Collapsed;
-                    ReadOnlyBanner.Visibility   = Visibility.Visible;
-                    ReadOnlyBannerText.Text     =
-                        "Loaded from a shared file — switch to Local in Settings to edit mappings.";
-                }
+                ReadOnlyBanner.Visibility   = Visibility.Visible;
+                ReadOnlyBannerText.Text     =
+                    "Loaded from a shared file — switch to Local in Settings to edit mappings.";
             }
             else
             {
                 SaveButton.IsEnabled        = true;
-                CopyToLocalPanel.Visibility = Visibility.Collapsed;
                 ReadOnlyBanner.Visibility   = Visibility.Collapsed;
             }
 
             RefreshErrorText();
-            RefreshCopyToLocalInstruction();
         }
 
         private void SetReadOnlyBackground()
@@ -132,14 +112,6 @@ namespace SwInventreeAddin.UI
             DialogResult = false;
         }
 
-        // ── Copy to local ──────────────────────────────────────────────────────
-
-        private void CopyToLocal_Click(object sender, RoutedEventArgs e)
-        {
-            _viewModel.CopyToLocal();
-            ApplyReadOnlyState();
-        }
-
         // ── UI refresh ─────────────────────────────────────────────────────────
 
         private void RefreshErrorText()
@@ -152,19 +124,6 @@ namespace SwInventreeAddin.UI
             {
                 ErrorText.Text       = _viewModel.ErrorMessage;
                 ErrorText.Visibility = Visibility.Visible;
-            }
-        }
-
-        private void RefreshCopyToLocalInstruction()
-        {
-            if (string.IsNullOrEmpty(_viewModel.CopyToLocalInstruction))
-            {
-                CopyToLocalInstructionText.Visibility = Visibility.Collapsed;
-            }
-            else
-            {
-                CopyToLocalInstructionText.Text       = _viewModel.CopyToLocalInstruction;
-                CopyToLocalInstructionText.Visibility = Visibility.Visible;
             }
         }
 

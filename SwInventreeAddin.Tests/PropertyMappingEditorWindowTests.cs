@@ -16,23 +16,6 @@ namespace SwInventreeAddin.Tests
     public class PropertyMappingEditorWindowTests
     {
         [Test]
-        public void Constructor_SharedOlderMapping_ShowsCopyToLocalAndDisablesSave()
-        {
-            var provider = new StubPropertyMappingProvider
-            {
-                IsReadOnly = true,
-                Config = new PropertyMappingConfig { SchemaVersion = "2" }
-            };
-
-            var window = new PropertyMappingEditorWindow(provider);
-
-            Assert.That(window.CopyToLocalPanel.Visibility, Is.EqualTo(Visibility.Visible));
-            Assert.That(window.CopyToLocalButton.Visibility, Is.EqualTo(Visibility.Visible));
-            Assert.That(window.ReadOnlyBanner.Visibility, Is.EqualTo(Visibility.Collapsed));
-            Assert.That(window.SaveButton.IsEnabled, Is.False);
-        }
-
-        [Test]
         public void Constructor_SharedHealthyMapping_ShowsReadOnlyBannerAndDisablesSave()
         {
             var provider = new StubPropertyMappingProvider
@@ -51,7 +34,6 @@ namespace SwInventreeAddin.Tests
             var window = new PropertyMappingEditorWindow(provider);
 
             Assert.That(window.ReadOnlyBanner.Visibility, Is.EqualTo(Visibility.Visible));
-            Assert.That(window.CopyToLocalPanel.Visibility, Is.EqualTo(Visibility.Collapsed));
             Assert.That(window.SaveButton.IsEnabled, Is.False);
         }
 
@@ -74,26 +56,6 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(window.SaveButton.IsEnabled, Is.True);
             Assert.That(window.ReadOnlyBanner.Visibility, Is.EqualTo(Visibility.Collapsed));
-            Assert.That(window.CopyToLocalPanel.Visibility, Is.EqualTo(Visibility.Collapsed));
-        }
-
-        [Test]
-        public void CopyToLocal_WhenSharedOlder_HidesButtonAndShowsInstruction()
-        {
-            var provider = new StubPropertyMappingProvider
-            {
-                IsReadOnly = true,
-                Config = new PropertyMappingConfig { SchemaVersion = "2" }
-            };
-
-            var window = new PropertyMappingEditorWindow(provider);
-
-            window.CopyToLocalButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, window.CopyToLocalButton));
-
-            Assert.That(window.CopyToLocalButton.Visibility, Is.EqualTo(Visibility.Collapsed));
-            Assert.That(window.CopyToLocalInstructionText.Visibility, Is.EqualTo(Visibility.Visible));
-            Assert.That(window.CopyToLocalInstructionText.Text, Does.Contain("Local in Settings").IgnoreCase);
-            Assert.That(provider.CopyToLocalCalled, Is.True);
         }
 
         [Test]

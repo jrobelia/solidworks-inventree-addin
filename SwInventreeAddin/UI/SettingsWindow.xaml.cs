@@ -150,6 +150,22 @@ namespace SwInventreeAddin.UI
             RefreshMappingStatus();
         }
 
+        // ── Copy to local ─────────────────────────────────────────────────────
+
+        private void CopyToLocal_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                _mappingProvider.CopyToLocal();
+                SetStatus("A local copy has been saved. Select Local, then Apply, to edit the mapping.", error: false, success: true);
+                RefreshMappingStatus();
+            }
+            catch (Exception ex)
+            {
+                SetStatus($"Failed to copy to local: {ex.Message}", error: true);
+            }
+        }
+
         // ── Mapping status bar ────────────────────────────────────────────────
 
         // Re-renders the mapping status bar from IPropertyMappingProvider.GetMappingResult()
@@ -162,6 +178,10 @@ namespace SwInventreeAddin.UI
                 var result = _mappingProvider.GetMappingResult();
 
                 EditMappingsButton.IsEnabled = result.CanEdit && !_mappingProvider.IsReadOnly;
+                CopyToLocalButton.Visibility =
+                    (_mappingProvider.IsReadOnly && result.Health != MappingHealth.Invalid)
+                        ? Visibility.Visible
+                        : Visibility.Collapsed;
 
                 var config = TryGetConfig();
                 bool hasSharedPath = config != null && !string.IsNullOrEmpty(config.MappingSourcePath);
@@ -184,6 +204,7 @@ namespace SwInventreeAddin.UI
             catch (InvalidOperationException ex)
             {
                 EditMappingsButton.IsEnabled   = false;
+                CopyToLocalButton.Visibility   = Visibility.Collapsed;
                 MappingStatusStripe.Background = (Brush)FindResource("BrushStatusError");
                 MappingStatusText.Text         = ex.Message;
                 MappingStatusText.ToolTip      = ex.Message;
@@ -192,6 +213,7 @@ namespace SwInventreeAddin.UI
             catch (Exception ex)
             {
                 EditMappingsButton.IsEnabled   = false;
+                CopyToLocalButton.Visibility   = Visibility.Collapsed;
                 MappingStatusStripe.Background = (Brush)FindResource("BrushStatusError");
                 MappingStatusText.Text         = $"Failed to load mapping file: {ex.Message}";
                 MappingStatusText.ToolTip      = MappingStatusText.Text;

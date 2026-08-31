@@ -14,7 +14,7 @@ The **Property Mapping** JSON file now drives all Part Sync and BOM Compare oper
 - Do not silently backfill missing new fields at runtime. The editor is the only place new fields are filled, and only when the engineer saves.
 - Preserve unknown top-level JSON keys through the editor so future add-in versions and hand-edited files do not lose data.
 - The editor works on a draft copy. Save validates and writes; if save fails or the user cancels, the draft is discarded and the UI reverts.
-- For a shared read-only **Property Mapping** with an older **Mapping Schema Version**, the editor offers a **Copy to local** button and instructs the engineer to switch to Local in Settings to edit.
+- For a shared read-only **Property Mapping** with an older **Mapping Schema Version**, the **Settings** window offers a **Copy to local** action and instructs the engineer to switch to Local in Settings to edit.
 - The editor exposes **BOM Column Aliases** for the four fields we currently use: IPN, Qty, Reference, Note. Aliases are comma-separated and validated before save.
 - Duplicate non-blank SolidWorks Document Property names in the same mapping make the mapping `Invalid`.
 

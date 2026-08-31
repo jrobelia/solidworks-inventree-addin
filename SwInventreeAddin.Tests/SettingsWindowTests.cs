@@ -238,6 +238,73 @@ namespace SwInventreeAddin.Tests
             Assert.That(GetText(window, "MappingStatusText"), Is.EqualTo("New provider invalid"));
         }
 
+        // ── Copy to local ──────────────────────────────────────────────────────
+
+        [Test]
+        public void Constructor_SharedHealthyMapping_ShowsCopyToLocalButton()
+        {
+            var mappingProvider = new StubPropertyMappingProvider
+            {
+                IsReadOnly = true,
+                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion }
+            };
+
+            var window = CreateWindow(mappingProvider: mappingProvider);
+
+            var button = GetButton(window, "CopyToLocalButton");
+            Assert.That(button.Visibility, Is.EqualTo(Visibility.Visible));
+        }
+
+        [Test]
+        public void Constructor_LocalHealthyMapping_HidesCopyToLocalButton()
+        {
+            var mappingProvider = new StubPropertyMappingProvider
+            {
+                IsReadOnly = false,
+                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion }
+            };
+
+            var window = CreateWindow(mappingProvider: mappingProvider);
+
+            var button = GetButton(window, "CopyToLocalButton");
+            Assert.That(button.Visibility, Is.EqualTo(Visibility.Collapsed));
+        }
+
+        [Test]
+        public void Constructor_SharedInvalidMapping_HidesCopyToLocalButton()
+        {
+            var mappingProvider = new StubPropertyMappingProvider
+            {
+                IsReadOnly = true,
+                Health = MappingHealth.Invalid,
+                Message = "Invalid mapping file"
+            };
+
+            var window = CreateWindow(mappingProvider: mappingProvider);
+
+            var button = GetButton(window, "CopyToLocalButton");
+            Assert.That(button.Visibility, Is.EqualTo(Visibility.Collapsed));
+        }
+
+        [Test]
+        public void CopyToLocalButton_Click_CopiesAndSetsStatus()
+        {
+            var mappingProvider = new StubPropertyMappingProvider
+            {
+                IsReadOnly = true,
+                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion }
+            };
+
+            var window = CreateWindow(mappingProvider: mappingProvider);
+
+            var button = GetButton(window, "CopyToLocalButton");
+            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, button));
+
+            Assert.That(mappingProvider.CopyToLocalCalled, Is.True);
+            Assert.That(GetText(window, "StatusText"), Does.Contain("A local copy has been saved").IgnoreCase);
+            Assert.That(GetText(window, "StatusText"), Does.Contain("Local").IgnoreCase);
+        }
+
         // ── Helpers ───────────────────────────────────────────────────────────
 
         private static string GetText(Window window, string name)
@@ -249,10 +316,19 @@ namespace SwInventreeAddin.Tests
             return textBlock?.Text ?? textBox?.Text ?? string.Empty;
         }
 
+        private static Button GetButton(Window window, string name)
+        {
+            var element = System.Windows.LogicalTreeHelper.FindLogicalNode(window, name);
+            var button = element as Button;
+            Assert.That(button, Is.Not.Null, $"Could not find Button named '{name}'.");
+            return button!;
+        }
+
         private SettingsWindow CreateWindow(
             IPropertyMappingProvider? mappingProvider = null,
             ISettingsApplyService? applyService = null,
-            IMappingProviderFactory? mappingProviderFactory = null)
+            IMappingProviderFactory? mappingProviderFactory = null,
+            IConfigProvider? configProvider = null)
         {
             mappingProvider        ??= new StubPropertyMappingProvider();
             applyService           ??= new StubSettingsApplyService();
@@ -260,8 +336,8 @@ namespace SwInventreeAddin.Tests
             {
                 Factory = _ => mappingProvider,
             };
+            configProvider         ??= new StubConfigProvider("https://example.com", "stub-key");
 
-            var configProvider = new StubConfigProvider("https://example.com", "stub-key");
             var versionInfo    = new StubVersionInfo();
 
             return new SettingsWindow(
