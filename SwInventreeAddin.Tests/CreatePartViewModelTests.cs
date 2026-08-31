@@ -17,8 +17,9 @@ namespace SwInventreeAddin.Tests
     [TestFixture]
     public class CreatePartViewModelTests
     {
-        private StubInventreeClient         _client;
-        private StubDocumentPropertyService _propertyService;
+        private StubInventreeClient          _client;
+        private StubDocumentPropertyService  _propertyService;
+        private StubPropertyMappingProvider  _mappingProvider;
         private const string DefaultName = "10K Resistor";
 
         [SetUp]
@@ -26,6 +27,10 @@ namespace SwInventreeAddin.Tests
         {
             _client          = new StubInventreeClient();
             _propertyService = new StubDocumentPropertyService();
+            _mappingProvider = new StubPropertyMappingProvider
+            {
+                Config = PropertyMappingConfig.WithDefaults()
+            };
         }
 
         private CreatePartViewModel CreateVm(
@@ -33,7 +38,7 @@ namespace SwInventreeAddin.Tests
             bool waitForServerAssignedIpn = false,
             DocumentType documentType = DocumentType.Part,
             IPropertyMappingProvider? mappingProvider = null) =>
-            new CreatePartViewModel(_client, _propertyService, name, mappingProvider: mappingProvider, ipnPollDelayMs: 0, waitForServerAssignedIpn: waitForServerAssignedIpn, documentType: documentType);
+            new CreatePartViewModel(_client, _propertyService, name, mappingProvider: mappingProvider ?? _mappingProvider, ipnPollDelayMs: 0, waitForServerAssignedIpn: waitForServerAssignedIpn, documentType: documentType);
 
         private static CategoryNode MakeNode(int pk = 1, string name = "Resistors") =>
             new CategoryNode(new InventreeCategory { Pk = pk, Name = name });
@@ -208,15 +213,15 @@ namespace SwInventreeAddin.Tests
                 Ipn  = "R-NEW-001",
                 Name = "New Resistor",
             };
-            _propertyService.Seed("PartNo",      string.Empty);
-            _propertyService.Seed("Description", string.Empty);
+            _propertyService.Seed(_mappingProvider.Config.IpnProperty!,      string.Empty);
+            _propertyService.Seed(_mappingProvider.Config.NameProperty!, string.Empty);
 
             var vm = CreateVm();
             vm.SelectedCategory = MakeNode(pk: 7);
             await vm.CreateAsync();
 
-            Assert.That(_propertyService.GetCustomProperty("PartNo"),      Is.EqualTo("R-NEW-001"));
-            Assert.That(_propertyService.GetCustomProperty("Description"), Is.EqualTo("New Resistor"));
+            Assert.That(_propertyService.GetCustomProperty(_mappingProvider.Config.IpnProperty!),      Is.EqualTo("R-NEW-001"));
+            Assert.That(_propertyService.GetCustomProperty(_mappingProvider.Config.NameProperty!), Is.EqualTo("New Resistor"));
         }
 
         [Test]
@@ -240,7 +245,7 @@ namespace SwInventreeAddin.Tests
         public async Task CreateAsync_CreateFails_SetsStatusText_NoDocWrite()
         {
             _client.ThrowOnCreate = true;
-            _propertyService.Seed("PartNo", "ORIGINAL");
+            _propertyService.Seed(_mappingProvider.Config.IpnProperty!, "ORIGINAL");
 
             var vm = CreateVm();
             vm.SelectedCategory = MakeNode(pk: 7);
@@ -249,7 +254,7 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.StatusText, Does.Contain("Error"));
             Assert.That(vm.IsBusy,     Is.False);
             // Original value must be unchanged
-            Assert.That(_propertyService.GetCustomProperty("PartNo"), Is.EqualTo("ORIGINAL"));
+            Assert.That(_propertyService.GetCustomProperty(_mappingProvider.Config.IpnProperty!), Is.EqualTo("ORIGINAL"));
         }
 
         [Test]
@@ -273,7 +278,7 @@ namespace SwInventreeAddin.Tests
         {
             _client.PkToReturnOnCreate = 99;
             _client.PartByPkToReturn   = null;   // re-fetch fails
-            _propertyService.Seed("PartNo", "ORIGINAL");
+            _propertyService.Seed(_mappingProvider.Config.IpnProperty!, "ORIGINAL");
 
             var vm = CreateVm();
             vm.SelectedCategory = MakeNode(pk: 7);
@@ -281,7 +286,7 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(vm.StatusText, Does.Contain("IPN not yet written"));
             Assert.That(vm.IsBusy,     Is.False);
-            Assert.That(_propertyService.GetCustomProperty("PartNo"), Is.EqualTo("ORIGINAL"));
+            Assert.That(_propertyService.GetCustomProperty(_mappingProvider.Config.IpnProperty!), Is.EqualTo("ORIGINAL"));
         }
 
         [Test]
@@ -292,8 +297,8 @@ namespace SwInventreeAddin.Tests
             _client.QueuePartByPkResponses(
                 new InventreePart { Pk = 99, Ipn = string.Empty, Name = "New Resistor" },
                 new InventreePart { Pk = 99, Ipn = "R-NEW-001",  Name = "New Resistor" });
-            _propertyService.Seed("PartNo",      string.Empty);
-            _propertyService.Seed("Description", string.Empty);
+            _propertyService.Seed(_mappingProvider.Config.IpnProperty!,      string.Empty);
+            _propertyService.Seed(_mappingProvider.Config.NameProperty!, string.Empty);
 
             InventreePart? raisedPart = null;
             var vm = CreateVm(waitForServerAssignedIpn: true);
@@ -302,7 +307,7 @@ namespace SwInventreeAddin.Tests
 
             await vm.CreateAsync();
 
-            Assert.That(_propertyService.GetCustomProperty("PartNo"), Is.EqualTo("R-NEW-001"),
+            Assert.That(_propertyService.GetCustomProperty(_mappingProvider.Config.IpnProperty!), Is.EqualTo("R-NEW-001"),
                 "IPN should be written once the poll succeeds");
             Assert.That(raisedPart?.Ipn, Is.EqualTo("R-NEW-001"));
         }
@@ -318,13 +323,13 @@ namespace SwInventreeAddin.Tests
             for (int i = 0; i < emptyParts.Length; i++)
                 emptyParts[i] = new InventreePart { Pk = newPk, Ipn = string.Empty, Name = "New Part" };
             _client.QueuePartByPkResponses(emptyParts);
-            _propertyService.Seed("PartNo", string.Empty);
+            _propertyService.Seed(_mappingProvider.Config.IpnProperty!, string.Empty);
 
             var vm = CreateVm(waitForServerAssignedIpn: true);
             vm.SelectedCategory = MakeNode(pk: 7);
             await vm.CreateAsync();
 
-            Assert.That(_propertyService.GetCustomProperty("PartNo"), Is.EqualTo(string.Empty),
+            Assert.That(_propertyService.GetCustomProperty(_mappingProvider.Config.IpnProperty!), Is.EqualTo(string.Empty),
                 "Should NOT write empty IPN to the document");
             Assert.That(vm.StatusText, Does.Contain("refresh manually"));
             Assert.That(vm.IsBusy, Is.False);
@@ -345,8 +350,8 @@ namespace SwInventreeAddin.Tests
         {
             _client.PkToReturnOnCreate = 42;
             _client.PartByPkToReturn   = new InventreePart { Pk = 42, Ipn = "FAB-001", Name = "Custom" };
-            _propertyService.Seed("PartNo",      string.Empty);
-            _propertyService.Seed("Description", string.Empty);
+            _propertyService.Seed(_mappingProvider.Config.IpnProperty!,      string.Empty);
+            _propertyService.Seed(_mappingProvider.Config.NameProperty!, string.Empty);
 
             var vm = CreateVm();
             vm.SelectedCategory = MakeNode();
@@ -365,7 +370,7 @@ namespace SwInventreeAddin.Tests
             const int newPk = 55;
             _client.PkToReturnOnCreate = newPk;
             _client.PartByPkToReturn   = new InventreePart { Pk = newPk, Ipn = string.Empty, Name = "IPN-less Part" };
-            _propertyService.Seed("Description", string.Empty);
+            _propertyService.Seed(_mappingProvider.Config.NameProperty!, string.Empty);
 
             InventreePart? raisedPart = null;
             var vm = CreateVm(waitForServerAssignedIpn: false);
@@ -391,7 +396,7 @@ namespace SwInventreeAddin.Tests
             vm.SelectedCategory = MakeNode();
             await vm.CreateAsync();
 
-            Assert.That(_propertyService.GetCustomProperty("InvenTree PK"), Is.EqualTo(newPk.ToString()));
+            Assert.That(_propertyService.GetCustomProperty(_mappingProvider.Config.PkProperty!), Is.EqualTo(newPk.ToString()));
         }
 
         [Test]
@@ -401,8 +406,8 @@ namespace SwInventreeAddin.Tests
             const int newPk = 77;
             _client.PkToReturnOnCreate = newPk;
             _client.PartByPkToReturn   = new InventreePart { Pk = newPk, Ipn = "FAB-123", Name = "Manual Part" };
-            _propertyService.Seed("PartNo",      string.Empty);
-            _propertyService.Seed("Description", string.Empty);
+            _propertyService.Seed(_mappingProvider.Config.IpnProperty!,      string.Empty);
+            _propertyService.Seed(_mappingProvider.Config.NameProperty!, string.Empty);
 
             InventreePart? raisedPart = null;
             var vm = CreateVm(waitForServerAssignedIpn: true);
@@ -426,7 +431,7 @@ namespace SwInventreeAddin.Tests
                 Ipn = "DUP-001",
                 Name = "Existing Part",
             };
-            _propertyService.Seed("PartNo", "ORIGINAL");
+            _propertyService.Seed(_mappingProvider.Config.IpnProperty!, "ORIGINAL");
 
             var vm = CreateVm();
             vm.SelectedCategory = MakeNode();
@@ -435,7 +440,7 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(vm.StatusText, Does.Contain("already exists").And.Contain("DUP-001"));
             Assert.That(_client.LastCreateCategoryPk, Is.EqualTo(0), "CreatePartAsync should not be called");
-            Assert.That(_propertyService.GetCustomProperty("PartNo"), Is.EqualTo("ORIGINAL"));
+            Assert.That(_propertyService.GetCustomProperty(_mappingProvider.Config.IpnProperty!), Is.EqualTo("ORIGINAL"));
             Assert.That(vm.IsBusy, Is.False);
         }
 
@@ -450,8 +455,8 @@ namespace SwInventreeAddin.Tests
                 _client.ForceAsynchronous    = true;
                 _client.PkToReturnOnCreate   = 77;
                 _client.PartByPkToReturn     = new InventreePart { Pk = 77, Ipn = "UNIQUE-001", Name = "Custom" };
-                _propertyService.Seed("PartNo",      string.Empty);
-                _propertyService.Seed("Description", string.Empty);
+                _propertyService.Seed(_mappingProvider.Config.IpnProperty!,      string.Empty);
+                _propertyService.Seed(_mappingProvider.Config.NameProperty!, string.Empty);
 
                 var vm = CreateVm("Custom Part");
                 int offUiPropertyChangedCount = 0;
@@ -471,7 +476,7 @@ namespace SwInventreeAddin.Tests
 
                 Assert.That(offUiPropertyChangedCount, Is.EqualTo(0), "A bound property was updated off the UI thread");
                 Assert.That(_client.LastCreateIpn, Is.EqualTo("UNIQUE-001"));
-                Assert.That(_propertyService.GetCustomProperty("PartNo"), Is.EqualTo("UNIQUE-001"));
+                Assert.That(_propertyService.GetCustomProperty(_mappingProvider.Config.IpnProperty!), Is.EqualTo("UNIQUE-001"));
                 Assert.That(vm.IsBusy, Is.False);
                 Assert.That(vm.StatusText, Does.Not.Contain("Error"));
             }
@@ -530,19 +535,9 @@ namespace SwInventreeAddin.Tests
             _client.PkToReturnOnCreate = 99;
             _client.PartByPkToReturn = new InventreePart { Pk = 99, Ipn = "R-NEW-001", Name = "New Resistor" };
 
-            var mappingProvider = new StubPropertyMappingProvider
-            {
-                Config = new PropertyMappingConfig
-                {
-                    SchemaVersion       = schemaVersion,
-                    IpnProperty         = "PartNo",
-                    NameProperty        = "Description",
-                    NotesProperty       = "Notes",
-                    RevisionProperty    = "Revision",
-                    DescriptionProperty = "Description Long",
-                    PkProperty          = "InvenTree PK",
-                }
-            };
+            var config = PropertyMappingConfig.WithDefaults();
+            config.SchemaVersion = schemaVersion;
+            var mappingProvider = new StubPropertyMappingProvider { Config = config };
             var ipnProperty = mappingProvider.Config.IpnProperty!;
             _propertyService.Seed(ipnProperty, string.Empty);
 
