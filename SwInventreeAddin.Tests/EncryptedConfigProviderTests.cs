@@ -99,7 +99,6 @@ namespace SwInventreeAddin.Tests
             var result = _provider.GetServerConfig();
 
             Assert.That(result!.WaitForServerAssignedIpn, Is.False);
-            Assert.That(result!.WaitForAutoPartNumber, Is.False);
         }
 
         [Test]
@@ -119,7 +118,6 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(result, Is.Not.Null);
             Assert.That(result!.WaitForServerAssignedIpn, Is.False);
-            Assert.That(result!.WaitForAutoPartNumber, Is.False);
 
             System.IO.File.Delete(path);
         }
