@@ -28,7 +28,7 @@ namespace SwInventreeAddin.UI
             Category = category;
             // Sentinel child so the TreeView shows an expand arrow before children are loaded.
             if (category.HasChildren)
-                _children.Add(null!);
+                _children.Add(null);
         }
 
         // ── Bindable collections ─────────────────────────────────────────────
