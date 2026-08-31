@@ -446,6 +446,17 @@ namespace SwInventreeAddin.Tests
             }
         }
 
+        [Test]
+        public void PushAsync_NoSelectedRows_StatusText_SaysNoChangesPushed()
+        {
+            _client.BomLinesToReturn = new List<InventreeBomLine>();
+
+            var vm = CreateVm();
+            vm.PushAsync().GetAwaiter().GetResult();
+
+            Assert.That(vm.StatusText, Is.EqualTo("No changes pushed"));
+        }
+
         // ── Sort ──────────────────────────────────────────────────────────────
 
         [Test]

@@ -259,7 +259,7 @@ namespace SwInventreeAddin.UI
                 if (created > 0) parts.Add($"{created} created");
                 if (updated > 0) parts.Add($"{updated} updated");
                 if (failed  > 0) parts.Add($"{failed} failed ({string.Join(", ", failedIpns)})");
-                StatusText = parts.Count > 0 ? string.Join(", ", parts) : "No changes applied";
+                StatusText = parts.Count > 0 ? string.Join(", ", parts) : "No changes pushed";
             });
 
         }
