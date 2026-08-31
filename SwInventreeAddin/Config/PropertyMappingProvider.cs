@@ -106,7 +106,7 @@ namespace SwInventreeAddin.Config
             try
             {
                 EnsureDirectory(_localPath);
-                var normalized = NormalizeForSave(config);
+                var normalized = config.Normalized();
                 var json = JsonSerializer.Serialize(normalized, _saveOptions);
                 File.WriteAllText(_localPath, json, Encoding.UTF8);
                 MappingChanged?.Invoke(this, EventArgs.Empty);
@@ -255,28 +255,6 @@ namespace SwInventreeAddin.Config
             }
 
             return null;
-        }
-
-        private static PropertyMappingConfig NormalizeForSave(PropertyMappingConfig config)
-        {
-            static string? NullIfWhiteSpace(string? value) =>
-                string.IsNullOrWhiteSpace(value) ? null : value;
-
-            return new PropertyMappingConfig
-            {
-                SchemaVersion       = NullIfWhiteSpace(config.SchemaVersion),
-                IpnProperty         = NullIfWhiteSpace(config.IpnProperty),
-                NameProperty        = NullIfWhiteSpace(config.NameProperty),
-                NotesProperty       = NullIfWhiteSpace(config.NotesProperty),
-                RevisionProperty    = NullIfWhiteSpace(config.RevisionProperty),
-                DescriptionProperty = NullIfWhiteSpace(config.DescriptionProperty),
-                PkProperty          = NullIfWhiteSpace(config.PkProperty),
-                BomColumnIpn        = NullIfWhiteSpace(config.BomColumnIpn),
-                BomColumnQty        = NullIfWhiteSpace(config.BomColumnQty),
-                BomColumnReference  = NullIfWhiteSpace(config.BomColumnReference),
-                BomColumnNote       = NullIfWhiteSpace(config.BomColumnNote),
-                ExtensionData       = config.ExtensionData
-            };
         }
 
         private static void EnsureDirectory(string filePath)

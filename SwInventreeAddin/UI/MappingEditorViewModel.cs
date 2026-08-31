@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text.Json;
 using SwInventreeAddin.Config;
 
 namespace SwInventreeAddin.UI
@@ -26,6 +25,15 @@ namespace SwInventreeAddin.UI
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
 
+        private void SetDraftString(Action<string?> setter, Func<string?> getter, string value,
+                                    [CallerMemberName] string? name = null)
+        {
+            var valueOrEmpty = value ?? string.Empty;
+            if ((getter() ?? string.Empty) == valueOrEmpty) return;
+            setter(valueOrEmpty);
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
+
         private void OnPropertyChanged([CallerMemberName] string? name = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
@@ -33,25 +41,12 @@ namespace SwInventreeAddin.UI
 
         private readonly IPropertyMappingProvider _provider;
         private          PropertyMappingConfig    _original;
+        private          PropertyMappingConfig    _draft;
         private readonly MappingResult            _result;
         private readonly bool                     _isReadOnly;
         private readonly MappingHealth            _health;
 
         private bool _copyToLocalCompleted;
-
-        // ── Bindable fields ────────────────────────────────────────────────────
-
-        private string _ipnProperty         = string.Empty;
-        private string _nameProperty        = string.Empty;
-        private string _descriptionProperty = string.Empty;
-        private string _revisionProperty    = string.Empty;
-        private string _notesProperty       = string.Empty;
-        private string _pkProperty          = string.Empty;
-
-        private string _bomColumnIpn        = string.Empty;
-        private string _bomColumnQty        = string.Empty;
-        private string _bomColumnReference  = string.Empty;
-        private string _bomColumnNote       = string.Empty;
 
         private string? _errorMessage;
         private string? _copyToLocalInstruction;
@@ -72,73 +67,72 @@ namespace SwInventreeAddin.UI
         {
             _provider = provider;
             _result   = _provider.GetMappingResult();
-            _original = CloneConfig(_result.Config);
+            _original = _result.Config.Clone();
+            _draft    = _original.Clone();
             _health   = _result.Health;
             _isReadOnly = !_result.CanEdit || _provider.IsReadOnly;
-
-            RevertToOriginal();
         }
 
         // ── Bindable properties ────────────────────────────────────────────────
 
         public string IpnProperty
         {
-            get => _ipnProperty;
-            set => Set(ref _ipnProperty, value);
+            get => _draft.IpnProperty         ?? string.Empty;
+            set => SetDraftString(v => _draft.IpnProperty         = v, () => _draft.IpnProperty,         value);
         }
 
         public string NameProperty
         {
-            get => _nameProperty;
-            set => Set(ref _nameProperty, value);
+            get => _draft.NameProperty        ?? string.Empty;
+            set => SetDraftString(v => _draft.NameProperty        = v, () => _draft.NameProperty,        value);
         }
 
         public string DescriptionProperty
         {
-            get => _descriptionProperty;
-            set => Set(ref _descriptionProperty, value);
+            get => _draft.DescriptionProperty ?? string.Empty;
+            set => SetDraftString(v => _draft.DescriptionProperty = v, () => _draft.DescriptionProperty, value);
         }
 
         public string RevisionProperty
         {
-            get => _revisionProperty;
-            set => Set(ref _revisionProperty, value);
+            get => _draft.RevisionProperty    ?? string.Empty;
+            set => SetDraftString(v => _draft.RevisionProperty    = v, () => _draft.RevisionProperty,    value);
         }
 
         public string NotesProperty
         {
-            get => _notesProperty;
-            set => Set(ref _notesProperty, value);
+            get => _draft.NotesProperty       ?? string.Empty;
+            set => SetDraftString(v => _draft.NotesProperty       = v, () => _draft.NotesProperty,       value);
         }
 
         public string PkProperty
         {
-            get => _pkProperty;
-            set => Set(ref _pkProperty, value);
+            get => _draft.PkProperty          ?? string.Empty;
+            set => SetDraftString(v => _draft.PkProperty          = v, () => _draft.PkProperty,          value);
         }
 
         public string BomColumnIpn
         {
-            get => _bomColumnIpn;
-            set => Set(ref _bomColumnIpn, value);
+            get => _draft.BomColumnIpn        ?? string.Empty;
+            set => SetDraftString(v => _draft.BomColumnIpn        = v, () => _draft.BomColumnIpn,        value);
         }
 
         public string BomColumnQty
         {
-            get => _bomColumnQty;
-            set => Set(ref _bomColumnQty, value);
+            get => _draft.BomColumnQty        ?? string.Empty;
+            set => SetDraftString(v => _draft.BomColumnQty        = v, () => _draft.BomColumnQty,        value);
         }
 
         public string BomColumnReference
         {
-            get => _bomColumnReference;
-            set => Set(ref _bomColumnReference, value);
+            get => _draft.BomColumnReference  ?? string.Empty;
+            set => SetDraftString(v => _draft.BomColumnReference  = v, () => _draft.BomColumnReference,  value);
         }
 
         public string BomColumnNote
         {
-            get => _bomColumnNote;
-            set => Set(ref _bomColumnNote, value);
+            get => _draft.BomColumnNote       ?? string.Empty;
+            set => SetDraftString(v => _draft.BomColumnNote       = v, () => _draft.BomColumnNote,       value);
         }
 
         public string IpnPlaceholder         => DefaultConfig().IpnProperty!;
@@ -184,7 +178,8 @@ namespace SwInventreeAddin.UI
         {
             ErrorMessage = null;
 
-            var draft = BuildDraft();
+            _draft.SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion;
+            var draft = _draft.Normalized();
 
             var validationError = Validate(draft);
             if (!string.IsNullOrEmpty(validationError))
@@ -197,7 +192,7 @@ namespace SwInventreeAddin.UI
             try
             {
                 _provider.SaveMapping(draft);
-                _original = CloneConfig(draft);
+                _original = draft.Clone();
                 return true;
             }
             catch (Exception ex)
@@ -301,70 +296,10 @@ namespace SwInventreeAddin.UI
 
         // ── Draft helpers ──────────────────────────────────────────────────────
 
-        private PropertyMappingConfig BuildDraft()
-        {
-            return new PropertyMappingConfig
-            {
-                SchemaVersion       = PropertyMappingConfig.CurrentSchemaVersion,
-                IpnProperty         = NullIfWhiteSpace(_ipnProperty),
-                NameProperty        = NullIfWhiteSpace(_nameProperty),
-                DescriptionProperty = NullIfWhiteSpace(_descriptionProperty),
-                RevisionProperty    = NullIfWhiteSpace(_revisionProperty),
-                NotesProperty       = NullIfWhiteSpace(_notesProperty),
-                PkProperty          = NullIfWhiteSpace(_pkProperty),
-                BomColumnIpn        = NullIfWhiteSpace(_bomColumnIpn),
-                BomColumnQty        = NullIfWhiteSpace(_bomColumnQty),
-                BomColumnReference  = NullIfWhiteSpace(_bomColumnReference),
-                BomColumnNote       = NullIfWhiteSpace(_bomColumnNote),
-                ExtensionData       = CloneExtensionData(_original.ExtensionData)
-            };
-        }
-
         private void RevertToOriginal()
         {
-            _ipnProperty         = _original.IpnProperty         ?? string.Empty;
-            _nameProperty        = _original.NameProperty        ?? string.Empty;
-            _descriptionProperty = _original.DescriptionProperty ?? string.Empty;
-            _revisionProperty    = _original.RevisionProperty    ?? string.Empty;
-            _notesProperty       = _original.NotesProperty       ?? string.Empty;
-            _pkProperty          = _original.PkProperty          ?? string.Empty;
-
-            _bomColumnIpn        = _original.BomColumnIpn        ?? string.Empty;
-            _bomColumnQty        = _original.BomColumnQty        ?? string.Empty;
-            _bomColumnReference  = _original.BomColumnReference  ?? string.Empty;
-            _bomColumnNote       = _original.BomColumnNote       ?? string.Empty;
-
+            _draft = _original.Clone();
             OnPropertyChanged(string.Empty);
         }
-
-        // ── Helpers ────────────────────────────────────────────────────────────
-
-        private static PropertyMappingConfig CloneConfig(PropertyMappingConfig source)
-        {
-            return new PropertyMappingConfig
-            {
-                SchemaVersion       = source.SchemaVersion,
-                IpnProperty         = source.IpnProperty,
-                NameProperty        = source.NameProperty,
-                NotesProperty       = source.NotesProperty,
-                RevisionProperty    = source.RevisionProperty,
-                DescriptionProperty = source.DescriptionProperty,
-                PkProperty          = source.PkProperty,
-                BomColumnIpn        = source.BomColumnIpn,
-                BomColumnQty        = source.BomColumnQty,
-                BomColumnReference  = source.BomColumnReference,
-                BomColumnNote       = source.BomColumnNote,
-                ExtensionData       = CloneExtensionData(source.ExtensionData)
-            };
-        }
-
-        private static Dictionary<string, JsonElement> CloneExtensionData(
-            Dictionary<string, JsonElement> source)
-        {
-            return new Dictionary<string, JsonElement>(source, StringComparer.OrdinalIgnoreCase);
-        }
-
-        private static string? NullIfWhiteSpace(string? value)
-            => string.IsNullOrWhiteSpace(value) ? null : value!.Trim();
     }
 }
