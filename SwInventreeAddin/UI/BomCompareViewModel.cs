@@ -89,8 +89,10 @@ namespace SwInventreeAddin.UI
         private readonly string                _bomKeyword;
         private readonly SynchronizationContext? _uiContext;
 
-        public ObservableCollection<BomDiffLineViewModel> Lines { get; } =
-            new ObservableCollection<BomDiffLineViewModel>();
+        private readonly BatchObservableCollection<BomDiffLineViewModel> _lines =
+            new BatchObservableCollection<BomDiffLineViewModel>();
+
+        public ObservableCollection<BomDiffLineViewModel> Lines => _lines;
 
         private string _statusText    = string.Empty;
         private bool   _isPushing;
@@ -299,13 +301,12 @@ namespace SwInventreeAddin.UI
 
         private void RebindLines(IReadOnlyList<BomDiffLine> diff)
         {
-            Lines.Clear();
-            foreach (var line in diff)
+            _lines.Reset(diff.Select(line =>
             {
                 var vm = new BomDiffLineViewModel(line);
                 vm.PropertyChanged += OnLineCheckedChanged;
-                Lines.Add(vm);
-            }
+                return vm;
+            }));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PushEnabled)));
         }
 
@@ -343,8 +344,7 @@ namespace SwInventreeAddin.UI
 
             sorted.AddRange(problems);
 
-            Lines.Clear();
-            foreach (var item in sorted) Lines.Add(item);
+            _lines.Reset(sorted);
         }
 
         private void RunOnUiThread(Action action)

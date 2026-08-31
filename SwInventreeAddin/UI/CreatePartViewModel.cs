@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
@@ -214,8 +215,10 @@ namespace SwInventreeAddin.UI
             private set => Set(ref _ipnErrorText, value);
         }
 
-        public ObservableCollection<CategoryNode> RootCategories { get; }
-            = new ObservableCollection<CategoryNode>();
+        private readonly BatchObservableCollection<CategoryNode> _rootCategories =
+            new BatchObservableCollection<CategoryNode>();
+
+        public ObservableCollection<CategoryNode> RootCategories => _rootCategories;
 
         // ── Constructor ───────────────────────────────────────────────────────
 
@@ -260,9 +263,7 @@ namespace SwInventreeAddin.UI
                 var cats = await _client.GetCategoriesAsync(null).ConfigureAwait(false);
                 RunOnUiThread(() =>
                 {
-                    RootCategories.Clear();
-                    foreach (var c in cats)
-                        RootCategories.Add(new CategoryNode(c));
+                    _rootCategories.Reset(cats.Select(c => new CategoryNode(c)));
                     StatusText = string.Empty;
                 });
             }
@@ -298,9 +299,7 @@ namespace SwInventreeAddin.UI
                                         .ConfigureAwait(false);
                 RunOnUiThread(() =>
                 {
-                    node.Children.Clear();
-                    foreach (var c in cats)
-                        node.Children.Add(new CategoryNode(c));
+                    node.Children.Reset(cats.Select(c => new CategoryNode(c)));
                     node.IsLoading = false;
                 });
             }
@@ -308,7 +307,7 @@ namespace SwInventreeAddin.UI
             {
                 RunOnUiThread(() =>
                 {
-                    node.Children.Clear();
+                    node.Children.Reset(Array.Empty<CategoryNode?>());
                     node.IsLoading = false;
                     StatusText = $"Error loading children: {ex.Message}";
                 });

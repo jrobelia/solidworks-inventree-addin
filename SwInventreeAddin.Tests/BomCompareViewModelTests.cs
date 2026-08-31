@@ -61,10 +61,15 @@ namespace SwInventreeAddin.Tests
                 { new InventreeBomLine { Pk = 1, SubPartPk = 10, Quantity = 1 } };
 
             var vm = CreateVm();
+
+            int changes = 0;
+            vm.Lines.CollectionChanged += (sender, e) => changes++;
+
             await vm.LoadAsync();
 
             Assert.That(vm.Lines.Count, Is.EqualTo(1));
             Assert.That(vm.Lines[0].State, Is.EqualTo(BomDiffState.Match));
+            Assert.That(changes, Is.EqualTo(1), "LoadAsync should refresh Lines with a single CollectionChanged/Reset.");
         }
 
         [Test]

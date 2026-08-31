@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using SwInventreeAddin.InvenTree;
@@ -27,11 +26,13 @@ namespace SwInventreeAddin.UI
             Category = category;
             // Sentinel child so the TreeView shows an expand arrow before children are loaded.
             if (category.HasChildren)
-                Children.Add(null!);
+                _children.Add(null!);
         }
 
-        public ObservableCollection<CategoryNode?> Children { get; }
-            = new ObservableCollection<CategoryNode?>();
+        private readonly BatchObservableCollection<CategoryNode?> _children =
+            new BatchObservableCollection<CategoryNode?>();
+
+        public BatchObservableCollection<CategoryNode?> Children => _children;
 
         private bool _isExpanded;
         public bool IsExpanded

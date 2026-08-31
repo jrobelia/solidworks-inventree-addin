@@ -95,6 +95,10 @@ namespace SwInventreeAddin.Tests
             };
 
             var vm = CreateVm();
+
+            int changes = 0;
+            vm.RootCategories.CollectionChanged += (sender, e) => changes++;
+
             await vm.LoadRootCategoriesAsync();
 
             Assert.That(vm.RootCategories.Count, Is.EqualTo(2));
@@ -103,6 +107,7 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.RootCategories[0].Children.Count, Is.EqualTo(1));
             // HasChildren=false → no sentinel
             Assert.That(vm.RootCategories[1].Children.Count, Is.EqualTo(0));
+            Assert.That(changes, Is.EqualTo(1), "LoadRootCategoriesAsync should refresh RootCategories with a single CollectionChanged/Reset.");
         }
 
         [Test]
@@ -164,11 +169,16 @@ namespace SwInventreeAddin.Tests
             Assert.That(node.Children.Count, Is.EqualTo(1));
 
             var vm = CreateVm();
+
+            int changes = 0;
+            node.Children.CollectionChanged += (sender, e) => changes++;
+
             await vm.LoadChildrenAsync(node);
 
             Assert.That(node.Children.Count,                   Is.EqualTo(1));
             Assert.That(node.Children[0]!.Category.Name,       Is.EqualTo("SMD"));
             Assert.That(node.IsLoading,                        Is.False);
+            Assert.That(changes, Is.EqualTo(1), "LoadChildrenAsync should refresh Children with a single CollectionChanged/Reset.");
         }
 
         [Test]
