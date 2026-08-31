@@ -1,5 +1,5 @@
 using System;
-using System.IO;
+using System.Collections.Generic;
 using System.Text.Json;
 using NUnit.Framework;
 using SwInventreeAddin.Config;
@@ -11,21 +11,6 @@ namespace SwInventreeAddin.Tests
     [TestFixture]
     public class MappingEditorViewModelTests
     {
-        private string _localPath = null!;
-
-        [SetUp]
-        public void SetUp()
-        {
-            var tmp = Path.GetTempPath();
-            _localPath = Path.Combine(tmp, $"mapping_editor_local_{Guid.NewGuid():N}.json");
-        }
-
-        [TearDown]
-        public void TearDown()
-        {
-            if (File.Exists(_localPath)) File.Delete(_localPath);
-        }
-
         // ── Constructor and placeholders ───────────────────────────────────────
 
         [Test]
@@ -315,18 +300,26 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void Save_PreservesUnknownTopLevelJsonKeys()
         {
-            File.WriteAllText(_localPath, @"{
-                ""SchemaVersion"": ""3"",
-                ""IpnProperty"": ""PartNo"",
-                ""BomColumnIpn"": ""IPN"",
-                ""BomColumnQty"": ""Qty"",
-                ""BomColumnReference"": ""Reference"",
-                ""BomColumnNote"": ""Note"",
-                ""UnknownFutureKey"": ""future-value"",
-                ""AnotherUnknown"": 42
-            }");
+            var futureDoc = JsonDocument.Parse("\"future-value\"");
+            var intDoc    = JsonDocument.Parse("42");
 
-            var provider = new PropertyMappingProvider(_localPath, null);
+            var provider = new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig
+                {
+                    SchemaVersion       = PropertyMappingConfig.CurrentSchemaVersion,
+                    IpnProperty         = "PartNo",
+                    BomColumnIpn        = "IPN",
+                    BomColumnQty        = "Qty",
+                    BomColumnReference  = "Reference",
+                    BomColumnNote       = "Note",
+                    ExtensionData       = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["UnknownFutureKey"] = futureDoc.RootElement,
+                        ["AnotherUnknown"]   = intDoc.RootElement,
+                    }
+                }
+            };
 
             var vm = new MappingEditorViewModel(provider);
             vm.IpnProperty = "NewPartNo";
@@ -334,12 +327,12 @@ namespace SwInventreeAddin.Tests
             var saved = vm.Save();
 
             Assert.That(saved, Is.True);
-
-            var savedJson = File.ReadAllText(_localPath);
-            Assert.That(savedJson, Does.Contain("UnknownFutureKey"));
-            Assert.That(savedJson, Does.Contain("future-value"));
-            Assert.That(savedJson, Does.Contain("AnotherUnknown"));
-            Assert.That(savedJson, Does.Contain("NewPartNo"));
+            Assert.That(provider.LastSaved, Is.Not.Null);
+            Assert.That(provider.LastSaved!.IpnProperty, Is.EqualTo("NewPartNo"));
+            Assert.That(provider.LastSaved!.ExtensionData, Does.ContainKey("UnknownFutureKey"));
+            Assert.That(provider.LastSaved!.ExtensionData, Does.ContainKey("AnotherUnknown"));
+            Assert.That(provider.LastSaved!.ExtensionData["UnknownFutureKey"].GetString(), Is.EqualTo("future-value"));
+            Assert.That(provider.LastSaved!.ExtensionData["AnotherUnknown"].GetInt32(), Is.EqualTo(42));
         }
 
         // ── Copy to local ──────────────────────────────────────────────────────
