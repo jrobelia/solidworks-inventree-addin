@@ -603,7 +603,7 @@ namespace SwInventreeAddin.Tests
         // ── Contract ──────────────────────────────────────────────────────────
 
         [Test]
-        public void GetMapping_WhenRemovedFromSeam_IsNotDeclared()
+        public void GetMapping_IsNotDeclaredOnPublicSeam()
         {
             var declaredGetMappings =
                 new[] { typeof(IPropertyMappingProvider), typeof(PropertyMappingProvider), typeof(StubPropertyMappingProvider) }
