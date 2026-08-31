@@ -365,7 +365,7 @@ namespace SwInventreeAddin.Tests
             Assert.That(_client.LastCreateIpn, Is.EqualTo("FAB-001"));
         }
 
-        // ── WaitForAutoPartNumber toggle ─────────────────────────────────────────
+        // ── WaitForServerAssignedIpn toggle ─────────────────────────────────────
 
         [Test]
         public async Task CreateAsync_WaitOff_BlankIpn_SkipsPollAndRaisesPartCreated()

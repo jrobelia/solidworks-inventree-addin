@@ -242,9 +242,9 @@ namespace SwInventreeAddin.UI
             _vm.UpdateMapping(provider);
         }
 
-        public void UpdateWaitForAutoPartNumber(bool value)
+        public void UpdateWaitForServerAssignedIpn(bool value)
         {
-            _vm.WaitForAutoPartNumber = value;
+            _vm.WaitForServerAssignedIpn = value;
         }
 
         public void UpdateBomState(IAssemblyBomService bomService, string keyword)

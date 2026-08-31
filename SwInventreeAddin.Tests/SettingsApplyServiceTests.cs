@@ -149,7 +149,7 @@ namespace SwInventreeAddin.Tests
                 RawApiKey             = "api-key",
                 SharedMappingPath     = null,
                 BomKeyword            = "inventree",
-                WaitForAutoPartNumber = true,
+                WaitForServerAssignedIpn = true,
             };
         }
 

@@ -1,4 +1,6 @@
-﻿namespace SwInventreeAddin.Config
+﻿using System.Text.Json.Serialization;
+
+namespace SwInventreeAddin.Config
 {
     public class ServerConfig
     {
@@ -20,8 +22,20 @@
         /// <summary>
         /// When true, the Create Part flow polls InvenTree after creation, waiting
         /// for a server-assigned IPN. When false, the poll is skipped. Defaults to true
-        /// so the Create Part dialog waits for an auto-generated IPN on first run.
+        /// so the Create Part dialog waits for a server-assigned IPN on first run.
         /// </summary>
-        public bool WaitForAutoPartNumber { get; set; } = true;
+        public bool WaitForServerAssignedIpn { get; set; } = true;
+
+        /// <summary>
+        /// Backward-compatibility alias for <see cref="WaitForServerAssignedIpn"/>.
+        /// Reading or writing this property affects <see cref="WaitForServerAssignedIpn"/>.
+        /// It is not serialised; legacy values are migrated on load.
+        /// </summary>
+        [JsonIgnore]
+        public bool WaitForAutoPartNumber
+        {
+            get => WaitForServerAssignedIpn;
+            set => WaitForServerAssignedIpn = value;
+        }
     }
 }

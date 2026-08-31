@@ -21,7 +21,7 @@ namespace SwInventreeAddin.UI
 
         private (string Url, string ApiKey, string Username, string Password,
                  string SharedPath, string BomKeyword, bool UseLocalMapping) _savedSnapshot;
-        private          bool                       _savedWaitForAutoPartNumber = true;
+        private          bool                       _savedWaitForServerAssignedIpn = true;
         private          MappingChangedSubscription? _mappingChangedSubscription;
 
         /// <summary>
@@ -69,7 +69,7 @@ namespace SwInventreeAddin.UI
                         SharedPathBox.Text = config.MappingSourcePath;
 
                     BomKeywordBox.Text = config.BomKeyword ?? "inventree";
-                    _savedWaitForAutoPartNumber = config.WaitForAutoPartNumber;
+                    _savedWaitForServerAssignedIpn = config.WaitForServerAssignedIpn;
                 }
             }
             catch { /* corrupt settings — user can re-enter */ }
@@ -244,9 +244,9 @@ namespace SwInventreeAddin.UI
                 Username              = UsernameBox.Text.Trim(),
                 Password              = PasswordBox.Password,
                 RawApiKey             = ApiBox.Text.Trim(),
-                SharedMappingPath     = sharedPath,
-                BomKeyword            = BomKeywordBox.Text,
-                WaitForAutoPartNumber = _savedWaitForAutoPartNumber,
+                SharedMappingPath        = sharedPath,
+                BomKeyword               = BomKeywordBox.Text,
+                WaitForServerAssignedIpn = _savedWaitForServerAssignedIpn,
             };
         }
 

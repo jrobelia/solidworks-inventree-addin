@@ -2103,7 +2103,7 @@ namespace SwInventreeAddin.Tests
 
             var configProvider = new StubConfigProvider();
             var vm = new TaskPaneViewModel(_client, _propertyService, null, null, configProvider);
-            vm.WaitForAutoPartNumber = true;
+            vm.WaitForServerAssignedIpn = true;
 
             bool dialogOpened = false;
             vm.OpenCreatePartWindow(createVm =>
@@ -2113,9 +2113,9 @@ namespace SwInventreeAddin.Tests
             });
 
             Assert.That(dialogOpened, Is.True);
-            Assert.That(vm.WaitForAutoPartNumber, Is.False);
+            Assert.That(vm.WaitForServerAssignedIpn, Is.False);
             Assert.That(configProvider.LastSavedConfig, Is.Not.Null);
-            Assert.That(configProvider.LastSavedConfig!.WaitForAutoPartNumber, Is.False);
+            Assert.That(configProvider.LastSavedConfig!.WaitForServerAssignedIpn, Is.False);
         }
     }
 }

@@ -86,19 +86,42 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void SaveThenGet_RoundTripsWaitForAutoPartNumber()
+        public void SaveThenGet_RoundTripsWaitForServerAssignedIpn()
         {
             var config = new ServerConfig
             {
-                Url                   = "http://example.com",
-                ApiKey                = "key",
-                WaitForAutoPartNumber = true,
+                Url                      = "http://example.com",
+                ApiKey                   = "key",
+                WaitForServerAssignedIpn = false,
             };
 
             _provider.SaveServerConfig(config);
             var result = _provider.GetServerConfig();
 
-            Assert.That(result!.WaitForAutoPartNumber, Is.True);
+            Assert.That(result!.WaitForServerAssignedIpn, Is.False);
+            Assert.That(result!.WaitForAutoPartNumber, Is.False);
+        }
+
+        [Test]
+        public void GetServerConfig_LegacyWaitForAutoPartNumber_MigratesToWaitForServerAssignedIpn()
+        {
+            var legacyJson =
+                "{\"Url\":\"http://example.com\",\"ApiKey\":\"key\",\"WaitForAutoPartNumber\":false}";
+            var plain = System.Text.Encoding.UTF8.GetBytes(legacyJson);
+            var cipher = System.Security.Cryptography.ProtectedData.Protect(
+                plain, null, System.Security.Cryptography.DataProtectionScope.CurrentUser);
+            var path = System.IO.Path.Combine(
+                System.IO.Path.GetTempPath(), $"sw-inventree-migration-{Guid.NewGuid()}.dat");
+            System.IO.File.WriteAllBytes(path, cipher);
+
+            var provider = new EncryptedConfigProvider(path);
+            var result = provider.GetServerConfig();
+
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result!.WaitForServerAssignedIpn, Is.False);
+            Assert.That(result!.WaitForAutoPartNumber, Is.False);
+
+            System.IO.File.Delete(path);
         }
     }
 }

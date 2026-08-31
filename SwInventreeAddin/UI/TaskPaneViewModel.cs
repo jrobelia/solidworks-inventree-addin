@@ -381,9 +381,9 @@ namespace SwInventreeAddin.UI
         /// <summary>
         /// When true, the Create Part flow polls InvenTree for a server-assigned IPN.
         /// When false (default), the poll is skipped and the dialog closes immediately.
-        /// Set from <see cref="ServerConfig.WaitForAutoPartNumber"/> after config loads.
+        /// Set from <see cref="ServerConfig.WaitForServerAssignedIpn"/> after config loads.
         /// </summary>
-        public bool WaitForAutoPartNumber { get; set; }
+        public bool WaitForServerAssignedIpn { get; set; }
 
         // ── Constructors ──────────────────────────────────────────────────────
 
@@ -705,7 +705,7 @@ namespace SwInventreeAddin.UI
 
             var validator = new InventreeClientCreatePartValidationService(_client);
             var vm = new CreatePartViewModel(_client, _propertyService, validator, name, _mappingProvider,
-                                             waitForServerAssignedIpn: WaitForAutoPartNumber,
+                                             waitForServerAssignedIpn: WaitForServerAssignedIpn,
                                              documentType: _currentDocumentType);
 
             vm.PartCreated += (_, part) =>
@@ -738,7 +738,7 @@ namespace SwInventreeAddin.UI
             showDialog(vm);
 
             // Remember the choice for the next Create Part dialog in this SolidWorks session.
-            WaitForAutoPartNumber = vm.WaitForServerAssignedIpn;
+            WaitForServerAssignedIpn = vm.WaitForServerAssignedIpn;
 
             if (_configProvider != null)
             {
@@ -747,7 +747,7 @@ namespace SwInventreeAddin.UI
                     var config = _configProvider.GetServerConfig();
                     if (config != null)
                     {
-                        config.WaitForAutoPartNumber = vm.WaitForServerAssignedIpn;
+                        config.WaitForServerAssignedIpn = vm.WaitForServerAssignedIpn;
                         _configProvider.SaveServerConfig(config);
                     }
                 }
