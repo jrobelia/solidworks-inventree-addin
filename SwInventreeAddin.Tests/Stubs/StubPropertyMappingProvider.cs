@@ -38,16 +38,6 @@ namespace SwInventreeAddin.Tests.Stubs
             return PropertyMappingProvider.Classify(Config, LocalFilePath);
         }
 
-        public PropertyMappingConfig GetMapping()
-        {
-            var result = GetMappingResult();
-
-            if (result.Health == MappingHealth.Invalid)
-                throw new InvalidOperationException(result.MessageOrDefault);
-
-            return result.Config;
-        }
-
         public MappingResult ValidateMapping(PropertyMappingConfig config)
             => PropertyMappingProvider.Classify(config, LocalFilePath);
 

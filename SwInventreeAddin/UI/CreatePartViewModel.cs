@@ -396,9 +396,14 @@ namespace SwInventreeAddin.UI
                 var ipn  = part?.Ipn  ?? string.Empty;
                 var name = part?.Name ?? string.Empty;
 
+                var mappingResult = _mappingProvider?.GetMappingResult();
+                if (mappingResult?.Health == MappingHealth.Invalid)
+                    throw new InvalidOperationException(mappingResult.MessageOrDefault);
+
+                var mapping = mappingResult?.Config ?? PropertyMappingConfig.WithDefaults();
+
                 RunOnUiThread(() =>
                 {
-                    var mapping = _mappingProvider?.GetMapping() ?? PropertyMappingConfig.WithDefaults();
                     if (!string.IsNullOrEmpty(mapping.PkProperty))
                         _propertyService.SetCustomProperty(mapping.PkProperty!, pk.ToString());
                     // Only write IPN if we actually received one — avoid blanking the property

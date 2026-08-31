@@ -35,7 +35,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void Constructor_WhenMappingProviderThrowsOnGetMapping_SetsRedMappingStatusAndDoesNotCrash()
+        public void Constructor_WhenMappingProviderThrowsOnGetMappingResult_SetsRedMappingStatusAndDoesNotCrash()
         {
             var mappingProvider = new StubPropertyMappingProvider
             {

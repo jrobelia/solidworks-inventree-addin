@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using SwInventreeAddin.Config;
 using SwInventreeAddin.InvenTree;
 using SwInventreeAddin.SolidWorks;
 using SwInventreeAddin.Tests.Stubs;
@@ -30,8 +31,9 @@ namespace SwInventreeAddin.Tests
         private CreatePartViewModel CreateVm(
             string name = DefaultName,
             bool waitForServerAssignedIpn = false,
-            DocumentType documentType = DocumentType.Part) =>
-            new CreatePartViewModel(_client, _propertyService, name, ipnPollDelayMs: 0, waitForServerAssignedIpn: waitForServerAssignedIpn, documentType: documentType);
+            DocumentType documentType = DocumentType.Part,
+            IPropertyMappingProvider? mappingProvider = null) =>
+            new CreatePartViewModel(_client, _propertyService, name, mappingProvider: mappingProvider, ipnPollDelayMs: 0, waitForServerAssignedIpn: waitForServerAssignedIpn, documentType: documentType);
 
         private static CategoryNode MakeNode(int pk = 1, string name = "Resistors") =>
             new CategoryNode(new InventreeCategory { Pk = pk, Name = name });
@@ -467,6 +469,29 @@ namespace SwInventreeAddin.Tests
             {
                 SynchronizationContext.SetSynchronizationContext(previousContext);
             }
+        }
+
+        [Test]
+        public async Task CreateAsync_InvalidMapping_SetsStatusText_AndDoesNotWriteDocProperties()
+        {
+            _client.PkToReturnOnCreate = 99;
+            _client.PartByPkToReturn = new InventreePart { Pk = 99, Ipn = "R-NEW-001", Name = "New Resistor" };
+
+            var mappingProvider = new StubPropertyMappingProvider
+            {
+                Health = MappingHealth.Invalid,
+                Message = "Invalid mapping file"
+            };
+            _propertyService.Seed(mappingProvider.Config.IpnProperty!, string.Empty);
+
+            var vm = CreateVm(mappingProvider: mappingProvider);
+            vm.SelectedCategory = MakeNode(pk: 7);
+            await vm.CreateAsync();
+
+            Assert.That(vm.StatusText, Does.Contain("Invalid mapping file"));
+            Assert.That(vm.IsBusy, Is.False);
+            Assert.That(_propertyService.GetCustomProperty(mappingProvider.Config.IpnProperty!), Is.EqualTo(string.Empty),
+                "Properties must not be written when the mapping is not healthy.");
         }
 
         // ── Wait for server-assigned IPN ───────────────────────────────────────

@@ -24,15 +24,6 @@ namespace SwInventreeAddin.Config
         MappingResult GetMappingResult();
 
         /// <summary>
-        /// Returns the current mapping configuration.
-        /// Resolution: source path first (when configured and file exists), then local file,
-        /// then first-run defaults (writes defaults to local path and returns them).
-        /// Throws <see cref="System.InvalidOperationException"/> if the mapping is
-        /// <see cref="MappingHealth.Invalid"/>, naming the offending path.
-        /// </summary>
-        PropertyMappingConfig GetMapping();
-
-        /// <summary>
         /// Returns a <see cref="MappingResult"/> for the supplied draft without
         /// persisting it, so the editor can validate a draft before saving.
         /// </summary>

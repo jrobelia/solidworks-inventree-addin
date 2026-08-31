@@ -1,10 +1,12 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using NUnit.Framework;
 using SwInventreeAddin.Config;
+using SwInventreeAddin.Tests.Stubs;
 
 namespace SwInventreeAddin.Tests
 {
@@ -29,58 +31,58 @@ namespace SwInventreeAddin.Tests
             if (File.Exists(_sourcePath)) File.Delete(_sourcePath);
         }
 
-        // ── GetMapping ────────────────────────────────────────────────────────
+        // ── GetMappingResult / configuration access ───────────────────────────
 
         [Test]
-        public void GetMapping_NoLocalNoSource_WritesDefaultsToLocalPathAndReturns()
+        public void GetMappingResult_NoLocalNoSource_ReturnsConfigAndWritesDefaultsToLocalPath()
         {
             var provider = new PropertyMappingProvider(_localPath, null);
 
-            var config = provider.GetMapping();
+            var result = provider.GetMappingResult();
 
-            Assert.That(config.IpnProperty,      Is.EqualTo("PartNo"));
-            Assert.That(config.NameProperty,      Is.EqualTo("Description"));
-            Assert.That(config.NotesProperty,     Is.EqualTo("Notes"));
-            Assert.That(config.RevisionProperty,  Is.EqualTo("Revision"));
+            Assert.That(result.Config.IpnProperty,      Is.EqualTo("PartNo"));
+            Assert.That(result.Config.NameProperty,      Is.EqualTo("Description"));
+            Assert.That(result.Config.NotesProperty,     Is.EqualTo("Notes"));
+            Assert.That(result.Config.RevisionProperty,  Is.EqualTo("Revision"));
             Assert.That(File.Exists(_localPath),  Is.True,
                 "First-run should have written defaults to local path.");
 
             // Verify the written file round-trips: second call loads from local file.
-            var loaded = provider.GetMapping();
+            var loaded = provider.GetMappingResult().Config;
             Assert.That(loaded.IpnProperty, Is.EqualTo("PartNo"),
                 "Second call should load the written defaults from the local file.");
         }
 
         [Test]
-        public void GetMapping_LocalExists_LoadsFromLocal()
+        public void GetMappingResult_LocalExists_ReturnsConfigFromLocal()
         {
             WriteJson(_localPath, new PropertyMappingConfig { IpnProperty = "MyIPN" });
 
-            var config = new PropertyMappingProvider(_localPath, null).GetMapping();
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
 
-            Assert.That(config.IpnProperty, Is.EqualTo("MyIPN"));
+            Assert.That(result.Config.IpnProperty, Is.EqualTo("MyIPN"));
         }
 
         [Test]
-        public void GetMapping_SourceConfiguredNoLocal_LoadsFromSource()
+        public void GetMappingResult_SourceConfiguredNoLocal_ReturnsConfigFromSource()
         {
             WriteJson(_sourcePath, new PropertyMappingConfig { IpnProperty = "SourceIPN" });
 
-            var config = new PropertyMappingProvider(_localPath, _sourcePath).GetMapping();
+            var result = new PropertyMappingProvider(_localPath, _sourcePath).GetMappingResult();
 
-            Assert.That(config.IpnProperty, Is.EqualTo("SourceIPN"));
+            Assert.That(result.Config.IpnProperty, Is.EqualTo("SourceIPN"));
         }
 
         [Test]
-        public void GetMapping_SourceConfiguredAndLocalExists_SourceTakesPrecedence()
+        public void GetMappingResult_SourceConfiguredAndLocalExists_SourceTakesPrecedence()
         {
             WriteJson(_localPath,  new PropertyMappingConfig { IpnProperty = "LocalIPN"  });
             WriteJson(_sourcePath, new PropertyMappingConfig { IpnProperty = "SourceIPN" });
 
-            var config = new PropertyMappingProvider(_localPath, _sourcePath).GetMapping();
+            var result = new PropertyMappingProvider(_localPath, _sourcePath).GetMappingResult();
 
             // Source path takes priority when configured — local is only used when no source is set.
-            Assert.That(config.IpnProperty, Is.EqualTo("SourceIPN"));
+            Assert.That(result.Config.IpnProperty, Is.EqualTo("SourceIPN"));
         }
 
         // ── IsReadOnly ────────────────────────────────────────────────────────
@@ -116,36 +118,6 @@ namespace SwInventreeAddin.Tests
         }
 
         // ── Error handling ────────────────────────────────────────────────────
-
-        [Test]
-        public void GetMapping_WhenLocalFileContainsInvalidJson_ThrowsInvalidOperationExceptionWithPath()
-        {
-            File.WriteAllText(_localPath, "not valid json");
-
-            Assert.That(() => new PropertyMappingProvider(_localPath, null).GetMapping(),
-                Throws.TypeOf<InvalidOperationException>().With.Message.Contains(_localPath));
-        }
-
-        [Test]
-        public void GetMapping_WhenSourceFileContainsInvalidJson_ThrowsInvalidOperationExceptionWithPath()
-        {
-            File.WriteAllText(_sourcePath, "not valid json");
-
-            Assert.That(() => new PropertyMappingProvider(_localPath, _sourcePath).GetMapping(),
-                Throws.TypeOf<InvalidOperationException>().With.Message.Contains(_sourcePath));
-        }
-
-        [Test]
-        public void GetMapping_WhenLocalFileIsLocked_ThrowsInvalidOperationExceptionWithPath()
-        {
-            using var stream = new FileStream(_localPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
-            var content = System.Text.Encoding.UTF8.GetBytes("{}");
-            stream.Write(content, 0, content.Length);
-            stream.Flush();
-
-            Assert.That(() => new PropertyMappingProvider(_localPath, null).GetMapping(),
-                Throws.TypeOf<InvalidOperationException>().With.Message.Contains(_localPath));
-        }
 
         [Test]
         public void SaveMapping_WhenFileIsReadOnly_ThrowsInvalidOperationExceptionWithPath()
@@ -184,7 +156,7 @@ namespace SwInventreeAddin.Tests
             var provider = new PropertyMappingProvider(_localPath, null);
 
             provider.SaveMapping(new PropertyMappingConfig { IpnProperty = "XPN" });
-            var loaded = provider.GetMapping();
+            var loaded = provider.GetMappingResult().Config;
 
             Assert.That(File.Exists(_localPath),  Is.True);
             Assert.That(loaded.IpnProperty,       Is.EqualTo("XPN"));
@@ -247,11 +219,11 @@ namespace SwInventreeAddin.Tests
             // Local file is created with the source content.
             Assert.That(File.Exists(_localPath), Is.True);
 
-            // Source path is still configured, so IsReadOnly stays true and GetMapping still
+            // Source path is still configured, so IsReadOnly stays true and GetMappingResult still
             // returns source content.  To switch to editable mode the caller must clear the
             // MappingSourcePath in settings (select the Local radio button and save).
             Assert.That(provider.IsReadOnly, Is.True);
-            Assert.That(provider.GetMapping().IpnProperty, Is.EqualTo("SourceIPN"));
+            Assert.That(provider.GetMappingResult().Config.IpnProperty, Is.EqualTo("SourceIPN"));
         }
 
         [Test]
@@ -314,7 +286,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void GetMapping_BomColumnAliasCsv_IsSplitCaseInsensitively()
+        public void PropertyMappingConfig_BomColumnAliasCsv_IsSplitCaseInsensitively()
         {
             var config = PropertyMappingConfig.WithDefaults();
             var aliases = config.BomColumnQty!
@@ -551,15 +523,6 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void GetMapping_PassThrough_ThrowsWhenResultIsInvalid()
-        {
-            File.WriteAllText(_localPath, "not valid json");
-
-            Assert.That(() => new PropertyMappingProvider(_localPath, null).GetMapping(),
-                Throws.TypeOf<InvalidOperationException>().With.Message.Contains(_localPath));
-        }
-
-        [Test]
         public void SaveMapping_PreservesUnknownTopLevelKeys()
         {
             File.WriteAllText(_localPath, @"{
@@ -611,6 +574,21 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(raised, Is.True);
             Assert.That(File.Exists(_localPath), Is.True);
+        }
+
+        // ── Contract ──────────────────────────────────────────────────────────
+
+        [Test]
+        public void GetMapping_WhenRemovedFromSeam_IsNotDeclared()
+        {
+            var declaredGetMappings =
+                new[] { typeof(IPropertyMappingProvider), typeof(PropertyMappingProvider), typeof(StubPropertyMappingProvider) }
+                .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+                .Where(m => m.Name == "GetMapping" && m.DeclaringType != typeof(object))
+                .ToList();
+
+            Assert.That(declaredGetMappings, Is.Empty,
+                "GetMapping() must be removed from IPropertyMappingProvider and its adapters; use GetMappingResult().");
         }
 
         // ── Helpers ───────────────────────────────────────────────────────────

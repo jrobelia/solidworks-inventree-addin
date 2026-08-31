@@ -88,17 +88,6 @@ namespace SwInventreeAddin.Config
         }
 
         /// <inheritdoc/>
-        public PropertyMappingConfig GetMapping()
-        {
-            var result = GetMappingResult();
-
-            if (result.Health == MappingHealth.Invalid)
-                throw new InvalidOperationException(result.MessageOrDefault);
-
-            return result.Config;
-        }
-
-        /// <inheritdoc/>
         public MappingResult ValidateMapping(PropertyMappingConfig config)
             => Classify(config, _localPath);
 
