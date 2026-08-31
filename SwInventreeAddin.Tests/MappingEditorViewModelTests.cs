@@ -11,6 +11,15 @@ namespace SwInventreeAddin.Tests
     [TestFixture]
     public class MappingEditorViewModelTests
     {
+        private StubPropertyMappingProvider _provider = null!;
+
+        [SetUp]
+        public void SetUp()
+            => _provider = new StubPropertyMappingProvider { Config = PropertyMappingConfig.WithDefaults() };
+
+        private MappingEditorViewModel CreateVm(StubPropertyMappingProvider? provider = null)
+            => new MappingEditorViewModel(provider ?? _provider);
+
         // ── Constructor and placeholders ───────────────────────────────────────
 
         [Test]
@@ -27,7 +36,7 @@ namespace SwInventreeAddin.Tests
                 }
             };
 
-            var vm = new MappingEditorViewModel(provider);
+            var vm = CreateVm(provider);
 
             Assert.That(vm.IpnProperty,       Is.EqualTo("MyIPN"));
             Assert.That(vm.NameProperty,      Is.EqualTo("MyName"));
@@ -53,7 +62,7 @@ namespace SwInventreeAddin.Tests
                 }
             };
 
-            var vm = new MappingEditorViewModel(provider);
+            var vm = CreateVm(provider);
 
             Assert.That(vm.BomColumnIpn,        Is.EqualTo(string.Empty));
             Assert.That(vm.BomColumnQty,        Is.EqualTo(string.Empty));
@@ -80,7 +89,7 @@ namespace SwInventreeAddin.Tests
                 }
             };
 
-            var vm = new MappingEditorViewModel(provider);
+            var vm = CreateVm(provider);
             vm.IpnProperty = "NewIPN";
 
             vm.Cancel();
@@ -105,7 +114,7 @@ namespace SwInventreeAddin.Tests
                 }
             };
 
-            var vm = new MappingEditorViewModel(provider);
+            var vm = CreateVm(provider);
             vm.IpnProperty = "NewIPN";
 
             var saved = vm.Save();
@@ -133,7 +142,7 @@ namespace SwInventreeAddin.Tests
                 ThrowOnSave = new InvalidOperationException("Cannot write file.")
             };
 
-            var vm = new MappingEditorViewModel(provider);
+            var vm = CreateVm(provider);
             vm.IpnProperty = "NewIPN";
 
             var saved = vm.Save();
@@ -159,7 +168,7 @@ namespace SwInventreeAddin.Tests
                 }
             };
 
-            var vm = new MappingEditorViewModel(provider);
+            var vm = CreateVm(provider);
             vm.IpnProperty = "NewIPN";
             vm.BomColumnIpn = "";   // blank alias
 
@@ -189,7 +198,7 @@ namespace SwInventreeAddin.Tests
                 }
             };
 
-            var vm = new MappingEditorViewModel(provider);
+            var vm = CreateVm(provider);
             vm.NameProperty = "PartNo";   // duplicate with IPN
 
             var saved = vm.Save();
@@ -206,7 +215,7 @@ namespace SwInventreeAddin.Tests
         public void Save_BomAliasBlank_Fails(string alias)
         {
             var provider = ValidProvider();
-            var vm = new MappingEditorViewModel(provider);
+            var vm = CreateVm(provider);
             vm.BomColumnIpn = alias;
 
             var saved = vm.Save();
@@ -219,7 +228,7 @@ namespace SwInventreeAddin.Tests
         public void Save_BomAliasLeadingComma_Fails()
         {
             var provider = ValidProvider();
-            var vm = new MappingEditorViewModel(provider);
+            var vm = CreateVm(provider);
             vm.BomColumnIpn = ",IPN";
 
             var saved = vm.Save();
@@ -232,7 +241,7 @@ namespace SwInventreeAddin.Tests
         public void Save_BomAliasTrailingComma_Fails()
         {
             var provider = ValidProvider();
-            var vm = new MappingEditorViewModel(provider);
+            var vm = CreateVm(provider);
             vm.BomColumnIpn = "IPN,";
 
             var saved = vm.Save();
@@ -245,7 +254,7 @@ namespace SwInventreeAddin.Tests
         public void Save_BomAliasBlankBetweenCommas_Fails()
         {
             var provider = ValidProvider();
-            var vm = new MappingEditorViewModel(provider);
+            var vm = CreateVm(provider);
             vm.BomColumnIpn = "IPN,,PartNo";
 
             var saved = vm.Save();
@@ -258,7 +267,7 @@ namespace SwInventreeAddin.Tests
         public void Save_BomAliasDuplicateWithinColumn_Fails()
         {
             var provider = ValidProvider();
-            var vm = new MappingEditorViewModel(provider);
+            var vm = CreateVm(provider);
             vm.BomColumnIpn = "IPN, ipn";
 
             var saved = vm.Save();
@@ -271,7 +280,7 @@ namespace SwInventreeAddin.Tests
         public void Save_BomAliasSharedAcrossColumns_Fails()
         {
             var provider = ValidProvider();
-            var vm = new MappingEditorViewModel(provider);
+            var vm = CreateVm(provider);
             vm.BomColumnIpn  = "IPN";
             vm.BomColumnQty  = "IPN";
 
@@ -285,7 +294,7 @@ namespace SwInventreeAddin.Tests
         public void Save_BomAliasWithSpacesAfterComma_Passes()
         {
             var provider = ValidProvider();
-            var vm = new MappingEditorViewModel(provider);
+            var vm = CreateVm(provider);
             vm.BomColumnIpn = "IPN, Part IPN";
 
             var saved = vm.Save();
@@ -321,7 +330,7 @@ namespace SwInventreeAddin.Tests
                 }
             };
 
-            var vm = new MappingEditorViewModel(provider);
+            var vm = CreateVm(provider);
             vm.IpnProperty = "NewPartNo";
 
             var saved = vm.Save();
@@ -346,7 +355,7 @@ namespace SwInventreeAddin.Tests
                 Config = new PropertyMappingConfig { SchemaVersion = "2" }
             };
 
-            var vm = new MappingEditorViewModel(provider);
+            var vm = CreateVm(provider);
 
             Assert.That(vm.IsReadOnly, Is.True);
             Assert.That(vm.CanCopyToLocal, Is.True);
@@ -361,7 +370,7 @@ namespace SwInventreeAddin.Tests
                 Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion }
             };
 
-            var vm = new MappingEditorViewModel(provider);
+            var vm = CreateVm(provider);
 
             Assert.That(vm.CanCopyToLocal, Is.False);
         }
@@ -375,7 +384,7 @@ namespace SwInventreeAddin.Tests
                 Config = new PropertyMappingConfig { SchemaVersion = "2" }
             };
 
-            var vm = new MappingEditorViewModel(provider);
+            var vm = CreateVm(provider);
 
             Assert.That(vm.CanCopyToLocal, Is.False);
         }
@@ -389,7 +398,7 @@ namespace SwInventreeAddin.Tests
                 Config = new PropertyMappingConfig { SchemaVersion = "2" }
             };
 
-            var vm = new MappingEditorViewModel(provider);
+            var vm = CreateVm(provider);
             Assert.That(vm.CanCopyToLocal, Is.True);
 
             vm.CopyToLocal();
@@ -408,7 +417,7 @@ namespace SwInventreeAddin.Tests
                 ThrowOnCopyToLocal = new InvalidOperationException("Source file missing.")
             };
 
-            var vm = new MappingEditorViewModel(provider);
+            var vm = CreateVm(provider);
             vm.CopyToLocal();
 
             Assert.That(vm.CopyToLocalInstruction, Is.Null);

@@ -553,6 +553,8 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.StatusText, Does.Contain(expectedMessage));
             Assert.That(_propertyService.GetCustomProperty(ipnProperty), Is.EqualTo(string.Empty),
                 "Properties must not be written when the mapping is not Healthy.");
+            Assert.That(vm.IsBusy, Is.False,
+                "IsBusy must be cleared when the mapping is not Healthy.");
         }
 
         // ── Wait for server-assigned IPN ───────────────────────────────────────

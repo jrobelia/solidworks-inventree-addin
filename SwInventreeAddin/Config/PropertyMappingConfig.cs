@@ -56,17 +56,17 @@ namespace SwInventreeAddin.Config
         /// </summary>
         private sealed class StringField
         {
-            public Func<PropertyMappingConfig, string?>    Get    { get; }
-            public Action<PropertyMappingConfig, string?>  Set    { get; }
-            public string?                                 Default { get; }
+            public Func<PropertyMappingConfig, string?>    Getter    { get; }
+            public Action<PropertyMappingConfig, string?>  Setter    { get; }
+            public string?                                 DefaultValue { get; }
 
-            public StringField(Func<PropertyMappingConfig, string?> get,
-                               Action<PropertyMappingConfig, string?> set,
-                               string? @default)
+            public StringField(Func<PropertyMappingConfig, string?> getter,
+                               Action<PropertyMappingConfig, string?> setter,
+                               string? defaultValue)
             {
-                Get    = get;
-                Set    = set;
-                Default = @default;
+                Getter       = getter;
+                Setter       = setter;
+                DefaultValue = defaultValue;
             }
         }
 
@@ -107,8 +107,8 @@ namespace SwInventreeAddin.Config
             var copy = Clone();
             foreach (var field in StringFields)
             {
-                var value = field.Get(copy);
-                field.Set(copy, string.IsNullOrWhiteSpace(value) ? null : value);
+                var value = field.Getter(copy);
+                field.Setter(copy, string.IsNullOrWhiteSpace(value) ? null : value);
             }
             return copy;
         }
@@ -121,7 +121,7 @@ namespace SwInventreeAddin.Config
         {
             var config = new PropertyMappingConfig();
             foreach (var field in StringFields)
-                field.Set(config, field.Default);
+                field.Setter(config, field.DefaultValue);
             return config;
         }
 
@@ -137,9 +137,9 @@ namespace SwInventreeAddin.Config
 
             foreach (var field in StringFields)
             {
-                var value = field.Get(overrides);
+                var value = field.Getter(overrides);
                 if (value != null)
-                    field.Set(merged, value);
+                    field.Setter(merged, value);
             }
             merged.ExtensionData = overrides.ExtensionData;
             return merged;

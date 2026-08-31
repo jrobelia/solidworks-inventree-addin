@@ -21,8 +21,8 @@ namespace SwInventreeAddin.UI
 
         private (string Url, string ApiKey, string Username, string Password,
                  string SharedPath, string BomKeyword, bool UseLocalMapping) _savedSnapshot;
-        private bool _savedWaitForAutoPartNumber = true;
-        private MappingChangedSubscription? _mappingChangedSubscription;
+        private          bool                       _savedWaitForAutoPartNumber = true;
+        private          MappingChangedSubscription? _mappingChangedSubscription;
 
         /// <summary>
         /// Raised after Apply successfully saves settings, so the caller can update

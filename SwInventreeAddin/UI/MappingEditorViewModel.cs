@@ -46,10 +46,10 @@ namespace SwInventreeAddin.UI
         private readonly bool                     _isReadOnly;
         private readonly MappingHealth            _health;
 
-        private bool _copyToLocalCompleted;
+        private          bool                       _copyToLocalCompleted;
 
-        private string? _errorMessage;
-        private string? _copyToLocalInstruction;
+        private          string?                    _errorMessage;
+        private          string?                    _copyToLocalInstruction;
 
         // ── Defaults ───────────────────────────────────────────────────────────
 
