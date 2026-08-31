@@ -4,7 +4,6 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using SwInventreeAddin.Config;
@@ -31,10 +30,11 @@ namespace SwInventreeAddin.UI
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
 
-        private readonly IInventreeClient          _client;
-        private readonly IDocumentPropertyService  _propertyService;
-        private readonly IPropertyMappingProvider? _mappingProvider;
-        private readonly int                       _ipnPollDelayMs;
+        private readonly IInventreeClient                   _client;
+        private readonly IDocumentPropertyService           _propertyService;
+        private readonly ICreatePartValidationService       _validationService;
+        private readonly IPropertyMappingProvider?          _mappingProvider;
+        private readonly int                                _ipnPollDelayMs;
 
         // ── Bindable properties ───────────────────────────────────────────────
 
@@ -223,16 +223,18 @@ namespace SwInventreeAddin.UI
         // ── Constructor ───────────────────────────────────────────────────────
 
         public CreatePartViewModel(
-            IInventreeClient          client,
-            IDocumentPropertyService  propertyService,
-            string                    initialName,
-            IPropertyMappingProvider? mappingProvider            = null,
-            int                       ipnPollDelayMs             = 500,
-            bool                      waitForServerAssignedIpn = false,
-            DocumentType              documentType               = DocumentType.Unknown)
+            IInventreeClient              client,
+            IDocumentPropertyService      propertyService,
+            ICreatePartValidationService  validationService,
+            string                        initialName,
+            IPropertyMappingProvider?     mappingProvider            = null,
+            int                           ipnPollDelayMs             = 500,
+            bool                          waitForServerAssignedIpn = false,
+            DocumentType                  documentType               = DocumentType.Unknown)
         {
             _client                   = client;
             _propertyService          = propertyService;
+            _validationService        = validationService;
             _mappingProvider          = mappingProvider;
             _ipnPollDelayMs           = ipnPollDelayMs;
             _waitForServerAssignedIpn           = waitForServerAssignedIpn;
@@ -350,12 +352,13 @@ namespace SwInventreeAddin.UI
                 // duplicate, so a client-side check is needed before creating.
                 if (!string.IsNullOrWhiteSpace(ipnToSubmit))
                 {
-                    var existing = await _client.GetPartByIpnAsync(ipnToSubmit!).ConfigureAwait(false);
-                    if (existing != null)
+                    var validation = await _validationService.CheckIpnAvailableAsync(ipnToSubmit!)
+                                                               .ConfigureAwait(false);
+                    if (!validation.IsAvailable)
                     {
                         RunOnUiThread(() =>
                         {
-                            StatusText = $"IPN '{ipnToSubmit}' already exists. Enter a different IPN.";
+                            StatusText = validation.ErrorMessage ?? "The IPN is already in use.";
                             IsBusy     = false;
                         });
                         return;
@@ -434,11 +437,11 @@ namespace SwInventreeAddin.UI
             {
                 RunOnUiThread(() =>
                 {
-                    var ipnError = ExtractIpnError(ex.Message);
+                    var ipnError = _validationService.ExtractIpnError(ex.Message);
                     if (!string.IsNullOrEmpty(ipnError))
                     {
-                        IpnErrorText = ipnError;
-                        StatusText   = ipnError;
+                        IpnErrorText = ipnError!;
+                        StatusText   = ipnError!;
                     }
                     else
                     {
@@ -447,41 +450,6 @@ namespace SwInventreeAddin.UI
                     IsBusy = false;
                 });
             }
-        }
-
-        // ── Helpers ───────────────────────────────────────────────────────────
-
-        /// <summary>
-        /// Attempts to extract the first IPN field error from an InvenTree validation
-        /// response embedded in an exception message.
-        /// </summary>
-        private static string ExtractIpnError(string message)
-        {
-            var jsonStart = message.IndexOf('{');
-            if (jsonStart < 0) return string.Empty;
-
-            try
-            {
-                var json = message.Substring(jsonStart);
-                using var doc = JsonDocument.Parse(json);
-                if (doc.RootElement.TryGetProperty("ipn", out var ipnErrors) &&
-                    ipnErrors.ValueKind == JsonValueKind.Array)
-                {
-                    var errors = new List<string>();
-                    foreach (var element in ipnErrors.EnumerateArray())
-                    {
-                        if (element.ValueKind == JsonValueKind.String)
-                            errors.Add(element.GetString() ?? string.Empty);
-                    }
-                    return string.Join(" ", errors);
-                }
-            }
-            catch
-            {
-                // Ignore malformed JSON; the caller will show the raw message.
-            }
-
-            return string.Empty;
         }
 
         // ── Threading helper ──────────────────────────────────────────────────

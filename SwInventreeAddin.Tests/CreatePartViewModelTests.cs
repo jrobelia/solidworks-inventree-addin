@@ -17,9 +17,10 @@ namespace SwInventreeAddin.Tests
     [TestFixture]
     public class CreatePartViewModelTests
     {
-        private StubInventreeClient          _client;
-        private StubDocumentPropertyService  _propertyService;
-        private StubPropertyMappingProvider  _mappingProvider;
+        private StubInventreeClient             _client = null!;
+        private StubDocumentPropertyService     _propertyService = null!;
+        private StubCreatePartValidationService _validationService = null!;
+        private StubPropertyMappingProvider     _mappingProvider = null!;
         private const string DefaultName = "10K Resistor";
 
         [SetUp]
@@ -27,6 +28,7 @@ namespace SwInventreeAddin.Tests
         {
             _client          = new StubInventreeClient();
             _propertyService = new StubDocumentPropertyService();
+            _validationService = new StubCreatePartValidationService();
             _mappingProvider = new StubPropertyMappingProvider
             {
                 Config = PropertyMappingConfig.WithDefaults()
@@ -37,8 +39,9 @@ namespace SwInventreeAddin.Tests
             string name = DefaultName,
             bool waitForServerAssignedIpn = false,
             DocumentType documentType = DocumentType.Part,
-            IPropertyMappingProvider? mappingProvider = null) =>
-            new CreatePartViewModel(_client, _propertyService, name, mappingProvider: mappingProvider ?? _mappingProvider, ipnPollDelayMs: 0, waitForServerAssignedIpn: waitForServerAssignedIpn, documentType: documentType);
+            IPropertyMappingProvider? mappingProvider = null,
+            ICreatePartValidationService? validationService = null) =>
+            new CreatePartViewModel(_client, _propertyService, validationService ?? _validationService, name, mappingProvider: mappingProvider ?? _mappingProvider, ipnPollDelayMs: 0, waitForServerAssignedIpn: waitForServerAssignedIpn, documentType: documentType);
 
         private static CategoryNode MakeNode(int pk = 1, string name = "Resistors") =>
             new CategoryNode(new InventreeCategory { Pk = pk, Name = name });
@@ -263,6 +266,7 @@ namespace SwInventreeAddin.Tests
             const string errorBody = @"{""ipn"": [""Part with this IPN already exists.""]}";
             _client.ThrowOnCreateException = new HttpRequestException(
                 $"InvenTree API returned 400 BadRequest: {errorBody}");
+            _validationService.ExtractedError = "Part with this IPN already exists.";
 
             var vm = CreateVm();
             vm.SelectedCategory = MakeNode(pk: 7);
@@ -425,7 +429,7 @@ namespace SwInventreeAddin.Tests
         public async Task CreateAsync_DuplicateIpn_SetsStatusText_AndDoesNotCreate()
         {
             // An existing part already uses the IPN the user entered.
-            _client.PartToReturn = new InventreePart
+            _validationService.ExistingPart = new InventreePart
             {
                 Pk  = 1,
                 Ipn = "DUP-001",
@@ -666,6 +670,7 @@ namespace SwInventreeAddin.Tests
             const string errorBody = @"{""ipn"": [""IPN does not match required pattern.""]}";
             _client.ThrowOnCreateException = new HttpRequestException(
                 $"InvenTree API returned 400 BadRequest: {errorBody}");
+            _validationService.ExtractedError = "IPN does not match required pattern.";
 
             InventreePart? raisedPart = null;
             var vm = CreateVm();
@@ -687,6 +692,7 @@ namespace SwInventreeAddin.Tests
             const string errorBody = @"{""ipn"": [""IPN does not match required pattern.""]}";
             _client.ThrowOnCreateException = new HttpRequestException(
                 $"InvenTree API returned 400 BadRequest: {errorBody}");
+            _validationService.ExtractedError = "IPN does not match required pattern.";
 
             var vm = CreateVm();
             vm.SelectedCategory = MakeNode();

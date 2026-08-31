@@ -703,7 +703,8 @@ namespace SwInventreeAddin.UI
             var mapping = GetMappingOrDefault();
             var name    = GetCustomPropertyOrEmpty(mapping.NameProperty);
 
-            var vm = new CreatePartViewModel(_client, _propertyService, name, _mappingProvider,
+            var validator = new InventreeClientCreatePartValidationService(_client);
+            var vm = new CreatePartViewModel(_client, _propertyService, validator, name, _mappingProvider,
                                              waitForServerAssignedIpn: WaitForAutoPartNumber,
                                              documentType: _currentDocumentType);
 
