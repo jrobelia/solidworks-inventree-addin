@@ -443,6 +443,7 @@ namespace SwInventreeAddin.Tests
             var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
 
             Assert.That(result.Health, Is.EqualTo(MappingHealth.Invalid));
+            Assert.That(result.Message, Does.Contain("Failed to fetch mapping file"));
             Assert.That(result.Message, Does.Contain(_localPath));
             Assert.That(result.CanFetch, Is.False);
             Assert.That(result.CanUseForPartSync, Is.False);

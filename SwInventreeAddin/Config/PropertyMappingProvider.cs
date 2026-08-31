@@ -8,7 +8,7 @@ using System.Text.Json.Serialization;
 namespace SwInventreeAddin.Config
 {
     /// <summary>
-    /// Loads and saves the property-name mapping from/to a local JSON file.
+    /// Fetches and saves the property-name mapping from/to a local JSON file.
     ///
     /// Resolution order:
     ///   1. Source path configured and file exists → use it (read-only).
@@ -90,7 +90,7 @@ namespace SwInventreeAddin.Config
             {
                 var message = ex is InvalidOperationException
                     ? ex.Message
-                    : $"Failed to load mapping file: {resolvedPath ?? _localPath}";
+                    : $"Failed to fetch mapping file: {resolvedPath ?? _localPath}";
 
                 return new MappingResult(MappingHealth.Invalid, new PropertyMappingConfig(), message);
             }
@@ -148,7 +148,7 @@ namespace SwInventreeAddin.Config
             catch (Exception ex)
             {
                 throw new InvalidOperationException(
-                    $"Failed to load mapping file: {path}", ex);
+                    $"Failed to fetch mapping file: {path}", ex);
             }
         }
 
