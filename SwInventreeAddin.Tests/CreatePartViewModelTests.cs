@@ -512,6 +512,39 @@ namespace SwInventreeAddin.Tests
                 "Properties must not be written when the mapping is not healthy.");
         }
 
+        [TestCase("2", "Mapping schema mismatch")]
+        [TestCase("4", "newer schema")]
+        public async Task CreateAsync_NonHealthyMapping_HaltsAndDoesNotWriteDocProperties(
+            string schemaVersion, string expectedMessage)
+        {
+            _client.PkToReturnOnCreate = 99;
+            _client.PartByPkToReturn = new InventreePart { Pk = 99, Ipn = "R-NEW-001", Name = "New Resistor" };
+
+            var mappingProvider = new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig
+                {
+                    SchemaVersion       = schemaVersion,
+                    IpnProperty         = "PartNo",
+                    NameProperty        = "Description",
+                    NotesProperty       = "Notes",
+                    RevisionProperty    = "Revision",
+                    DescriptionProperty = "Description Long",
+                    PkProperty          = "InvenTree PK",
+                }
+            };
+            var ipnProperty = mappingProvider.Config.IpnProperty!;
+            _propertyService.Seed(ipnProperty, string.Empty);
+
+            var vm = CreateVm(mappingProvider: mappingProvider);
+            vm.SelectedCategory = MakeNode(pk: 7);
+            await vm.CreateAsync();
+
+            Assert.That(vm.StatusText, Does.Contain(expectedMessage));
+            Assert.That(_propertyService.GetCustomProperty(ipnProperty), Is.EqualTo(string.Empty),
+                "Properties must not be written when the mapping is not Healthy.");
+        }
+
         // ── Wait for server-assigned IPN ───────────────────────────────────────
 
         [Test]

@@ -398,11 +398,12 @@ namespace SwInventreeAddin.UI
 
                 var mappingResult = _mappingProvider?.GetMappingResult();
 
-                if (mappingResult?.Health == MappingHealth.Invalid)
+                if (mappingResult != null && !mappingResult.CanUseForPartSync)
                 {
                     RunOnUiThread(() =>
                     {
-                        StatusText = $"Error: {mappingResult.MessageOrDefault}";
+                        // MessageOrDefault already carries the right severity for Invalid, NeedsUpgrade, and NewerSchema.
+                        StatusText = mappingResult.MessageOrDefault;
                         IsBusy     = false;
                     });
                     return;
