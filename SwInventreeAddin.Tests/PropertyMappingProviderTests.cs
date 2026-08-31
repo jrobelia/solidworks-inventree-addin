@@ -47,10 +47,10 @@ namespace SwInventreeAddin.Tests
             Assert.That(File.Exists(_localPath),  Is.True,
                 "First-run should have written defaults to local path.");
 
-            // Verify the written file round-trips: second call loads from local file.
-            var loaded = provider.GetMappingResult().Config;
-            Assert.That(loaded.IpnProperty, Is.EqualTo("PartNo"),
-                "Second call should load the written defaults from the local file.");
+            // Verify the written file round-trips: second call fetches from local file.
+            var fetched = provider.GetMappingResult().Config;
+            Assert.That(fetched.IpnProperty, Is.EqualTo("PartNo"),
+                "Second call should fetch the written defaults from the local file.");
         }
 
         [Test]
@@ -179,10 +179,10 @@ namespace SwInventreeAddin.Tests
             var provider = new PropertyMappingProvider(_localPath, null);
 
             provider.SaveMapping(new PropertyMappingConfig { IpnProperty = "XPN" });
-            var loaded = provider.GetMappingResult().Config;
+            var fetched = provider.GetMappingResult().Config;
 
             Assert.That(File.Exists(_localPath),  Is.True);
-            Assert.That(loaded.IpnProperty,       Is.EqualTo("XPN"));
+            Assert.That(fetched.IpnProperty,      Is.EqualTo("XPN"));
         }
 
         [Test]
@@ -443,7 +443,7 @@ namespace SwInventreeAddin.Tests
             var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
 
             Assert.That(result.Health, Is.EqualTo(MappingHealth.Invalid));
-            Assert.That(result.Message, Does.Contain("Failed to load mapping file"));
+            Assert.That(result.Message, Does.Contain("Failed to fetch mapping file"));
             Assert.That(result.Message, Does.Contain(_localPath));
             Assert.That(result.CanFetch, Is.False);
             Assert.That(result.CanUseForPartSync, Is.False);
