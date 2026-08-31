@@ -44,7 +44,6 @@ namespace SwInventreeAddin.UI
         private          PropertyMappingConfig    _draft;
         private readonly MappingResult            _result;
         private readonly bool                     _isReadOnly;
-        private readonly MappingHealth            _health;
 
         private          string?                    _errorMessage;
 
@@ -66,7 +65,6 @@ namespace SwInventreeAddin.UI
             _result   = _provider.GetMappingResult();
             _original = _result.Config.Clone();
             _draft    = _original.Clone();
-            _health   = _result.Health;
             _isReadOnly = !_result.CanEdit || _provider.IsReadOnly;
         }
 

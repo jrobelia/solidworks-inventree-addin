@@ -28,6 +28,10 @@ _Avoid_: schema, mapping version
 The add-in's evaluation of whether the current **Property Mapping** can be used. `Healthy` allows all Part Sync actions; `NeedsUpgrade` allows **Fetch** but blocks **Apply**, **Push**, **Create Part**, and **BOM Compare** until the file is saved with the current **Mapping Schema Version**; `Invalid` blocks all Part Sync, including **Fetch**.
 _Avoid_: mapping status, mapping state
 
+**Copy to local**:
+The **Settings** window action that copies a shared read-only **Property Mapping** file to the local path so the engineer can edit it. Offered when the shared source mapping is selected, the source file exists, and the mapping is not `Invalid`.
+_Avoid_: copy mapping, duplicate mapping
+
 **Task Pane**:
 The persistent SolidWorks side panel that hosts the add-in UI.
 _Avoid_: sidebar, panel, control
