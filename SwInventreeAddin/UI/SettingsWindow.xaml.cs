@@ -22,7 +22,7 @@ namespace SwInventreeAddin.UI
         private (string Url, string ApiKey, string Username, string Password,
                  string SharedPath, string BomKeyword, bool UseLocalMapping) _savedSnapshot;
         private bool _savedWaitForAutoPartNumber = true;
-        private EventHandler? _mappingChangedHandler;
+        private MappingChangedSubscription? _mappingChangedSubscription;
 
         /// <summary>
         /// Raised after Apply successfully saves settings, so the caller can update
@@ -274,7 +274,7 @@ namespace SwInventreeAddin.UI
 
                 this.Dispatcher.Invoke(() =>
                 {
-                    DetachMappingChanged(previousProvider);
+                    DetachMappingChanged();
                     AttachMappingChanged();
                 });
 
@@ -343,18 +343,11 @@ namespace SwInventreeAddin.UI
 
         // ── Mapping change notifications ──────────────────────────────────────
 
-        private void AttachMappingChanged()
-        {
-            _mappingChangedHandler ??= (_, __) => OnMappingChanged();
-            _mappingProvider.MappingChanged += _mappingChangedHandler;
-        }
+        private void AttachMappingChanged() =>
+            MappingChangedSubscription.SubscribeTo(ref _mappingChangedSubscription, _mappingProvider, OnMappingChanged);
 
-        private void DetachMappingChanged(IPropertyMappingProvider? provider = null)
-        {
-            provider ??= _mappingProvider;
-            if (provider != null && _mappingChangedHandler != null)
-                provider.MappingChanged -= _mappingChangedHandler;
-        }
+        private void DetachMappingChanged() =>
+            MappingChangedSubscription.UnsubscribeFrom(ref _mappingChangedSubscription);
 
         private void OnMappingChanged()
         {

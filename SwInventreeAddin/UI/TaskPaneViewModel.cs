@@ -39,7 +39,7 @@ namespace SwInventreeAddin.UI
         private readonly IViewportCaptureService? _viewportService;
         private IPropertyMappingProvider?         _mappingProvider;
         private readonly IConfigProvider?         _configProvider;
-        private EventHandler?                     _mappingChangedHandler;
+        private MappingChangedSubscription?       _mappingChangedSubscription;
 
         /// <summary>Raised when the user triggers the Settings action.</summary>
         public event EventHandler? SettingsRequested;
@@ -1190,19 +1190,11 @@ namespace SwInventreeAddin.UI
             AttachMappingProvider();
         }
 
-        private void AttachMappingProvider()
-        {
-            if (_mappingProvider == null) return;
+        private void AttachMappingProvider() =>
+            MappingChangedSubscription.SubscribeTo(ref _mappingChangedSubscription, _mappingProvider, OnMappingChanged);
 
-            _mappingChangedHandler ??= (_, __) => OnMappingChanged();
-            _mappingProvider.MappingChanged += _mappingChangedHandler;
-        }
-
-        private void DetachMappingProvider()
-        {
-            if (_mappingProvider != null && _mappingChangedHandler != null)
-                _mappingProvider.MappingChanged -= _mappingChangedHandler;
-        }
+        private void DetachMappingProvider() =>
+            MappingChangedSubscription.UnsubscribeFrom(ref _mappingChangedSubscription);
 
         private void OnMappingChanged()
         {
