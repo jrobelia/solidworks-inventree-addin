@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using SwInventreeAddin.Bom;
@@ -413,6 +414,38 @@ namespace SwInventreeAddin.Tests
                 "Unpushed New row should still be selectable");
         }
 
+        [Test]
+        public void PushAsync_MarshalsUiUpdatesToSynchronizationContext()
+        {
+            var originalContext = SynchronizationContext.Current;
+            var countingContext = new CountingSynchronizationContext();
+            SynchronizationContext.SetSynchronizationContext(countingContext);
+
+            try
+            {
+                _client.BomLinesToReturn = new List<InventreeBomLine>();
+                var vm = CreateVm();
+                var diffLine = new BomDiffLine
+                {
+                    State       = BomDiffState.New,
+                    SubPartPk   = 10,
+                    DisplayIpn  = "A",
+                    SwLine      = new SwBomLine { Quantity = 1, Reference = string.Empty, Note = string.Empty },
+                };
+                var line = new BomDiffLineViewModel(diffLine) { IsChecked = true };
+                vm.Lines.Add(line);
+
+                vm.PushAsync().GetAwaiter().GetResult();
+
+                Assert.That(countingContext.SendCount, Is.GreaterThan(0),
+                    "UI-bound updates after HTTP awaits must be marshalled through the captured SynchronizationContext.");
+            }
+            finally
+            {
+                SynchronizationContext.SetSynchronizationContext(originalContext);
+            }
+        }
+
         // ── Sort ──────────────────────────────────────────────────────────────
 
         [Test]
@@ -472,6 +505,19 @@ namespace SwInventreeAddin.Tests
                 Is.EqualTo(BomDiffState.NoIpn)
                     .Or.EqualTo(BomDiffState.IpnNotFound)
                     .Or.EqualTo(BomDiffState.Ambiguous));
+        }
+
+        private class CountingSynchronizationContext : SynchronizationContext
+        {
+            public int SendCount { get; private set; }
+
+            public override void Send(SendOrPostCallback d, object? state)
+            {
+                SendCount++;
+                d(state);
+            }
+
+            public override void Post(SendOrPostCallback d, object? state) => d(state);
         }
     }
 }
