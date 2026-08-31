@@ -397,8 +397,16 @@ namespace SwInventreeAddin.UI
                 var name = part?.Name ?? string.Empty;
 
                 var mappingResult = _mappingProvider?.GetMappingResult();
+
                 if (mappingResult?.Health == MappingHealth.Invalid)
-                    throw new InvalidOperationException(mappingResult.MessageOrDefault);
+                {
+                    RunOnUiThread(() =>
+                    {
+                        StatusText = $"Error: {mappingResult.MessageOrDefault}";
+                        IsBusy     = false;
+                    });
+                    return;
+                }
 
                 var mapping = mappingResult?.Config ?? PropertyMappingConfig.WithDefaults();
 

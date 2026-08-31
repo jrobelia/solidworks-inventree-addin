@@ -472,7 +472,27 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public async Task CreateAsync_InvalidMapping_SetsStatusText_AndDoesNotWriteDocProperties()
+        public async Task CreateAsync_InvalidMapping_HaltsWithError()
+        {
+            _client.PkToReturnOnCreate = 99;
+            _client.PartByPkToReturn = new InventreePart { Pk = 99, Ipn = "R-NEW-001", Name = "New Resistor" };
+
+            var mappingProvider = new StubPropertyMappingProvider
+            {
+                Health = MappingHealth.Invalid,
+                Message = "Invalid mapping file"
+            };
+
+            var vm = CreateVm(mappingProvider: mappingProvider);
+            vm.SelectedCategory = MakeNode(pk: 7);
+            await vm.CreateAsync();
+
+            Assert.That(vm.StatusText, Does.Contain("Invalid mapping file"));
+            Assert.That(vm.IsBusy, Is.False);
+        }
+
+        [Test]
+        public async Task CreateAsync_InvalidMapping_DoesNotWriteDocProperties()
         {
             _client.PkToReturnOnCreate = 99;
             _client.PartByPkToReturn = new InventreePart { Pk = 99, Ipn = "R-NEW-001", Name = "New Resistor" };
@@ -488,8 +508,6 @@ namespace SwInventreeAddin.Tests
             vm.SelectedCategory = MakeNode(pk: 7);
             await vm.CreateAsync();
 
-            Assert.That(vm.StatusText, Does.Contain("Invalid mapping file"));
-            Assert.That(vm.IsBusy, Is.False);
             Assert.That(_propertyService.GetCustomProperty(mappingProvider.Config.IpnProperty!), Is.EqualTo(string.Empty),
                 "Properties must not be written when the mapping is not healthy.");
         }
