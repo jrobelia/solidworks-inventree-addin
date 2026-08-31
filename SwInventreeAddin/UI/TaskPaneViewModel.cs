@@ -180,7 +180,7 @@ namespace SwInventreeAddin.UI
         public bool PushDescriptionEnabled  => _session != null && _mappingResult?.CanUseForPartSync == true;
 
         /// <summary>Controls Push Revision button visibility.</summary>
-        public bool PushRevisionVisible     => _session != null;
+        public bool PushRevisionVisible     => _session != null && _mappingResult?.CanUseForPartSync == true;
 
         /// <summary>Controls Push Image button visibility.</summary>
         public bool PushImageVisible        => _session != null && _mappingResult?.CanUseForPartSync == true;

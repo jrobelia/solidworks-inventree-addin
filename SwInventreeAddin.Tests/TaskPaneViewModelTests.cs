@@ -1007,6 +1007,22 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public async Task UpdateMapping_SchemaInvalid_WhenSessionExists_PushRevisionVisible_IsFalse()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            _vm.UpdateMapping(new StubPropertyMappingProvider
+            {
+                Health = MappingHealth.Invalid,
+                Message = "Invalid mapping file"
+            });
+
+            Assert.That(_vm.PushRevisionVisible, Is.False);
+        }
+
+        [Test]
         public async Task UpdateMapping_SchemaHealthy_WithSession_KeepsPartSyncActions()
         {
             _client.PartToReturn = SamplePart;
