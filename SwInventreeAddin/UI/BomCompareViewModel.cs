@@ -121,7 +121,7 @@ namespace SwInventreeAddin.UI
         {
             _client     = client;
             _bomService = bomService;
-            _mapping    = PropertyMappingConfig.WithDefaults(mapping);
+            _mapping    = mapping;
             _assemblyPk = assemblyPk;
             _bomKeyword = bomKeyword;
             _uiContext  = SynchronizationContext.Current;

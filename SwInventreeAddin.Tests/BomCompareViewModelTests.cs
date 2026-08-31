@@ -31,6 +31,25 @@ namespace SwInventreeAddin.Tests
         private BomCompareViewModel CreateVm(int assemblyPk = 42) =>
             new BomCompareViewModel(_client, _bomService, _mapping, assemblyPk, "inventree");
 
+        [Test]
+        public async Task Constructor_DoesNotBackfillBomColumnAliases()
+        {
+            var partialMapping = new PropertyMappingConfig
+            {
+                SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion,
+                IpnProperty   = "PartNo",
+            };
+
+            _mapping = partialMapping;
+            var vm = CreateVm();
+            await vm.LoadAsync();
+
+            Assert.That(_bomService.ReceivedMapping, Is.SameAs(partialMapping),
+                "BomCompareViewModel must pass the supplied PropertyMappingConfig through without copying or backfilling it.");
+            Assert.That(_bomService.ReceivedMapping!.BomColumnIpn, Is.Null,
+                "Missing BOM column aliases must remain missing; they must not be silently backfilled with defaults at runtime.");
+        }
+
         // ── LoadAsync ─────────────────────────────────────────────────────────
 
         [Test]
