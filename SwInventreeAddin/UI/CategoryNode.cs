@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using SwInventreeAddin.InvenTree;
@@ -32,7 +34,11 @@ namespace SwInventreeAddin.UI
         private readonly BatchObservableCollection<CategoryNode?> _children =
             new BatchObservableCollection<CategoryNode?>();
 
-        public BatchObservableCollection<CategoryNode?> Children => _children;
+        public ObservableCollection<CategoryNode?> Children => _children;
+
+        /// <summary>Batch-resets the children collection without re-entrant WPF layout passes.</summary>
+        internal void ResetChildren(IEnumerable<CategoryNode?> items)
+            => _children.Reset(items);
 
         private bool _isExpanded;
         public bool IsExpanded

@@ -251,12 +251,12 @@ namespace SwInventreeAddin.UI
             && !string.IsNullOrWhiteSpace(_partName)
             && _selectedCategory != null;
 
-        /// <summary>Loads top-level categories into RootCategories.</summary>
-        public async Task LoadRootCategoriesAsync()
+        /// <summary>Fetches top-level categories into RootCategories.</summary>
+        public async Task FetchRootCategoriesAsync()
         {
             IsBusy             = true;
             IsLoadingCategories = true;
-            StatusText         = "Loading categories\u2026";
+            StatusText         = "Fetching categories\u2026";
 
             try
             {
@@ -269,7 +269,7 @@ namespace SwInventreeAddin.UI
             }
             catch (Exception ex)
             {
-                RunOnUiThread(() => StatusText = $"Error loading categories: {ex.Message}");
+                RunOnUiThread(() => StatusText = $"Error fetching categories: {ex.Message}");
             }
             finally
             {
@@ -282,10 +282,10 @@ namespace SwInventreeAddin.UI
         }
 
         /// <summary>
-        /// Called when the user expands a node that has not yet been loaded.
+        /// Called when the user expands a node that has not yet been fetched.
         /// Replaces the sentinel null child with real children.
         /// </summary>
-        public async Task LoadChildrenAsync(CategoryNode node)
+        public async Task FetchChildrenAsync(CategoryNode node)
         {
             // Already loaded (or truly empty) — sentinel is the single null element.
             if (node.Children.Count != 1 || node.Children[0] != null)
@@ -299,7 +299,7 @@ namespace SwInventreeAddin.UI
                                         .ConfigureAwait(false);
                 RunOnUiThread(() =>
                 {
-                    node.Children.Reset(cats.Select(c => new CategoryNode(c)));
+                    node.ResetChildren(cats.Select(c => new CategoryNode(c)));
                     node.IsLoading = false;
                 });
             }
@@ -307,9 +307,9 @@ namespace SwInventreeAddin.UI
             {
                 RunOnUiThread(() =>
                 {
-                    node.Children.Reset(Array.Empty<CategoryNode?>());
+                    node.ResetChildren(Array.Empty<CategoryNode?>());
                     node.IsLoading = false;
-                    StatusText = $"Error loading children: {ex.Message}";
+                    StatusText = $"Error fetching children: {ex.Message}";
                 });
             }
         }

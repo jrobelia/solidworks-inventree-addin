@@ -82,6 +82,9 @@ namespace SwInventreeAddin.UI
         private void Set<T>(ref T f, T v, [CallerMemberName] string? n = null)
         { if (Equals(f, v)) return; f = v; PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n)); }
 
+        private readonly BatchObservableCollection<BomDiffLineViewModel> _lines = new BatchObservableCollection<BomDiffLineViewModel>();
+        public ObservableCollection<BomDiffLineViewModel> Lines => _lines;
+
         private readonly IInventreeClient      _client;
         private readonly IAssemblyBomService   _bomService;
         private readonly PropertyMappingConfig _mapping;
@@ -89,18 +92,21 @@ namespace SwInventreeAddin.UI
         private readonly string                _bomKeyword;
         private readonly SynchronizationContext? _uiContext;
 
-        private readonly BatchObservableCollection<BomDiffLineViewModel> _lines =
-            new BatchObservableCollection<BomDiffLineViewModel>();
-
-        public ObservableCollection<BomDiffLineViewModel> Lines => _lines;
-
         private string _statusText    = string.Empty;
         private bool   _isPushing;
         private string _sortColumn    = string.Empty;
         private bool   _sortAscending = true;
 
         public string StatusText    { get => _statusText;    set => Set(ref _statusText,    value); }
-        public bool   IsPushing    { get => _isPushing;    set => Set(ref _isPushing,    value); }
+        public bool   IsPushing
+        {
+            get => _isPushing;
+            set
+            {
+                Set(ref _isPushing, value);
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PushEnabled)));
+            }
+        }
         public string SortColumn    { get => _sortColumn;    set => Set(ref _sortColumn,    value); }
         public bool   SortAscending { get => _sortAscending; set => Set(ref _sortAscending, value); }
 
@@ -218,7 +224,7 @@ namespace SwInventreeAddin.UI
                 }
             }
 
-            // Update pushed rows in-place — no full reload needed.
+            // Update pushed rows in-place — no full re-fetch needed.
             RunOnUiThread(() =>
             {
                 foreach (var vm in succeededVms)
@@ -349,7 +355,7 @@ namespace SwInventreeAddin.UI
 
         private void RunOnUiThread(Action action)
         {
-            if (_uiContext != null)
+            if (_uiContext != null && SynchronizationContext.Current != _uiContext)
                 _uiContext.Send(_ => action(), null);
             else
                 action();

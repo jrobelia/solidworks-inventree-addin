@@ -307,6 +307,18 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public void IsPushing_WhenSet_RaisesPushEnabledChanged()
+        {
+            var vm = CreateVm();
+            var changed = new List<string>();
+            vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName!);
+
+            vm.IsPushing = true;
+
+            Assert.That(changed, Has.Member(nameof(BomCompareViewModel.PushEnabled)));
+        }
+
+        [Test]
         public async Task PushAsync_SetsWorkingStatusBeforeConfirm()
         {
             _bomService.LinesToReturn.Add(new SwBomLine { SubPartPk = 10, Quantity = 1 });
@@ -452,12 +464,12 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void PushAsync_NoSelectedRows_StatusText_SaysNoChangesPushed()
+        public async Task PushAsync_NoSelectedRows_StatusText_SaysNoChangesPushed()
         {
             _client.BomLinesToReturn = new List<InventreeBomLine>();
 
             var vm = CreateVm();
-            vm.PushAsync().GetAwaiter().GetResult();
+            await vm.PushAsync();
 
             Assert.That(vm.StatusText, Is.EqualTo("No changes pushed"));
         }
