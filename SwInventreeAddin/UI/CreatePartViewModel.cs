@@ -324,10 +324,24 @@ namespace SwInventreeAddin.UI
 
             IsBusy      = true;
             IpnErrorText = string.Empty;
-            StatusText  = "Checking IPN\u2026";
 
             try
             {
+                var mappingResult = _mappingProvider?.GetMappingResult();
+
+                if (mappingResult != null && !mappingResult.CanUseForPartSync)
+                {
+                    RunOnUiThread(() =>
+                    {
+                        // MessageOrDefault already carries the right severity for Invalid, NeedsUpgrade, and NewerSchema.
+                        StatusText = mappingResult.MessageOrDefault;
+                        IsBusy     = false;
+                    });
+                    return;
+                }
+
+                StatusText  = "Checking IPN\u2026";
+
                 var categoryPk  = _selectedCategory!.Category.Pk;
                 var ipnToSubmit = string.IsNullOrWhiteSpace(_ipnEntry) ? null : _ipnEntry.Trim();
 
@@ -394,19 +408,6 @@ namespace SwInventreeAddin.UI
 
                 var ipn  = part?.Ipn  ?? string.Empty;
                 var name = part?.Name ?? string.Empty;
-
-                var mappingResult = _mappingProvider?.GetMappingResult();
-
-                if (mappingResult != null && !mappingResult.CanUseForPartSync)
-                {
-                    RunOnUiThread(() =>
-                    {
-                        // MessageOrDefault already carries the right severity for Invalid, NeedsUpgrade, and NewerSchema.
-                        StatusText = mappingResult.MessageOrDefault;
-                        IsBusy     = false;
-                    });
-                    return;
-                }
 
                 var mapping = mappingResult?.Config ?? PropertyMappingConfig.WithDefaults();
 

@@ -527,6 +527,27 @@ namespace SwInventreeAddin.Tests
                 "Properties must not be written when the mapping is not healthy.");
         }
 
+        [Test]
+        public async Task CreateAsync_InvalidMapping_DoesNotCreatePart()
+        {
+            _client.PkToReturnOnCreate = 99;
+
+            var mappingProvider = new StubPropertyMappingProvider
+            {
+                Health = MappingHealth.Invalid,
+                Message = "Invalid mapping file"
+            };
+
+            var vm = CreateVm(mappingProvider: mappingProvider);
+            vm.SelectedCategory = MakeNode(pk: 7);
+            await vm.CreateAsync();
+
+            Assert.That(_client.LastCreateCategoryPk, Is.EqualTo(0),
+                "CreatePartAsync must not be called when the mapping is invalid.");
+            Assert.That(_client.LastIpnRequested, Is.EqualTo(string.Empty),
+                "GetPartByIpnAsync must not be called when the mapping is invalid.");
+        }
+
         [TestCase("2", "Mapping schema mismatch")]
         [TestCase("4", "newer schema")]
         public async Task CreateAsync_NonHealthyMapping_HaltsAndDoesNotWriteDocProperties(
