@@ -1,5 +1,7 @@
 # Property Mapping Health and Part Sync Lockout
 
+> **Superseded for status, Copy-to-local, and Part-Sync gating by ADR-0018.** The core health model, no-runtime-backfill, unknown-key round-trip, duplicate-name validation, and editor-as-draft decisions below remain in effect.
+
 ## Context
 
 The **Property Mapping** JSON file now drives all Part Sync and BOM Compare operations. Issues #133–#139 showed that the previous design — silently backfilling missing fields with defaults, letting each window compute its own status, and allowing Apply/Push with an older or invalid mapping — produced inconsistent state, lost unknown keys, and allowed writes based on an ambiguous configuration.

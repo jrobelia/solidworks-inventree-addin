@@ -20,17 +20,20 @@ _Avoid_: custom property, SW property
 The user-configurable JSON file that maps InvenTree field names (name, notes, revision, description, IPN) to corresponding SolidWorks Document Property names, and that maps SolidWorks BOM column headers to InvenTree BOM line item fields.
 _Avoid_: field mapping, property config
 
+**Property Mappings**:
+The user-facing title for the editor window and UI sections that configure the **Property Mapping** file. The singular **Property Mapping** remains the canonical term for the file itself.
+
 **Mapping Schema Version**:
-A version marker inside the Property Mapping JSON file. When the marker is older or newer than the add-in's current format, the **Settings** window and **Task Pane** show a warning, and **Mapping Health** may restrict Part Sync until the file is reviewed and saved.
+A version marker inside the **Property Mapping** JSON file.
+_Avoid_: schema, mapping version
+
+**Property Mapping Schema**:
+The versioned structure of the **Property Mapping** JSON file. When the schema is older or newer than the add-in's supported version, the **Settings** window and **Task Pane** warn that the **Property Mapping Schema** is out of date and **Mapping Health** blocks Part Sync until the file is reviewed and saved or the add-in is upgraded.
 _Avoid_: schema, mapping version
 
 **Mapping Health**:
-The add-in's evaluation of whether the current **Property Mapping** can be used. `Healthy` allows all Part Sync actions; `NeedsUpgrade` allows **Fetch** but blocks **Apply**, **Push**, **Create Part**, and **BOM Compare** until the file is saved with the current **Mapping Schema Version**; `Invalid` blocks all Part Sync, including **Fetch**.
+The add-in's evaluation of the current **Property Mapping**. Only `Healthy` allows Part Sync actions. `NeedsUpgrade`, `NewerSchema`, and `Invalid` block all Part Sync, including **Fetch**, until the mapping file is reviewed and saved or the add-in is upgraded.
 _Avoid_: mapping status, mapping state
-
-**Copy to local**:
-The **Settings** window action that copies a shared read-only **Property Mapping** file to the local path so the engineer can edit it. Offered when the shared source mapping is selected, the source file exists, and the mapping is not `Invalid`.
-_Avoid_: copy mapping, duplicate mapping
 
 **Task Pane**:
 The persistent SolidWorks side panel that hosts the add-in UI.

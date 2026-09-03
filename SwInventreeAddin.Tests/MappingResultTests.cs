@@ -11,6 +11,17 @@ namespace SwInventreeAddin.Tests
     public class MappingResultTests
     {
         [Test]
+        public void ResolvedFilePath_SetInConstructor_IsExposed()
+        {
+            var result = new MappingResult(
+                MappingHealth.Healthy,
+                PropertyMappingConfig.WithDefaults(),
+                resolvedFilePath: "C:\\mapping.json");
+
+            Assert.That(result.ResolvedFilePath, Is.EqualTo("C:\\mapping.json"));
+        }
+
+        [Test]
         public void Message_SetInConstructor_IsExposed()
         {
             var result = new MappingResult(MappingHealth.NeedsUpgrade, PropertyMappingConfig.WithDefaults(), "schema mismatch");
@@ -27,11 +38,11 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void CanFetch_NewerSchema_IsTrue()
+        public void CanFetch_NewerSchema_IsFalse()
         {
             var result = new MappingResult(MappingHealth.NewerSchema, PropertyMappingConfig.WithDefaults(), "upgrade add-in");
 
-            Assert.That(result.CanFetch, Is.True);
+            Assert.That(result.CanFetch, Is.False);
         }
 
         [Test]
@@ -67,11 +78,35 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void CanFetch_NeedsUpgrade_IsTrue()
+        public void CanFetch_NeedsUpgrade_IsFalse()
         {
             var result = new MappingResult(MappingHealth.NeedsUpgrade, PropertyMappingConfig.WithDefaults(), "upgrade");
 
-            Assert.That(result.CanFetch, Is.True);
+            Assert.That(result.CanFetch, Is.False);
+        }
+
+        [Test]
+        public void CanEdit_NeedsUpgrade_IsTrue()
+        {
+            var result = new MappingResult(MappingHealth.NeedsUpgrade, PropertyMappingConfig.WithDefaults(), "upgrade");
+
+            Assert.That(result.CanEdit, Is.True);
+        }
+
+        [Test]
+        public void CanEdit_NewerSchema_IsFalse()
+        {
+            var result = new MappingResult(MappingHealth.NewerSchema, PropertyMappingConfig.WithDefaults(), "upgrade add-in");
+
+            Assert.That(result.CanEdit, Is.False);
+        }
+
+        [Test]
+        public void CanEdit_Invalid_IsFalse()
+        {
+            var result = new MappingResult(MappingHealth.Invalid, PropertyMappingConfig.WithDefaults(), "invalid");
+
+            Assert.That(result.CanEdit, Is.False);
         }
 
         [Test]
@@ -79,7 +114,57 @@ namespace SwInventreeAddin.Tests
         {
             var result = new MappingResult(MappingHealth.Healthy, PropertyMappingConfig.WithDefaults());
 
-            Assert.That(result.MessageOrDefault, Is.EqualTo("Mapping file is up to date and valid."));
+            Assert.That(result.MessageOrDefault, Is.EqualTo("The Property Mapping file is up to date and valid."));
+        }
+
+        [Test]
+        public void MessageOrDefault_NeedsUpgrade_FallsBackToHealthLabel()
+        {
+            var result = new MappingResult(MappingHealth.NeedsUpgrade, PropertyMappingConfig.WithDefaults());
+
+            Assert.That(result.MessageOrDefault, Is.EqualTo("The Property Mapping Schema is out of date."));
+        }
+
+        [Test]
+        public void ToolTip_Healthy_IsNull()
+        {
+            var result = new MappingResult(MappingHealth.Healthy, PropertyMappingConfig.WithDefaults());
+
+            Assert.That(result.ToolTip, Is.Null);
+        }
+
+        [Test]
+        public void ToolTip_NeedsUpgrade_SuggestsEditAndSave()
+        {
+            var result = new MappingResult(MappingHealth.NeedsUpgrade, PropertyMappingConfig.WithDefaults());
+
+            Assert.That(result.ToolTip, Does.Contain("Edit the Property Mapping").IgnoreCase);
+        }
+
+        [Test]
+        public void ToolTip_NewerSchema_SuggestsUpgradeAddIn()
+        {
+            var result = new MappingResult(MappingHealth.NewerSchema, PropertyMappingConfig.WithDefaults());
+
+            Assert.That(result.ToolTip, Does.Contain("add-in").IgnoreCase);
+        }
+
+        [Test]
+        public void ToolTip_Invalid_WhenMessageSupplied_AppendsHelpToMessage()
+        {
+            var result = new MappingResult(MappingHealth.Invalid, PropertyMappingConfig.WithDefaults(), "Detail.");
+
+            Assert.That(result.ToolTip, Does.StartWith("Detail."));
+            Assert.That(result.ToolTip, Does.Contain(MappingResult.InvalidMappingHelp));
+        }
+
+        [Test]
+        public void ToolTip_Invalid_WhenMessageIsNull_UsesDefaultAndHelp()
+        {
+            var result = new MappingResult(MappingHealth.Invalid, PropertyMappingConfig.WithDefaults());
+
+            Assert.That(result.ToolTip, Does.Contain("The Property Mapping file is invalid."));
+            Assert.That(result.ToolTip, Does.Contain(MappingResult.InvalidMappingHelp));
         }
     }
 }

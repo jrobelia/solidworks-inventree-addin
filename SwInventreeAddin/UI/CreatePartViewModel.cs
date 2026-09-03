@@ -335,8 +335,8 @@ namespace SwInventreeAddin.UI
                 {
                     RunOnUiThread(() =>
                     {
-                        // MessageOrDefault already carries the right severity for Invalid, NeedsUpgrade, and NewerSchema.
-                        StatusText = mappingResult.MessageOrDefault;
+                        // The base message is source-independent; the caller can inspect Message for the detail.
+                        StatusText = MappingResult.GetDefaultMessage(mappingResult.Health);
                         IsBusy     = false;
                     });
                     return;

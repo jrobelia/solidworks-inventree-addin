@@ -16,11 +16,12 @@ namespace SwInventreeAddin.Tests
     public class PropertyMappingEditorWindowTests
     {
         [Test]
-        public void Constructor_SharedHealthyMapping_ShowsReadOnlyBannerAndDisablesSave()
+        public void Constructor_SharedHealthyMapping_OpensEditableAndEnablesSave()
         {
             var provider = new StubPropertyMappingProvider
             {
-                IsReadOnly = true,
+                SourceFilePath = "C:\\shared.json",
+                SourceFileExists = true,
                 Config = new PropertyMappingConfig
                 {
                     SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion,
@@ -33,12 +34,12 @@ namespace SwInventreeAddin.Tests
 
             var window = new PropertyMappingEditorWindow(provider);
 
-            Assert.That(window.ReadOnlyBanner.Visibility, Is.EqualTo(Visibility.Visible));
-            Assert.That(window.SaveButton.IsEnabled, Is.False);
+            Assert.That(window.SaveButton.IsEnabled, Is.True);
+            Assert.That(window.ErrorTextBar.Visibility, Is.EqualTo(Visibility.Collapsed));
         }
 
         [Test]
-        public void Constructor_LocalHealthyMapping_EnablesSaveAndHidesBanners()
+        public void Constructor_LocalHealthyMapping_EnablesSaveAndHidesStatusError()
         {
             var provider = new StubPropertyMappingProvider
             {
@@ -55,7 +56,30 @@ namespace SwInventreeAddin.Tests
             var window = new PropertyMappingEditorWindow(provider);
 
             Assert.That(window.SaveButton.IsEnabled, Is.True);
-            Assert.That(window.ReadOnlyBanner.Visibility, Is.EqualTo(Visibility.Collapsed));
+            Assert.That(window.ErrorTextBar.Visibility, Is.EqualTo(Visibility.Collapsed));
+        }
+
+        [Test]
+        public void Save_Button_WhenSaveFails_DisplaysStatusBarError()
+        {
+            var provider = new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig
+                {
+                    SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion,
+                    BomColumnIpn = "IPN",
+                    BomColumnQty = "Qty",
+                    BomColumnReference = "Reference",
+                    BomColumnNote = "Note",
+                },
+                ThrowOnSave = new InvalidOperationException("The Property Mapping file could not be saved.")
+            };
+
+            var window = new PropertyMappingEditorWindow(provider);
+            window.SaveButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, window.SaveButton));
+
+            Assert.That(window.ErrorTextBar.Visibility, Is.EqualTo(Visibility.Visible));
+            Assert.That(window.ErrorText.Text, Does.Contain("could not be saved").IgnoreCase);
         }
 
         [Test]

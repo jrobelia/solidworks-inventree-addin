@@ -43,7 +43,6 @@ namespace SwInventreeAddin.UI
         private          PropertyMappingConfig    _original;
         private          PropertyMappingConfig    _draft;
         private readonly MappingResult            _result;
-        private readonly bool                     _isReadOnly;
 
         private          string?                    _errorMessage;
 
@@ -65,7 +64,6 @@ namespace SwInventreeAddin.UI
             _result   = _provider.GetMappingResult();
             _original = _result.Config.Clone();
             _draft    = _original.Clone();
-            _isReadOnly = !_result.CanEdit || _provider.IsReadOnly;
         }
 
         // ── Bindable properties ────────────────────────────────────────────────
@@ -141,8 +139,6 @@ namespace SwInventreeAddin.UI
         public string BomColumnQtyPlaceholder       => DefaultConfig().BomColumnQty!;
         public string BomColumnReferencePlaceholder => DefaultConfig().BomColumnReference!;
         public string BomColumnNotePlaceholder      => DefaultConfig().BomColumnNote!;
-
-        public bool IsReadOnly => _isReadOnly;
 
         public string? ErrorMessage
         {

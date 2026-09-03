@@ -10,22 +10,27 @@ namespace SwInventreeAddin.Tests.Stubs
     public class StubPropertyMappingProvider : IPropertyMappingProvider
     {
         public PropertyMappingConfig Config       { get; set; } = PropertyMappingConfig.WithDefaults();
-        public bool                  IsReadOnly   { get; set; } = false;
         public string                LocalFilePath { get; set; } = string.Empty;
+        public string?               SourceFilePath { get; set; }
+        public bool                  SourceFileExists { get; set; } = true;
         public MappingHealth         Health        { get; set; } = MappingHealth.Healthy;
         public string?               Message        { get; set; }
 
         public PropertyMappingConfig? LastSaved        { get; private set; }
-        public bool                   CopyToLocalCalled { get; private set; }
 
         public System.Exception? ThrowOnGet  { get; set; }
         public System.Exception? ThrowOnSave { get; set; }
-        public System.Exception? ThrowOnCopyToLocal { get; set; }
 
         public event EventHandler? MappingChanged;
 
-        /// <summary>Raises <see cref="MappingChanged"/> so tests can simulate an external save/copy.</summary>
+        /// <summary>Raises <see cref="MappingChanged"/> so tests can simulate an external save.</summary>
         public void RaiseMappingChanged() => MappingChanged?.Invoke(this, EventArgs.Empty);
+
+        /// <summary>The file the provider resolves to, mirroring production: source when it exists, otherwise local.</summary>
+        public string ResolvedFilePath =>
+            SourceFileExists && !string.IsNullOrEmpty(SourceFilePath)
+                ? SourceFilePath!
+                : LocalFilePath;
 
         public MappingResult GetMappingResult()
         {
@@ -33,13 +38,13 @@ namespace SwInventreeAddin.Tests.Stubs
                 throw ThrowOnGet;
 
             if (Health == MappingHealth.Invalid)
-                return new MappingResult(MappingHealth.Invalid, Config, Message);
+                return new MappingResult(MappingHealth.Invalid, Config, Message, ResolvedFilePath);
 
-            return PropertyMappingProvider.Classify(Config, LocalFilePath);
+            return PropertyMappingProvider.Classify(Config, ResolvedFilePath);
         }
 
         public MappingResult ValidateMapping(PropertyMappingConfig config)
-            => PropertyMappingProvider.Classify(config, LocalFilePath);
+            => PropertyMappingProvider.Classify(config, ResolvedFilePath);
 
         public void SaveMapping(PropertyMappingConfig config)
         {
@@ -48,16 +53,6 @@ namespace SwInventreeAddin.Tests.Stubs
 
             LastSaved = config;
             Config    = config;
-            MappingChanged?.Invoke(this, EventArgs.Empty);
-        }
-
-        public void CopyToLocal()
-        {
-            if (ThrowOnCopyToLocal != null)
-                throw ThrowOnCopyToLocal;
-
-            CopyToLocalCalled = true;
-            IsReadOnly        = false;
             MappingChanged?.Invoke(this, EventArgs.Empty);
         }
     }

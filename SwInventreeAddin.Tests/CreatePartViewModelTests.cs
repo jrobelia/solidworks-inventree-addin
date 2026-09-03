@@ -499,14 +499,13 @@ namespace SwInventreeAddin.Tests
             var mappingProvider = new StubPropertyMappingProvider
             {
                 Health = MappingHealth.Invalid,
-                Message = "Invalid mapping file"
             };
 
             var vm = CreateVm(mappingProvider: mappingProvider);
             vm.SelectedCategory = MakeNode(pk: 7);
             await vm.CreateAsync();
 
-            Assert.That(vm.StatusText, Does.Contain("Invalid mapping file"));
+            Assert.That(vm.StatusText, Does.Contain("The Property Mapping file is invalid."));
             Assert.That(vm.IsBusy, Is.False);
         }
 
@@ -519,7 +518,6 @@ namespace SwInventreeAddin.Tests
             var mappingProvider = new StubPropertyMappingProvider
             {
                 Health = MappingHealth.Invalid,
-                Message = "Invalid mapping file"
             };
             _propertyService.Seed(mappingProvider.Config.IpnProperty!, string.Empty);
 
@@ -539,7 +537,6 @@ namespace SwInventreeAddin.Tests
             var mappingProvider = new StubPropertyMappingProvider
             {
                 Health = MappingHealth.Invalid,
-                Message = "Invalid mapping file"
             };
 
             var vm = CreateVm(mappingProvider: mappingProvider);
@@ -552,8 +549,8 @@ namespace SwInventreeAddin.Tests
                 "GetPartByIpnAsync must not be called when the mapping is invalid.");
         }
 
-        [TestCase("2", "Mapping schema mismatch")]
-        [TestCase("4", "newer schema")]
+        [TestCase("2", "Property Mapping Schema is out of date")]
+        [TestCase("4", "Property Mapping Schema is newer")]
         public async Task CreateAsync_NonHealthyMapping_HaltsAndDoesNotWriteDocProperties(
             string schemaVersion, string expectedMessage)
         {

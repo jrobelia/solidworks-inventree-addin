@@ -832,7 +832,7 @@ namespace SwInventreeAddin.Tests
             _vm = new TaskPaneViewModel(_client, _propertyService, null, provider);
 
             Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
-            Assert.That(_vm.StatusText,     Does.Contain("schema mismatch"));
+            Assert.That(_vm.StatusText,     Does.Contain("out of date"));
         }
 
         [Test]
@@ -847,7 +847,7 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
             Assert.That(_vm.StatusText,     Does.Contain("newer").IgnoreCase);
-            Assert.That(_vm.StatusText,     Does.Contain("upgrade the add-in").IgnoreCase);
+            Assert.That(_vm.StatusText,     Does.Contain("add-in").IgnoreCase);
         }
 
         [Test]
@@ -857,7 +857,7 @@ namespace SwInventreeAddin.Tests
 
             _vm.LoadPartNumber();
 
-            AssertMappingHealthWarning("schema mismatch");
+            AssertMappingHealthWarning("out of date");
         }
 
         [Test]
@@ -867,7 +867,7 @@ namespace SwInventreeAddin.Tests
 
             _vm.LoadPartNumber();
 
-            AssertMappingHealthWarning("schema mismatch");
+            AssertMappingHealthWarning("out of date");
         }
 
         [Test]
@@ -877,7 +877,7 @@ namespace SwInventreeAddin.Tests
 
             _vm.LoadPartNumber();
 
-            AssertMappingHealthWarning("schema mismatch");
+            AssertMappingHealthWarning("out of date");
         }
 
         [Test]
@@ -887,7 +887,7 @@ namespace SwInventreeAddin.Tests
 
             _vm.LoadPartNumber();
 
-            AssertMappingHealthWarning("schema mismatch");
+            AssertMappingHealthWarning("out of date");
         }
 
         [Test]
@@ -897,7 +897,7 @@ namespace SwInventreeAddin.Tests
 
             _vm.LoadPartNumber();
 
-            AssertMappingHealthWarning("schema mismatch");
+            AssertMappingHealthWarning("out of date");
         }
 
         [Test]
@@ -907,7 +907,7 @@ namespace SwInventreeAddin.Tests
 
             _vm.UpdateClient(new StubInventreeClient());
 
-            AssertMappingHealthWarning("schema mismatch");
+            AssertMappingHealthWarning("out of date");
         }
 
         [Test]
@@ -922,11 +922,11 @@ namespace SwInventreeAddin.Tests
             _vm.UpdateMapping(provider);
 
             Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
-            Assert.That(_vm.StatusText,     Does.Contain("schema mismatch"));
+            Assert.That(_vm.StatusText,     Does.Contain("out of date"));
         }
 
         [Test]
-        public void UpdateMapping_SchemaNeedsUpgrade_LeavesFetchEnabled()
+        public void UpdateMapping_SchemaNeedsUpgrade_DisablesFetch()
         {
             CreateVm();
             var provider = new StubPropertyMappingProvider
@@ -936,7 +936,7 @@ namespace SwInventreeAddin.Tests
 
             _vm.UpdateMapping(provider);
 
-            Assert.That(_vm.FetchEnabled, Is.True);
+            Assert.That(_vm.FetchEnabled, Is.False);
         }
 
         [Test]
@@ -952,11 +952,11 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
             Assert.That(_vm.StatusText,     Does.Contain("newer").IgnoreCase);
-            Assert.That(_vm.StatusText,     Does.Contain("upgrade the add-in").IgnoreCase);
+            Assert.That(_vm.StatusText,     Does.Contain("add-in").IgnoreCase);
         }
 
         [Test]
-        public void UpdateMapping_SchemaNewer_FetchEnabledButWritesDisabled()
+        public void UpdateMapping_SchemaNewer_DisablesFetchAndWrites()
         {
             CreateVm();
             var provider = new StubPropertyMappingProvider
@@ -966,7 +966,7 @@ namespace SwInventreeAddin.Tests
 
             _vm.UpdateMapping(provider);
 
-            Assert.That(_vm.FetchEnabled,      Is.True);
+            Assert.That(_vm.FetchEnabled,      Is.False);
             Assert.That(_vm.CreatePartEnabled, Is.False);
             Assert.That(_vm.ApplyEnabled,      Is.False);
             Assert.That(_vm.BomButtonEnabled,  Is.False);
@@ -979,7 +979,6 @@ namespace SwInventreeAddin.Tests
             var provider = new StubPropertyMappingProvider
             {
                 Health = MappingHealth.Invalid,
-                Message = "Invalid mapping file"
             };
 
             _vm.UpdateMapping(provider);
@@ -995,7 +994,6 @@ namespace SwInventreeAddin.Tests
             var provider = new StubPropertyMappingProvider
             {
                 Health = MappingHealth.Invalid,
-                Message = "Invalid mapping file"
             };
 
             _vm.UpdateMapping(provider);
@@ -1016,7 +1014,6 @@ namespace SwInventreeAddin.Tests
             _vm.UpdateMapping(new StubPropertyMappingProvider
             {
                 Health = MappingHealth.Invalid,
-                Message = "Invalid mapping file"
             });
 
             Assert.That(_vm.PushRevisionVisible, Is.False);
@@ -1125,12 +1122,12 @@ namespace SwInventreeAddin.Tests
             provider.SaveMapping(provider.Config);
 
             Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
-            Assert.That(_vm.StatusText, Does.Contain("schema mismatch"));
-            Assert.That(_vm.FetchEnabled, Is.True);
+            Assert.That(_vm.StatusText, Does.Contain("out of date"));
+            Assert.That(_vm.FetchEnabled, Is.False);
         }
 
         [Test]
-        public async Task MappingChanged_AfterFetch_ToNewerSchema_DisablesWritesButKeepsFetch()
+        public async Task MappingChanged_AfterFetch_ToNewerSchema_DisablesFetchAndWrites()
         {
             _client.PartToReturn = SamplePart;
 
@@ -1160,8 +1157,8 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
             Assert.That(_vm.StatusText, Does.Contain("newer").IgnoreCase);
-            Assert.That(_vm.StatusText, Does.Contain("upgrade the add-in").IgnoreCase);
-            Assert.That(_vm.FetchEnabled, Is.True);
+            Assert.That(_vm.StatusText, Does.Contain("add-in").IgnoreCase);
+            Assert.That(_vm.FetchEnabled, Is.False);
             Assert.That(_vm.ApplyEnabled, Is.False);
             Assert.That(_vm.BomButtonEnabled, Is.False);
         }
@@ -1181,7 +1178,7 @@ namespace SwInventreeAddin.Tests
             newProvider.Config.SchemaVersion = "2";
             newProvider.SaveMapping(newProvider.Config);
 
-            Assert.That(_vm.StatusText, Does.Contain("schema mismatch"));
+            Assert.That(_vm.StatusText, Does.Contain("out of date"));
         }
 
         [Test]

@@ -81,6 +81,7 @@ namespace SwInventreeAddin.UI
         private string _currentDescription = string.Empty;
         private string _currentPk          = string.Empty;
         private string _statusText         = string.Empty;
+        private string? _statusToolTip;
         private bool   _fetchEnabled;
         private bool   _createPartEnabled;
         private bool   _isDocumentOpen;
@@ -252,6 +253,13 @@ namespace SwInventreeAddin.UI
         {
             get => _statusText;
             private set => Set(ref _statusText, value);
+        }
+
+        /// <summary>Status bar tooltip, typically the detail behind a mapping-health message.</summary>
+        public string? StatusToolTip
+        {
+            get => _statusToolTip;
+            private set => Set(ref _statusToolTip, value);
         }
 
         /// <summary>Colour signal for the status bar stripe.</summary>
@@ -1244,19 +1252,20 @@ namespace SwInventreeAddin.UI
             if (_mappingProvider == null) return;
 
             RefreshMappingResult();
+            var toolTip = _mappingResult!.ToolTip;
             switch (_mappingResult!.Health)
             {
                 case MappingHealth.Invalid:
                     _schemaMismatchActive = true;
-                    SetStatus(_mappingResult.MessageOrDefault, StatusSeverity.Error);
+                    SetStatus(MappingResult.GetDefaultMessage(MappingHealth.Invalid), StatusSeverity.Error, toolTip);
                     break;
                 case MappingHealth.NeedsUpgrade:
                     _schemaMismatchActive = true;
-                    SetStatus(_mappingResult.MessageOrDefault, StatusSeverity.Warning);
+                    SetStatus(MappingResult.GetDefaultMessage(MappingHealth.NeedsUpgrade), StatusSeverity.Warning, toolTip);
                     break;
                 case MappingHealth.NewerSchema:
                     _schemaMismatchActive = true;
-                    SetStatus(_mappingResult.MessageOrDefault, StatusSeverity.Warning);
+                    SetStatus(MappingResult.GetDefaultMessage(MappingHealth.NewerSchema), StatusSeverity.Warning, toolTip);
                     break;
                 default:
                     if (_schemaMismatchActive)
@@ -1281,9 +1290,10 @@ namespace SwInventreeAddin.UI
             NotifyBomVisibility();
         }
 
-        private void SetStatus(string text, StatusSeverity severity)
+        private void SetStatus(string text, StatusSeverity severity, string? toolTip = null)
         {
             StatusText     = text;
+            StatusToolTip  = toolTip;
             StatusSeverity = severity;
         }
 

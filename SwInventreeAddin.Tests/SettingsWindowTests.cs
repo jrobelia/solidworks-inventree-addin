@@ -45,7 +45,8 @@ namespace SwInventreeAddin.Tests
 
             var window = CreateWindow(mappingProvider: mappingProvider);
 
-            Assert.That(GetText(window, "MappingStatusText"), Does.Contain("Failed to load mapping file"));
+            Assert.That(GetText(window, "MappingStatusText"), Does.Contain("The Property Mapping file is invalid."));
+            Assert.That(GetStripeBrush(window), Is.SameAs(GetBrush(window, "BrushStatusError")));
         }
 
         [Test]
@@ -111,6 +112,7 @@ namespace SwInventreeAddin.Tests
         {
             var mappingProvider = new StubPropertyMappingProvider
             {
+                LocalFilePath = _localMappingPath,
                 Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion }
             };
 
@@ -121,16 +123,17 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void Constructor_NeedsUpgradeMapping_ShowsAmberStatusWithMismatchMessage()
+        public void Constructor_NeedsUpgradeMapping_ShowsAmberStatusWithOutOfDateMessage()
         {
             var mappingProvider = new StubPropertyMappingProvider
             {
+                LocalFilePath = _localMappingPath,
                 Config = new PropertyMappingConfig { SchemaVersion = "2" }
             };
 
             var window = CreateWindow(mappingProvider: mappingProvider);
 
-            Assert.That(GetText(window, "MappingStatusText"), Does.Contain("schema mismatch").IgnoreCase);
+            Assert.That(GetText(window, "MappingStatusText"), Does.Contain("Property Mapping Schema is out of date"));
             Assert.That(GetStripeBrush(window), Is.SameAs(GetBrush(window, "BrushStatusWarning")));
         }
 
@@ -139,6 +142,7 @@ namespace SwInventreeAddin.Tests
         {
             var mappingProvider = new StubPropertyMappingProvider
             {
+                LocalFilePath = _localMappingPath,
                 Config = new PropertyMappingConfig { SchemaVersion = "4" }
             };
 
@@ -146,22 +150,22 @@ namespace SwInventreeAddin.Tests
 
             var statusText = GetText(window, "MappingStatusText");
             Assert.That(statusText, Does.Contain("newer").IgnoreCase);
-            Assert.That(statusText, Does.Contain("upgrade the add-in").IgnoreCase);
+            Assert.That(statusText, Does.Contain("add-in").IgnoreCase);
             Assert.That(GetStripeBrush(window), Is.SameAs(GetBrush(window, "BrushStatusWarning")));
         }
 
         [Test]
-        public void Constructor_InvalidMapping_ShowsRedStatusWithMessage()
+        public void Constructor_InvalidMapping_ShowsRedStatusWithDefaultMessage()
         {
             var mappingProvider = new StubPropertyMappingProvider
             {
+                LocalFilePath = _localMappingPath,
                 Health = MappingHealth.Invalid,
-                Message = "Invalid mapping file: C:\\temp\\bad.json. Duplicate property."
             };
 
             var window = CreateWindow(mappingProvider: mappingProvider);
 
-            Assert.That(GetText(window, "MappingStatusText"), Does.Contain("Invalid mapping file"));
+            Assert.That(GetText(window, "MappingStatusText"), Does.Contain("The Property Mapping file is invalid."));
             Assert.That(GetStripeBrush(window), Is.SameAs(GetBrush(window, "BrushStatusError")));
         }
 
@@ -184,6 +188,7 @@ namespace SwInventreeAddin.Tests
             var longMessage = "Invalid mapping file: " + new string('x', 500);
             var mappingProvider = new StubPropertyMappingProvider
             {
+                LocalFilePath = _localMappingPath,
                 Health = MappingHealth.Invalid,
                 Message = longMessage
             };
@@ -191,7 +196,8 @@ namespace SwInventreeAddin.Tests
             var window = CreateWindow(mappingProvider: mappingProvider);
             var textBox = (TextBox)System.Windows.LogicalTreeHelper.FindLogicalNode(window, "MappingStatusText")!;
 
-            Assert.That(textBox.ToolTip, Is.EqualTo(longMessage));
+            Assert.That(textBox.ToolTip, Is.Not.Null);
+            Assert.That(textBox.ToolTip.ToString(), Does.Contain(longMessage));
         }
 
         [Test]
@@ -199,6 +205,7 @@ namespace SwInventreeAddin.Tests
         {
             var mappingProvider = new StubPropertyMappingProvider
             {
+                LocalFilePath = _localMappingPath,
                 Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion }
             };
             var window = CreateWindow(mappingProvider: mappingProvider);
@@ -209,7 +216,7 @@ namespace SwInventreeAddin.Tests
             mappingProvider.Message = "Invalid after change";
             mappingProvider.RaiseMappingChanged();
 
-            Assert.That(GetText(window, "MappingStatusText"), Is.EqualTo("Invalid after change"));
+            Assert.That(GetText(window, "MappingStatusText"), Is.EqualTo("The Property Mapping file is invalid."));
             Assert.That(GetStripeBrush(window), Is.SameAs(GetBrush(window, "BrushStatusError")));
         }
 
@@ -218,10 +225,12 @@ namespace SwInventreeAddin.Tests
         {
             var originalProvider = new StubPropertyMappingProvider
             {
+                LocalFilePath = _localMappingPath,
                 Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion }
             };
             var newProvider = new StubPropertyMappingProvider
             {
+                LocalFilePath = _localMappingPath,
                 Health = MappingHealth.Invalid,
                 Message = "New provider invalid"
             };
@@ -235,74 +244,58 @@ namespace SwInventreeAddin.Tests
 
             newProvider.RaiseMappingChanged();
 
-            Assert.That(GetText(window, "MappingStatusText"), Is.EqualTo("New provider invalid"));
+            Assert.That(GetText(window, "MappingStatusText"), Is.EqualTo("The Property Mapping file is invalid."));
         }
 
-        // ── Copy to local ──────────────────────────────────────────────────────
+        // ── Edit Mappings button ───────────────────────────────────────────────
 
         [Test]
-        public void Constructor_SharedHealthyMapping_ShowsCopyToLocalButton()
+        public void Constructor_SharedHealthyMapping_ShowsEditSharedMappingsButtonAndEnabled()
         {
             var mappingProvider = new StubPropertyMappingProvider
             {
-                IsReadOnly = true,
+                LocalFilePath = _localMappingPath,
+                SourceFilePath = "C:\\shared.json",
+                SourceFileExists = true,
                 Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion }
             };
 
             var window = CreateWindow(mappingProvider: mappingProvider);
 
-            var button = GetButton(window, "CopyToLocalButton");
-            Assert.That(button.Visibility, Is.EqualTo(Visibility.Visible));
+            var button = GetButton(window, "EditMappingsButton");
+            Assert.That(button.IsEnabled, Is.True);
+            Assert.That(GetText(window, "EditMappingsButtonText"), Is.EqualTo("Edit Shared Mappings"));
         }
 
         [Test]
-        public void Constructor_LocalHealthyMapping_HidesCopyToLocalButton()
+        public void Constructor_LocalHealthyMapping_ShowsEditLocalMappingsButtonAndEnabled()
         {
             var mappingProvider = new StubPropertyMappingProvider
             {
-                IsReadOnly = false,
+                LocalFilePath = _localMappingPath,
                 Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion }
             };
 
             var window = CreateWindow(mappingProvider: mappingProvider);
 
-            var button = GetButton(window, "CopyToLocalButton");
-            Assert.That(button.Visibility, Is.EqualTo(Visibility.Collapsed));
+            var button = GetButton(window, "EditMappingsButton");
+            Assert.That(button.IsEnabled, Is.True);
+            Assert.That(GetText(window, "EditMappingsButtonText"), Is.EqualTo("Edit Local Mappings"));
         }
 
         [Test]
-        public void Constructor_SharedInvalidMapping_HidesCopyToLocalButton()
+        public void Constructor_InvalidMapping_DisablesEditMappingsButton()
         {
             var mappingProvider = new StubPropertyMappingProvider
             {
-                IsReadOnly = true,
+                LocalFilePath = _localMappingPath,
                 Health = MappingHealth.Invalid,
-                Message = "Invalid mapping file"
             };
 
             var window = CreateWindow(mappingProvider: mappingProvider);
 
-            var button = GetButton(window, "CopyToLocalButton");
-            Assert.That(button.Visibility, Is.EqualTo(Visibility.Collapsed));
-        }
-
-        [Test]
-        public void CopyToLocalButton_Click_CopiesAndSetsStatus()
-        {
-            var mappingProvider = new StubPropertyMappingProvider
-            {
-                IsReadOnly = true,
-                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion }
-            };
-
-            var window = CreateWindow(mappingProvider: mappingProvider);
-
-            var button = GetButton(window, "CopyToLocalButton");
-            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, button));
-
-            Assert.That(mappingProvider.CopyToLocalCalled, Is.True);
-            Assert.That(GetText(window, "StatusText"), Does.Contain("A local copy has been saved").IgnoreCase);
-            Assert.That(GetText(window, "StatusText"), Does.Contain("Local").IgnoreCase);
+            var button = GetButton(window, "EditMappingsButton");
+            Assert.That(button.IsEnabled, Is.False);
         }
 
         // ── Helpers ───────────────────────────────────────────────────────────

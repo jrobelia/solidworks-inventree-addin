@@ -5,16 +5,16 @@ namespace SwInventreeAddin.Config
     /// </summary>
     public enum MappingHealth
     {
-        /// <summary>Current mapping schema version, valid mappings, no duplicates, and readable.</summary>
+        /// <summary>Current Property Mapping Schema, valid mappings, no duplicates, and readable. All Part Sync actions are allowed.</summary>
         Healthy,
 
-        /// <summary>Schema version is older than the current version. Fetch is allowed, but Apply, Push, Create Part, and BOM Compare are locked until the file is saved with the current schema.</summary>
+        /// <summary>The Property Mapping Schema is older than the add-in's supported version. No Part Sync is allowed until the file is saved with the current schema.</summary>
         NeedsUpgrade,
 
-        /// <summary>Schema version is newer than the current add-in version. Fetch is allowed for read-only inspection, but all Part Sync writes are disabled until the add-in is upgraded.</summary>
+        /// <summary>The Property Mapping Schema is newer than this add-in version. No Part Sync is allowed until the add-in is upgraded.</summary>
         NewerSchema,
 
-        /// <summary>Corrupt, locked, missing, unreadable, or duplicate SolidWorks Document Property names. No Part Sync is allowed.</summary>
+        /// <summary>The Property Mapping file is corrupt, locked, missing, unreadable, or has duplicate SolidWorks Document Property names. No Part Sync is allowed.</summary>
         Invalid
     }
 }

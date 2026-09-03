@@ -108,8 +108,8 @@ namespace SwInventreeAddin.UI
 
             SharedPathBox.IsReadOnly = false;
             SharedPathBox.Background = System.Windows.Media.Brushes.White;
-            // EditMappingsButton.IsEnabled is NOT set here — it is controlled
-            // exclusively by RefreshMappingStatus() based on _mappingProvider.IsReadOnly.
+            // EditMappingsButton.IsEnabled and label are controlled by RefreshMappingStatus()
+            // based on the resolved mapping file and its MappingHealth.
         }
 
         private void LocalRadio_Checked(object sender, RoutedEventArgs e)
@@ -118,8 +118,8 @@ namespace SwInventreeAddin.UI
 
             SharedPathBox.IsReadOnly = true;
             SharedPathBox.Background = (Brush)FindResource("BrushSectionHeader");
-            // EditMappingsButton.IsEnabled is NOT set here — it is controlled
-            // exclusively by RefreshMappingStatus() based on _mappingProvider.IsReadOnly.
+            // EditMappingsButton.IsEnabled and label are controlled by RefreshMappingStatus()
+            // based on the resolved mapping file and its MappingHealth.
         }
 
         // ── Browse ────────────────────────────────────────────────────────────
@@ -150,22 +150,6 @@ namespace SwInventreeAddin.UI
             RefreshMappingStatus();
         }
 
-        // ── Copy to local ─────────────────────────────────────────────────────
-
-        private void CopyToLocal_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                _mappingProvider.CopyToLocal();
-                SetStatus("A local copy has been saved. Select Local, then Apply, to edit the mapping.", error: false, success: true);
-                RefreshMappingStatus();
-            }
-            catch (Exception ex)
-            {
-                SetStatus($"Failed to copy to local: {ex.Message}", error: true);
-            }
-        }
-
         // ── Mapping status bar ────────────────────────────────────────────────
 
         // Re-renders the mapping status bar from IPropertyMappingProvider.GetMappingResult()
@@ -177,11 +161,8 @@ namespace SwInventreeAddin.UI
             {
                 var result = _mappingProvider.GetMappingResult();
 
-                EditMappingsButton.IsEnabled = result.CanEdit && !_mappingProvider.IsReadOnly;
-                CopyToLocalButton.Visibility =
-                    (_mappingProvider.IsReadOnly && result.Health != MappingHealth.Invalid)
-                        ? Visibility.Visible
-                        : Visibility.Collapsed;
+                EditMappingsButton.IsEnabled = result.CanEdit;
+                SetEditMappingsButtonLabel(result);
 
                 var config = TryGetConfig();
                 bool hasSharedPath = config != null && !string.IsNullOrEmpty(config.MappingSourcePath);
@@ -197,28 +178,37 @@ namespace SwInventreeAddin.UI
                 };
 
                 MappingStatusStripe.Background = stripeColor;
-                MappingStatusText.Text         = result.MessageOrDefault;
-                MappingStatusText.ToolTip      = result.MessageOrDefault;
+                MappingStatusText.Text         = MappingResult.GetDefaultMessage(result.Health);
+                MappingStatusText.ToolTip      = result.ToolTip;
                 return true;
             }
             catch (InvalidOperationException ex)
             {
                 EditMappingsButton.IsEnabled   = false;
-                CopyToLocalButton.Visibility   = Visibility.Collapsed;
                 MappingStatusStripe.Background = (Brush)FindResource("BrushStatusError");
-                MappingStatusText.Text         = ex.Message;
-                MappingStatusText.ToolTip      = ex.Message;
+                MappingStatusText.Text         = MappingResult.GetDefaultMessage(MappingHealth.Invalid);
+                MappingStatusText.ToolTip      = $"{ex.Message} {MappingResult.InvalidMappingHelp}";
                 return false;
             }
             catch (Exception ex)
             {
                 EditMappingsButton.IsEnabled   = false;
-                CopyToLocalButton.Visibility   = Visibility.Collapsed;
                 MappingStatusStripe.Background = (Brush)FindResource("BrushStatusError");
-                MappingStatusText.Text         = $"Failed to load mapping file: {ex.Message}";
-                MappingStatusText.ToolTip      = MappingStatusText.Text;
+                var detail = $"Failed to load the Property Mapping file: {ex.Message}";
+                MappingStatusText.Text         = MappingResult.GetDefaultMessage(MappingHealth.Invalid);
+                MappingStatusText.ToolTip      = $"{detail} {MappingResult.InvalidMappingHelp}";
                 return false;
             }
+        }
+
+        private void SetEditMappingsButtonLabel(MappingResult result)
+        {
+            if (EditMappingsButtonText == null) return;   // guard during InitializeComponent
+
+            bool isLocal = string.IsNullOrEmpty(result.ResolvedFilePath) ||
+                string.Equals(result.ResolvedFilePath, _mappingProvider.LocalFilePath, StringComparison.OrdinalIgnoreCase);
+
+            EditMappingsButtonText.Text = isLocal ? "Edit Local Mappings" : "Edit Shared Mappings";
         }
 
         private ServerConfig? TryGetConfig()
@@ -302,13 +292,14 @@ namespace SwInventreeAddin.UI
 
                 if (!mappingOk)
                 {
-                    this.Dispatcher.Invoke(() => SetStatus(MappingStatusText.Text, error: true));
+                    this.Dispatcher.Invoke(() =>
+                        SetStatus(MappingStatusText.ToolTip as string ?? MappingStatusText.Text, error: true));
                     return false;
                 }
             }
             catch (Exception ex)
             {
-                this.Dispatcher.Invoke(() => SetStatus($"Failed to load mapping file: {ex.Message}", error: true));
+                this.Dispatcher.Invoke(() => SetStatus($"Failed to load the Property Mapping file: {ex.Message}", error: true));
                 return false;
             }
 

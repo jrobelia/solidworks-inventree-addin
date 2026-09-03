@@ -11,7 +11,7 @@ namespace SwInventreeAddin.Config
     public interface IPropertyMappingProvider
     {
         /// <summary>
-        /// Raised when <see cref="SaveMapping"/> or <see cref="CopyToLocal"/> changes the file,
+        /// Raised when <see cref="SaveMapping"/> changes the underlying file,
         /// so shared consumers (Settings and Task Pane) can refresh from the same result.
         /// </summary>
         event EventHandler? MappingChanged;
@@ -33,26 +33,12 @@ namespace SwInventreeAddin.Config
         MappingResult ValidateMapping(PropertyMappingConfig config);
 
         /// <summary>
-        /// Persists the mapping to the local file path.
+        /// Persists the mapping to the resolved file path:
+        /// the shared source path when it is configured and the file exists, otherwise the local path.
         /// Throws <see cref="System.InvalidOperationException"/> if the file cannot be
         /// written or created, naming the offending path.
         /// </summary>
         void SaveMapping(PropertyMappingConfig config);
-
-        /// <summary>
-        /// Copies the source-path config file to the local path, enabling local editing
-        /// after the user clears the shared source path in Settings.
-        /// Throws <see cref="System.InvalidOperationException"/> if no source path is configured
-        /// or the source file does not exist.
-        /// </summary>
-        void CopyToLocal();
-
-        /// <summary>
-        /// True when a source path is configured and the source file exists — the UI
-        /// shows the mapping as read-only and disables editing.
-        /// False when no source path is configured (using local file or first-run defaults).
-        /// </summary>
-        bool IsReadOnly { get; }
 
         /// <summary>
         /// The absolute path to the local copy of the mapping file.

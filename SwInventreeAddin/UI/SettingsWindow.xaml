@@ -114,12 +114,10 @@
                            Foreground="{StaticResource BrushForeground}" />
             </StackPanel>
 
-            <!-- Local file path (read-only) + Edit Mappings button -->
+            <!-- Local file path (read-only) -->
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="8" />
-                    <ColumnDefinition Width="120" />
                 </Grid.ColumnDefinitions>
                 <TextBox x:Name="LocalPathBox"
                          Grid.Column="0"
@@ -127,17 +125,6 @@
                          Background="{StaticResource BrushSectionHeader}"
                          IsReadOnly="True"
                          Height="28" />
-                <Button x:Name="EditMappingsButton"
-                        Grid.Column="2"
-                        Style="{StaticResource SecondaryButtonStyle}"
-                        Height="28" Width="120" Margin="0"
-                        Click="EditMappings_Click">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Edit Mappings&#x2026;" VerticalAlignment="Center" />
-                        <TextBlock Text="&#xE70F;" FontFamily="Segoe MDL2 Assets" FontSize="13"
-                                   VerticalAlignment="Center" Margin="6,0,0,0" />
-                    </StackPanel>
-                </Button>
             </Grid>
 
             <!-- Shared radio + label -->
@@ -175,17 +162,16 @@
                 </Button>
             </Grid>
 
-            <!-- Copy to local action for shared mappings -->
-            <Button x:Name="CopyToLocalButton"
+            <!-- Edit Mappings action for the resolved file -->
+            <Button x:Name="EditMappingsButton"
                     Style="{StaticResource SecondaryButtonStyle}"
                     HorizontalAlignment="Right"
-                    Width="120" Height="28"
+                    Height="28" MinWidth="120"
                     Margin="0,4,0,0"
-                    Visibility="Collapsed"
-                    Click="CopyToLocal_Click">
+                    Click="EditMappings_Click">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="Copy to local" VerticalAlignment="Center" />
-                    <TextBlock Text="&#xE8C8;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                    <TextBlock x:Name="EditMappingsButtonText" Text="Edit Mappings" VerticalAlignment="Center" />
+                    <TextBlock Text="&#xE70F;" FontFamily="Segoe MDL2 Assets" FontSize="13"
                                VerticalAlignment="Center" Margin="6,0,0,0" />
                 </StackPanel>
             </Button>

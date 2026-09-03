@@ -43,57 +43,7 @@ namespace SwInventreeAddin.UI
                     RefreshErrorText();
             };
 
-            ApplyReadOnlyState();
-        }
-
-        // ── Read-only / copy-to-local state ────────────────────────────────────
-
-        private void ApplyReadOnlyState()
-        {
-            if (_viewModel.IsReadOnly)
-            {
-                SaveButton.IsEnabled = false;
-                SetReadOnlyBackground();
-                ReadOnlyBanner.Visibility   = Visibility.Visible;
-                ReadOnlyBannerText.Text     =
-                    "Loaded from a shared file — switch to Local in Settings to edit mappings.";
-            }
-            else
-            {
-                SaveButton.IsEnabled        = true;
-                ReadOnlyBanner.Visibility   = Visibility.Collapsed;
-            }
-
             RefreshErrorText();
-        }
-
-        private void SetReadOnlyBackground()
-        {
-            var greyBrush = TryFindResource("BrushSectionHeader") as Brush
-                            ?? SystemColors.ControlBrush;
-
-            foreach (var box in FindTextBoxesInTemplate())
-                box.Background = greyBrush;
-        }
-
-        private IEnumerable<TextBox> FindTextBoxesInTemplate()
-        {
-            return LogicalTreeHelper.GetChildren(this)
-                .OfType<DependencyObject>()
-                .SelectMany(FindVisualChildren<TextBox>);
-        }
-
-        private static IEnumerable<T> FindVisualChildren<T>(DependencyObject parent) where T : DependencyObject
-        {
-            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
-            {
-                var child = VisualTreeHelper.GetChild(parent, i);
-                if (child is T typed)
-                    yield return typed;
-
-                foreach (var descendant in FindVisualChildren<T>(child))
-                    yield return descendant;
-            }
         }
 
         // ── Save ───────────────────────────────────────────────────────────────
@@ -118,12 +68,12 @@ namespace SwInventreeAddin.UI
         {
             if (string.IsNullOrEmpty(_viewModel.ErrorMessage))
             {
-                ErrorText.Visibility = Visibility.Collapsed;
+                ErrorTextBar.Visibility = Visibility.Collapsed;
             }
             else
             {
-                ErrorText.Text       = _viewModel.ErrorMessage;
-                ErrorText.Visibility = Visibility.Visible;
+                ErrorText.Text          = _viewModel.ErrorMessage;
+                ErrorTextBar.Visibility = Visibility.Visible;
             }
         }
 
