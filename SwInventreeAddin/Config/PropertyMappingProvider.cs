@@ -56,10 +56,20 @@ namespace SwInventreeAddin.Config
                 ? _sourcePath!
                 : _localPath;
 
+        /// <summary>
+        /// Returns the resolved mapping source: shared when the source path is configured
+        /// and the file exists, otherwise local.
+        /// </summary>
+        private MappingSource ResolveSource() =>
+            !string.IsNullOrEmpty(_sourcePath) && File.Exists(_sourcePath)
+                ? MappingSource.Shared
+                : MappingSource.Local;
+
         /// <inheritdoc/>
         public MappingResult GetMappingResult()
         {
             string? resolvedPath = null;
+            var source = ResolveSource();
 
             try
             {
@@ -69,20 +79,21 @@ namespace SwInventreeAddin.Config
                     if (File.Exists(_sourcePath))
                     {
                         resolvedPath = _sourcePath;
-                        return Classify(Fetch(resolvedPath!), resolvedPath!);
+                        return Classify(Fetch(resolvedPath!), resolvedPath!, MappingSource.Shared);
                     }
 
                     return new MappingResult(
                         MappingHealth.Invalid,
                         new PropertyMappingConfig(),
                         $"The configured Property Mapping file was not found: {_sourcePath}",
-                        _localPath);
+                        _localPath,
+                        MappingSource.Shared);
                 }
 
                 if (File.Exists(_localPath))
                 {
                     resolvedPath = _localPath;
-                    return Classify(Fetch(resolvedPath), resolvedPath);
+                    return Classify(Fetch(resolvedPath), resolvedPath, MappingSource.Local);
                 }
 
                 // First run — write defaults so the user has a file to edit.
@@ -93,7 +104,8 @@ namespace SwInventreeAddin.Config
                     MappingHealth.Healthy,
                     defaults,
                     MappingResult.GetDefaultMessage(MappingHealth.Healthy),
-                    resolvedPath);
+                    resolvedPath,
+                    MappingSource.Local);
             }
             catch (Exception ex)
             {
@@ -101,13 +113,13 @@ namespace SwInventreeAddin.Config
                     ? ex.Message
                     : $"Failed to fetch the Property Mapping file: {resolvedPath ?? _localPath}";
 
-                return new MappingResult(MappingHealth.Invalid, new PropertyMappingConfig(), message, resolvedPath ?? _localPath);
+                return new MappingResult(MappingHealth.Invalid, new PropertyMappingConfig(), message, resolvedPath ?? _localPath, source);
             }
         }
 
         /// <inheritdoc/>
         public MappingResult ValidateMapping(PropertyMappingConfig config)
-            => Classify(config, ResolvePath());
+            => Classify(config, ResolvePath(), ResolveSource());
 
         /// <inheritdoc/>
         public void SaveMapping(PropertyMappingConfig config)
@@ -165,12 +177,15 @@ namespace SwInventreeAddin.Config
         }
 
         internal static MappingResult Classify(PropertyMappingConfig config, string path)
+            => Classify(config, path, MappingSource.Local);
+
+        internal static MappingResult Classify(PropertyMappingConfig config, string path, MappingSource source)
         {
             var duplicate = FindDuplicatePropertyName(config);
             if (duplicate != null)
             {
                 var location = string.IsNullOrWhiteSpace(path) ? "" : $"The Property Mapping file is invalid: {path}. ";
-                return new MappingResult(MappingHealth.Invalid, config, $"{location}{duplicate}", path);
+                return new MappingResult(MappingHealth.Invalid, config, $"{location}{duplicate}", path, source);
             }
 
             var currentVersion = PropertyMappingConfig.CurrentSchemaVersion;
@@ -181,14 +196,16 @@ namespace SwInventreeAddin.Config
                     MappingHealth.Healthy,
                     config,
                     MappingResult.GetDefaultMessage(MappingHealth.Healthy),
-                    path);
+                    path,
+                    source);
 
             if (comparison > 0)
                 return new MappingResult(
                     MappingHealth.NewerSchema,
                     config,
                     MappingResult.GetDefaultMessage(MappingHealth.NewerSchema),
-                    path);
+                    path,
+                    source);
 
             // Older, unversioned (null/empty), or unparseable non-empty schema version.
             if (comparison < 0 || string.IsNullOrWhiteSpace(config.SchemaVersion))
@@ -196,14 +213,16 @@ namespace SwInventreeAddin.Config
                     MappingHealth.NeedsUpgrade,
                     config,
                     MappingResult.GetDefaultMessage(MappingHealth.NeedsUpgrade),
-                    path);
+                    path,
+                    source);
 
             var badVersionLocation = string.IsNullOrWhiteSpace(path) ? "" : $"The Property Mapping file is invalid: {path}. ";
             return new MappingResult(
                 MappingHealth.Invalid,
                 config,
                 $"{badVersionLocation}Unrecognized Property Mapping Schema version '{config.SchemaVersion}'.",
-                path);
+                path,
+                source);
         }
 
         private static int? CompareSchemaVersions(string? fileVersion, string currentVersion)

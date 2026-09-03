@@ -146,6 +146,28 @@ namespace SwInventreeAddin.Tests
             Assert.That(result.ResolvedFilePath, Is.EqualTo(_localPath));
         }
 
+        // ── Source ────────────────────────────────────────────────────────────
+
+        [Test]
+        public void GetMappingResult_SourceConfiguredAndExists_SourceIsShared()
+        {
+            WriteJson(_sourcePath, new PropertyMappingConfig { IpnProperty = "SourceIPN" });
+
+            var result = new PropertyMappingProvider(_localPath, _sourcePath).GetMappingResult();
+
+            Assert.That(result.Source, Is.EqualTo(MappingSource.Shared));
+        }
+
+        [Test]
+        public void GetMappingResult_NoSourceConfigured_SourceIsLocal()
+        {
+            WriteJson(_localPath, new PropertyMappingConfig());
+
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+
+            Assert.That(result.Source, Is.EqualTo(MappingSource.Local));
+        }
+
         // ── Error handling ────────────────────────────────────────────────────
 
         [Test]

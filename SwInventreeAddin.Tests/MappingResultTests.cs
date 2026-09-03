@@ -22,6 +22,25 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public void Source_DefaultIsLocal()
+        {
+            var result = new MappingResult(MappingHealth.Healthy, PropertyMappingConfig.WithDefaults());
+
+            Assert.That(result.Source, Is.EqualTo(MappingSource.Local));
+        }
+
+        [Test]
+        public void Source_SetInConstructor_IsExposed()
+        {
+            var result = new MappingResult(
+                MappingHealth.Healthy,
+                PropertyMappingConfig.WithDefaults(),
+                source: MappingSource.Shared);
+
+            Assert.That(result.Source, Is.EqualTo(MappingSource.Shared));
+        }
+
+        [Test]
         public void Message_SetInConstructor_IsExposed()
         {
             var result = new MappingResult(MappingHealth.NeedsUpgrade, PropertyMappingConfig.WithDefaults(), "schema mismatch");

@@ -32,19 +32,25 @@ namespace SwInventreeAddin.Tests.Stubs
                 ? SourceFilePath!
                 : LocalFilePath;
 
+        /// <summary>The mapping source this provider resolves to, mirroring production.</summary>
+        public MappingSource Source =>
+            SourceFileExists && !string.IsNullOrEmpty(SourceFilePath)
+                ? MappingSource.Shared
+                : MappingSource.Local;
+
         public MappingResult GetMappingResult()
         {
             if (ThrowOnGet != null)
                 throw ThrowOnGet;
 
             if (Health == MappingHealth.Invalid)
-                return new MappingResult(MappingHealth.Invalid, Config, Message, ResolvedFilePath);
+                return new MappingResult(MappingHealth.Invalid, Config, Message, ResolvedFilePath, Source);
 
-            return PropertyMappingProvider.Classify(Config, ResolvedFilePath);
+            return PropertyMappingProvider.Classify(Config, ResolvedFilePath, Source);
         }
 
         public MappingResult ValidateMapping(PropertyMappingConfig config)
-            => PropertyMappingProvider.Classify(config, ResolvedFilePath);
+            => PropertyMappingProvider.Classify(config, ResolvedFilePath, Source);
 
         public void SaveMapping(PropertyMappingConfig config)
         {

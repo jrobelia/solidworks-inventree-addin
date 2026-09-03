@@ -205,10 +205,8 @@ namespace SwInventreeAddin.UI
         {
             if (EditMappingsButtonText == null) return;   // guard during InitializeComponent
 
-            bool isLocal = string.IsNullOrEmpty(result.ResolvedFilePath) ||
-                string.Equals(result.ResolvedFilePath, _mappingProvider.LocalFilePath, StringComparison.OrdinalIgnoreCase);
-
-            EditMappingsButtonText.Text = isLocal ? "Edit Local Mappings" : "Edit Shared Mappings";
+            EditMappingsButtonText.Text =
+                result.Source == MappingSource.Local ? "Edit Local Mappings" : "Edit Shared Mappings";
         }
 
         private ServerConfig? TryGetConfig()

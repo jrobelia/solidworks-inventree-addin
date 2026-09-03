@@ -15,13 +15,15 @@ namespace SwInventreeAddin.Config
         /// <param name="config">The loaded or default mapping configuration. Must not be null.</param>
         /// <param name="message">An optional human-readable message for the current <paramref name="health"/>.</param>
         /// <param name="resolvedFilePath">The absolute path of the file the mapping was resolved from, if any.</param>
+        /// <param name="source">The source of the resolved mapping file.</param>
         /// <exception cref="ArgumentNullException"><paramref name="config"/> is null.</exception>
-        public MappingResult(MappingHealth health, PropertyMappingConfig config, string? message = null, string? resolvedFilePath = null)
+        public MappingResult(MappingHealth health, PropertyMappingConfig config, string? message = null, string? resolvedFilePath = null, MappingSource source = MappingSource.Local)
         {
             Health = health;
             Config = config ?? throw new ArgumentNullException(nameof(config));
             Message = message;
             ResolvedFilePath = resolvedFilePath;
+            Source = source;
         }
 
         /// <summary>The evaluated health of the mapping file.</summary>
@@ -38,6 +40,9 @@ namespace SwInventreeAddin.Config
         /// This is the file <see cref="IPropertyMappingProvider.SaveMapping"/> will write to.
         /// </summary>
         public string? ResolvedFilePath { get; }
+
+        /// <summary>The source of the resolved mapping file (local or shared).</summary>
+        public MappingSource Source { get; }
 
         /// <summary>
         /// Human-readable message for the current <see cref="Health"/>.
