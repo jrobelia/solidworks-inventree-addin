@@ -378,7 +378,7 @@ namespace SwInventreeAddin.UI
 
         private PartSyncSession? _session;
         private MappingResult?   _mappingResult;
-        private bool             _schemaMismatchActive;
+        private bool             _mappingHealthWarningActive;
 
         /// <summary>
         /// UI-thread synchronisation context captured at construction.
@@ -1256,21 +1256,21 @@ namespace SwInventreeAddin.UI
             switch (_mappingResult!.Health)
             {
                 case MappingHealth.Invalid:
-                    _schemaMismatchActive = true;
+                    _mappingHealthWarningActive = true;
                     SetStatus(MappingResult.GetDefaultMessage(MappingHealth.Invalid), StatusSeverity.Error, toolTip);
                     break;
                 case MappingHealth.NeedsUpgrade:
-                    _schemaMismatchActive = true;
+                    _mappingHealthWarningActive = true;
                     SetStatus(MappingResult.GetDefaultMessage(MappingHealth.NeedsUpgrade), StatusSeverity.Warning, toolTip);
                     break;
                 case MappingHealth.NewerSchema:
-                    _schemaMismatchActive = true;
+                    _mappingHealthWarningActive = true;
                     SetStatus(MappingResult.GetDefaultMessage(MappingHealth.NewerSchema), StatusSeverity.Warning, toolTip);
                     break;
                 default:
-                    if (_schemaMismatchActive)
+                    if (_mappingHealthWarningActive)
                     {
-                        _schemaMismatchActive = false;
+                        _mappingHealthWarningActive = false;
                         SetStatus(string.Empty, StatusSeverity.None);
                     }
                     break;

@@ -82,9 +82,7 @@ namespace SwInventreeAddin.Config
                 MappingHealth.Healthy      => null,
                 MappingHealth.NeedsUpgrade => "Edit the Property Mapping and save to enable Part Sync.",
                 MappingHealth.NewerSchema  => "Upgrade the add-in to enable Part Sync.",
-                MappingHealth.Invalid      => string.IsNullOrEmpty(Message)
-                                                ? $"{GetDefaultMessage(MappingHealth.Invalid)} {InvalidMappingHelp}"
-                                                : $"{Message} {InvalidMappingHelp}",
+                MappingHealth.Invalid      => $"{MessageOrDefault} {InvalidMappingHelp}",
                 _                          => null,
             };
     }
