@@ -1,0 +1,49 @@
+{
+  "skill_name": "build-afk",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/build-afk",
+      "expected_output": "Lists open ready-for-agent issues, stops for confirmation, and does not start the workflow.",
+      "files": [],
+      "expectations": [
+        "The orchestrator resolves the current branch and checks it is not main/master.",
+        "The orchestrator fetches open ready-for-agent issues and prints a proposed batch.",
+        "The orchestrator does not call run_workflow until the user confirms or re-invokes with explicit numbers."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "/build-afk #147",
+      "expected_output": "Creates a PLAN.json for issue 147, runs the Dynamic Workflow, and reports a draft PR or a BLOCKED reason.",
+      "files": [],
+      "expectations": [
+        "PLAN.json includes repo, parent_branch, max (if supplied), and one issue entry for #147.",
+        "workflow.py reads PLAN.json and dispatches a single shared-vm agent with the CHILD_PROMPT.md template.",
+        "RESULTS.json contains the issue number, branch, pr_number, pr_url, status, and reason."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "/build-afk --all --max 3",
+      "expected_output": "Processes at most three ready-for-agent issues in independent worktrees and rolls up RESULTS.json.",
+      "files": [],
+      "expectations": [
+        "Only three issues are dispatched even if more are ready.",
+        "Each issue uses its own worktree and branch build/issue-<number>.",
+        "A summary line per ticket is written to RESULTS.json and reported to the user."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "/build-afk spec #100 with #101 #102",
+      "expected_output": "Processes child issues #101 and #102 of spec #100 in chained order if their bodies reference Parent #100.",
+      "files": [],
+      "expectations": [
+        "The plan sets chained=true.",
+        "The first child targets PARENT_BRANCH; the second child targets the first child's branch.",
+        "If the first child is BLOCKED, later children are recorded as BLOCKED with a predecessor reason."
+      ]
+    }
+  ]
+}
