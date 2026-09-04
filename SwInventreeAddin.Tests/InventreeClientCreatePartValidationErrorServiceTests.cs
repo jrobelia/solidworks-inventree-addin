@@ -5,14 +5,14 @@ using SwInventreeAddin.InvenTree;
 namespace SwInventreeAddin.Tests
 {
     [TestFixture]
-    public class InventreeClientCreatePartValidationServiceTests
+    public class InventreeClientCreatePartValidationErrorServiceTests
     {
-        private InventreeClientCreatePartValidationService _service = null!;
+        private InventreeClientCreatePartValidationErrorService _service = null!;
 
         [SetUp]
         public void SetUp()
         {
-            _service = new InventreeClientCreatePartValidationService();
+            _service = new InventreeClientCreatePartValidationErrorService();
         }
 
         [Test]

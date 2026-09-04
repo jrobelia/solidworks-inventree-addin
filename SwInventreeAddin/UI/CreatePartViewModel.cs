@@ -32,7 +32,7 @@ namespace SwInventreeAddin.UI
 
         private readonly IInventreeClient                   _client;
         private readonly IDocumentPropertyService           _propertyService;
-        private readonly ICreatePartValidationService       _validationService;
+        private readonly ICreatePartValidationErrorService  _validationService;
         private readonly IPropertyMappingProvider?          _mappingProvider;
         private readonly int                                _ipnPollDelayMs;
 
@@ -223,20 +223,20 @@ namespace SwInventreeAddin.UI
         // ── Constructor ───────────────────────────────────────────────────────
 
         public CreatePartViewModel(
-            IInventreeClient              client,
-            IDocumentPropertyService      propertyService,
-            ICreatePartValidationService  validationService,
-            string                        initialName,
-            IPropertyMappingProvider?     mappingProvider            = null,
-            int                           ipnPollDelayMs             = 500,
-            bool                          waitForServerAssignedIpn = false,
-            DocumentType                  documentType               = DocumentType.Unknown)
+            IInventreeClient                   client,
+            IDocumentPropertyService           propertyService,
+            ICreatePartValidationErrorService  validationService,
+            string                             initialName,
+            IPropertyMappingProvider?          mappingProvider            = null,
+            int                                ipnPollDelayMs             = 500,
+            bool                               waitForServerAssignedIpn   = false,
+            DocumentType                       documentType               = DocumentType.Unknown)
         {
-            _client                   = client;
-            _propertyService          = propertyService;
-            _validationService        = validationService;
-            _mappingProvider          = mappingProvider;
-            _ipnPollDelayMs           = ipnPollDelayMs;
+            _client                             = client;
+            _propertyService                    = propertyService;
+            _validationService                  = validationService;
+            _mappingProvider                    = mappingProvider;
+            _ipnPollDelayMs                     = ipnPollDelayMs;
             _waitForServerAssignedIpn           = waitForServerAssignedIpn;
             _waitForServerAssignedIpnRemembered = waitForServerAssignedIpn;
             PartName                            = initialName;

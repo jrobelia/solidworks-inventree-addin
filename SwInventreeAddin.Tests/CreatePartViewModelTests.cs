@@ -19,7 +19,7 @@ namespace SwInventreeAddin.Tests
     {
         private StubInventreeClient             _client = null!;
         private StubDocumentPropertyService     _propertyService = null!;
-        private StubCreatePartValidationService _validationService = null!;
+        private StubCreatePartValidationErrorService _validationService = null!;
         private StubPropertyMappingProvider     _mappingProvider = null!;
         private const string DefaultName = "10K Resistor";
 
@@ -28,7 +28,7 @@ namespace SwInventreeAddin.Tests
         {
             _client          = new StubInventreeClient();
             _propertyService = new StubDocumentPropertyService();
-            _validationService = new StubCreatePartValidationService();
+            _validationService = new StubCreatePartValidationErrorService();
             _mappingProvider = new StubPropertyMappingProvider
             {
                 Config = PropertyMappingConfig.WithDefaults()
@@ -40,7 +40,7 @@ namespace SwInventreeAddin.Tests
             bool waitForServerAssignedIpn = false,
             DocumentType documentType = DocumentType.Part,
             IPropertyMappingProvider? mappingProvider = null,
-            ICreatePartValidationService? validationService = null) =>
+            ICreatePartValidationErrorService? validationService = null) =>
             new CreatePartViewModel(_client, _propertyService, validationService ?? _validationService, name, mappingProvider: mappingProvider ?? _mappingProvider, ipnPollDelayMs: 0, waitForServerAssignedIpn: waitForServerAssignedIpn, documentType: documentType);
 
         private static CategoryNode MakeNode(int pk = 1, string name = "Resistors") =>

@@ -146,8 +146,9 @@ namespace SwInventreeAddin.AddIn
 
                 _mappingProvider = new PropertyMappingProvider(config?.MappingSourcePath);
 
+                var createPartValidator = new InventreeClientCreatePartValidationErrorService();
                 _taskPaneControl = new TaskPaneControl(
-                    inventreeClient, propertyService, viewportService, _mappingProvider, _configProvider);
+                    inventreeClient, propertyService, viewportService, _mappingProvider, _configProvider, createPartValidator);
                 _taskPaneControl.SettingsRequested += OnSettingsRequested;
 
                 var assemblyBomService = new SwAssemblyBomService(_swApp);

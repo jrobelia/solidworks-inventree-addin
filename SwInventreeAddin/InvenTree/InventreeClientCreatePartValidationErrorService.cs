@@ -5,10 +5,10 @@ using System.Text.Json;
 namespace SwInventreeAddin.InvenTree
 {
     /// <summary>
-    /// Production adapter for <see cref="ICreatePartValidationService"/> that
+    /// Production adapter for <see cref="ICreatePartValidationErrorService"/> that
     /// extracts IPN validation errors from InvenTree API exception messages.
     /// </summary>
-    public class InventreeClientCreatePartValidationService : ICreatePartValidationService
+    public class InventreeClientCreatePartValidationErrorService : ICreatePartValidationErrorService
     {
         /// <inheritdoc/>
         public string? ExtractIpnError(string exceptionMessage)
