@@ -15,26 +15,28 @@ Issue body:
 - This ticket is part of the build-afk batch. Target (base) branch for the PR: `{target_branch}`
 - Previous ticket branch in this chained batch (empty if first/independent): `{previous_branch}`
 - Branch you must create and push: `{branch}`
+- Run directory containing this prompt and `WPF_HARNESS.md`: `{run_dir}`
 
 ## Setup
 
 1. Make sure the current branch in the main repo clone is `{parent_branch}` or that `{target_branch}` exists on the remote. If `{previous_branch}` is non-empty, ensure it has been pushed; use it as the base for the PR.
-2. Create a git worktree for this ticket at `C:\devin\worktrees\build-issue-{issue_number}` from `{target_branch}`.
+2. If `{branch}` already exists locally or remotely, append `-2`, `-3`, ... until a free name is found, and use that name for the worktree and PR. Update the branch name you report in your return value.
+3. Create a git worktree for this ticket at `C:\devin\worktrees\build-issue-{issue_number}` from `{target_branch}`.
    - If the directory already exists, reuse it only if it is on `{target_branch}`; otherwise remove it and recreate.
-3. Inside the worktree, configure `git` to use the same remote and credentials as the main clone. `GITHUB_TOKEN` is available in the environment for `gh`/git HTTPS operations and for reading issue bodies through the GitHub REST API if needed.
+4. Inside the worktree, configure `git` to use the same remote and credentials as the main clone. `GITHUB_TOKEN` is available for HTTPS operations. Use direct `git` commands and Devin git builtins (`git_create_pr`, `git_view_pr`, `git_pr_checks`). Do not rely on `gh`; it is not installed in Cloud sessions.
+5. Read the repo conventions in `docs/agents/coding-standards.md` and `docs/agents/issue-tracker.md`.
 
 ## Implementation
 
 1. Read the issue body carefully. If it references a parent spec, ADR, or PR, read those for context.
-2. Use the repo conventions in `docs/agents/coding-standards.md` and `docs/agents/issue-tracker.md`.
-3. Use the `/build` branch and commit conventions:
-   - Branch: `{branch}`
+2. Use the `/build` branch and commit conventions:
+   - Branch: the actual branch you created in setup.
    - One logical commit per ticket, message referencing `#{issue_number}` and the parent spec where applicable.
-4. If this is a `bug` ticket and the `/diagnosing-bugs` skill is not available in this environment, stop and return `BLOCKED` with reason `"Bug ticket requires /diagnosing-bugs which is not installed"`.
+3. If this is a `bug` ticket and the `/diagnosing-bugs` skill is not available in this environment, stop and return `BLOCKED` with reason `"Bug ticket requires /diagnosing-bugs which is not installed"`.
 
 ## Build and test loop
 
-Run these in the worktree **before committing** and again after any fix:
+Run the commands in `docs/agents/coding-standards.md` `## Build & Test Commands` in the worktree **before committing** and again after any fix:
 
 ```powershell
 dotnet build "SwInventreeAddin/SwInventreeAddin.csproj" --disable-build-servers
@@ -56,16 +58,17 @@ Classify findings as RED (hard spec/standard gap - fix before PR), YELLOW (quali
 
 ## GUI evidence
 
-If the diff touches files under `SwInventreeAddin/UI/`, any `*ViewModel*.cs` file, any `*.xaml` file, or any dialog/window class, create a temporary .NET 4.8 WPF harness that hosts the affected window or `TaskPaneView` using stubs for `IInventreeClient`, `IDocumentPropertyService`, `IAssemblyBomService`, and `IViewportCaptureService`.
+If the diff touches files under `SwInventreeAddin/UI/`, any `*ViewModel*.cs` file, any `*.xaml` file, or any dialog/window class, create a temporary .NET 4.8 WPF harness that hosts the affected window or `TaskPaneView` using stubs for `IInventreeClient` and `IDocumentPropertyService` (and any additional interfaces the affected viewmodel requires).
 
 - Place the harness under `C:\devin\worktrees\build-issue-{issue_number}\wpf-smoke\`.
-- Use the `solidworks-inventree-testing` skill if it is available; otherwise build a minimal harness yourself.
+- For detailed harness instructions, read `{run_dir}\WPF_HARNESS.md`.
 - Capture screenshots and save their absolute paths. They will be referenced in the PR body.
 
 ## PR creation
 
 1. Before creating the PR, fetch the repo template with `fetch_pr_template(repo="{repo}", base_branch="{target_branch}")`.
-2. Create a **draft PR** using `git_create_pr(repo="{repo}", base_branch="{target_branch}", head_branch="{branch}", title=..., body=..., draft=True)`.
+2. Push your branch to origin if it is not already pushed.
+3. Create a **draft PR** using `git_create_pr(repo="{repo}", base_branch="{target_branch}", head_branch="<actual-branch>", title=..., body=..., draft=True)`.
    - Title prefix: `build-afk:` followed by a concise summary.
    - Body must include:
      - `Closes #{issue_number}`
@@ -75,7 +78,10 @@ If the diff touches files under `SwInventreeAddin/UI/`, any `*ViewModel*.cs` fil
      - A `### Review notes` section with the two-axis review summary and any deferred findings
      - `### Deferred and follow-up issues` if anything was intentionally skipped or escalated
      - Screenshot file paths in markdown image syntax if screenshots were captured
-3. Push `{branch}` to origin before calling `git_create_pr` if it is not already pushed.
+4. After the draft PR is open, clean up the worktree:
+   ```powershell
+   git worktree remove --force C:\devin\worktrees\build-issue-{issue_number}
+   ```
 
 ## Return value
 
@@ -84,7 +90,7 @@ Return **only** a JSON object matching this schema (no markdown around it):
 ```json
 {
   "status": "COMPLETE" or "BLOCKED",
-  "branch": "{branch}",
+  "branch": "<actual branch used>",
   "pr_number": <integer or null>,
   "pr_url": "<url or null>",
   "test_summary": "<one-line result>",
@@ -94,4 +100,4 @@ Return **only** a JSON object matching this schema (no markdown around it):
 }
 ```
 
-If you are blocked at any point, still commit and push any work you have done to `{branch}` before returning `BLOCKED`, unless the failure happened before any code was written.
+If you are blocked at any point, still commit and push any work you have done to the actual branch before returning `BLOCKED`, unless the failure happened before any code was written.

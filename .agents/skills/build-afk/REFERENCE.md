@@ -8,7 +8,7 @@
 | Independent batch | `build/issue-<number>` per ticket | `PARENT_BRANCH` |
 | Chained spec | `build/spec-<parent>-<child>` per child | previous child's branch, or `PARENT_BRANCH` for the first |
 
-If a branch name already exists locally or remotely, append a `-<N>` suffix until a free name is found, starting at `2`.
+If the branch name `build/issue-<number>` or `build/spec-<parent>-<child>` already exists locally or remotely, the child agent should append a `-<N>` suffix (starting at `2`) until a free name is found, and use that name for both the worktree and the PR.
 
 ## PLAN.json schema
 
@@ -21,6 +21,7 @@ If a branch name already exists locally or remotely, append a `-<N>` suffix unti
     "repo": { "type": "string" },
     "parent_branch": { "type": "string" },
     "chained": { "type": "boolean", "default": false },
+    "max": { "type": ["integer", "null"], "default": null },
     "issues": {
       "type": "array",
       "items": {
@@ -66,6 +67,8 @@ The workflow passes this JSON Schema to each `agent()` call:
 }
 ```
 
+The workflow also injects the originating issue number into the returned object as `issue_number` for roll-up purposes.
+
 ## RESULTS.json schema
 
 After the workflow finishes, `RESULTS.json` in the run directory contains:
@@ -76,6 +79,7 @@ After the workflow finishes, `RESULTS.json` in the run directory contains:
   "parent_branch": "milestone-3",
   "results": [
     {
+      "issue_number": 41,
       "status": "COMPLETE",
       "branch": "build/issue-41",
       "pr_number": 201,
@@ -92,7 +96,7 @@ After the workflow finishes, `RESULTS.json` in the run directory contains:
 
 ## Build and test commands
 
-Primary verification loop for C# changes:
+Use the commands from `docs/agents/coding-standards.md` `## Build & Test Commands`:
 
 ```powershell
 dotnet build "SwInventreeAddin/SwInventreeAddin.csproj" --disable-build-servers

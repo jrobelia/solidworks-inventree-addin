@@ -20,8 +20,7 @@ Run a Dynamic Workflow that implements `ready-for-agent` issues in isolated git 
 ## Guardrails
 
 - The current branch must be a feature or milestone branch. If it is `main` or `master`, stop and ask the user to check out a feature/milestone branch first.
-- Process at most **5** issues per batch. If more match the query, ask the user to refine or increase `--max`.
-- `GITHUB_TOKEN` with `public_repo` scope must be available in the environment. If it is missing, fail fast with a clear message.
+- `GITHUB_TOKEN` with `repo` scope (or at least `public_repo` for public repositories) must be available in the environment. If it is missing, fail fast with a clear message.
 - Skip `bug`-labeled tickets unless `/diagnosing-bugs` is installed and verified in this environment.
 - Skip tickets that are ambiguous, GUI-only without a usable WPF harness, or architecturally risky. Record the reason and continue.
 
@@ -30,13 +29,13 @@ Run a Dynamic Workflow that implements `ready-for-agent` issues in isolated git 
 `/build-afk` accepts one of:
 
 1. No arguments — scan open `ready-for-agent` issues, print the proposed batch, and **stop for user confirmation**.
-2. `--all` — process every open `ready-for-agent` issue, capped by `--max N`.
-3. `--max N` — limit the batch size when used with `--all` or no args.
+2. `--all` — process every open `ready-for-agent` issue. Use `--max N` to limit the batch.
+3. `--max N` — limit the batch size when used with `--all` or explicit numbers.
 4. `#N #M ...` — explicit issue numbers.
 5. `spec #N` — process all open child issues whose body contains `## Parent` followed by `#N`.
 6. `spec #N with #M #P` — process only the listed children of spec `#N`.
 
-The default batch is limited to the next 5 `ready-for-agent` issues, ordered by lowest number first. Adjust with `--max`.
+With no arguments, the orchestrator lists all matching `ready-for-agent` issues and stops for confirmation. Do not start the workflow until the user confirms or re-invokes with explicit numbers, `--all`, or `--max`.
 
 ## Pre-flight
 
@@ -52,15 +51,15 @@ The default batch is limited to the next 5 `ready-for-agent` issues, ordered by 
    ```
 
 3. Resolve the issue list.
-   - For no args: list open `ready-for-agent` issues, propose the batch, and stop for user confirmation. Do not start the workflow until the user confirms or re-invokes with explicit numbers/`--all`.
-   - For `--all`/`--max`: fetch open `ready-for-agent` issues, limit to `max`, and continue.
+   - For no args: list open `ready-for-agent` issues and stop for user confirmation. Do not start the workflow until the user confirms or re-invokes with explicit numbers/`--all`.
+   - For `--all`/`--max`: fetch open `ready-for-agent` issues, limit to `max` if provided, and continue.
    - For explicit numbers: fetch each issue body and labels.
    - For `spec #N`: fetch the spec and find children with `## Parent #N`; order children by resolving `## Blocked by` references (blockers first).
 
 4. Filter the batch:
    - Drop `bug` issues unless `/diagnosing-bugs` is installed and works in this environment.
    - Drop issues whose body is ambiguous or whose scope is larger than one PR. Record reason.
-   - If more than 5 remain, raise the limit to the user or trim to 5 and note the truncation.
+   - If more issues remain than `--max` allows, trim to `max` and note the truncation.
 
 5. Fetch the full body for every remaining issue. Also fetch the parent spec body when `spec #N` was requested.
 
@@ -78,6 +77,7 @@ Create a `PLAN.json` file with this schema:
   "repo": "github.com/jrobelia/solidworks-inventree-addin",
   "parent_branch": "milestone-3",
   "chained": false,
+  "max": null,
   "issues": [
     {
       "number": 41,
@@ -103,7 +103,7 @@ For chained children after the first, set `target_branch` to the previous child'
    New-Item -ItemType Directory -Path $runDir -Force
    ```
 
-2. Copy the skill's `workflow.py` and `CHILD_PROMPT.md` into `$runDir`.
+2. Copy the skill's `workflow.py`, `CHILD_PROMPT.md`, and `WPF_HARNESS.md` into `$runDir`.
 
 3. Write `PLAN.json` into `$runDir`.
 
@@ -132,4 +132,5 @@ Do not merge PRs. The handoff is to `/qa`:
 
 - `workflow.py` — generic Dynamic Workflow script that reads `PLAN.json` and dispatches child agents.
 - `CHILD_PROMPT.md` — prompt template for each build agent.
-- `REFERENCE.md` — branch naming, child output schema, PR body template, and fallback commands.
+- `WPF_HARNESS.md` — step-by-step WPF smoke-harness instructions copied into each run.
+- `REFERENCE.md` — branch naming, JSON schemas, PR body template, and fallback behavior.
