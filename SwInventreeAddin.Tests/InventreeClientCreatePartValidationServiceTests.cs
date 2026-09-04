@@ -1,68 +1,18 @@
 using System.Net.Http;
-using System.Threading.Tasks;
 using NUnit.Framework;
 using SwInventreeAddin.InvenTree;
-using SwInventreeAddin.Tests.Stubs;
 
 namespace SwInventreeAddin.Tests
 {
     [TestFixture]
     public class InventreeClientCreatePartValidationServiceTests
     {
-        private StubInventreeClient _client = null!;
         private InventreeClientCreatePartValidationService _service = null!;
 
         [SetUp]
         public void SetUp()
         {
-            _client  = new StubInventreeClient();
-            _service = new InventreeClientCreatePartValidationService(_client);
-        }
-
-        [Test]
-        public async Task CheckIpnAvailableAsync_ExistingPart_ReturnsUnavailable()
-        {
-            _client.PartToReturn = new InventreePart { Pk = 1, Ipn = "DUP-001", Name = "Existing" };
-
-            var result = await _service.CheckIpnAvailableAsync("DUP-001");
-
-            Assert.That(result.IsAvailable, Is.False);
-            Assert.That(result.ErrorMessage, Does.Contain("DUP-001").And.Contain("already exists").IgnoreCase);
-            Assert.That(_client.LastIpnRequested, Is.EqualTo("DUP-001"));
-        }
-
-        [Test]
-        public async Task CheckIpnAvailableAsync_NoExistingPart_ReturnsAvailable()
-        {
-            _client.PartToReturn = null;
-
-            var result = await _service.CheckIpnAvailableAsync("NEW-001");
-
-            Assert.That(result.IsAvailable, Is.True);
-            Assert.That(result.ErrorMessage, Is.Null);
-            Assert.That(_client.LastIpnRequested, Is.EqualTo("NEW-001"));
-        }
-
-        [Test]
-        public async Task CheckIpnAvailableAsync_WhitespaceIpn_ReturnsAvailable()
-        {
-            _client.PartToReturn = new InventreePart { Pk = 1, Ipn = "DUP-001", Name = "Existing" };
-
-            var result = await _service.CheckIpnAvailableAsync("   ");
-
-            Assert.That(result.IsAvailable, Is.True);
-            Assert.That(_client.LastIpnRequested, Is.EqualTo(string.Empty));
-        }
-
-        [Test]
-        public void CheckIpnAvailableAsync_ClientThrows_PropagatesException()
-        {
-            _client.ThrowOnGetPartByIpn = new HttpRequestException("Stub: GetPartByIpn failed");
-
-            var ex = Assert.ThrowsAsync<HttpRequestException>(
-                () => _service.CheckIpnAvailableAsync("THROW"));
-
-            Assert.That(ex!.Message, Does.Contain("Stub"));
+            _service = new InventreeClientCreatePartValidationService();
         }
 
         [Test]

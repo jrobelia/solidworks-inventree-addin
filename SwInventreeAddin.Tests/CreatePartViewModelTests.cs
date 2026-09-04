@@ -426,24 +426,27 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public async Task CreateAsync_DuplicateIpn_SetsStatusText_AndDoesNotCreate()
+        public async Task CreateAsync_DuplicateIpn_CallsServer_AndShowsServerError()
         {
-            // An existing part already uses the IPN the user entered.
-            _validationService.ExistingPart = new InventreePart
-            {
-                Pk  = 1,
-                Ipn = "DUP-001",
-                Name = "Existing Part",
-            };
+            // The server rejects the IPN the user entered; the Create Part workflow should
+            // attempt creation, recover from the error, and display the server message.
+            const string errorBody = @"{""ipn"": [""Part with this IPN already exists.""]}";
+            _client.ThrowOnCreateException = new HttpRequestException(
+                $"InvenTree API returned 400 BadRequest: {errorBody}");
+            _validationService.ExtractedError = "Part with this IPN already exists.";
             _propertyService.Seed(_mappingProvider.Config.IpnProperty!, "ORIGINAL");
 
+            var category = MakeNode();
             var vm = CreateVm();
-            vm.SelectedCategory = MakeNode();
+            vm.SelectedCategory = category;
             vm.IpnEntry         = "DUP-001";
             await vm.CreateAsync();
 
-            Assert.That(vm.StatusText, Does.Contain("already exists").And.Contain("DUP-001"));
-            Assert.That(_client.LastCreateCategoryPk, Is.EqualTo(0), "CreatePartAsync should not be called");
+            Assert.That(_client.LastCreateCategoryPk, Is.EqualTo(category.Category.Pk),
+                "CreatePartAsync should be called so the server can validate the IPN.");
+            Assert.That(_client.LastCreateIpn, Is.EqualTo("DUP-001"));
+            Assert.That(vm.IpnErrorText, Does.Contain("Part with this IPN already exists."));
+            Assert.That(vm.StatusText,   Does.Contain("Part with this IPN already exists."));
             Assert.That(_propertyService.GetCustomProperty(_mappingProvider.Config.IpnProperty!), Is.EqualTo("ORIGINAL"));
             Assert.That(vm.IsBusy, Is.False);
         }

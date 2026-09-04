@@ -342,28 +342,8 @@ namespace SwInventreeAddin.UI
                     return;
                 }
 
-                StatusText  = "Checking IPN\u2026";
-
                 var categoryPk  = _selectedCategory!.Category.Pk;
                 var ipnToSubmit = string.IsNullOrWhiteSpace(_ipnEntry) ? null : _ipnEntry.Trim();
-
-                // If the user supplied an IPN, make sure it is not already in use.
-                // InvenTree may silently auto-generate a different number for a
-                // duplicate, so a client-side check is needed before creating.
-                if (!string.IsNullOrWhiteSpace(ipnToSubmit))
-                {
-                    var validation = await _validationService.CheckIpnAvailableAsync(ipnToSubmit!)
-                                                               .ConfigureAwait(false);
-                    if (!validation.IsAvailable)
-                    {
-                        RunOnUiThread(() =>
-                        {
-                            StatusText = validation.ErrorMessage ?? "The IPN is already in use.";
-                            IsBusy     = false;
-                        });
-                        return;
-                    }
-                }
 
                 RunOnUiThread(() => StatusText = "Creating part\u2026");
                 var flags = new PartCreationFlags

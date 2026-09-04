@@ -46,7 +46,7 @@ namespace SwInventreeAddin.UI
         {
             _client            = client;
             _createPartValidator = createPartValidator ?? (client != null
-                ? new InventreeClientCreatePartValidationService(client)
+                ? new InventreeClientCreatePartValidationService()
                 : null);
             _mappingProvider   = mappingProvider;
 
@@ -239,7 +239,7 @@ namespace SwInventreeAddin.UI
         {
             _client = client;
             _createPartValidator = client != null
-                ? new InventreeClientCreatePartValidationService(client)
+                ? new InventreeClientCreatePartValidationService()
                 : null;
             _vm.UpdateClient(client);
             _vm.UpdateCreatePartValidationService(_createPartValidator);

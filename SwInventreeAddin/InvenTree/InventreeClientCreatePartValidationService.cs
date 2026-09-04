@@ -1,38 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace SwInventreeAddin.InvenTree
 {
     /// <summary>
-    /// Production adapter for <see cref="ICreatePartValidationService"/> that checks
-    /// IPN availability through <see cref="IInventreeClient"/> and extracts IPN
-    /// validation errors from InvenTree API exception messages.
+    /// Production adapter for <see cref="ICreatePartValidationService"/> that
+    /// extracts IPN validation errors from InvenTree API exception messages.
     /// </summary>
     public class InventreeClientCreatePartValidationService : ICreatePartValidationService
     {
-        private readonly IInventreeClient _client;
-
-        public InventreeClientCreatePartValidationService(IInventreeClient client)
-        {
-            _client = client;
-        }
-
-        /// <inheritdoc/>
-        public async Task<IpnValidationResult> CheckIpnAvailableAsync(string ipn)
-        {
-            if (string.IsNullOrWhiteSpace(ipn))
-                return IpnValidationResult.Available();
-
-            var existing = await _client.GetPartByIpnAsync(ipn.Trim()).ConfigureAwait(false);
-            if (existing != null)
-                return IpnValidationResult.Unavailable(
-                    $"IPN '{ipn}' already exists. Enter a different IPN.");
-
-            return IpnValidationResult.Available();
-        }
-
         /// <inheritdoc/>
         public string? ExtractIpnError(string exceptionMessage)
         {
