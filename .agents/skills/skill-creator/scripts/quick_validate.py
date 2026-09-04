@@ -38,8 +38,19 @@ def validate_skill(skill_path):
     except yaml.YAMLError as e:
         return False, f"Invalid YAML in frontmatter: {e}"
 
-    # Define allowed properties
-    ALLOWED_PROPERTIES = {'name', 'description', 'license', 'allowed-tools', 'metadata', 'compatibility'}
+    # Define allowed properties.
+    # Devin slash-command skills also use disable-model-invocation and triggers,
+    # which are supported alongside the generic skill-creator properties.
+    ALLOWED_PROPERTIES = {
+        'name',
+        'description',
+        'license',
+        'allowed-tools',
+        'metadata',
+        'compatibility',
+        'disable-model-invocation',
+        'triggers',
+    }
 
     # Check for unexpected properties (excluding nested keys under metadata)
     unexpected_keys = set(frontmatter.keys()) - ALLOWED_PROPERTIES
