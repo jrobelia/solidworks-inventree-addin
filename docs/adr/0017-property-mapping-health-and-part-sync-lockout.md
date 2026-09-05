@@ -11,12 +11,12 @@ The **Property Mapping** JSON file now drives all Part Sync and BOM Compare oper
 - Introduce a `MappingHealth` result returned by `IPropertyMappingProvider.GetMappingResult()`. The result contains both the loaded `PropertyMappingConfig` and the `MappingHealth`.
 - `MappingHealth` has three states:
   - `Healthy` — current **Mapping Schema Version**, valid mappings, no duplicates, readable. All Part Sync actions allowed.
-  - `NeedsUpgrade` — older **Mapping Schema Version**. The editor opens with new fields blank and current default placeholders. **Fetch** is allowed, but **Apply**, **Push**, **Create Part**, and **BOM Compare** are locked until the file is saved with the current schema.
-  - `Invalid` — corrupt, locked, missing, unreadable, or duplicate SolidWorks Document Property names. No Part Sync, including **Fetch**, and the editor opens read-only.
+  - `NeedsUpgrade` — older **Mapping Schema Version**. The editor opens with new fields blank and current default placeholders. ~~**Fetch** is allowed, but~~ **Apply**, **Push**, **Create Part**, and **BOM Compare** are locked until the file is saved with the current schema. *(Superseded by ADR-0018: Fetch is also locked; only `Healthy` allows any Part Sync.)*
+  - `Invalid` — corrupt, locked, missing, unreadable, or duplicate SolidWorks Document Property names. No Part Sync, including **Fetch**, and the editor opens read-only. *(Editor read-only behavior superseded by ADR-0018: the editor is always editable when opened.)*
 - Do not silently backfill missing new fields at runtime. The editor is the only place new fields are filled, and only when the engineer saves.
 - Preserve unknown top-level JSON keys through the editor so future add-in versions and hand-edited files do not lose data.
 - The editor works on a draft copy. Save validates and writes; if save fails or the user cancels, the draft is discarded and the UI reverts.
-- For a shared read-only **Property Mapping** that is not `Invalid`, the **Settings** window offers a **Copy to local** action and instructs the engineer to switch to Local in Settings to edit.
+- ~~For a shared read-only **Property Mapping** that is not `Invalid`, the **Settings** window offers a **Copy to local** action and instructs the engineer to switch to Local in Settings to edit.~~ *(Superseded by ADR-0018: Copy-to-local is removed entirely; the editor saves to the resolved file.)*
 - The editor exposes **BOM Column Aliases** for the four fields we currently use: IPN, Qty, Reference, Note. Aliases are comma-separated and validated before save.
 - Duplicate non-blank SolidWorks Document Property names in the same mapping make the mapping `Invalid`.
 
@@ -34,5 +34,5 @@ The **Property Mapping** JSON file now drives all Part Sync and BOM Compare oper
 - Part Sync cannot run with an ambiguous or outdated mapping, preventing silent data corruption.
 - Older mapping files are migrated by opening the editor, filling the new fields, and saving — not by silent defaults.
 - Unknown keys from newer/future versions round-trip.
-- A shared older mapping does not block a single engineer; they can copy to local and upgrade.
+- ~~A shared older mapping does not block a single engineer; they can copy to local and upgrade.~~ *(Superseded by ADR-0018: the editor writes to the resolved shared or local file directly.)*
 - This supersedes ADR-0016 for the handling of missing fields and status. The unknown-key preservation from ADR-0016 remains in effect.
