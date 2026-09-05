@@ -99,6 +99,28 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public void Cancel_ClearsWarning()
+        {
+            var provider = new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig
+                {
+                    SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion,
+                    BomColumnIpn = "OldIPN",
+                }
+            };
+
+            var vm = CreateVm(provider);
+            vm.BomColumnIpn = "";
+            vm.Save();
+
+            vm.Cancel();
+
+            Assert.That(vm.WarningMessage, Is.Null);
+            Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.None));
+        }
+
+        [Test]
         public void Save_ValidChanges_PersistsToProvider()
         {
             var provider = new StubPropertyMappingProvider
@@ -123,10 +145,11 @@ namespace SwInventreeAddin.Tests
             Assert.That(provider.LastSaved, Is.Not.Null);
             Assert.That(provider.LastSaved!.IpnProperty, Is.EqualTo("NewIPN"));
             Assert.That(provider.LastSaved!.SchemaVersion, Is.EqualTo(PropertyMappingConfig.CurrentSchemaVersion));
+            Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.None));
         }
 
         [Test]
-        public void Save_WhenProviderThrows_RevertsAndReturnsFalse()
+        public void Save_WhenProviderThrows_SetsErrorMessageAndKeepsDraft()
         {
             var provider = new StubPropertyMappingProvider
             {
@@ -149,11 +172,11 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(saved, Is.False);
             Assert.That(vm.ErrorMessage, Is.EqualTo("Cannot write file."));
-            Assert.That(vm.IpnProperty, Is.EqualTo("OldIPN"));
+            Assert.That(vm.IpnProperty, Is.EqualTo("NewIPN"));
         }
 
         [Test]
-        public void Save_ValidationFailure_RevertsAndSetsErrorMessage()
+        public void Save_ValidationFailure_SetsErrorMessageAndKeepsDraft()
         {
             var provider = new StubPropertyMappingProvider
             {
@@ -170,19 +193,20 @@ namespace SwInventreeAddin.Tests
 
             var vm = CreateVm(provider);
             vm.IpnProperty = "NewIPN";
-            vm.BomColumnIpn = "";   // blank alias
+            vm.BomColumnIpn = "IPN, ipn";   // duplicate
 
             var saved = vm.Save();
 
             Assert.That(saved, Is.False);
-            Assert.That(vm.ErrorMessage, Is.Not.Null.And.Contains("BOM Column Alias for IPN"));
-            Assert.That(vm.IpnProperty, Is.EqualTo("OldIPN"));
+            Assert.That(vm.ErrorMessage, Is.Not.Null.And.Contains("duplicate alias").IgnoreCase);
+            Assert.That(vm.IpnProperty, Is.EqualTo("NewIPN"));
+            Assert.That(vm.BomColumnIpn, Is.EqualTo("IPN, ipn"));
         }
 
         // ── Duplicate property name validation ─────────────────────────────────
 
         [Test]
-        public void Save_DuplicateSolidWorksPropertyNames_FailsAndReverts()
+        public void Save_DuplicateSolidWorksPropertyNames_FailsAndKeepsDraft()
         {
             var provider = new StubPropertyMappingProvider
             {
@@ -205,14 +229,14 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(saved, Is.False);
             Assert.That(vm.ErrorMessage, Is.Not.Null.And.Contains("Duplicate").IgnoreCase);
-            Assert.That(vm.NameProperty, Is.EqualTo("Description"));
+            Assert.That(vm.NameProperty, Is.EqualTo("PartNo"));
         }
 
         // ── BOM alias validation ───────────────────────────────────────────────
 
         [TestCase("")]
         [TestCase("   ")]
-        public void Save_BomAliasBlank_Fails(string alias)
+        public void Save_BomColumnIpnBlank_SavesWithWarning(string alias)
         {
             var provider = ValidProvider();
             var vm = CreateVm(provider);
@@ -220,12 +244,91 @@ namespace SwInventreeAddin.Tests
 
             var saved = vm.Save();
 
-            Assert.That(saved, Is.False);
-            Assert.That(vm.ErrorMessage, Does.Contain("BOM Column Alias for IPN").And.Contain("blank").IgnoreCase);
+            Assert.That(saved, Is.True);
+            Assert.That(provider.LastSaved, Is.Not.Null);
+            Assert.That(provider.LastSaved!.BomColumnIpn, Is.Null);
+            Assert.That(vm.WarningMessage, Is.Not.Null.And.Contains("IPN").And.Contains("BOM Compare").IgnoreCase);
+            Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
         }
 
         [Test]
-        public void Save_BomAliasLeadingComma_Fails()
+        public void Save_BomColumnQtyBlank_SavesWithWarning()
+        {
+            var provider = ValidProvider();
+            var vm = CreateVm(provider);
+            vm.BomColumnQty = "";
+
+            var saved = vm.Save();
+
+            Assert.That(saved, Is.True);
+            Assert.That(provider.LastSaved, Is.Not.Null);
+            Assert.That(provider.LastSaved!.BomColumnQty, Is.Null);
+            Assert.That(vm.WarningMessage, Is.Not.Null.And.Contains("Qty").And.Contains("BOM Compare").IgnoreCase);
+            Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+        }
+
+        [Test]
+        public void Save_BomColumnIpnAndQtyBlank_SavesWithWarning()
+        {
+            var provider = ValidProvider();
+            var vm = CreateVm(provider);
+            vm.BomColumnIpn = "";
+            vm.BomColumnQty = "";
+
+            var saved = vm.Save();
+
+            Assert.That(saved, Is.True);
+            Assert.That(vm.WarningMessage, Is.Not.Null.And.Contains("IPN").And.Contains("Qty").IgnoreCase);
+            Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+        }
+
+        [Test]
+        public void Save_BomColumnReferenceBlank_SavesWithoutWarning()
+        {
+            var provider = ValidProvider();
+            var vm = CreateVm(provider);
+            vm.BomColumnReference = "";
+
+            var saved = vm.Save();
+
+            Assert.That(saved, Is.True);
+            Assert.That(vm.WarningMessage, Is.Null);
+            Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.None));
+        }
+
+        [Test]
+        public void Save_BomColumnNoteBlank_SavesWithoutWarning()
+        {
+            var provider = ValidProvider();
+            var vm = CreateVm(provider);
+            vm.BomColumnNote = "";
+
+            var saved = vm.Save();
+
+            Assert.That(saved, Is.True);
+            Assert.That(vm.WarningMessage, Is.Null);
+            Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.None));
+        }
+
+        [Test]
+        public void Save_BlankIpnWarning_ClearedWhenAliasIsFixed()
+        {
+            var provider = ValidProvider();
+            var vm = CreateVm(provider);
+            vm.BomColumnIpn = "";
+
+            vm.Save();
+            Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+
+            vm.BomColumnIpn = "IPN";
+            vm.Save();
+
+            Assert.That(vm.WarningMessage, Is.Null);
+            Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.None));
+        }
+
+        [Test]
+        public void Save_BomAliasLeadingComma_FailsAndKeepsDraft()
         {
             var provider = ValidProvider();
             var vm = CreateVm(provider);
@@ -234,11 +337,12 @@ namespace SwInventreeAddin.Tests
             var saved = vm.Save();
 
             Assert.That(saved, Is.False);
-            Assert.That(vm.ErrorMessage, Does.Contain("BOM Column Alias for IPN").IgnoreCase);
+            Assert.That(vm.ErrorMessage, Is.Not.Null.And.Contains("BOM Column Alias for IPN").IgnoreCase);
+            Assert.That(vm.BomColumnIpn, Is.EqualTo(",IPN"));
         }
 
         [Test]
-        public void Save_BomAliasTrailingComma_Fails()
+        public void Save_BomAliasTrailingComma_FailsAndKeepsDraft()
         {
             var provider = ValidProvider();
             var vm = CreateVm(provider);
@@ -247,11 +351,12 @@ namespace SwInventreeAddin.Tests
             var saved = vm.Save();
 
             Assert.That(saved, Is.False);
-            Assert.That(vm.ErrorMessage, Does.Contain("BOM Column Alias for IPN").IgnoreCase);
+            Assert.That(vm.ErrorMessage, Is.Not.Null.And.Contains("BOM Column Alias for IPN").IgnoreCase);
+            Assert.That(vm.BomColumnIpn, Is.EqualTo("IPN,"));
         }
 
         [Test]
-        public void Save_BomAliasBlankBetweenCommas_Fails()
+        public void Save_BomAliasBlankBetweenCommas_FailsAndKeepsDraft()
         {
             var provider = ValidProvider();
             var vm = CreateVm(provider);
@@ -260,11 +365,12 @@ namespace SwInventreeAddin.Tests
             var saved = vm.Save();
 
             Assert.That(saved, Is.False);
-            Assert.That(vm.ErrorMessage, Does.Contain("blank entry").IgnoreCase);
+            Assert.That(vm.ErrorMessage, Is.Not.Null.And.Contains("blank entry").IgnoreCase);
+            Assert.That(vm.BomColumnIpn, Is.EqualTo("IPN,,PartNo"));
         }
 
         [Test]
-        public void Save_BomAliasDuplicateWithinColumn_Fails()
+        public void Save_BomAliasDuplicateWithinColumn_FailsAndKeepsDraft()
         {
             var provider = ValidProvider();
             var vm = CreateVm(provider);
@@ -273,11 +379,12 @@ namespace SwInventreeAddin.Tests
             var saved = vm.Save();
 
             Assert.That(saved, Is.False);
-            Assert.That(vm.ErrorMessage, Does.Contain("duplicate alias").IgnoreCase);
+            Assert.That(vm.ErrorMessage, Is.Not.Null.And.Contains("duplicate alias").IgnoreCase);
+            Assert.That(vm.BomColumnIpn, Is.EqualTo("IPN, ipn"));
         }
 
         [Test]
-        public void Save_BomAliasSharedAcrossColumns_Fails()
+        public void Save_BomAliasSharedAcrossColumns_FailsAndKeepsDraft()
         {
             var provider = ValidProvider();
             var vm = CreateVm(provider);
@@ -287,7 +394,9 @@ namespace SwInventreeAddin.Tests
             var saved = vm.Save();
 
             Assert.That(saved, Is.False);
-            Assert.That(vm.ErrorMessage, Does.Contain("used for more than one field").IgnoreCase);
+            Assert.That(vm.ErrorMessage, Is.Not.Null.And.Contains("used for more than one field").IgnoreCase);
+            Assert.That(vm.BomColumnIpn, Is.EqualTo("IPN"));
+            Assert.That(vm.BomColumnQty, Is.EqualTo("IPN"));
         }
 
         [Test]

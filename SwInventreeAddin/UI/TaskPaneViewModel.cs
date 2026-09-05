@@ -1320,6 +1320,10 @@ namespace SwInventreeAddin.UI
             else
                 action();
         }
+
+        // ── IBomReadinessSource ────────────────────────────────────────────────
+
+        PropertyMappingConfig IBomReadinessSource.CurrentMapping => GetMappingOrDefault();
     }
 
     /// <summary>Severity level for the status bar stripe colour.</summary>

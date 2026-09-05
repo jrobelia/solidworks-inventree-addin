@@ -10,7 +10,7 @@ namespace SwInventreeAddin.UI
     /// <summary>
     /// Non-WPF state and validation for the Property Mapping editor.
     /// Holds a draft copy of the mapping, validates it on save, and reverts
-    /// when the user cancels or the save fails.
+    /// when the user cancels.
     /// </summary>
     public class MappingEditorViewModel : INotifyPropertyChanged
     {
@@ -45,6 +45,7 @@ namespace SwInventreeAddin.UI
         private readonly MappingResult            _result;
 
         private          string?                    _errorMessage;
+        private          string?                    _warningMessage;
 
         // ── Defaults ───────────────────────────────────────────────────────────
 
@@ -151,24 +152,38 @@ namespace SwInventreeAddin.UI
             }
         }
 
+        public string? WarningMessage
+        {
+            get => _warningMessage;
+            private set
+            {
+                Set(ref _warningMessage, value);
+                OnPropertyChanged(nameof(StatusMessage));
+                OnPropertyChanged(nameof(StatusSeverity));
+            }
+        }
+
         /// <summary>Validation status text shown in the editor status bar and tooltip.</summary>
-        public string StatusMessage => _errorMessage ?? "No validation errors.";
+        public string StatusMessage => _errorMessage ?? _warningMessage ?? "No validation errors.";
 
         /// <summary>Severity stripe colour for the editor status bar.</summary>
         public StatusSeverity StatusSeverity =>
-            string.IsNullOrEmpty(_errorMessage) ? StatusSeverity.None : StatusSeverity.Error;
+            _errorMessage != null ? StatusSeverity.Error :
+            _warningMessage != null ? StatusSeverity.Warning :
+            StatusSeverity.None;
 
         // ── Commands ───────────────────────────────────────────────────────────
 
         /// <summary>
         /// Validates the draft and, if it is valid, persists it through
         /// <see cref="IPropertyMappingProvider.SaveMapping"/>.
-        /// Returns <c>true</c> when the save succeeds; otherwise reverts the
-        /// draft and returns <c>false</c>.
+        /// Returns <c>true</c> when the save succeeds; otherwise returns <c>false</c>
+        /// and leaves the draft open for correction.
         /// </summary>
         public bool Save()
         {
             ErrorMessage = null;
+            WarningMessage = null;
 
             _draft.SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion;
             var draft = _draft.Normalized();
@@ -177,22 +192,26 @@ namespace SwInventreeAddin.UI
             if (!string.IsNullOrEmpty(validationError))
             {
                 ErrorMessage = validationError;
-                RevertToOriginal();
                 return false;
             }
+
+            var warning = CheckBomAliasWarning(draft);
 
             try
             {
                 _provider.SaveMapping(draft);
                 _original = draft.Clone();
-                return true;
             }
             catch (Exception ex)
             {
                 ErrorMessage = ex.Message;
-                RevertToOriginal();
                 return false;
             }
+
+            if (!string.IsNullOrEmpty(warning))
+                WarningMessage = warning;
+
+            return true;
         }
 
         /// <summary>
@@ -202,6 +221,7 @@ namespace SwInventreeAddin.UI
         public void Cancel()
         {
             ErrorMessage = null;
+            WarningMessage = null;
             RevertToOriginal();
         }
 
@@ -235,7 +255,7 @@ namespace SwInventreeAddin.UI
             foreach (var (role, value) in aliases)
             {
                 if (string.IsNullOrWhiteSpace(value))
-                    return $"BOM Column Alias for {role} cannot be blank.";
+                    continue;
 
                 var trimmed = value!.Trim();
                 if (trimmed.Length != value!.Length)
@@ -261,6 +281,25 @@ namespace SwInventreeAddin.UI
             }
 
             return null;
+        }
+
+        // ── Warning helpers ────────────────────────────────────────────────────
+
+        private static string? CheckBomAliasWarning(PropertyMappingConfig draft)
+        {
+            var missing = new List<string>();
+            if (string.IsNullOrWhiteSpace(draft.BomColumnIpn)) missing.Add("IPN");
+            if (string.IsNullOrWhiteSpace(draft.BomColumnQty)) missing.Add("Qty");
+            if (missing.Count == 0) return null;
+
+            var aliasList = string.Join(" and ", missing);
+            var valueList = string.Join(" or ", missing);
+            var be        = missing.Count == 1 ? "is" : "are";
+            var pronoun   = missing.Count == 1 ? "it is" : "they are";
+            var aliasWord = missing.Count == 1 ? "Alias" : "Aliases";
+
+            return $"The {aliasList} BOM Column {aliasWord} {be} blank. "
+                 + $"BOM Compare will not find {valueList} values until {pronoun} set.";
         }
 
         // ── Draft helpers ──────────────────────────────────────────────────────

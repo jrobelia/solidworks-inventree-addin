@@ -193,6 +193,20 @@ namespace SwInventreeAddin.UI
                     new BomTableMissingDialog(_bomKeyword, SolidWorksWindowHandle.Get()).ShowDialog();
                     return;
                 }
+
+                case BomCompareOutcome.BomColumnAliasesMissing:
+                {
+                    System.Windows.Forms.MessageBox.Show(
+                        WindowHandleOwner.FromSolidWorks(),
+                        "The IPN or Qty BOM Column Alias is blank.\n\n"
+                        + "BOM Compare will not find any IPN or quantity values until the missing alias is set "
+                        + "in Settings > Property Mappings.\n\n"
+                        + "Click OK to open the comparison anyway.",
+                        "BOM Compare \u2014 Missing Alias",
+                        System.Windows.Forms.MessageBoxButtons.OK,
+                        System.Windows.Forms.MessageBoxIcon.Warning);
+                    break;
+                }
             }
 
             int pk      = _vm.CurrentInvenTreePk;

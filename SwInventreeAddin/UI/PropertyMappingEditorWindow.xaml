@@ -230,10 +230,14 @@
                     <ColumnDefinition Width="150" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="IPN"
+                <TextBlock Grid.Column="0"
                            VerticalAlignment="Center"
                            FontWeight="SemiBold"
-                           Foreground="{StaticResource BrushForeground}" />
+                           Foreground="{StaticResource BrushForeground}"
+                           ToolTip="BOM Compare needs this alias">
+                    <Run Text="IPN" />
+                    <Run Text="*" Foreground="{StaticResource BrushStatusWarning}" FontWeight="Bold" />
+                </TextBlock>
                 <TextBox Grid.Column="1"
                          Style="{StaticResource MappingFieldStyle}"
                          Height="26"
@@ -247,10 +251,14 @@
                     <ColumnDefinition Width="150" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="Qty"
+                <TextBlock Grid.Column="0"
                            VerticalAlignment="Center"
                            FontWeight="SemiBold"
-                           Foreground="{StaticResource BrushForeground}" />
+                           Foreground="{StaticResource BrushForeground}"
+                           ToolTip="BOM Compare needs this alias">
+                    <Run Text="Qty" />
+                    <Run Text="*" Foreground="{StaticResource BrushStatusWarning}" FontWeight="Bold" />
+                </TextBlock>
                 <TextBox Grid.Column="1"
                          Style="{StaticResource MappingFieldStyle}"
                          Height="26"

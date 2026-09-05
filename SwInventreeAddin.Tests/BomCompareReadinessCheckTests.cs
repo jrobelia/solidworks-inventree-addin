@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using SwInventreeAddin.Bom;
+using SwInventreeAddin.Config;
 using SwInventreeAddin.SolidWorks;
 using SwInventreeAddin.Tests.Stubs;
 
@@ -12,12 +13,26 @@ namespace SwInventreeAddin.Tests
     {
         private const string DefaultBomKeyword = "inventree";
 
-        // -- Stub ---------------------------------------------------------------
+        // -- Stub -------------------------------------------------------------
 
         // -- Helpers ------------------------------------------------------------
 
         private static IAssemblyBomService CreateBomService(bool hasTable = true) =>
             new StubAssemblyBomService { HasBomTableResult = hasTable };
+
+        private static PropertyMappingConfig CreateMapping(
+            string? ipnAlias = "IPN",
+            string? qtyAlias = "Qty",
+            string? referenceAlias = "Reference",
+            string? noteAlias = "Note") =>
+            new PropertyMappingConfig
+            {
+                SchemaVersion      = PropertyMappingConfig.CurrentSchemaVersion,
+                BomColumnIpn       = ipnAlias,
+                BomColumnQty       = qtyAlias,
+                BomColumnReference = referenceAlias,
+                BomColumnNote      = noteAlias,
+            };
 
         private sealed class StubSource : IBomReadinessSource
         {
@@ -26,6 +41,7 @@ namespace SwInventreeAddin.Tests
             public string CurrentPk          { get; set; } = string.Empty;
             public string CurrentRevision    { get; set; } = string.Empty;
             public string RevisionPreview    { get; set; } = string.Empty;
+            public PropertyMappingConfig CurrentMapping { get; set; } = CreateMapping();
 
             public bool FetchCalled         { get; private set; }
             public bool RefreshCalled       { get; private set; }
@@ -217,6 +233,116 @@ namespace SwInventreeAddin.Tests
             Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.BomTableMissing));
             Assert.That(source.FetchCalled, Is.False);
             Assert.That(source.CurrentInvenTreePk, Is.EqualTo(0));
+        }
+
+        // -- BOM column alias pre-flight ----------------------------------------
+
+        [Test]
+        public async Task CheckAsync_BomColumnIpnBlank_ReturnsBomColumnAliasesMissing()
+        {
+            var source = new StubSource
+            {
+                CurrentInvenTreePk = 42,
+                CurrentPk          = "42",
+                CurrentRevision    = "A",
+                RevisionPreview    = "A",
+                CurrentMapping     = CreateMapping(ipnAlias: "", qtyAlias: "Qty"),
+            };
+            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
+
+            var result = await check.CheckAsync();
+
+            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.BomColumnAliasesMissing));
+        }
+
+        [Test]
+        public async Task CheckAsync_BomColumnQtyBlank_ReturnsBomColumnAliasesMissing()
+        {
+            var source = new StubSource
+            {
+                CurrentInvenTreePk = 42,
+                CurrentPk          = "42",
+                CurrentRevision    = "A",
+                RevisionPreview    = "A",
+                CurrentMapping     = CreateMapping(ipnAlias: "IPN", qtyAlias: ""),
+            };
+            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
+
+            var result = await check.CheckAsync();
+
+            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.BomColumnAliasesMissing));
+        }
+
+        [Test]
+        public async Task CheckAsync_BomColumnIpnAndQtyBlank_ReturnsBomColumnAliasesMissing()
+        {
+            var source = new StubSource
+            {
+                CurrentInvenTreePk = 42,
+                CurrentPk          = "42",
+                CurrentRevision    = "A",
+                RevisionPreview    = "A",
+                CurrentMapping     = CreateMapping(ipnAlias: "", qtyAlias: ""),
+            };
+            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
+
+            var result = await check.CheckAsync();
+
+            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.BomColumnAliasesMissing));
+        }
+
+        [Test]
+        public async Task CheckAsync_BomColumnAliasesPresent_ReturnsReady()
+        {
+            var source = new StubSource
+            {
+                CurrentInvenTreePk = 42,
+                CurrentPk          = "42",
+                CurrentRevision    = "A",
+                RevisionPreview    = "A",
+                CurrentMapping     = CreateMapping(),
+            };
+            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
+
+            var result = await check.CheckAsync();
+
+            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.Ready));
+        }
+
+        [Test]
+        public async Task CheckAsync_NoBomTableAndMissingAliases_ReturnsBomTableMissing()
+        {
+            var source = new StubSource
+            {
+                CurrentInvenTreePk = 42,
+                CurrentPk          = "42",
+                CurrentRevision    = "A",
+                RevisionPreview    = "A",
+                CurrentMapping     = CreateMapping(ipnAlias: "", qtyAlias: ""),
+            };
+            var check = new BomCompareReadinessCheck(source, CreateBomService(false), DefaultBomKeyword);
+
+            var result = await check.CheckAsync();
+
+            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.BomTableMissing));
+        }
+
+        [Test]
+        public async Task CheckAsync_ItIsNewer_WithMissingAliases_ReturnsItIsNewer()
+        {
+            var source = new StubSource
+            {
+                CurrentInvenTreePk = 42,
+                CurrentPk          = "42",
+                CurrentRevision    = "A",
+                RevisionPreview    = "B",
+                CurrentMapping     = CreateMapping(ipnAlias: "", qtyAlias: ""),
+            };
+            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
+
+            var result = await check.CheckAsync();
+
+            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.ItIsNewer));
         }
 
         // -- PushRevisionAsync --------------------------------------------------
