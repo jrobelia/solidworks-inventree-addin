@@ -1256,20 +1256,20 @@ namespace SwInventreeAddin.UI
             if (_mappingProvider == null) return;
 
             RefreshMappingResult();
-            var toolTip = _mappingResult!.ToolTip;
+            var status = _mappingResult!.FullStatusMessage;
             switch (_mappingResult!.Health)
             {
                 case MappingHealth.Invalid:
                     _mappingHealthWarningActive = true;
-                    SetStatus(MappingResult.GetDefaultMessage(MappingHealth.Invalid), StatusSeverity.Error, toolTip);
+                    SetStatus(status, StatusSeverity.Error, status);
                     break;
                 case MappingHealth.NeedsUpgrade:
                     _mappingHealthWarningActive = true;
-                    SetStatus(MappingResult.GetDefaultMessage(MappingHealth.NeedsUpgrade), StatusSeverity.Warning, toolTip);
+                    SetStatus(status, StatusSeverity.Warning, status);
                     break;
                 case MappingHealth.NewerSchema:
                     _mappingHealthWarningActive = true;
-                    SetStatus(MappingResult.GetDefaultMessage(MappingHealth.NewerSchema), StatusSeverity.Warning, toolTip);
+                    SetStatus(status, StatusSeverity.Warning, status);
                     break;
                 default:
                     if (_mappingHealthWarningActive)
