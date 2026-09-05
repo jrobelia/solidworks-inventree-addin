@@ -170,15 +170,15 @@ namespace SwInventreeAddin.UI
                 SharedRadio.IsChecked = hasSharedPath;
                 LocalRadio.IsChecked  = !hasSharedPath;
 
-                Brush? stripeColor = result.Health switch
+                var stripeSeverity = result.Health switch
                 {
-                    MappingHealth.Healthy      => (Brush?)FindResource("BrushStatusSuccess"),
-                    MappingHealth.NeedsUpgrade => (Brush?)FindResource("BrushStatusWarning"),
-                    MappingHealth.NewerSchema  => (Brush?)FindResource("BrushStatusWarning"),
-                    _                          => (Brush?)FindResource("BrushStatusError"),
+                    MappingHealth.Healthy      => StatusSeverity.Success,
+                    MappingHealth.NeedsUpgrade => StatusSeverity.Warning,
+                    MappingHealth.NewerSchema  => StatusSeverity.Warning,
+                    _                          => StatusSeverity.Error,
                 };
 
-                MappingStatusStripe.Background = stripeColor;
+                MappingStatusStripe.Background = StatusSeverityToBrush(this, stripeSeverity);
                 _mappingStatusDetail           = result.FullStatusMessage;
                 MappingStatusText.Text         = _mappingStatusDetail;
                 MappingStatusText.ToolTip      = _mappingStatusDetail;
@@ -186,21 +186,11 @@ namespace SwInventreeAddin.UI
             }
             catch (InvalidOperationException ex)
             {
-                EditMappingsButton.IsEnabled   = false;
-                MappingStatusStripe.Background = (Brush)FindResource("BrushStatusError");
-                _mappingStatusDetail           = $"{MappingResult.GetDefaultMessage(MappingHealth.Invalid)} {ex.Message} {MappingResult.InvalidMappingHelp}";
-                MappingStatusText.Text         = _mappingStatusDetail;
-                MappingStatusText.ToolTip      = _mappingStatusDetail;
-                return false;
+                return ShowInvalidMappingStatus(ex.Message);
             }
             catch (Exception ex)
             {
-                EditMappingsButton.IsEnabled   = false;
-                MappingStatusStripe.Background = (Brush)FindResource("BrushStatusError");
-                _mappingStatusDetail           = $"{MappingResult.GetDefaultMessage(MappingHealth.Invalid)} Failed to load the Property Mapping file: {ex.Message} {MappingResult.InvalidMappingHelp}";
-                MappingStatusText.Text         = _mappingStatusDetail;
-                MappingStatusText.ToolTip      = _mappingStatusDetail;
-                return false;
+                return ShowInvalidMappingStatus($"Failed to load the Property Mapping file: {ex.Message}");
             }
         }
 
@@ -210,6 +200,20 @@ namespace SwInventreeAddin.UI
 
             EditMappingsButtonText.Text =
                 result.Source == MappingSource.Local ? "Edit Local Mappings" : "Edit Shared Mappings";
+        }
+
+        private bool ShowInvalidMappingStatus(string detail)
+        {
+            var result = new MappingResult(MappingHealth.Invalid,
+                                           PropertyMappingConfig.WithDefaults(),
+                                           detail);
+
+            EditMappingsButton.IsEnabled   = false;
+            MappingStatusStripe.Background = StatusSeverityToBrush(this, StatusSeverity.Error);
+            _mappingStatusDetail           = result.FullStatusMessage;
+            MappingStatusText.Text         = _mappingStatusDetail;
+            MappingStatusText.ToolTip      = _mappingStatusDetail;
+            return false;
         }
 
         private ServerConfig? TryGetConfig()
@@ -254,7 +258,7 @@ namespace SwInventreeAddin.UI
         private async void Apply_Click(object sender, RoutedEventArgs e)
         {
             if (!await ApplySettingsAsync()) return;
-            this.Dispatcher.Invoke(() => SetActionStatus("\u2713  Settings applied.", error: false, success: true));
+            this.Dispatcher.Invoke(() => SetActionStatus("\u2713  Settings applied.", StatusSeverity.Success));
         }
 
         // ── Shared settings save + notify ─────────────────────────────────────
@@ -274,7 +278,7 @@ namespace SwInventreeAddin.UI
             }
             catch (SettingsApplyException ex)
             {
-                this.Dispatcher.Invoke(() => SetActionStatus(ex.Message, error: true));
+                this.Dispatcher.Invoke(() => SetActionStatus(ex.Message, StatusSeverity.Error));
                 return false;
             }
 
@@ -294,13 +298,13 @@ namespace SwInventreeAddin.UI
                 if (!mappingOk)
                 {
                     this.Dispatcher.Invoke(() =>
-                        SetActionStatus(_mappingStatusDetail ?? MappingStatusText.Text, error: true));
+                        SetActionStatus(_mappingStatusDetail ?? MappingStatusText.Text, StatusSeverity.Error));
                     return false;
                 }
             }
             catch (Exception ex)
             {
-                this.Dispatcher.Invoke(() => SetActionStatus($"Failed to load the Property Mapping file: {ex.Message}", error: true));
+                this.Dispatcher.Invoke(() => SetActionStatus($"Failed to load the Property Mapping file: {ex.Message}", StatusSeverity.Error));
                 return false;
             }
 
@@ -311,13 +315,13 @@ namespace SwInventreeAddin.UI
                     MappingApplied?.Invoke(this, _mappingProvider);
                     _savedSnapshot = CaptureSnapshot();
                     RefreshButtonStates();
-                    SetActionStatus("\u2713  Settings applied.", error: false, success: true);
+                    SetActionStatus("\u2713  Settings applied.", StatusSeverity.Success);
                 });
                 return true;
             }
             catch (Exception ex)
             {
-                this.Dispatcher.Invoke(() => SetActionStatus($"Failed to apply settings: {ex.Message}", error: true));
+                this.Dispatcher.Invoke(() => SetActionStatus($"Failed to apply settings: {ex.Message}", StatusSeverity.Error));
                 return false;
             }
         }
@@ -342,16 +346,16 @@ namespace SwInventreeAddin.UI
                 }
 
                 this.Dispatcher.Invoke(() =>
-                    SetConnectionStatus("\u2713  Connection successful.", error: false, success: true));
+                    SetConnectionStatus("\u2713  Connection successful.", StatusSeverity.Success));
             }
             catch (InvalidOperationException ex)
             {
-                this.Dispatcher.Invoke(() => SetConnectionStatus(ex.Message, error: true));
+                this.Dispatcher.Invoke(() => SetConnectionStatus(ex.Message, StatusSeverity.Error));
             }
             catch (Exception ex)
             {
                 this.Dispatcher.Invoke(() =>
-                    SetConnectionStatus($"Connection failed: {ex.Message}", error: true));
+                    SetConnectionStatus($"Connection failed: {ex.Message}", StatusSeverity.Error));
             }
         }
 
@@ -378,21 +382,27 @@ namespace SwInventreeAddin.UI
 
         // Server-connection results live beside the Test Connection button; Apply/Save
         // results live in the status bar next to the action buttons (ADR-0018).
-        private void SetConnectionStatus(string text, bool error, bool success = false) =>
-            SetStatusBar(ConnectionStatusText, ConnectionStatusStripe, text, error, success);
+        internal void SetConnectionStatus(string text, StatusSeverity severity) =>
+            SetStatusBar(ConnectionStatusText, ConnectionStatusStripe, text, severity);
 
-        private void SetActionStatus(string text, bool error, bool success = false) =>
-            SetStatusBar(ActionStatusText, ActionStatusStripe, text, error, success);
+        internal void SetActionStatus(string text, StatusSeverity severity) =>
+            SetStatusBar(ActionStatusText, ActionStatusStripe, text, severity);
+
+        private static Brush StatusSeverityToBrush(FrameworkElement element, StatusSeverity severity) =>
+            (Brush)element.FindResource(severity switch
+            {
+                StatusSeverity.Success => "BrushStatusSuccess",
+                StatusSeverity.Warning => "BrushStatusWarning",
+                StatusSeverity.Error   => "BrushStatusError",
+                _                      => "BrushStatusNone",
+            });
 
         private void SetStatusBar(System.Windows.Controls.TextBox textBox, System.Windows.Controls.Border stripe,
-                                  string text, bool error, bool success)
+                                  string text, StatusSeverity severity)
         {
-            textBox.Text      = text;
-            textBox.ToolTip   = string.IsNullOrEmpty(text) ? null : text;
-            stripe.Background =
-                error   ? (Brush)FindResource("BrushStatusError")
-                : success ? (Brush)FindResource("BrushStatusSuccess")
-                :           (Brush)FindResource("BrushStatusNone");
+            textBox.Text    = text;
+            textBox.ToolTip = string.IsNullOrEmpty(text) ? null : text;
+            stripe.Background = StatusSeverityToBrush(this, severity);
         }
     }
 }

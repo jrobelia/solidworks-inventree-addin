@@ -230,5 +230,15 @@ namespace SwInventreeAddin.Tests
             Assert.That(result.FullStatusMessage, Does.Contain("Missing file."));
             Assert.That(result.FullStatusMessage, Does.Contain(MappingResult.InvalidMappingHelp));
         }
+
+        [Test]
+        public void FullStatusMessage_Invalid_WhenMessageLacksPunctuation_AddsPeriod()
+        {
+            var result = new MappingResult(MappingHealth.Invalid, PropertyMappingConfig.WithDefaults(), "Missing file");
+
+            Assert.That(result.FullStatusMessage, Does.StartWith("The Property Mapping file is invalid."));
+            Assert.That(result.FullStatusMessage, Does.Contain("Missing file."));
+            Assert.That(result.FullStatusMessage, Does.Contain(MappingResult.InvalidMappingHelp));
+        }
     }
 }

@@ -176,8 +176,8 @@
 
     <!-- ── Global tooltip style ───────────────────────────────────────────── -->
     <!--
-        Appears above the control, wraps text at the placement target's width.
-        Applied to every ToolTip in the app automatically.
+        Appears above the control and wraps long status messages at a readable
+        maximum width. Applied to every ToolTip in the app automatically.
     -->
     <Style TargetType="ToolTip">
         <Setter Property="Placement"      Value="Top" />
@@ -188,8 +188,7 @@
                     <TextBlock
                         Text="{Binding}"
                         TextWrapping="Wrap"
-                        MaxWidth="{Binding PlacementTarget.ActualWidth,
-                                  RelativeSource={RelativeSource AncestorType=ToolTip}}" />
+                        MaxWidth="360" />
                 </DataTemplate>
             </Setter.Value>
         </Setter>

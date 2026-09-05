@@ -148,6 +148,20 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public void ConnectionStatusText_LongError_ToolTipContainsFullMessage()
+        {
+            var longMessage = "Connection failed: " + new string('x', 500);
+
+            var window = CreateWindow();
+            window.SetConnectionStatus(longMessage, StatusSeverity.Error);
+
+            var textBox = (TextBox)System.Windows.LogicalTreeHelper.FindLogicalNode(window, "ConnectionStatusText")!;
+            Assert.That(textBox.ToolTip, Is.InstanceOf<string>());
+            Assert.That((string)textBox.ToolTip, Does.Contain(longMessage));
+            Assert.That(textBox.ToolTip, Is.EqualTo(textBox.Text));
+        }
+
+        [Test]
         public async Task ActionStatusText_LongError_ToolTipContainsFullMessage()
         {
             var longMessage = "Failed to save server settings: " + new string('x', 500);

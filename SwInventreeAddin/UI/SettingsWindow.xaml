@@ -88,6 +88,7 @@
                 <Button Grid.Column="2"
                         Style="{StaticResource SecondaryButtonStyle}"
                         Width="140" Margin="0"
+                        VerticalAlignment="Center"
                         Click="Test_Click">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Test Connection" VerticalAlignment="Center" />
@@ -270,6 +271,7 @@
                         Grid.Column="2"
                         Style="{StaticResource SecondaryButtonStyle}"
                         Width="80" Margin="0"
+                        VerticalAlignment="Center"
                         Click="Apply_Click">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Apply" VerticalAlignment="Center" />
@@ -281,6 +283,7 @@
                         Grid.Column="4"
                         Style="{StaticResource PrimaryButtonStyle}"
                         Width="80" Margin="0"
+                        VerticalAlignment="Center"
                         IsDefault="True"
                         Click="Save_Click">
                     <StackPanel Orientation="Horizontal">
@@ -293,6 +296,7 @@
                         Grid.Column="6"
                         Style="{StaticResource SecondaryButtonStyle}"
                         Width="80" Margin="0"
+                        VerticalAlignment="Center"
                         IsCancel="True"
                         Click="Cancel_Click">
                     <StackPanel Orientation="Horizontal">

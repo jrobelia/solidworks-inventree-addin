@@ -48,14 +48,23 @@ namespace SwInventreeAddin.Config
                 return Health switch
                 {
                     MappingHealth.Healthy      => MessageOrDefault,
-                    MappingHealth.NeedsUpgrade => $"{MessageOrDefault} {tooltip}",
-                    MappingHealth.NewerSchema  => $"{MessageOrDefault} {tooltip}",
+                    MappingHealth.NeedsUpgrade => $"{EnsureTrailingPunctuation(MessageOrDefault)} {tooltip}",
+                    MappingHealth.NewerSchema  => $"{EnsureTrailingPunctuation(MessageOrDefault)} {tooltip}",
                     MappingHealth.Invalid      => string.IsNullOrEmpty(Message)
                         ? tooltip
-                        : $"{GetDefaultMessage(Health)} {Message} {InvalidMappingHelp}",
+                        : $"{GetDefaultMessage(Health)} {EnsureTrailingPunctuation(Message!)} {InvalidMappingHelp}",
                     _                          => MessageOrDefault,
                 };
             }
+        }
+
+        private static string EnsureTrailingPunctuation(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return text;
+
+            var trimmed = text.TrimEnd();
+            return char.IsPunctuation(trimmed[trimmed.Length - 1]) ? trimmed : trimmed + ".";
         }
 
         /// <summary>
