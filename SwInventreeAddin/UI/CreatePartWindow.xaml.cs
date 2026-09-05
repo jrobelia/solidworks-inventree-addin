@@ -37,11 +37,11 @@ namespace SwInventreeAddin.UI
             // Close the dialog with a success result as soon as the part is created.
             vm.PartCreated += OnPartCreated;
 
-            // Mirror StatusText onto the status bar.
+            // Mirror StatusText onto the status bar tooltip.
             vm.PropertyChanged += (_, e) =>
             {
                 if (e.PropertyName == nameof(CreatePartViewModel.StatusText))
-                    StatusTextBlock.Text = vm.StatusText;
+                    StatusTextBox.ToolTip = string.IsNullOrEmpty(vm.StatusText) ? null : vm.StatusText;
             };
 
             // Kick off the initial category load.
