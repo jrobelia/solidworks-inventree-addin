@@ -644,6 +644,48 @@ namespace SwInventreeAddin.Tests
                 "IsReadOnly must be removed from the public seam.");
         }
 
+        [Test]
+        public void GetMappingResult_ExternalFileEditToOlderSchema_RaisesMappingChanged()
+        {
+            var provider = new PropertyMappingProvider(_localPath, null);
+
+            WriteJson(_localPath, new PropertyMappingConfig { IpnProperty = "PartNo" });
+            var first = provider.GetMappingResult();
+            Assert.That(first.Health, Is.EqualTo(MappingHealth.Healthy));
+
+            var raised = false;
+            provider.MappingChanged += (s, e) => raised = true;
+            WriteJson(_localPath, new PropertyMappingConfig { IpnProperty = "PartNo", SchemaVersion = "2" });
+
+            var second = provider.GetMappingResult();
+
+            Assert.That(second.Health, Is.EqualTo(MappingHealth.NeedsUpgrade));
+            Assert.That(raised, Is.True,
+                "GetMappingResult should raise MappingChanged when an external edit changes the mapping health.");
+        }
+
+        [Test]
+        public void SaveMapping_UpdatesLastHealth_GetMappingResultDoesNotRaiseAgain()
+        {
+            var provider = new PropertyMappingProvider(_localPath, null);
+
+            WriteJson(_localPath, new PropertyMappingConfig { IpnProperty = "PartNo", SchemaVersion = "2" });
+            var first = provider.GetMappingResult();
+            Assert.That(first.Health, Is.EqualTo(MappingHealth.NeedsUpgrade));
+
+            var raised = 0;
+            provider.MappingChanged += (s, e) => raised++;
+
+            provider.SaveMapping(PropertyMappingConfig.WithDefaults());
+            Assert.That(raised, Is.EqualTo(1));
+
+            // The listener's own GetMappingResult inside the handler sees the same
+            // health and must not raise a second MappingChanged.
+            var second = provider.GetMappingResult();
+            Assert.That(second.Health, Is.EqualTo(MappingHealth.Healthy));
+            Assert.That(raised, Is.EqualTo(1));
+        }
+
         // ── Helpers ───────────────────────────────────────────────────────────
 
         private void AssertMissingSourceInvalid(MappingResult result)

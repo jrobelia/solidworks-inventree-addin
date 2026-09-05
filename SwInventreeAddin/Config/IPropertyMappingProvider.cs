@@ -11,8 +11,10 @@ namespace SwInventreeAddin.Config
     public interface IPropertyMappingProvider
     {
         /// <summary>
-        /// Raised when <see cref="SaveMapping"/> changes the underlying file,
-        /// so shared consumers (Settings and Task Pane) can refresh from the same result.
+        /// Raised when the mapping file changes — by <see cref="SaveMapping"/>, or by an
+        /// external edit detected when <see cref="GetMappingResult"/> reads a different
+        /// <see cref="MappingHealth"/> than the previous read. Shared consumers
+        /// (Settings and Task Pane) refresh from the same result.
         /// </summary>
         event EventHandler? MappingChanged;
 

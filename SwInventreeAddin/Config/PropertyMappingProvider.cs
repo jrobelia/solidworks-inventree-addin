@@ -24,6 +24,7 @@ namespace SwInventreeAddin.Config
         private readonly string  _localPath;
         private readonly string? _sourcePath;
         private readonly JsonSerializerOptions _saveOptions;
+        private MappingHealth? _lastHealth;
 
         /// <summary>Uses the default %APPDATA% local path and optional source path.</summary>
         public PropertyMappingProvider(string? sourcePath = null)
@@ -67,6 +68,22 @@ namespace SwInventreeAddin.Config
 
         /// <inheritdoc/>
         public MappingResult GetMappingResult()
+        {
+            var result   = ReadMappingResult();
+            var previous = _lastHealth;
+            _lastHealth  = result.Health;
+
+            if (previous.HasValue && previous.Value != result.Health)
+                MappingChanged?.Invoke(this, EventArgs.Empty);
+
+            return result;
+        }
+
+        /// <summary>
+        /// Reads and classifies the resolved mapping file without raising <see cref="MappingChanged"/>.
+        /// The health-change notification lives in <see cref="GetMappingResult"/>.
+        /// </summary>
+        private MappingResult ReadMappingResult()
         {
             string? resolvedPath = null;
             var source = ResolveSource();
@@ -132,6 +149,9 @@ namespace SwInventreeAddin.Config
                 var normalized = config.Normalized();
                 var json = JsonSerializer.Serialize(normalized, _saveOptions);
                 File.WriteAllText(resolvedPath, json, Encoding.UTF8);
+                // Update the tracked health before raising so a listener's GetMappingResult
+                // sees the same health and does not raise MappingChanged a second time.
+                _lastHealth = Classify(normalized, resolvedPath, ResolveSource()).Health;
                 MappingChanged?.Invoke(this, EventArgs.Empty);
             }
             catch (UnauthorizedAccessException ex)
