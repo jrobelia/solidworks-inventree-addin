@@ -751,7 +751,9 @@ namespace SwInventreeAddin.UI
                 RefreshCurrentProperties();
                 NotifySessionProperties();
 
-                SetStatus("Part created in InvenTree.", StatusSeverity.Success);
+                var ipnNotice = vm.IpnMismatchNotice;
+                SetStatus(ipnNotice ?? "Part created in InvenTree.",
+                          ipnNotice != null ? StatusSeverity.Warning : StatusSeverity.Success);
             };
 
             showDialog(vm);

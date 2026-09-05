@@ -20,8 +20,11 @@ namespace SwInventreeAddin.InvenTree
             {
                 var json = exceptionMessage.Substring(jsonStart);
                 using var doc = JsonDocument.Parse(json);
-                if (doc.RootElement.TryGetProperty("ipn", out var ipnErrors) &&
-                    ipnErrors.ValueKind == JsonValueKind.Array)
+                // InvenTree keys field errors by the serializer field name "IPN";
+                // fall back to lowercase "ipn" defensively.
+                var found = doc.RootElement.TryGetProperty("IPN", out var ipnErrors) ||
+                            doc.RootElement.TryGetProperty("ipn", out ipnErrors);
+                if (found && ipnErrors.ValueKind == JsonValueKind.Array)
                 {
                     var errors = new List<string>();
                     foreach (var element in ipnErrors.EnumerateArray())

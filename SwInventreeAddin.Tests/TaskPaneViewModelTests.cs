@@ -2461,6 +2461,50 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public void OpenCreatePartWindow_AssignedIpnDiffersFromEntered_ShowsWarningStatus()
+        {
+            // When the server assigns an IPN that differs from what the user
+            // entered, the Task Pane status must name both values — the dialog
+            // has already closed by then.
+            const int newPk = 56;
+            _client.PkToReturnOnCreate = newPk;
+            _client.PartByPkToReturn   = new InventreePart { Pk = newPk, Ipn = "R-NEW-001", Name = "IPN-less Part" };
+
+            var vm = new TaskPaneViewModel(_client, _propertyService, null, createPartValidator: _createPartValidator);
+
+            vm.OpenCreatePartWindow(createVm =>
+            {
+                createVm.SelectedCategory = new CategoryNode(new InventreeCategory { Pk = 1, Name = "Resistors" });
+                createVm.IpnEntry         = "FAB-001";
+                createVm.CreateAsync().GetAwaiter().GetResult();
+            });
+
+            Assert.That(vm.StatusText,     Does.Contain("FAB-001"));
+            Assert.That(vm.StatusText,     Does.Contain("R-NEW-001"));
+            Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+        }
+
+        [Test]
+        public void OpenCreatePartWindow_AssignedIpnMatchesEntered_ShowsSuccessStatus()
+        {
+            const int newPk = 57;
+            _client.PkToReturnOnCreate = newPk;
+            _client.PartByPkToReturn   = new InventreePart { Pk = newPk, Ipn = "FAB-001", Name = "IPN-less Part" };
+
+            var vm = new TaskPaneViewModel(_client, _propertyService, null, createPartValidator: _createPartValidator);
+
+            vm.OpenCreatePartWindow(createVm =>
+            {
+                createVm.SelectedCategory = new CategoryNode(new InventreeCategory { Pk = 1, Name = "Resistors" });
+                createVm.IpnEntry         = "FAB-001";
+                createVm.CreateAsync().GetAwaiter().GetResult();
+            });
+
+            Assert.That(vm.StatusText,     Is.EqualTo("Part created in InvenTree."));
+            Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.Success));
+        }
+
+        [Test]
         public void LoadPartNumber_AfterPollSkippedBlankIpnCreate_PreservesPopulatedState()
         {
             const int newPk = 55;

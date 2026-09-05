@@ -18,7 +18,8 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void ExtractIpnError_JsonWithIpnArray_ReturnsJoinedErrors()
         {
-            const string body = @"{""ipn"": [""Part with this IPN already exists."", ""IPN is required.""]}";
+            // InvenTree keys field errors by the serializer field name: "IPN".
+            const string body = @"{""IPN"": [""Part with this IPN already exists."", ""IPN is required.""]}";
             var message = $"InvenTree API returned 400 BadRequest: {body}";
 
             var result = _service.ExtractIpnError(message);
@@ -29,6 +30,19 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void ExtractIpnError_SingleIpnError_ReturnsError()
         {
+            const string body = @"{""IPN"": [""Part with this IPN already exists.""]}";
+            var message = $"InvenTree API returned 400 BadRequest: {body}";
+
+            var result = _service.ExtractIpnError(message);
+
+            Assert.That(result, Is.EqualTo("Part with this IPN already exists."));
+        }
+
+        [Test]
+        public void ExtractIpnError_LowercaseIpnKey_StillMatched()
+        {
+            // Defensive: accept the lowercase key too in case a proxy or older
+            // server version emits it.
             const string body = @"{""ipn"": [""Part with this IPN already exists.""]}";
             var message = $"InvenTree API returned 400 BadRequest: {body}";
 
@@ -67,7 +81,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void ExtractIpnError_ExceptionWithHttpRequestException_MessageExtracted()
         {
-            const string body = @"{""ipn"": [""Duplicate IPN.""]}";
+            const string body = @"{""IPN"": [""Duplicate IPN.""]}";
             var ex = new HttpRequestException($"Request failed: {body}");
 
             var result = _service.ExtractIpnError(ex.Message);

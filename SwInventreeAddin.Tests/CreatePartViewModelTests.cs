@@ -263,7 +263,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task CreateAsync_ServerValidationError_StatusTextContainsResponseBody()
         {
-            const string errorBody = @"{""ipn"": [""Part with this IPN already exists.""]}";
+            const string errorBody = @"{""IPN"": [""Part with this IPN already exists.""]}";
             _client.ThrowOnCreateException = new HttpRequestException(
                 $"InvenTree API returned 400 BadRequest: {errorBody}");
             _validationService.ExtractedError = "Part with this IPN already exists.";
@@ -365,6 +365,57 @@ namespace SwInventreeAddin.Tests
             Assert.That(_client.LastCreateIpn, Is.EqualTo("FAB-001"));
         }
 
+        [Test]
+        public async Task CreateAsync_AssignedIpnDiffersFromEntered_SetsMismatchNotice()
+        {
+            // The server may ignore or overwrite the entered IPN (e.g. an IPN
+            // plugin). The user must be told the assigned value differs.
+            _client.PkToReturnOnCreate = 42;
+            _client.PartByPkToReturn   = new InventreePart { Pk = 42, Ipn = "R-NEW-001", Name = "Custom" };
+            _propertyService.Seed(_mappingProvider.Config.IpnProperty!,  string.Empty);
+            _propertyService.Seed(_mappingProvider.Config.NameProperty!, string.Empty);
+
+            var vm = CreateVm();
+            vm.SelectedCategory = MakeNode();
+            vm.IpnEntry         = "FAB-001";
+            await vm.CreateAsync();
+
+            Assert.That(vm.IpnMismatchNotice, Is.Not.Null.And.Not.Empty);
+            Assert.That(vm.IpnMismatchNotice, Does.Contain("FAB-001"));
+            Assert.That(vm.IpnMismatchNotice, Does.Contain("R-NEW-001"));
+        }
+
+        [Test]
+        public async Task CreateAsync_AssignedIpnMatchesEntered_NoMismatchNotice()
+        {
+            _client.PkToReturnOnCreate = 42;
+            _client.PartByPkToReturn   = new InventreePart { Pk = 42, Ipn = "FAB-001", Name = "Custom" };
+            _propertyService.Seed(_mappingProvider.Config.IpnProperty!,  string.Empty);
+            _propertyService.Seed(_mappingProvider.Config.NameProperty!, string.Empty);
+
+            var vm = CreateVm();
+            vm.SelectedCategory = MakeNode();
+            vm.IpnEntry         = "FAB-001";
+            await vm.CreateAsync();
+
+            Assert.That(vm.IpnMismatchNotice, Is.Null);
+        }
+
+        [Test]
+        public async Task CreateAsync_BlankIpnEntry_NoMismatchNotice()
+        {
+            _client.PkToReturnOnCreate = 42;
+            _client.PartByPkToReturn   = new InventreePart { Pk = 42, Ipn = "R-NEW-001", Name = "Custom" };
+            _propertyService.Seed(_mappingProvider.Config.IpnProperty!,  string.Empty);
+            _propertyService.Seed(_mappingProvider.Config.NameProperty!, string.Empty);
+
+            var vm = CreateVm();
+            vm.SelectedCategory = MakeNode();
+            await vm.CreateAsync();
+
+            Assert.That(vm.IpnMismatchNotice, Is.Null);
+        }
+
         // ── WaitForServerAssignedIpn toggle ─────────────────────────────────────
 
         [Test]
@@ -430,7 +481,7 @@ namespace SwInventreeAddin.Tests
         {
             // The server rejects the IPN the user entered; the Create Part workflow should
             // attempt creation, recover from the error, and display the server message.
-            const string errorBody = @"{""ipn"": [""Part with this IPN already exists.""]}";
+            const string errorBody = @"{""IPN"": [""Part with this IPN already exists.""]}";
             _client.ThrowOnCreateException = new HttpRequestException(
                 $"InvenTree API returned 400 BadRequest: {errorBody}");
             _validationService.ExtractedError = "Part with this IPN already exists.";
@@ -667,7 +718,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task CreateAsync_RejectedIpn_SetsIpnErrorText_AndDoesNotRaisePartCreated()
         {
-            const string errorBody = @"{""ipn"": [""IPN does not match required pattern.""]}";
+            const string errorBody = @"{""IPN"": [""IPN does not match required pattern.""]}";
             _client.ThrowOnCreateException = new HttpRequestException(
                 $"InvenTree API returned 400 BadRequest: {errorBody}");
             _validationService.ExtractedError = "IPN does not match required pattern.";
@@ -689,7 +740,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task CreateAsync_RejectedIpn_WhenIpnEdited_ClearsIpnErrorText()
         {
-            const string errorBody = @"{""ipn"": [""IPN does not match required pattern.""]}";
+            const string errorBody = @"{""IPN"": [""IPN does not match required pattern.""]}";
             _client.ThrowOnCreateException = new HttpRequestException(
                 $"InvenTree API returned 400 BadRequest: {errorBody}");
             _validationService.ExtractedError = "IPN does not match required pattern.";
