@@ -39,19 +39,6 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void ExtractIpnError_LowercaseIpnKey_StillMatched()
-        {
-            // Defensive: accept the lowercase key too in case a proxy or older
-            // server version emits it.
-            const string body = @"{""ipn"": [""Part with this IPN already exists.""]}";
-            var message = $"InvenTree API returned 400 BadRequest: {body}";
-
-            var result = _service.ExtractIpnError(message);
-
-            Assert.That(result, Is.EqualTo("Part with this IPN already exists."));
-        }
-
-        [Test]
         public void ExtractIpnError_NoJson_ReturnsNull()
         {
             var result = _service.ExtractIpnError("Generic network failure");

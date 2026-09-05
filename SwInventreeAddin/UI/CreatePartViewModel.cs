@@ -401,17 +401,17 @@ namespace SwInventreeAddin.UI
                 var ipn  = part?.Ipn  ?? string.Empty;
                 var name = part?.Name ?? string.Empty;
 
-                // A server-side IPN plugin can overwrite the submitted IPN. Tell the
-                // user when the assigned value isn't what they entered.
-                if (ipnToSubmit != null && !string.Equals(ipnToSubmit, ipn, StringComparison.Ordinal))
-                    IpnMismatchNotice = string.IsNullOrEmpty(ipn)
-                        ? $"Part created, but the server assigned no IPN \u2014 the entered IPN '{ipnToSubmit}' was not applied."
-                        : $"Part created, but the server assigned IPN '{ipn}' instead of the entered IPN '{ipnToSubmit}'.";
-
                 var mapping = mappingResult?.Config ?? PropertyMappingConfig.WithDefaults();
 
                 RunOnUiThread(() =>
                 {
+                    // A server-side IPN plugin can overwrite the submitted IPN. Tell the
+                    // user when the assigned value isn't what they entered.
+                    if (ipnToSubmit != null && !string.Equals(ipnToSubmit, ipn, StringComparison.Ordinal))
+                        IpnMismatchNotice = string.IsNullOrEmpty(ipn)
+                            ? $"Part created, but the server assigned no IPN \u2014 the entered IPN '{ipnToSubmit}' was not applied."
+                            : $"Part created, but the server assigned IPN '{ipn}' instead of the entered IPN '{ipnToSubmit}'.";
+
                     if (!string.IsNullOrEmpty(mapping.PkProperty))
                         _propertyService.SetCustomProperty(mapping.PkProperty!, pk.ToString());
                     // Only write IPN if we actually received one — avoid blanking the property
