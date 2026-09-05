@@ -50,7 +50,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public async Task ApplySettingsAsync_WhenServiceThrowsConfigError_SetsServerSettingsStatus()
+        public async Task ApplySettingsAsync_WhenServiceThrowsConfigError_SetsActionStatus()
         {
             var applyService = new StubSettingsApplyService
             {
@@ -63,12 +63,28 @@ namespace SwInventreeAddin.Tests
             bool result = await window.ApplySettingsAsync();
 
             Assert.That(result, Is.False);
-            Assert.That(GetText(window, "StatusText"), Does.Contain("Failed to save server settings"));
-            Assert.That(GetText(window, "StatusText"), Does.Contain("stub config failure"));
+            Assert.That(GetText(window, "ActionStatusText"), Does.Contain("Failed to save server settings"));
+            Assert.That(GetText(window, "ActionStatusText"), Does.Contain("stub config failure"));
         }
 
         [Test]
-        public async Task ApplySettingsAsync_WhenMappingProviderThrowsOnRefresh_SetsMappingFileStatus()
+        public async Task ApplySettingsAsync_WhenServiceThrowsConfigError_DoesNotWriteToConnectionStatus()
+        {
+            var applyService = new StubSettingsApplyService
+            {
+                ExceptionToThrowOnApply = new SettingsApplyException(
+                    "Failed to save server settings: stub config failure"),
+            };
+
+            var window = CreateWindow(applyService: applyService);
+
+            await window.ApplySettingsAsync();
+
+            Assert.That(GetText(window, "ConnectionStatusText"), Is.Empty);
+        }
+
+        [Test]
+        public async Task ApplySettingsAsync_WhenMappingProviderThrowsOnRefresh_SetsActionStatus()
         {
             var applyService = new StubSettingsApplyService();
             var throwingProvider = new StubPropertyMappingProvider
@@ -85,7 +101,7 @@ namespace SwInventreeAddin.Tests
             bool result = await window.ApplySettingsAsync();
 
             Assert.That(result, Is.False);
-            Assert.That(GetText(window, "StatusText"), Does.Contain("Failed to load mapping file"));
+            Assert.That(GetText(window, "ActionStatusText"), Does.Contain("Failed to load mapping file"));
         }
 
         [Test]
@@ -102,7 +118,55 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(result, Is.True);
             Assert.That(firedProvider, Is.SameAs(mappingProvider));
-            Assert.That(GetText(window, "StatusText"), Does.Contain("Settings applied"));
+            Assert.That(GetText(window, "ActionStatusText"), Does.Contain("Settings applied"));
+        }
+
+        [Test]
+        public void ConnectionStatusText_IsReadOnlySelectableTextBox()
+        {
+            var window = CreateWindow();
+            var element = System.Windows.LogicalTreeHelper.FindLogicalNode(window, "ConnectionStatusText");
+
+            Assert.That(element, Is.InstanceOf<TextBox>());
+            var textBox = (TextBox)element!;
+            Assert.That(textBox.IsReadOnly, Is.True);
+            Assert.That(textBox.Focusable, Is.True);
+            Assert.That(textBox.IsTabStop, Is.False);
+        }
+
+        [Test]
+        public void ActionStatusText_IsReadOnlySelectableTextBox()
+        {
+            var window = CreateWindow();
+            var element = System.Windows.LogicalTreeHelper.FindLogicalNode(window, "ActionStatusText");
+
+            Assert.That(element, Is.InstanceOf<TextBox>());
+            var textBox = (TextBox)element!;
+            Assert.That(textBox.IsReadOnly, Is.True);
+            Assert.That(textBox.Focusable, Is.True);
+            Assert.That(textBox.IsTabStop, Is.False);
+        }
+
+        [Test]
+        public async Task ActionStatusText_LongError_ToolTipContainsFullMessage()
+        {
+            var longMessage = "Failed to save server settings: " + new string('x', 500);
+            var applyService = new StubSettingsApplyService
+            {
+                ExceptionToThrowOnApply = new SettingsApplyException(longMessage),
+            };
+
+            var window = CreateWindow(applyService: applyService);
+
+            await window.ApplySettingsAsync();
+
+            var textBox = (TextBox)System.Windows.LogicalTreeHelper.FindLogicalNode(window, "ActionStatusText")!;
+            var toolTip = textBox.ToolTip as ToolTip;
+            Assert.That(toolTip, Is.Not.Null);
+            var tipText = toolTip!.Content as TextBlock;
+            Assert.That(tipText, Is.Not.Null);
+            Assert.That(tipText!.Text, Does.Contain(longMessage));
+            Assert.That(tipText.TextWrapping, Is.EqualTo(TextWrapping.Wrap));
         }
 
         // ── Mapping health status bar ─────────────────────────────────────────
@@ -196,8 +260,12 @@ namespace SwInventreeAddin.Tests
             var window = CreateWindow(mappingProvider: mappingProvider);
             var textBox = (TextBox)System.Windows.LogicalTreeHelper.FindLogicalNode(window, "MappingStatusText")!;
 
-            Assert.That(textBox.ToolTip, Is.Not.Null);
-            Assert.That(textBox.ToolTip.ToString(), Does.Contain(longMessage));
+            var toolTip = textBox.ToolTip as ToolTip;
+            Assert.That(toolTip, Is.Not.Null);
+            var tipText = toolTip!.Content as TextBlock;
+            Assert.That(tipText, Is.Not.Null);
+            Assert.That(tipText!.Text, Does.Contain(longMessage));
+            Assert.That(tipText.TextWrapping, Is.EqualTo(TextWrapping.Wrap));
         }
 
         [Test]

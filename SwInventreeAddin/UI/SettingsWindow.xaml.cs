@@ -23,6 +23,7 @@ namespace SwInventreeAddin.UI
                  string SharedPath, string BomKeyword, bool UseLocalMapping) _savedSnapshot;
         private          bool                       _savedWaitForServerAssignedIpn = true;
         private          MappingChangedSubscription? _mappingChangedSubscription;
+        private          string?                    _mappingStatusDetail;
 
         /// <summary>
         /// Raised after Apply successfully saves settings, so the caller can update
@@ -179,7 +180,8 @@ namespace SwInventreeAddin.UI
 
                 MappingStatusStripe.Background = stripeColor;
                 MappingStatusText.Text         = MappingResult.GetDefaultMessage(result.Health);
-                MappingStatusText.ToolTip      = result.ToolTip;
+                _mappingStatusDetail           = result.ToolTip;
+                MappingStatusText.ToolTip      = MakeStatusToolTip(_mappingStatusDetail);
                 return true;
             }
             catch (InvalidOperationException ex)
@@ -187,16 +189,17 @@ namespace SwInventreeAddin.UI
                 EditMappingsButton.IsEnabled   = false;
                 MappingStatusStripe.Background = (Brush)FindResource("BrushStatusError");
                 MappingStatusText.Text         = MappingResult.GetDefaultMessage(MappingHealth.Invalid);
-                MappingStatusText.ToolTip      = $"{ex.Message} {MappingResult.InvalidMappingHelp}";
+                _mappingStatusDetail           = $"{ex.Message} {MappingResult.InvalidMappingHelp}";
+                MappingStatusText.ToolTip      = MakeStatusToolTip(_mappingStatusDetail);
                 return false;
             }
             catch (Exception ex)
             {
                 EditMappingsButton.IsEnabled   = false;
                 MappingStatusStripe.Background = (Brush)FindResource("BrushStatusError");
-                var detail = $"Failed to load the Property Mapping file: {ex.Message}";
+                _mappingStatusDetail           = $"Failed to load the Property Mapping file: {ex.Message} {MappingResult.InvalidMappingHelp}";
                 MappingStatusText.Text         = MappingResult.GetDefaultMessage(MappingHealth.Invalid);
-                MappingStatusText.ToolTip      = $"{detail} {MappingResult.InvalidMappingHelp}";
+                MappingStatusText.ToolTip      = MakeStatusToolTip(_mappingStatusDetail);
                 return false;
             }
         }
@@ -251,7 +254,7 @@ namespace SwInventreeAddin.UI
         private async void Apply_Click(object sender, RoutedEventArgs e)
         {
             if (!await ApplySettingsAsync()) return;
-            this.Dispatcher.Invoke(() => SetStatus("\u2713  Settings applied.", error: false, success: true));
+            this.Dispatcher.Invoke(() => SetActionStatus("\u2713  Settings applied.", error: false, success: true));
         }
 
         // ── Shared settings save + notify ─────────────────────────────────────
@@ -271,7 +274,7 @@ namespace SwInventreeAddin.UI
             }
             catch (SettingsApplyException ex)
             {
-                this.Dispatcher.Invoke(() => SetStatus(ex.Message, error: true));
+                this.Dispatcher.Invoke(() => SetActionStatus(ex.Message, error: true));
                 return false;
             }
 
@@ -291,13 +294,13 @@ namespace SwInventreeAddin.UI
                 if (!mappingOk)
                 {
                     this.Dispatcher.Invoke(() =>
-                        SetStatus(MappingStatusText.ToolTip as string ?? MappingStatusText.Text, error: true));
+                        SetActionStatus(_mappingStatusDetail ?? MappingStatusText.Text, error: true));
                     return false;
                 }
             }
             catch (Exception ex)
             {
-                this.Dispatcher.Invoke(() => SetStatus($"Failed to load the Property Mapping file: {ex.Message}", error: true));
+                this.Dispatcher.Invoke(() => SetActionStatus($"Failed to load the Property Mapping file: {ex.Message}", error: true));
                 return false;
             }
 
@@ -308,13 +311,13 @@ namespace SwInventreeAddin.UI
                     MappingApplied?.Invoke(this, _mappingProvider);
                     _savedSnapshot = CaptureSnapshot();
                     RefreshButtonStates();
-                    SetStatus("\u2713  Settings applied.", error: false, success: true);
+                    SetActionStatus("\u2713  Settings applied.", error: false, success: true);
                 });
                 return true;
             }
             catch (Exception ex)
             {
-                this.Dispatcher.Invoke(() => SetStatus($"Failed to apply settings: {ex.Message}", error: true));
+                this.Dispatcher.Invoke(() => SetActionStatus($"Failed to apply settings: {ex.Message}", error: true));
                 return false;
             }
         }
@@ -339,16 +342,16 @@ namespace SwInventreeAddin.UI
                 }
 
                 this.Dispatcher.Invoke(() =>
-                    SetStatus("\u2713  Connection successful.", error: false, success: true));
+                    SetConnectionStatus("\u2713  Connection successful.", error: false, success: true));
             }
             catch (InvalidOperationException ex)
             {
-                this.Dispatcher.Invoke(() => SetStatus(ex.Message, error: true));
+                this.Dispatcher.Invoke(() => SetConnectionStatus(ex.Message, error: true));
             }
             catch (Exception ex)
             {
                 this.Dispatcher.Invoke(() =>
-                    SetStatus($"Connection failed: {ex.Message}", error: true));
+                    SetConnectionStatus($"Connection failed: {ex.Message}", error: true));
             }
         }
 
@@ -371,15 +374,40 @@ namespace SwInventreeAddin.UI
             RefreshMappingStatus();
         }
 
-        // ── Status bar ────────────────────────────────────────────────────────
+        // ── Status bars ───────────────────────────────────────────────────────
 
-        private void SetStatus(string text, bool error, bool success = false)
+        // Server-connection results live beside the Test Connection button; Apply/Save
+        // results live in the status bar next to the action buttons (ADR-0018).
+        private void SetConnectionStatus(string text, bool error, bool success = false) =>
+            SetStatusBar(ConnectionStatusText, ConnectionStatusStripe, text, error, success);
+
+        private void SetActionStatus(string text, bool error, bool success = false) =>
+            SetStatusBar(ActionStatusText, ActionStatusStripe, text, error, success);
+
+        private void SetStatusBar(System.Windows.Controls.TextBox textBox, System.Windows.Controls.Border stripe,
+                                  string text, bool error, bool success)
         {
-            StatusText.Text = text;
-            StatusText.Foreground =
-                error   ? new SolidColorBrush(Color.FromRgb(180, 40, 0))
-                : success ? new SolidColorBrush(Color.FromRgb(0, 130, 60))
-                :           (Brush)FindResource("BrushSubtle");
+            textBox.Text    = text;
+            textBox.ToolTip = MakeStatusToolTip(text);
+            stripe.Background =
+                error   ? (Brush)FindResource("BrushStatusError")
+                : success ? (Brush)FindResource("BrushStatusSuccess")
+                :           (Brush)FindResource("BrushStatusNone");
         }
+
+        // Status text is single-line and can truncate; the full message goes in a
+        // wrapping tooltip so long errors stay readable.
+        private static object? MakeStatusToolTip(string? text) =>
+            string.IsNullOrEmpty(text)
+                ? null
+                : new System.Windows.Controls.ToolTip
+                  {
+                      Content = new System.Windows.Controls.TextBlock
+                      {
+                          Text         = text,
+                          TextWrapping = TextWrapping.Wrap,
+                          MaxWidth     = 360,
+                      },
+                  };
     }
 }
