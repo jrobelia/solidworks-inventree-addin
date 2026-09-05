@@ -101,23 +101,18 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void Cancel_ClearsWarning()
         {
-            var provider = new StubPropertyMappingProvider
-            {
-                Config = new PropertyMappingConfig
-                {
-                    SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion,
-                    BomColumnIpn = "OldIPN",
-                }
-            };
+            var provider = ValidProvider();
 
             var vm = CreateVm(provider);
             vm.BomColumnIpn = "";
-            vm.Save();
+
+            Assert.That(vm.WarningMessage, Is.Not.Null.And.Contains("IPN").IgnoreCase);
 
             vm.Cancel();
 
             Assert.That(vm.WarningMessage, Is.Null);
             Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.None));
+            Assert.That(vm.BomColumnIpn, Is.EqualTo("IPN"));
         }
 
         [Test]

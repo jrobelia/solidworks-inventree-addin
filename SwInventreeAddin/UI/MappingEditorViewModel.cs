@@ -65,6 +65,7 @@ namespace SwInventreeAddin.UI
             _result   = _provider.GetMappingResult();
             _original = _result.Config.Clone();
             _draft    = _original.Clone();
+            UpdateBomAliasWarning();
         }
 
         // ── Bindable properties ────────────────────────────────────────────────
@@ -108,13 +109,21 @@ namespace SwInventreeAddin.UI
         public string BomColumnIpn
         {
             get => _draft.BomColumnIpn        ?? string.Empty;
-            set => SetDraftString(v => _draft.BomColumnIpn        = v, () => _draft.BomColumnIpn,        value);
+            set
+            {
+                SetDraftString(v => _draft.BomColumnIpn = v, () => _draft.BomColumnIpn, value);
+                UpdateBomAliasWarning();
+            }
         }
 
         public string BomColumnQty
         {
             get => _draft.BomColumnQty        ?? string.Empty;
-            set => SetDraftString(v => _draft.BomColumnQty        = v, () => _draft.BomColumnQty,        value);
+            set
+            {
+                SetDraftString(v => _draft.BomColumnQty = v, () => _draft.BomColumnQty, value);
+                UpdateBomAliasWarning();
+            }
         }
 
         public string BomColumnReference
@@ -183,7 +192,6 @@ namespace SwInventreeAddin.UI
         public bool Save()
         {
             ErrorMessage = null;
-            WarningMessage = null;
 
             _draft.SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion;
             var draft = _draft.Normalized();
@@ -195,23 +203,19 @@ namespace SwInventreeAddin.UI
                 return false;
             }
 
-            var warning = CheckBomAliasWarning(draft);
-
             try
             {
                 _provider.SaveMapping(draft);
                 _original = draft.Clone();
+                _draft    = _original.Clone();
+                UpdateBomAliasWarning();
+                return true;
             }
             catch (Exception ex)
             {
                 ErrorMessage = ex.Message;
                 return false;
             }
-
-            if (!string.IsNullOrEmpty(warning))
-                WarningMessage = warning;
-
-            return true;
         }
 
         /// <summary>
@@ -221,8 +225,8 @@ namespace SwInventreeAddin.UI
         public void Cancel()
         {
             ErrorMessage = null;
-            WarningMessage = null;
             RevertToOriginal();
+            UpdateBomAliasWarning();
         }
 
         // ── Validation ─────────────────────────────────────────────────────────
@@ -285,11 +289,14 @@ namespace SwInventreeAddin.UI
 
         // ── Warning helpers ────────────────────────────────────────────────────
 
-        private static string? CheckBomAliasWarning(PropertyMappingConfig draft)
+        private void UpdateBomAliasWarning()
         {
-            var missing = new List<string>();
-            if (string.IsNullOrWhiteSpace(draft.BomColumnIpn)) missing.Add("IPN");
-            if (string.IsNullOrWhiteSpace(draft.BomColumnQty)) missing.Add("Qty");
+            WarningMessage = BuildBomAliasWarning(_draft);
+        }
+
+        private static string? BuildBomAliasWarning(PropertyMappingConfig draft)
+        {
+            var missing = draft.GetMissingBomCompareAliases();
             if (missing.Count == 0) return null;
 
             var aliasList = string.Join(" and ", missing);

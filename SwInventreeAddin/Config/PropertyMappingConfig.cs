@@ -144,5 +144,17 @@ namespace SwInventreeAddin.Config
             merged.ExtensionData = overrides.ExtensionData;
             return merged;
         }
+
+        /// <summary>
+        /// Returns the BOM column roles that are missing aliases required for a meaningful
+        /// BOM Compare. Only IPN and Qty are required; Reference and Note may be blank.
+        /// </summary>
+        public IReadOnlyList<string> GetMissingBomCompareAliases()
+        {
+            var missing = new List<string>();
+            if (string.IsNullOrWhiteSpace(BomColumnIpn)) missing.Add("IPN");
+            if (string.IsNullOrWhiteSpace(BomColumnQty)) missing.Add("Qty");
+            return missing;
+        }
     }
 }

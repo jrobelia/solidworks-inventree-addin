@@ -70,8 +70,7 @@ namespace SwInventreeAddin.Bom
                 RevisionOrder.ItIsNewer => Result(BomCompareOutcome.ItIsNewer),
                 RevisionOrder.Ambiguous => Result(BomCompareOutcome.Ambiguous),
                 RevisionOrder.SwIsNewer => Result(BomCompareOutcome.SwIsNewer),
-                _ => string.IsNullOrWhiteSpace(mapping.BomColumnIpn)
-                     || string.IsNullOrWhiteSpace(mapping.BomColumnQty)
+                _ => mapping.GetMissingBomCompareAliases().Count > 0
                         ? Result(BomCompareOutcome.BomColumnAliasesMissing)
                         : Result(BomCompareOutcome.Ready),
             };
