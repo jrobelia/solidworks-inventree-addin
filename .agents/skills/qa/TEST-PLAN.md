@@ -95,3 +95,17 @@ Every step must be:
 - Phrased in domain terms from `CONTEXT.md` (Task Pane, IPN, InvenTree Part PK, Fetch, Apply, Push, Part Sync, BOM Compare, etc.)
 - Stays in the GUI and domain language; source files, diffs, and line numbers are not test-step content
 - Covering at least one edge case per feature area
+
+## Diff-to-test signals
+
+Use the diff as a source of *what* to test. Match common code changes to GUI test steps. Keep steps in domain language; do not cite source paths or line numbers.
+
+| Diff signal | Test step to add |
+| --- | --- |
+| XAML file added or changed | Visibility, layout, interaction, data binding, and empty/error state checks for the affected window or dialog |
+| New or renamed ViewModel property that drives the UI | Data binding: the control reflects the value and updates when the value changes |
+| Control enabled state tied to a `*Health` or `*Enabled` property | Check both enabled and disabled states with representative inputs |
+| New button, menu, or command | Interaction: the action runs and produces the expected result |
+| Removed button, option, or command (e.g. **Copy to local**) | Verify the old surface no longer appears and the UI still makes sense |
+| New validation or error service | Error / empty state: invalid or edge-case input shows the expected message or disabled state |
+| New `Config/` type or property surfaced in Settings | Settings window: the new option is visible, persists, and takes effect |

@@ -27,9 +27,18 @@ QA orients from the current branch, proposes Test Groups, builds a GUI-focused t
 
 QA is interactive GUI verification. Every step is a user action in the SolidWorks InvenTree Add-In and an observable result. The agent asks the user to perform and observe. All questions stay in the GUI and domain language; the agent does not ask the user to read source files, diffs, or line numbers.
 
+The agent may inspect the PR diff or `git diff` to understand which GUI surfaces and gating logic changed. The test plan and steps must still be written in GUI and domain language; do not paste source paths, diff hunks, or line numbers into user-facing text.
+
 ## 1. Orient
 
 Detect the source of truth for this QA pass. Try, in order: open PR for the current branch, closed issues, current diff.
+
+QA orients from two sources:
+
+- **Issues (why)** — the acceptance criteria and expected behavior the change exists to satisfy.
+- **Diff (what)** — the actual files, controls, and gating logic that changed.
+
+Use issues to explain why a behavior must work. Use the diff to decide which GUI surfaces, controls, and edge cases the test plan must cover.
 
 ### Open PR for the current branch
 
@@ -42,14 +51,22 @@ Detect the source of truth for this QA pass. Try, in order: open PR for the curr
    gh pr list --state open --json number,title,body,headRefName --head "<branch>"
    ```
 3. If one open PR is found, present it and ask: "Found PR #N — orient this QA pass from that PR?"
-   - If confirmed, view the PR and extract the issues it closes:
-     ```powershell
-     gh pr view <number> --json number,title,body,closingIssuesReferences,headRefName
-     ```
-   - Fetch each referenced issue:
-     ```powershell
-     gh issue view <number> --json number,title,body,labels,comments
-     ```
+   - If confirmed:
+     - View the PR and extract the issues it closes:
+       ```powershell
+       gh pr view <number> --json number,title,body,closingIssuesReferences,headRefName,baseRefName
+       ```
+       If `closingIssuesReferences` is empty, parse `body` for `Closes #N`, `Fixes #N`, or `Relates to #N` references.
+     - Fetch the files changed and the diff:
+       ```powershell
+       gh pr view <number> --json files
+       gh pr diff <number> --name-only
+       ```
+       For large diffs, focus on GUI-relevant files first: XAML files, `UI/` ViewModels and code-behind, `Config/` types that surface in the Settings window or Task Pane, and new ADRs. Read a specific hunk with `git diff origin/<baseRefName>...HEAD -- <path>`.
+     - Fetch each referenced issue:
+       ```powershell
+       gh issue view <number> --json number,title,body,labels,comments
+       ```
 4. If multiple open PRs are found, list them and ask which to use.
 5. If the list is empty, fall back to closed issues.
 
@@ -63,15 +80,29 @@ gh issue list --state closed --json number,title,body,labels,comments --jq '[.[]
 
 If the list is large (more than ~20), surface the count and ask the user to narrow scope. Read each selected issue to extract acceptance criteria.
 
+Use `git diff <merge-base>...HEAD` or `git diff origin/<milestone-branch>...HEAD` to find changed files and diff content for the selected issues. If the branch contains unrelated changes, ask the user to confirm the scope.
+
 If the list is empty, fall back to the current diff.
 
 ### Current diff
 
 Run `git diff` and `git status --short`. If unlinked changes are present, ask the user whether to include them. Use the diff scope only when the user says yes.
 
+### Diff summary
+
+After orienting, produce a short internal summary of the changed areas:
+
+1. Group changed files by feature area using the path and filename. Use `CONTEXT.md` and `docs/agents/domain.md` to name the areas in domain language (Task Pane, Settings, Create Part, BOM Compare, etc.).
+2. Note which changes touch user-facing surfaces: XAML files, ViewModels that drive the UI, `Config/` types that affect Mapping Health or gating, and ADRs that describe new behavior.
+3. Note new or renamed domain terms, removed controls or options, and changed gating conditions. Look for `-` lines (deletions) in the diff hunk to spot removed controls, commands, or options.
+
+Do not paste the raw file list or diff hunks into user-facing text. Use the domain-area summary to justify additional Test Groups and edge cases, in domain language only.
+
 ## 2. Propose Test Groups
 
 Default: one issue per Test Group. Propose a multi-issue group only when issues share acceptance criteria that cannot be verified in isolation.
+
+Use the diff summary to check that the proposed groups cover every changed GUI surface and gating condition. If the diff reveals a changed window, dialog, control, data-bound property, or behavior that is not tied to an issue's acceptance criteria, add a diff-driven group named after the surface (e.g. "Task Pane mapping-status tooltip") or add the coverage to the nearest related group. If two issues share a changed surface and cannot be verified in isolation, merge them into one group.
 
 Present the proposed groups using the [TEST-PLAN.md](TEST-PLAN.md) group format. Print the full proposal in the chat response first, then ask the user to reply with approve/edit/merge/split. Do not use `ask_user_question` for long proposal approvals — the question dialog can hide the previous chat and make the proposal hard to review.
 
@@ -79,7 +110,14 @@ Present the proposed groups using the [TEST-PLAN.md](TEST-PLAN.md) group format.
 
 Read `docs/agents/domain.md` and `CONTEXT.md` first if they exist. Use their vocabulary throughout the plan.
 
-For each approved Test Group, generate test steps from the acceptance criteria. Every step must be a user action in the SolidWorks InvenTree Add-In GUI with an observable result. Use domain terms from `CONTEXT.md` (Task Pane, IPN, InvenTree Part PK, Fetch, Apply, Push, Part Sync, BOM Compare, etc.).
+For each approved Test Group, generate test steps from two sources:
+
+1. **Issues (why)** — the acceptance criteria and expected behavior.
+2. **Diff (what)** — the changed GUI surfaces, controls, and gating logic.
+
+Every step must be a user action in the SolidWorks InvenTree Add-In GUI with an observable result. Use domain terms from `CONTEXT.md` (Task Pane, IPN, InvenTree Part PK, Fetch, Apply, Push, Part Sync, BOM Compare, etc.). Do not cite source files, line numbers, or diff content in user-facing steps.
+
+Use the diff to identify which specific controls, properties, or gating conditions changed and therefore need coverage. For example, if the diff shows that a button is now gated on `MappingHealth.Healthy`, add a step that exercises both the enabled and disabled states. See the [diff-to-test signals](TEST-PLAN.md#diff-to-test-signals) in [TEST-PLAN.md](TEST-PLAN.md) for common patterns.
 
 Include at least one edge case per feature area. See [CHECKLIST.md](CHECKLIST.md).
 
