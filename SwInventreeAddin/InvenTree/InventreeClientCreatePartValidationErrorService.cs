@@ -30,7 +30,7 @@ namespace SwInventreeAddin.InvenTree
                         if (element.ValueKind == JsonValueKind.String)
                             errors.Add(element.GetString() ?? string.Empty);
                     }
-                    return errors.Count > 0 ? string.Join(" ", errors) : null;
+                    return errors.Count > 0 ? $"InvenTree Server: {string.Join(" ", errors)}" : null;
                 }
             }
             catch

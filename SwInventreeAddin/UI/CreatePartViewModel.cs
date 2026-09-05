@@ -122,6 +122,13 @@ namespace SwInventreeAddin.UI
             private set => Set(ref _statusText, value);
         }
 
+        private StatusSeverity _statusSeverity;
+        public StatusSeverity StatusSeverity
+        {
+            get => _statusSeverity;
+            private set => Set(ref _statusSeverity, value);
+        }
+
         private bool _assembly;
         /// <summary>Can this part be built from other parts?</summary>
         public bool Assembly
@@ -261,12 +268,18 @@ namespace SwInventreeAddin.UI
             && !string.IsNullOrWhiteSpace(_partName)
             && _selectedCategory != null;
 
+        private void SetStatus(string text, StatusSeverity severity)
+        {
+            StatusText    = text;
+            StatusSeverity = severity;
+        }
+
         /// <summary>Loads top-level categories into RootCategories.</summary>
         public async Task LoadRootCategoriesAsync()
         {
             IsBusy             = true;
             IsLoadingCategories = true;
-            StatusText         = "Loading categories\u2026";
+            SetStatus("Loading categories\u2026", StatusSeverity.None);
 
             try
             {
@@ -274,12 +287,12 @@ namespace SwInventreeAddin.UI
                 RunOnUiThread(() =>
                 {
                     _rootCategories.Reset(cats.Select(c => new CategoryNode(c)));
-                    StatusText = string.Empty;
+                    SetStatus(string.Empty, StatusSeverity.None);
                 });
             }
             catch (Exception ex)
             {
-                RunOnUiThread(() => StatusText = $"Error loading categories: {ex.Message}");
+                RunOnUiThread(() => SetStatus($"Error loading categories: {ex.Message}", StatusSeverity.Error));
             }
             finally
             {
@@ -319,7 +332,7 @@ namespace SwInventreeAddin.UI
                 {
                     node.ResetChildren(Array.Empty<CategoryNode?>());
                     node.IsLoading = false;
-                    StatusText = $"Error loading children: {ex.Message}";
+                    SetStatus($"Error loading children: {ex.Message}", StatusSeverity.Error);
                 });
             }
         }
@@ -345,7 +358,7 @@ namespace SwInventreeAddin.UI
                     RunOnUiThread(() =>
                     {
                         // The base message is source-independent; the caller can inspect Message for the detail.
-                        StatusText = MappingResult.GetDefaultMessage(mappingResult.Health);
+                        SetStatus(MappingResult.GetDefaultMessage(mappingResult.Health), StatusSeverity.Warning);
                         IsBusy     = false;
                     });
                     return;
@@ -354,7 +367,7 @@ namespace SwInventreeAddin.UI
                 var categoryPk  = _selectedCategory!.Category.Pk;
                 var ipnToSubmit = string.IsNullOrWhiteSpace(_ipnEntry) ? null : _ipnEntry.Trim();
 
-                RunOnUiThread(() => StatusText = "Creating part\u2026");
+                RunOnUiThread(() => SetStatus("Creating part\u2026", StatusSeverity.None));
                 var flags = new PartCreationFlags
                 {
                     Assembly              = _assembly,
@@ -368,7 +381,7 @@ namespace SwInventreeAddin.UI
                 var pk          = await _client.CreatePartAsync(categoryPk, _partName, ipnToSubmit, flags)
                                                .ConfigureAwait(false);
 
-                RunOnUiThread(() => StatusText = "Fetching new part\u2026");
+                RunOnUiThread(() => SetStatus("Fetching new part\u2026", StatusSeverity.None));
 
                 var part = await _client.GetPartByPkAsync(pk).ConfigureAwait(false);
 
@@ -376,7 +389,7 @@ namespace SwInventreeAddin.UI
                 {
                     RunOnUiThread(() =>
                     {
-                        StatusText = "Part created but re-fetch failed. IPN not yet written.";
+                        SetStatus("Part created but re-fetch failed. IPN not yet written.", StatusSeverity.Warning);
                         IsBusy     = false;
                     });
                     return;
@@ -391,8 +404,8 @@ namespace SwInventreeAddin.UI
                     for (int i = 0; i < maxAttempts && string.IsNullOrEmpty(part?.Ipn); i++)
                     {
                         int secondsLeft = (maxAttempts - i) / 2;
-                        RunOnUiThread(() => StatusText =
-                            $"Waiting for server-assigned IPN\u2026 ({secondsLeft}s)");
+                        RunOnUiThread(() => SetStatus(
+                            $"Waiting for server-assigned IPN\u2026 ({secondsLeft}s)", StatusSeverity.None));
                         await Task.Delay(_ipnPollDelayMs).ConfigureAwait(false);
                         part = await _client.GetPartByPkAsync(pk).ConfigureAwait(false);
                     }
@@ -423,7 +436,7 @@ namespace SwInventreeAddin.UI
 
                     // Show "refresh manually" only if the poll actually ran but IPN didn't arrive.
                     if (string.IsNullOrEmpty(ipn) && pollEnabled)
-                        StatusText = "Part created. IPN not yet generated \u2014 refresh manually once the server assigns it.";
+                        SetStatus("Part created. IPN not yet generated \u2014 refresh manually once the server assigns it.", StatusSeverity.Warning);
 
                     IsBusy = false;
                     PartCreated?.Invoke(this, part ?? new InventreePart { Pk = pk, Name = name });
@@ -437,11 +450,11 @@ namespace SwInventreeAddin.UI
                     if (!string.IsNullOrEmpty(ipnError))
                     {
                         IpnErrorText = ipnError!;
-                        StatusText   = ipnError!;
+                        SetStatus(ipnError!, StatusSeverity.Error);
                     }
                     else
                     {
-                        StatusText = $"Error: {ex.Message}";
+                        SetStatus($"Error: {ex.Message}", StatusSeverity.Error);
                     }
                     IsBusy = false;
                 });

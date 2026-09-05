@@ -24,7 +24,7 @@ namespace SwInventreeAddin.Tests
 
             var result = _service.ExtractIpnError(message);
 
-            Assert.That(result, Is.EqualTo("Part with this IPN already exists. IPN is required."));
+            Assert.That(result, Is.EqualTo("InvenTree Server: Part with this IPN already exists. IPN is required."));
         }
 
         [Test]
@@ -35,7 +35,7 @@ namespace SwInventreeAddin.Tests
 
             var result = _service.ExtractIpnError(message);
 
-            Assert.That(result, Is.EqualTo("Part with this IPN already exists."));
+            Assert.That(result, Is.EqualTo("InvenTree Server: Part with this IPN already exists."));
         }
 
         [Test]
@@ -73,7 +73,7 @@ namespace SwInventreeAddin.Tests
 
             var result = _service.ExtractIpnError(ex.Message);
 
-            Assert.That(result, Is.EqualTo("Duplicate IPN."));
+            Assert.That(result, Is.EqualTo("InvenTree Server: Duplicate IPN."));
         }
     }
 }
