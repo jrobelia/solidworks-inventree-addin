@@ -169,7 +169,9 @@ namespace SwInventreeAddin.InvenTree
                 ["name"]     = name
             };
             if (!string.IsNullOrWhiteSpace(ipn))
-                payloadDict["ipn"] = ipn!.Trim();
+                // InvenTree's PartSerializer field is "IPN" — a lowercase "ipn"
+                // key is silently ignored and the entered IPN never applies.
+                payloadDict["IPN"] = ipn!.Trim();
 
             if (flags != null)
             {

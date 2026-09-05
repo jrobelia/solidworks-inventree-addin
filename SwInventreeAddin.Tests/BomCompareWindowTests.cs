@@ -71,7 +71,7 @@ namespace SwInventreeAddin.Tests
             {
                 LinesToReturn = new List<Bom.SwBomLine>(),
             };
-            var mapping = new PropertyMappingConfig();
+            var mapping = PropertyMappingConfig.WithDefaults();
             var vm = new BomCompareViewModel(client, bomService, mapping, 1, "inventree");
             var dialog = new BomCompareWindow(vm, "TEST-001", "Test Assembly");
             var tcs = new TaskCompletionSource<bool>();

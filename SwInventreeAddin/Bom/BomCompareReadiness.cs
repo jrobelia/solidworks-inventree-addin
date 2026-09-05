@@ -37,6 +37,12 @@ namespace SwInventreeAddin.Bom
         /// assembly. The caller should warn the user and not open BOM Compare.
         /// </summary>
         BomTableMissing,
+
+        /// <summary>
+        /// The IPN or Qty BOM Column Alias is blank. The caller should warn the user and
+        /// still allow the compare window to open.
+        /// </summary>
+        BomColumnAliasesMissing,
     }
 
     internal sealed class BomCompareReadiness

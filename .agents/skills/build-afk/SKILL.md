@@ -1,6 +1,6 @@
 ---
 name: build-afk
-description: Unattended Dynamic Workflow that turns ready-for-agent GitHub issues into reviewed, test-passing, draft PRs on a shared Windows Cloud VM. Invoke with /build-afk.
+description: "Unattended Dynamic Workflow that turns ready-for-agent GitHub issues into reviewed, test-passing, draft PRs on a shared Windows Cloud VM. Invoke with /build-afk or whenever the user wants a batch build/test/review/PR loop with no manual handoff."
 disable-model-invocation: true
 triggers: ["user"]
 ---
@@ -20,9 +20,8 @@ Run a Dynamic Workflow that implements `ready-for-agent` issues in isolated git 
 ## Guardrails
 
 - The current branch must be a feature or milestone branch. If it is `main` or `master`, stop and ask the user to check out a feature/milestone branch first.
-- `GITHUB_TOKEN` with `repo` scope (or at least `public_repo` for public repositories) must be available in the environment. If it is missing, fail fast with a clear message.
-- Skip `bug`-labeled tickets unless `/diagnosing-bugs` is installed and verified in this environment.
-- Skip tickets that are ambiguous, GUI-only without a usable WPF harness, or architecturally risky. Record the reason and continue.
+- `GITHUB_TOKEN` with `repo` scope must be available in the environment. If it is missing, fail fast with a clear message.
+- Do not merge PRs. The handoff is to `/qa`.
 
 ## Input
 
@@ -43,7 +42,7 @@ With no arguments, the orchestrator lists all matching `ready-for-agent` issues 
    ```powershell
    git branch --show-current
    ```
-   Store as `PARENT_BRANCH`. If it is `main` or `master`, stop.
+   Store as `PARENT_BRANCH`. If it is `main` or `master`, stop and ask the user to check out a feature/milestone branch.
 
 2. Verify `GITHUB_TOKEN`:
    ```powershell
@@ -51,49 +50,32 @@ With no arguments, the orchestrator lists all matching `ready-for-agent` issues 
    ```
 
 3. Resolve the issue list.
-   - For no args: list open `ready-for-agent` issues and stop for user confirmation. Do not start the workflow until the user confirms or re-invokes with explicit numbers/`--all`.
+   - For no args: list open `ready-for-agent` issues and stop for user confirmation.
    - For `--all`/`--max`: fetch open `ready-for-agent` issues, limit to `max` if provided, and continue.
    - For explicit numbers: fetch each issue body and labels.
    - For `spec #N`: fetch the spec and find children with `## Parent #N`; order children by resolving `## Blocked by` references (blockers first).
 
-4. Filter the batch:
-   - Drop `bug` issues unless `/diagnosing-bugs` is installed and works in this environment.
-   - Drop issues whose body is ambiguous or whose scope is larger than one PR. Record reason.
-   - If more issues remain than `--max` allows, trim to `max` and note the truncation.
+4. Fetch the full body **and labels** for every remaining issue. The labels help the orchestrator decide whether a `bug` ticket is a hard-bug signal or a routine already-triaged bug.
 
-5. Fetch the full body for every remaining issue. Also fetch the parent spec body when `spec #N` was requested.
+5. Inline triage the `PLAN.json` deterministically:
+   - `parent_branch` exists and is not `main`/`master`.
+   - `GITHUB_TOKEN` is set.
+   - `max`, if present, is a positive integer.
+   - `issues` is a non-empty list and each issue has `number`, `title`, `body`, `branch`, `parent_branch`, and `target_branch`.
+   - No `lite` triage child is spawned.
+
+6. Detect hard-bug signals. If the issue title, body, or labels contain phrases like `intermittent`, `flaky`, `race`, `no deterministic repro`, `root cause unknown`, `performance regression`, etc., the build agent will attempt to build a tight, red-capable repro and run `/diagnosing-bugs` before fixing. Routine `ready-for-agent` bugs proceed through the normal TDD/review pipeline.
 
 ## Plan and branch naming
 
 For each issue, decide if the batch is **chained** or **independent**.
 
-- **Chained** when the user invoked `spec #N` and the children have `## Blocked by` ordering, or when the user explicitly requested chained PRs. Each child PR targets the previous child's branch. Branch names: `build/spec-{parent}-{child1}`, `build/spec-{parent}-{child2}`, etc.
+- **Chained** when the user invoked `spec #N` and the children have `## Blocked by` ordering, or when the user explicitly requested chained PRs. Each child PR targets the previous child's branch. Branch names: `build/spec-{parent}-{child1}`, `build/spec-{parent}-{child2}`, etc. Add `parent_spec` to `PLAN.json` so the final stack agent can name the series.
 - **Independent** by default. Each PR targets `PARENT_BRANCH`. Branch names: `build/issue-{number}`.
 
-Create a `PLAN.json` file with this schema:
+If the branch name `build/issue-{number}` or `build/spec-{parent}-{child}` already exists locally or remotely, the child agent should append a `-{N}` suffix (starting at `2`) until a free name is found, and use that name for both the worktree and the PR.
 
-```json
-{
-  "repo": "github.com/jrobelia/solidworks-inventree-addin",
-  "parent_branch": "milestone-3",
-  "chained": false,
-  "max": null,
-  "issues": [
-    {
-      "number": 41,
-      "title": "...",
-      "body": "...",
-      "parent_branch": "milestone-3",
-      "target_branch": "milestone-3",
-      "branch": "build/issue-41",
-      "skip": false,
-      "skip_reason": ""
-    }
-  ]
-}
-```
-
-For chained children after the first, set `target_branch` to the previous child's `branch`. The workflow can also compute this from `chained=true` and the previous result, but explicit `target_branch` values make the plan easier to inspect.
+See `REFERENCE.md` for the full `PLAN.json`, child output, and `RESULTS.json` schemas.
 
 ## Run the Dynamic Workflow
 
@@ -103,9 +85,9 @@ For chained children after the first, set `target_branch` to the previous child'
    New-Item -ItemType Directory -Path $runDir -Force
    ```
 
-2. Copy the skill's `workflow.py`, `CHILD_PROMPT.md`, and `WPF_HARNESS.md` into `$runDir`.
+2. Copy the skill's `workflow.py`, `CHILD_PROMPT.md`, `WPF_HARNESS.md`, and the two reviewer profiles `.devin/agents/code-review-standards.md` and `.devin/agents/code-review-spec.md` into `$runDir`.
 
-3. Write `PLAN.json` into `$runDir`.
+3. Write `PLAN.json` into `$runDir`. See `REFERENCE.md` for the schema; set `agent_mode` if your Devin environment supports `swe-1.7-standard` or another mode, otherwise `normal` is used. For `chained` plans, copy the parent spec's full issue body into `parent_spec_body` — the workflow validates it and the final-review phase diffs the whole chain against it.
 
 4. Call `run_workflow` with the copied script, substituting the absolute path for `$runDir`:
    ```text
@@ -119,18 +101,22 @@ For chained children after the first, set `target_branch` to the previous child'
    - Ticket number, branch, PR number/URL, status
    - Test and review summaries
    - Any blocked tickets and reasons
+   - Stack status for chained specs
 
 ## After the workflow
 
-Do not merge PRs. The handoff is to `/qa`:
+The handoff is to `/qa`:
 
 ```
 /build-afk finished. Draft PRs are open. Run /qa on each branch before merging.
 ```
 
+Do not merge PRs.
+
 ## Files in this skill
 
-- `workflow.py` — generic Dynamic Workflow script that reads `PLAN.json` and dispatches child agents.
+- `workflow.py` — parent orchestrator that validates the plan, dispatches build/review/fix/final-review/stack agents, and writes `RESULTS.json`.
 - `CHILD_PROMPT.md` — prompt template for each build agent.
 - `WPF_HARNESS.md` — step-by-step WPF smoke-harness instructions copied into each run.
-- `REFERENCE.md` — branch naming, JSON schemas, PR body template, and fallback behavior.
+- `evals/test_workflow.py` — pytest module for the workflow's helpers and dispatch gating; run `python -m pytest evals/test_workflow.py` from the skill directory. Not part of the packaged skill.
+- `REFERENCE.md` — branch naming, JSON schemas, PR body template, two-axis review flow, adjudication rubric, model mode, final-review and stacked-PR guidance, and fallback behaviour.

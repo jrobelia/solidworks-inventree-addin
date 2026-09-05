@@ -17,12 +17,23 @@ A SolidWorks custom property on a part or assembly document.
 _Avoid_: custom property, SW property
 
 **Property Mapping**:
-The user-configurable JSON file that maps InvenTree field names (name, notes, revision, description, IPN) to corresponding SolidWorks Document Property names.
+The user-configurable JSON file that maps InvenTree field names (name, notes, revision, description, IPN) to corresponding SolidWorks Document Property names, and that maps SolidWorks BOM column headers to InvenTree BOM line item fields.
 _Avoid_: field mapping, property config
 
+**Property Mappings**:
+The user-facing title for the editor window and UI sections that configure the **Property Mapping** file. The singular **Property Mapping** remains the canonical term for the file itself.
+
 **Mapping Schema Version**:
-A version marker inside the Property Mapping JSON file. When the marker is older or newer than the add-in's current format, the **Settings** window and **Task Pane** show a warning, but the add-in continues to work by filling missing fields with defaults and preserving unknown keys.
+A version marker inside the **Property Mapping** JSON file.
 _Avoid_: schema, mapping version
+
+**Property Mapping Schema**:
+The versioned structure of the **Property Mapping** JSON file. When the schema is older or newer than the add-in's supported version, the **Settings** window and **Task Pane** warn that the **Property Mapping Schema** is out of date and **Mapping Health** blocks Part Sync until the file is reviewed and saved or the add-in is upgraded.
+_Avoid_: schema, mapping version
+
+**Mapping Health**:
+The add-in's evaluation of the current **Property Mapping**. Only `Healthy` allows Part Sync actions. `NeedsUpgrade`, `NewerSchema`, and `Invalid` block all Part Sync, including **Fetch**, until the mapping file is reviewed and saved or the add-in is upgraded.
+_Avoid_: mapping status, mapping state
 
 **Task Pane**:
 The persistent SolidWorks side panel that hosts the add-in UI.
@@ -55,6 +66,10 @@ _Avoid_: BOM sync, BOM check
 A user-configurable string the engineer includes in their SolidWorks BOM feature name (e.g., "InvenTree BOM") to identify which table to use during BOM Compare. Defaults to `"inventree"`.
 _Avoid_: BOM filter, table name, BOM template
 
+**BOM Column Alias**:
+A comma-separated list of SolidWorks BOM column header names that the add-in treats as the same InvenTree BOM line item field (e.g. IPN, Qty, Reference, Note).
+_Avoid_: BOM column mapping, BOM header
+
 **BOM Diff State**:
 The per-line classification result of a BOM Compare: Match / New / Conflict / InvenTreeOnly / NoIpn / IpnNotFound / Ambiguous.
 
@@ -71,9 +86,10 @@ _Avoid_: file type, SW type
 ## Relationships
 
 - An **IPN** links exactly one SolidWorks document to one InvenTree part
-- A **Property Mapping** governs which **SolidWorks Document Properties** are read or written during **Fetch**, **Apply**, and **Push**
+- A **Property Mapping** governs which **SolidWorks Document Properties** are read or written during **Fetch**, **Apply**, and **Push**, and which SolidWorks BOM column headers are recognized during **BOM Compare**
 - An **InvenTree Part PK** is associated with exactly one InvenTree part and is distinct from the **IPN**
 - **BOM Compare** operates on an Assembly **Document Type** and uses the **BOM Keyword** to locate the source table
+- **Mapping Health** determines whether **Fetch**, **Apply**, **Push**, **Create Part**, and **BOM Compare** are allowed
 - Each BOM line in a **BOM Compare** result carries exactly one **BOM Diff State**
 
 ## Example dialogue

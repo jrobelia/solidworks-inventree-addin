@@ -40,10 +40,10 @@ namespace SwInventreeAddin.Config
                     Url               = input.Url.Trim(),
                     ApiKey            = apiKey,
                     MappingSourcePath = input.SharedMappingPath,
-                    BomKeyword        = string.IsNullOrWhiteSpace(input.BomKeyword)
+                    BomKeyword            = string.IsNullOrWhiteSpace(input.BomKeyword)
                                             ? "inventree"
                                             : input.BomKeyword.Trim(),
-                    WaitForAutoPartNumber = input.WaitForAutoPartNumber,
+                    WaitForServerAssignedIpn = input.WaitForServerAssignedIpn,
                 });
             }
             catch (Exception ex)

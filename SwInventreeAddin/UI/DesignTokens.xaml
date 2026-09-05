@@ -176,8 +176,8 @@
 
     <!-- ── Global tooltip style ───────────────────────────────────────────── -->
     <!--
-        Appears above the control, wraps text at the placement target's width.
-        Applied to every ToolTip in the app automatically.
+        Appears above the control and wraps long status messages at a readable
+        maximum width. Applied to every ToolTip in the app automatically.
     -->
     <Style TargetType="ToolTip">
         <Setter Property="Placement"      Value="Top" />
@@ -188,11 +188,29 @@
                     <TextBlock
                         Text="{Binding}"
                         TextWrapping="Wrap"
-                        MaxWidth="{Binding PlacementTarget.ActualWidth,
-                                  RelativeSource={RelativeSource AncestorType=ToolTip}}" />
+                        MaxWidth="360" />
                 </DataTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <!-- ── Status bar text ────────────────────────────────────────────────── -->
+    <!-- Read-only, selectable TextBox that looks like a label.
+         Status bars set ToolTip to the same string so the full message is
+         copyable in the bar and wrapped in the tooltip. -->
+    <Style x:Key="StatusBarTextStyle" TargetType="TextBox">
+        <Setter Property="VerticalAlignment"        Value="Center" />
+        <Setter Property="Margin"                   Value="8,0,4,0" />
+        <Setter Property="FontSize"                 Value="{StaticResource FontSizeBody}" />
+        <Setter Property="Foreground"               Value="{StaticResource BrushForeground}" />
+        <Setter Property="Background"               Value="Transparent" />
+        <Setter Property="BorderThickness"          Value="0" />
+        <Setter Property="Padding"                  Value="0" />
+        <Setter Property="IsReadOnly"               Value="True" />
+        <Setter Property="IsReadOnlyCaretVisible"   Value="False" />
+        <Setter Property="IsTabStop"                Value="False" />
+        <Setter Property="Focusable"                Value="True" />
+        <Setter Property="TextWrapping"             Value="NoWrap" />
     </Style>
 
     <!-- ── InvenTree toggle switch (left/right label + toggle thumb) ────────── -->

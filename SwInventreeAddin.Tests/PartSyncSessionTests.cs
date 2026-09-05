@@ -30,7 +30,7 @@ namespace SwInventreeAddin.Tests
         {
             _client          = new StubInventreeClient();
             _propertyService = new StubDocumentPropertyService();
-            _mapping         = new PropertyMappingConfig();
+            _mapping         = PropertyMappingConfig.WithDefaults();
         }
 
         private PartSyncSession CreateSession(byte[]? thumbnailBytes = null) =>
@@ -85,7 +85,7 @@ namespace SwInventreeAddin.Tests
 
             session.Apply();
 
-            Assert.That(_propertyService.GetCustomProperty(_mapping.NameProperty),
+            Assert.That(_propertyService.GetCustomProperty(_mapping.NameProperty!),
                         Is.EqualTo(SamplePart.Name));
         }
 
@@ -96,7 +96,7 @@ namespace SwInventreeAddin.Tests
 
             session.Apply();
 
-            Assert.That(_propertyService.GetCustomProperty(_mapping.NotesProperty),
+            Assert.That(_propertyService.GetCustomProperty(_mapping.NotesProperty!),
                         Is.EqualTo(SamplePart.Notes));
         }
 
@@ -107,7 +107,7 @@ namespace SwInventreeAddin.Tests
 
             session.Apply();
 
-            Assert.That(_propertyService.GetCustomProperty(_mapping.DescriptionProperty),
+            Assert.That(_propertyService.GetCustomProperty(_mapping.DescriptionProperty!),
                         Is.EqualTo(SamplePart.Description));
         }
 
@@ -120,7 +120,7 @@ namespace SwInventreeAddin.Tests
 
             session.ApplyName();
 
-            Assert.That(_propertyService.GetCustomProperty(_mapping.NameProperty),
+            Assert.That(_propertyService.GetCustomProperty(_mapping.NameProperty!),
                         Is.EqualTo(SamplePart.Name));
         }
 
@@ -131,7 +131,7 @@ namespace SwInventreeAddin.Tests
 
             session.ApplyName();
 
-            Assert.That(_propertyService.SetCallLog, Does.Not.Contain(_mapping.NotesProperty));
+            Assert.That(_propertyService.SetCallLog, Does.Not.Contain(_mapping.NotesProperty!));
         }
 
         // ── ApplyNotes ────────────────────────────────────────────────────────
@@ -143,7 +143,7 @@ namespace SwInventreeAddin.Tests
 
             session.ApplyNotes();
 
-            Assert.That(_propertyService.GetCustomProperty(_mapping.NotesProperty),
+            Assert.That(_propertyService.GetCustomProperty(_mapping.NotesProperty!),
                         Is.EqualTo(SamplePart.Notes));
         }
 
@@ -154,7 +154,7 @@ namespace SwInventreeAddin.Tests
 
             session.ApplyNotes();
 
-            Assert.That(_propertyService.SetCallLog, Does.Not.Contain(_mapping.NameProperty));
+            Assert.That(_propertyService.SetCallLog, Does.Not.Contain(_mapping.NameProperty!));
         }
 
         // ── ApplyDescription ──────────────────────────────────────────────────
@@ -166,7 +166,7 @@ namespace SwInventreeAddin.Tests
 
             session.ApplyDescription();
 
-            Assert.That(_propertyService.GetCustomProperty(_mapping.DescriptionProperty),
+            Assert.That(_propertyService.GetCustomProperty(_mapping.DescriptionProperty!),
                         Is.EqualTo(SamplePart.Description));
         }
 
@@ -179,7 +179,7 @@ namespace SwInventreeAddin.Tests
 
             session.ApplyPk();
 
-            Assert.That(_propertyService.GetCustomProperty(_mapping.PkProperty),
+            Assert.That(_propertyService.GetCustomProperty(_mapping.PkProperty!),
                         Is.EqualTo(SamplePart.Pk.ToString()));
         }
 
@@ -230,10 +230,10 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void GetMissingApplyProperties_PropertyExists_ReturnsEmpty()
         {
-            _propertyService.Seed(_mapping.NameProperty, "existing");
+            _propertyService.Seed(_mapping.NameProperty!, "existing");
             var session = CreateSession();
 
-            var missing = session.GetMissingApplyProperties(_mapping.NameProperty);
+            var missing = session.GetMissingApplyProperties(_mapping.NameProperty!);
 
             Assert.That(missing, Is.Empty);
         }
@@ -243,9 +243,9 @@ namespace SwInventreeAddin.Tests
         {
             var session = CreateSession();
 
-            var missing = session.GetMissingApplyProperties(_mapping.NameProperty);
+            var missing = session.GetMissingApplyProperties(_mapping.NameProperty!);
 
-            Assert.That(missing, Contains.Item(_mapping.NameProperty));
+            Assert.That(missing, Contains.Item(_mapping.NameProperty!));
         }
 
         [Test]
@@ -263,7 +263,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task PushNameAsync_CallsClientWithCorrectPkAndValue()
         {
-            _propertyService.Seed(_mapping.NameProperty, "Updated Name");
+            _propertyService.Seed(_mapping.NameProperty!, "Updated Name");
             var session = CreateSession();
 
             await session.PushNameAsync();
@@ -275,7 +275,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task PushNameAsync_UpdatesPartNameOnSuccess()
         {
-            _propertyService.Seed(_mapping.NameProperty, "New Name");
+            _propertyService.Seed(_mapping.NameProperty!, "New Name");
             var session = CreateSession();
 
             await session.PushNameAsync();
@@ -297,7 +297,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task PushNotesAsync_CallsClientWithCorrectPkAndValue()
         {
-            _propertyService.Seed(_mapping.NotesProperty, "Updated Notes");
+            _propertyService.Seed(_mapping.NotesProperty!, "Updated Notes");
             var session = CreateSession();
 
             await session.PushNotesAsync();
@@ -309,7 +309,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task PushNotesAsync_UpdatesPartNotesOnSuccess()
         {
-            _propertyService.Seed(_mapping.NotesProperty, "New Notes");
+            _propertyService.Seed(_mapping.NotesProperty!, "New Notes");
             var session = CreateSession();
 
             await session.PushNotesAsync();
@@ -331,7 +331,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task PushDescriptionAsync_CallsClientWithCorrectPkAndValue()
         {
-            _propertyService.Seed(_mapping.DescriptionProperty, "Updated Description");
+            _propertyService.Seed(_mapping.DescriptionProperty!, "Updated Description");
             var session = CreateSession();
 
             await session.PushDescriptionAsync();
@@ -343,7 +343,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task PushDescriptionAsync_UpdatesPartDescriptionOnSuccess()
         {
-            _propertyService.Seed(_mapping.DescriptionProperty, "New Description");
+            _propertyService.Seed(_mapping.DescriptionProperty!, "New Description");
             var session = CreateSession();
 
             await session.PushDescriptionAsync();
@@ -365,7 +365,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task PushRevisionAsync_CallsClientWithCorrectPkAndValue()
         {
-            _propertyService.Seed(_mapping.RevisionProperty, "C");
+            _propertyService.Seed(_mapping.RevisionProperty!, "C");
             var session = CreateSession();
 
             await session.PushRevisionAsync();
@@ -377,7 +377,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task PushRevisionAsync_UpdatesPartRevisionOnSuccess()
         {
-            _propertyService.Seed(_mapping.RevisionProperty, "C");
+            _propertyService.Seed(_mapping.RevisionProperty!, "C");
             var session = CreateSession();
 
             await session.PushRevisionAsync();

@@ -1,9 +1,12 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using NUnit.Framework;
 using SwInventreeAddin.Config;
+using SwInventreeAddin.Tests.Stubs;
 
 namespace SwInventreeAddin.Tests
 {
@@ -28,126 +31,147 @@ namespace SwInventreeAddin.Tests
             if (File.Exists(_sourcePath)) File.Delete(_sourcePath);
         }
 
-        // ── GetMapping ────────────────────────────────────────────────────────
+        // ── GetMappingResult / configuration access ───────────────────────────
 
         [Test]
-        public void GetMapping_NoLocalNoSource_WritesDefaultsToLocalPathAndReturns()
+        public void GetMappingResult_NoLocalNoSource_ReturnsConfigAndWritesDefaultsToLocalPath()
         {
             var provider = new PropertyMappingProvider(_localPath, null);
 
-            var config = provider.GetMapping();
+            var result = provider.GetMappingResult();
 
-            Assert.That(config.IpnProperty,      Is.EqualTo("PartNo"));
-            Assert.That(config.NameProperty,      Is.EqualTo("Description"));
-            Assert.That(config.NotesProperty,     Is.EqualTo("Notes"));
-            Assert.That(config.RevisionProperty,  Is.EqualTo("Revision"));
+            Assert.That(result.Config.IpnProperty,      Is.EqualTo("PartNo"));
+            Assert.That(result.Config.NameProperty,      Is.EqualTo("Description"));
+            Assert.That(result.Config.NotesProperty,     Is.EqualTo("Notes"));
+            Assert.That(result.Config.RevisionProperty,  Is.EqualTo("Revision"));
             Assert.That(File.Exists(_localPath),  Is.True,
                 "First-run should have written defaults to local path.");
 
-            // Verify the written file round-trips: second call loads from local file.
-            var loaded = provider.GetMapping();
-            Assert.That(loaded.IpnProperty, Is.EqualTo("PartNo"),
-                "Second call should load the written defaults from the local file.");
+            // Verify the written file round-trips: second call fetches from local file.
+            var fetched = provider.GetMappingResult().Config;
+            Assert.That(fetched.IpnProperty, Is.EqualTo("PartNo"),
+                "Second call should fetch the written defaults from the local file.");
         }
 
         [Test]
-        public void GetMapping_LocalExists_LoadsFromLocal()
+        public void GetMappingResult_LocalExists_ReturnsConfigFromLocal()
         {
             WriteJson(_localPath, new PropertyMappingConfig { IpnProperty = "MyIPN" });
 
-            var config = new PropertyMappingProvider(_localPath, null).GetMapping();
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
 
-            Assert.That(config.IpnProperty, Is.EqualTo("MyIPN"));
+            Assert.That(result.Config.IpnProperty, Is.EqualTo("MyIPN"));
         }
 
         [Test]
-        public void GetMapping_SourceConfiguredNoLocal_LoadsFromSource()
+        public void GetMappingResult_SourceConfiguredNoLocal_ReturnsConfigFromSource()
         {
             WriteJson(_sourcePath, new PropertyMappingConfig { IpnProperty = "SourceIPN" });
 
-            var config = new PropertyMappingProvider(_localPath, _sourcePath).GetMapping();
+            var result = new PropertyMappingProvider(_localPath, _sourcePath).GetMappingResult();
 
-            Assert.That(config.IpnProperty, Is.EqualTo("SourceIPN"));
+            Assert.That(result.Config.IpnProperty, Is.EqualTo("SourceIPN"));
         }
 
         [Test]
-        public void GetMapping_SourceConfiguredAndLocalExists_SourceTakesPrecedence()
+        public void GetMappingResult_SourceConfiguredAndLocalExists_SourceTakesPrecedence()
         {
             WriteJson(_localPath,  new PropertyMappingConfig { IpnProperty = "LocalIPN"  });
             WriteJson(_sourcePath, new PropertyMappingConfig { IpnProperty = "SourceIPN" });
 
-            var config = new PropertyMappingProvider(_localPath, _sourcePath).GetMapping();
+            var result = new PropertyMappingProvider(_localPath, _sourcePath).GetMappingResult();
 
             // Source path takes priority when configured — local is only used when no source is set.
-            Assert.That(config.IpnProperty, Is.EqualTo("SourceIPN"));
-        }
-
-        // ── IsReadOnly ────────────────────────────────────────────────────────
-
-        [Test]
-        public void IsReadOnly_SourceConfiguredNoLocal_ReturnsTrue()
-        {
-            WriteJson(_sourcePath, new PropertyMappingConfig());
-
-            var provider = new PropertyMappingProvider(_localPath, _sourcePath);
-
-            Assert.That(provider.IsReadOnly, Is.True);
+            Assert.That(result.Config.IpnProperty, Is.EqualTo("SourceIPN"));
         }
 
         [Test]
-        public void IsReadOnly_SourceConfiguredAndLocalExists_ReturnsTrue()
+        public void GetMappingResult_SourceConfiguredButMissing_LocalExists_ReturnsInvalid()
         {
-            WriteJson(_localPath,  new PropertyMappingConfig());
-            WriteJson(_sourcePath, new PropertyMappingConfig());
+            WriteJson(_localPath, new PropertyMappingConfig { IpnProperty = "LocalIPN" });
+            // _sourcePath is intentionally not written.
 
-            var provider = new PropertyMappingProvider(_localPath, _sourcePath);
+            var result = new PropertyMappingProvider(_localPath, _sourcePath).GetMappingResult();
 
-            // Source configured → always read-only regardless of whether a local file also exists.
-            Assert.That(provider.IsReadOnly, Is.True);
+            AssertMissingSourceInvalid(result);
         }
 
         [Test]
-        public void IsReadOnly_NoSourceConfigured_ReturnsFalse()
+        public void GetMappingResult_SourceConfiguredButMissing_NoLocal_ReturnsInvalid()
         {
-            var provider = new PropertyMappingProvider(_localPath, null);
+            // Both _sourcePath and _localPath intentionally not written.
 
-            Assert.That(provider.IsReadOnly, Is.False);
+            var result = new PropertyMappingProvider(_localPath, _sourcePath).GetMappingResult();
+
+            AssertMissingSourceInvalid(result);
+            Assert.That(File.Exists(_localPath), Is.False,
+                "When a configured source path is missing, do not silently fall back to first-run defaults.");
+        }
+
+        // ── ResolvedFilePath ──────────────────────────────────────────────────
+
+        [Test]
+        public void GetMappingResult_SourceConfiguredAndExists_ResolvedFilePathIsSource()
+        {
+            WriteJson(_sourcePath, new PropertyMappingConfig { IpnProperty = "SourceIPN" });
+
+            var result = new PropertyMappingProvider(_localPath, _sourcePath).GetMappingResult();
+
+            Assert.That(result.ResolvedFilePath, Is.EqualTo(_sourcePath));
+        }
+
+        [Test]
+        public void GetMappingResult_NoSourceConfigured_ResolvedFilePathIsLocal()
+        {
+            WriteJson(_localPath, new PropertyMappingConfig());
+
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+
+            Assert.That(result.ResolvedFilePath, Is.EqualTo(_localPath));
+        }
+
+        [Test]
+        public void GetMappingResult_FirstRun_ResolvedFilePathIsLocal()
+        {
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+
+            Assert.That(result.ResolvedFilePath, Is.EqualTo(_localPath));
+        }
+
+        [Test]
+        public void GetMappingResult_SourceMissing_ResolvedFilePathFallsBackToLocal()
+        {
+            var result = new PropertyMappingProvider(_localPath, _sourcePath).GetMappingResult();
+
+            Assert.That(result.ResolvedFilePath, Is.EqualTo(_localPath));
+        }
+
+        // ── Source ────────────────────────────────────────────────────────────
+
+        [Test]
+        public void GetMappingResult_SourceConfiguredAndExists_SourceIsShared()
+        {
+            WriteJson(_sourcePath, new PropertyMappingConfig { IpnProperty = "SourceIPN" });
+
+            var result = new PropertyMappingProvider(_localPath, _sourcePath).GetMappingResult();
+
+            Assert.That(result.Source, Is.EqualTo(MappingSource.Shared));
+        }
+
+        [Test]
+        public void GetMappingResult_NoSourceConfigured_SourceIsLocal()
+        {
+            WriteJson(_localPath, new PropertyMappingConfig());
+
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+
+            Assert.That(result.Source, Is.EqualTo(MappingSource.Local));
         }
 
         // ── Error handling ────────────────────────────────────────────────────
 
         [Test]
-        public void GetMapping_WhenLocalFileContainsInvalidJson_ThrowsInvalidOperationExceptionWithPath()
-        {
-            File.WriteAllText(_localPath, "not valid json");
-
-            Assert.That(() => new PropertyMappingProvider(_localPath, null).GetMapping(),
-                Throws.TypeOf<InvalidOperationException>().With.Message.Contains(_localPath));
-        }
-
-        [Test]
-        public void GetMapping_WhenSourceFileContainsInvalidJson_ThrowsInvalidOperationExceptionWithPath()
-        {
-            File.WriteAllText(_sourcePath, "not valid json");
-
-            Assert.That(() => new PropertyMappingProvider(_localPath, _sourcePath).GetMapping(),
-                Throws.TypeOf<InvalidOperationException>().With.Message.Contains(_sourcePath));
-        }
-
-        [Test]
-        public void GetMapping_WhenLocalFileIsLocked_ThrowsInvalidOperationExceptionWithPath()
-        {
-            using var stream = new FileStream(_localPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
-            var content = System.Text.Encoding.UTF8.GetBytes("{}");
-            stream.Write(content, 0, content.Length);
-            stream.Flush();
-
-            Assert.That(() => new PropertyMappingProvider(_localPath, null).GetMapping(),
-                Throws.TypeOf<InvalidOperationException>().With.Message.Contains(_localPath));
-        }
-
-        [Test]
-        public void SaveMapping_WhenFileIsReadOnly_ThrowsInvalidOperationExceptionWithPath()
+        public void SaveMapping_WhenFileIsReadOnly_ThrowsActionableInvalidOperationException()
         {
             var provider = new PropertyMappingProvider(_localPath, null);
             provider.SaveMapping(new PropertyMappingConfig());
@@ -156,7 +180,8 @@ namespace SwInventreeAddin.Tests
             try
             {
                 Assert.That(() => provider.SaveMapping(new PropertyMappingConfig { IpnProperty = "Changed" }),
-                    Throws.TypeOf<InvalidOperationException>().With.Message.Contains(_localPath));
+                    Throws.TypeOf<InvalidOperationException>().With.Message.Contains(_localPath)
+                                                         .And.Message.Contains("read-only").IgnoreCase);
             }
             finally
             {
@@ -183,10 +208,24 @@ namespace SwInventreeAddin.Tests
             var provider = new PropertyMappingProvider(_localPath, null);
 
             provider.SaveMapping(new PropertyMappingConfig { IpnProperty = "XPN" });
-            var loaded = provider.GetMapping();
+            var fetched = provider.GetMappingResult().Config;
 
             Assert.That(File.Exists(_localPath),  Is.True);
-            Assert.That(loaded.IpnProperty,       Is.EqualTo("XPN"));
+            Assert.That(fetched.IpnProperty,      Is.EqualTo("XPN"));
+        }
+
+        [Test]
+        public void SaveMapping_SparseConfig_DoesNotInjectDefaults()
+        {
+            var provider = new PropertyMappingProvider(_localPath, null);
+
+            provider.SaveMapping(new PropertyMappingConfig { IpnProperty = "XPN" });
+            var json = File.ReadAllText(_localPath);
+
+            Assert.That(json, Does.Contain("\"IpnProperty\""));
+            Assert.That(json, Does.Not.Contain("\"SchemaVersion\""));
+            Assert.That(json, Does.Not.Contain("\"NameProperty\""));
+            Assert.That(json, Does.Not.Contain("\"BomColumnQty\""));
         }
 
         [Test]
@@ -219,49 +258,38 @@ namespace SwInventreeAddin.Tests
             Assert.That(provider.LocalFilePath, Is.EqualTo(_localPath));
         }
 
-        // ── CopyToLocal ───────────────────────────────────────────────────────
+        // ── SaveMapping target ────────────────────────────────────────────────
 
         [Test]
-        public void CopyToLocal_CopiesSourceContentToLocalPath()
+        public void SaveMapping_WritesToSourceWhenSourceFileExists()
         {
             WriteJson(_sourcePath, new PropertyMappingConfig { IpnProperty = "SourceIPN" });
+            WriteJson(_localPath,  new PropertyMappingConfig { IpnProperty = "LocalIPN" });
+
             var provider = new PropertyMappingProvider(_localPath, _sourcePath);
+            provider.SaveMapping(new PropertyMappingConfig { IpnProperty = "SavedToSource" });
 
-            provider.CopyToLocal();
+            var sourceJson = File.ReadAllText(_sourcePath);
+            Assert.That(sourceJson, Does.Contain("SavedToSource"));
 
-            // Local file is created with the source content.
-            Assert.That(File.Exists(_localPath), Is.True);
-
-            // Source path is still configured, so IsReadOnly stays true and GetMapping still
-            // returns source content.  To switch to editable mode the caller must clear the
-            // MappingSourcePath in settings (select the Local radio button and save).
-            Assert.That(provider.IsReadOnly, Is.True);
-            Assert.That(provider.GetMapping().IpnProperty, Is.EqualTo("SourceIPN"));
+            var localJson = File.ReadAllText(_localPath);
+            Assert.That(localJson, Does.Contain("LocalIPN"));
         }
 
         [Test]
-        public void CopyToLocal_NoSourceConfigured_ThrowsInvalidOperationException()
+        public void SaveMapping_WritesToLocalWhenNoSourceIsConfigured()
         {
             var provider = new PropertyMappingProvider(_localPath, null);
+            provider.SaveMapping(new PropertyMappingConfig { IpnProperty = "SavedToLocal" });
 
-            Assert.That(() => provider.CopyToLocal(),
-                Throws.TypeOf<InvalidOperationException>());
-        }
-
-        [Test]
-        public void CopyToLocal_SourceFileDoesNotExist_ThrowsInvalidOperationException()
-        {
-            // _sourcePath intentionally not written
-            var provider = new PropertyMappingProvider(_localPath, _sourcePath);
-
-            Assert.That(() => provider.CopyToLocal(),
-                Throws.TypeOf<InvalidOperationException>());
+            var localJson = File.ReadAllText(_localPath);
+            Assert.That(localJson, Does.Contain("SavedToLocal"));
         }
 
         // ── BOM column migration ──────────────────────────────────────────────
 
         [Test]
-        public void GetMapping_SchemaV1File_ReceivesBomColumnDefaults()
+        public void GetMappingResult_SchemaV1File_DoesNotBackfillBomColumnDefaults()
         {
             var v1Json = @"{
                 ""SchemaVersion"": ""1"",
@@ -271,15 +299,16 @@ namespace SwInventreeAddin.Tests
                 ""RevisionProperty"": ""Revision""
             }";
             File.WriteAllText(_localPath, v1Json);
-            var config = new PropertyMappingProvider(_localPath, null).GetMapping();
-            Assert.That(config.BomColumnIpn,       Is.EqualTo("IPN, Part IPN, Internal Part Number, Part Number"));
-            Assert.That(config.BomColumnQty,       Is.EqualTo("Qty, Quantity"));
-            Assert.That(config.BomColumnReference, Is.EqualTo("Reference"));
-            Assert.That(config.BomColumnNote,      Is.EqualTo("Note, Notes"));
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.NeedsUpgrade));
+            Assert.That(result.Config.BomColumnIpn,       Is.Null);
+            Assert.That(result.Config.BomColumnQty,       Is.Null);
+            Assert.That(result.Config.BomColumnReference, Is.Null);
+            Assert.That(result.Config.BomColumnNote,      Is.Null);
         }
 
         [Test]
-        public void GetMapping_SchemaV2File_ReceivesBomColumnDefaults()
+        public void GetMappingResult_SchemaV2File_DoesNotBackfillBomColumnDefaults()
         {
             var v2Json = @"{
                 ""SchemaVersion"": ""2"",
@@ -291,16 +320,17 @@ namespace SwInventreeAddin.Tests
                 ""PkProperty"": ""InvenTree PK""
             }";
             File.WriteAllText(_localPath, v2Json);
-            var config = new PropertyMappingProvider(_localPath, null).GetMapping();
-            Assert.That(config.BomColumnIpn, Is.EqualTo("IPN, Part IPN, Internal Part Number, Part Number"));
-            Assert.That(config.BomColumnQty, Is.EqualTo("Qty, Quantity"));
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.NeedsUpgrade));
+            Assert.That(result.Config.BomColumnIpn, Is.Null);
+            Assert.That(result.Config.BomColumnQty, Is.Null);
         }
 
         [Test]
-        public void GetMapping_BomColumnAliasCsv_IsSplitCaseInsensitively()
+        public void PropertyMappingConfig_BomColumnAliasCsv_IsSplitCaseInsensitively()
         {
-            var config = new PropertyMappingConfig();
-            var aliases = config.BomColumnQty
+            var config = PropertyMappingConfig.WithDefaults();
+            var aliases = config.BomColumnQty!
                 .Split(',')
                 .Select(s => s.Trim())
                 .ToList();
@@ -308,13 +338,372 @@ namespace SwInventreeAddin.Tests
             Assert.That(aliases, Does.Contain("Quantity"));
         }
 
+        // ── GetMappingResult / MappingHealth ──────────────────────────────────
+
+        [Test]
+        public void GetMappingResult_NoLocalNoSource_WritesDefaultsAndReturnsHealthy()
+        {
+            var provider = new PropertyMappingProvider(_localPath, null);
+
+            var result = provider.GetMappingResult();
+
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.Healthy));
+            Assert.That(result.CanUseForPartSync, Is.True);
+            Assert.That(result.CanFetch, Is.True);
+            Assert.That(result.CanEdit, Is.True);
+            Assert.That(File.Exists(_localPath), Is.True,
+                "First-run should have written defaults to local path.");
+            Assert.That(result.Config.SchemaVersion, Is.EqualTo(PropertyMappingConfig.CurrentSchemaVersion));
+        }
+
+        [Test]
+        public void GetMappingResult_LocalCurrentSchema_ReturnsHealthy()
+        {
+            WriteJson(_localPath, new PropertyMappingConfig { IpnProperty = "PartNo" });
+
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.Healthy));
+            Assert.That(result.Config.IpnProperty, Is.EqualTo("PartNo"));
+            Assert.That(result.CanUseForPartSync, Is.True);
+            Assert.That(result.CanEdit, Is.True);
+        }
+
+        [Test]
+        public void GetMappingResult_LocalSchemaV1_ReturnsNeedsUpgradeAndKeepsOriginalSchema()
+        {
+            var v1Json = @"{
+                ""SchemaVersion"": ""1"",
+                ""IpnProperty"": ""PartNo"",
+                ""NameProperty"": ""Description"",
+                ""NotesProperty"": ""Notes"",
+                ""RevisionProperty"": ""Revision""
+            }";
+            File.WriteAllText(_localPath, v1Json);
+
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.NeedsUpgrade));
+            Assert.That(result.Config.SchemaVersion, Is.EqualTo("1"),
+                "The runtime config should keep the file's original schema version, not silently upgrade it.");
+            Assert.That(result.CanFetch, Is.False);
+            Assert.That(result.CanUseForPartSync, Is.False);
+            Assert.That(result.CanEdit, Is.True);
+        }
+
+        [Test]
+        public void GetMappingResult_LocalSchemaV2_ReturnsNeedsUpgrade()
+        {
+            var v2Json = @"{
+                ""SchemaVersion"": ""2"",
+                ""IpnProperty"": ""PartNo"",
+                ""NameProperty"": ""Description"",
+                ""NotesProperty"": ""Notes"",
+                ""RevisionProperty"": ""Revision"",
+                ""DescriptionProperty"": ""Description Long"",
+                ""PkProperty"": ""InvenTree PK""
+            }";
+            File.WriteAllText(_localPath, v2Json);
+
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.NeedsUpgrade));
+            Assert.That(result.Config.SchemaVersion, Is.EqualTo("2"));
+            Assert.That(result.Message, Does.Contain("Property Mapping Schema is out of date"));
+        }
+
+        [Test]
+        public void GetMappingResult_NewerSchemaVersion_ReturnsNewerSchema()
+        {
+            var newerJson = @"{
+                ""SchemaVersion"": ""4"",
+                ""IpnProperty"": ""PartNo"",
+                ""NameProperty"": ""Description"",
+                ""NotesProperty"": ""Notes"",
+                ""RevisionProperty"": ""Revision"",
+                ""DescriptionProperty"": ""Description Long"",
+                ""PkProperty"": ""InvenTree PK""
+            }";
+            File.WriteAllText(_localPath, newerJson);
+
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.NewerSchema));
+            Assert.That(result.Config.SchemaVersion, Is.EqualTo("4"),
+                "The runtime config should keep the file's original schema version.");
+        }
+
+        [Test]
+        public void GetMappingResult_NewerSchemaVersion_ExposesUpgradeMessage()
+        {
+            var newerJson = @"{
+                ""SchemaVersion"": ""4"",
+                ""IpnProperty"": ""PartNo"",
+                ""NameProperty"": ""Description"",
+                ""NotesProperty"": ""Notes"",
+                ""RevisionProperty"": ""Revision"",
+                ""DescriptionProperty"": ""Description Long"",
+                ""PkProperty"": ""InvenTree PK""
+            }";
+            File.WriteAllText(_localPath, newerJson);
+
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+
+            Assert.That(result.Message, Does.Contain("newer").IgnoreCase);
+            Assert.That(result.Message, Does.Contain("add-in").IgnoreCase);
+        }
+
+        [Test]
+        public void GetMappingResult_InvalidJson_ReturnsInvalidWithPath()
+        {
+            File.WriteAllText(_localPath, "not valid json");
+
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.Invalid));
+            Assert.That(result.Message, Does.Contain("Failed to fetch the Property Mapping file"));
+            Assert.That(result.Message, Does.Contain(_localPath));
+            Assert.That(result.CanFetch, Is.False);
+            Assert.That(result.CanUseForPartSync, Is.False);
+            Assert.That(result.CanEdit, Is.False);
+        }
+
+        [Test]
+        public void GetMappingResult_LockedFile_ReturnsInvalidWithPath()
+        {
+            using var stream = new FileStream(_localPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
+            var content = System.Text.Encoding.UTF8.GetBytes("{}");
+            stream.Write(content, 0, content.Length);
+            stream.Flush();
+
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.Invalid));
+            Assert.That(result.Message, Does.Contain(_localPath));
+        }
+
+        [Test]
+        public void GetMappingResult_MissingSchemaVersion_TreatedAsNeedsUpgrade()
+        {
+            var v1Json = @"{
+                ""IpnProperty"": ""PartNo"",
+                ""NameProperty"": ""Description"",
+                ""NotesProperty"": ""Notes"",
+                ""RevisionProperty"": ""Revision""
+            }";
+            File.WriteAllText(_localPath, v1Json);
+
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.NeedsUpgrade));
+        }
+
+        [Test]
+        public void GetMappingResult_UnparseableSchemaVersion_ReturnsInvalid()
+        {
+            File.WriteAllText(_localPath, @"{
+                ""SchemaVersion"": ""foo"",
+                ""IpnProperty"": ""PartNo""
+            }");
+
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.Invalid));
+            Assert.That(result.Message, Does.Contain("Unrecognized Property Mapping Schema version").IgnoreCase);
+        }
+
+        [Test]
+        public void GetMappingResult_DuplicateDocumentPropertyNames_ReturnsInvalid()
+        {
+            File.WriteAllText(_localPath, @"{
+                ""SchemaVersion"": ""3"",
+                ""IpnProperty"": ""PartNo"",
+                ""NameProperty"": ""Description"",
+                ""NotesProperty"": ""Notes"",
+                ""RevisionProperty"": ""Revision"",
+                ""DescriptionProperty"": ""Description"",
+                ""PkProperty"": ""InvenTree PK""
+            }");
+
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.Invalid));
+            Assert.That(result.Message, Does.Contain("Description"));
+            Assert.That(result.Message, Does.Contain("duplicate").IgnoreCase);
+        }
+
+        [Test]
+        public void GetMappingResult_DuplicateIsCaseInsensitiveAndTrims_ReturnsInvalid()
+        {
+            File.WriteAllText(_localPath, @"{
+                ""SchemaVersion"": ""3"",
+                ""IpnProperty"": ""PartNo"",
+                ""NameProperty"": ""  partno  "",
+                ""NotesProperty"": ""Notes"",
+                ""RevisionProperty"": ""Revision"",
+                ""DescriptionProperty"": ""Description Long"",
+                ""PkProperty"": ""InvenTree PK""
+            }");
+
+            var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
+
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.Invalid));
+            Assert.That(result.Message, Does.Contain("PartNo"));
+        }
+
+        [Test]
+        public void GetMappingResult_SourceTakesPrecedenceForHealth_ReturnsNeedsUpgrade()
+        {
+            WriteJson(_localPath,  new PropertyMappingConfig { SchemaVersion = "3", IpnProperty = "LocalIPN"  });
+            WriteJson(_sourcePath, new PropertyMappingConfig { SchemaVersion = "1", IpnProperty = "SourceIPN" });
+
+            var result = new PropertyMappingProvider(_localPath, _sourcePath).GetMappingResult();
+
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.NeedsUpgrade));
+            Assert.That(result.Config.IpnProperty, Is.EqualTo("SourceIPN"));
+            Assert.That(result.Config.SchemaVersion, Is.EqualTo("1"));
+        }
+
+        [Test]
+        public void SaveMapping_PreservesUnknownTopLevelKeys()
+        {
+            File.WriteAllText(_localPath, @"{
+                ""SchemaVersion"": ""3"",
+                ""IpnProperty"": ""PartNo"",
+                ""UnknownFutureKey"": ""future-value"",
+                ""AnotherUnknown"": 42
+            }");
+
+            var provider = new PropertyMappingProvider(_localPath, null);
+            var result   = provider.GetMappingResult();
+
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.Healthy));
+            Assert.That(result.Config.ExtensionData.ContainsKey("UnknownFutureKey"), Is.True);
+            Assert.That(result.Config.ExtensionData.ContainsKey("AnotherUnknown"), Is.True);
+
+            result.Config.IpnProperty = "NewPartNo";
+            provider.SaveMapping(result.Config);
+
+            var savedJson = File.ReadAllText(_localPath);
+            Assert.That(savedJson, Does.Contain("UnknownFutureKey"));
+            Assert.That(savedJson, Does.Contain("future-value"));
+            Assert.That(savedJson, Does.Contain("AnotherUnknown"));
+            Assert.That(savedJson, Does.Contain("NewPartNo"));
+        }
+
+        [Test]
+        public void SaveMapping_RaisesMappingChanged()
+        {
+            var provider    = new PropertyMappingProvider(_localPath, null);
+            var raised      = false;
+            provider.MappingChanged += (s, e) => raised = true;
+
+            provider.SaveMapping(new PropertyMappingConfig { IpnProperty = "PartNo" });
+
+            Assert.That(raised, Is.True);
+        }
+
+        [Test]
+        public void SaveMapping_WritesToSource_RaisesMappingChanged()
+        {
+            WriteJson(_sourcePath, new PropertyMappingConfig { IpnProperty = "SourceIPN" });
+            var provider = new PropertyMappingProvider(_localPath, _sourcePath);
+
+            var raised = false;
+            provider.MappingChanged += (s, e) => raised = true;
+
+            provider.SaveMapping(new PropertyMappingConfig { IpnProperty = "Updated" });
+
+            Assert.That(raised, Is.True);
+            Assert.That(File.ReadAllText(_sourcePath), Does.Contain("Updated"));
+        }
+
+        // ── Contract ──────────────────────────────────────────────────────────
+
+        [Test]
+        public void RemovedMembers_AreNotDeclaredOnPublicSeam()
+        {
+            var forbidden = new[] { "GetMapping", "IsReadOnly", "CopyToLocal" };
+            var declared =
+                new[] { typeof(IPropertyMappingProvider), typeof(PropertyMappingProvider), typeof(StubPropertyMappingProvider) }
+                .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+                .Where(m => forbidden.Contains(m.Name) && m.DeclaringType != typeof(object))
+                .Select(m => $"{m.DeclaringType?.Name}.{m.Name}")
+                .ToList();
+
+            var declaredGetters =
+                new[] { typeof(IPropertyMappingProvider), typeof(PropertyMappingProvider), typeof(StubPropertyMappingProvider) }
+                .SelectMany(t => t.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+                .Where(p => p.Name == "IsReadOnly" && p.DeclaringType != typeof(object))
+                .Select(p => $"{p.DeclaringType?.Name}.{p.Name}")
+                .ToList();
+
+            Assert.That(declared, Is.Empty,
+                "GetMapping(), IsReadOnly and CopyToLocal() must be removed from the public seam.");
+            Assert.That(declaredGetters, Is.Empty,
+                "IsReadOnly must be removed from the public seam.");
+        }
+
+        [Test]
+        public void GetMappingResult_ExternalFileEditToOlderSchema_RaisesMappingChanged()
+        {
+            var provider = new PropertyMappingProvider(_localPath, null);
+
+            WriteJson(_localPath, new PropertyMappingConfig { IpnProperty = "PartNo" });
+            var first = provider.GetMappingResult();
+            Assert.That(first.Health, Is.EqualTo(MappingHealth.Healthy));
+
+            var raised = false;
+            provider.MappingChanged += (s, e) => raised = true;
+            WriteJson(_localPath, new PropertyMappingConfig { IpnProperty = "PartNo", SchemaVersion = "2" });
+
+            var second = provider.GetMappingResult();
+
+            Assert.That(second.Health, Is.EqualTo(MappingHealth.NeedsUpgrade));
+            Assert.That(raised, Is.True,
+                "GetMappingResult should raise MappingChanged when an external edit changes the mapping health.");
+        }
+
+        [Test]
+        public void SaveMapping_UpdatesLastHealth_GetMappingResultDoesNotRaiseAgain()
+        {
+            var provider = new PropertyMappingProvider(_localPath, null);
+
+            WriteJson(_localPath, new PropertyMappingConfig { IpnProperty = "PartNo", SchemaVersion = "2" });
+            var first = provider.GetMappingResult();
+            Assert.That(first.Health, Is.EqualTo(MappingHealth.NeedsUpgrade));
+
+            var raised = 0;
+            provider.MappingChanged += (s, e) => raised++;
+
+            provider.SaveMapping(PropertyMappingConfig.WithDefaults());
+            Assert.That(raised, Is.EqualTo(1));
+
+            // The listener's own GetMappingResult inside the handler sees the same
+            // health and must not raise a second MappingChanged.
+            var second = provider.GetMappingResult();
+            Assert.That(second.Health, Is.EqualTo(MappingHealth.Healthy));
+            Assert.That(raised, Is.EqualTo(1));
+        }
+
         // ── Helpers ───────────────────────────────────────────────────────────
+
+        private void AssertMissingSourceInvalid(MappingResult result)
+        {
+            Assert.That(result.Health, Is.EqualTo(MappingHealth.Invalid));
+            Assert.That(result.Message, Does.Contain(_sourcePath),
+                "The user must be told which configured source file is missing.");
+        }
 
         private static void WriteJson(string path, PropertyMappingConfig config)
         {
-            File.WriteAllText(path,
-                JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true }),
-                System.Text.Encoding.UTF8);
+            var merged = PropertyMappingConfig.WithDefaults(config);
+            var json = JsonSerializer.Serialize(merged, new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            });
+            File.WriteAllText(path, json, System.Text.Encoding.UTF8);
         }
     }
 }

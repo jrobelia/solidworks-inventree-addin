@@ -13,6 +13,24 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="DesignTokens.xaml" />
             </ResourceDictionary.MergedDictionaries>
+            <!-- Status text: read-only label-like TextBox so users can select and copy messages,
+                 with a tooltip showing the full text. TextBox does not support TextTrimming on .NET Framework 4.8;
+                 the tooltip and horizontal scroll-via-selection cover long status messages. -->
+            <Style x:Key="StatusTextBoxStyle" TargetType="TextBox">
+                <Setter Property="IsReadOnly"                Value="True" />
+                <Setter Property="IsReadOnlyCaretVisible"     Value="False" />
+                <Setter Property="BorderThickness"            Value="0" />
+                <Setter Property="Background"                 Value="Transparent" />
+                <Setter Property="FocusVisualStyle"           Value="{x:Null}" />
+                <Setter Property="Padding"                    Value="0" />
+                <Setter Property="VerticalContentAlignment"   Value="Center" />
+                <Setter Property="FontFamily"                 Value="{StaticResource FontBody}" />
+                <Setter Property="FontSize"                   Value="{StaticResource FontSizeBody}" />
+                <Setter Property="Foreground"                 Value="{StaticResource BrushForeground}" />
+                <Setter Property="Margin"                     Value="4,0,4,0" />
+                <Setter Property="ToolTip"                    Value="{Binding StatusToolTip}" />
+            </Style>
+
             <!-- Visibility converters -->
             <BooleanToVisibilityConverter x:Key="BoolToVis" />
             <local:ByteArrayToBitmapImageConverter x:Key="ThumbConverter" />
@@ -52,13 +70,9 @@
                            Visibility="Collapsed"
                            Foreground="{StaticResource BrushStatusNone}" />
 
-                <TextBlock Grid.Column="2"
-                           Text="{Binding StatusText}"
-                           Style="{StaticResource FieldLabelStyle}"
-                           VerticalAlignment="Center"
-                           Margin="4,0,4,0"
-                           TextTrimming="CharacterEllipsis"
-                           Foreground="{StaticResource BrushForeground}" />
+                <TextBox Grid.Column="2"
+                         Text="{Binding StatusText, Mode=OneWay}"
+                         Style="{StaticResource StatusTextBoxStyle}" />
             </Grid>
         </Border>
 

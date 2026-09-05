@@ -26,14 +26,23 @@
         <Border DockPanel.Dock="Top" Height="4"
                 Background="{StaticResource BrushAccentBlue}" />
 
-        <Border DockPanel.Dock="Bottom" Height="26"
-                Background="{StaticResource BrushSectionHeader}"
-                Padding="8,0">
-            <TextBlock x:Name="StatusTextBlock"
-                       VerticalAlignment="Center"
-                       FontSize="{StaticResource FontSizeBody}"
-                       Foreground="{StaticResource BrushSubtle}"
-                       TextTrimming="CharacterEllipsis" />
+        <Border DockPanel.Dock="Bottom" Height="32"
+                Background="#FFF0F0F0"
+                BorderBrush="#FFD0D0D0" BorderThickness="0,1,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="4" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border x:Name="StatusStripe" Grid.Column="0"
+                        Background="{StaticResource BrushStatusNone}" />
+
+                <TextBox x:Name="StatusTextBox"
+                         Grid.Column="1"
+                         Text="{Binding StatusText, Mode=OneWay}"
+                         Style="{StaticResource StatusBarTextStyle}" />
+            </Grid>
         </Border>
 
         <Grid Margin="16,12,16,12">
@@ -110,24 +119,6 @@
                         </TextBlock.Style>
                     </TextBlock>
                 </Grid>
-
-                <TextBlock x:Name="IpnErrorTextBlock"
-                           Text="{Binding IpnErrorText}"
-                           Foreground="{StaticResource BrushStatusError}"
-                           FontSize="{StaticResource FontSizeBody}"
-                           Margin="0,4,0,0"
-                           TextWrapping="Wrap">
-                    <TextBlock.Style>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="Visibility" Value="Visible" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IpnErrorText}" Value="">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </TextBlock.Style>
-                </TextBlock>
 
                 <CheckBox x:Name="WaitForServerAssignedIpnBox"
                           Content="Wait for server-assigned IPN before closing"

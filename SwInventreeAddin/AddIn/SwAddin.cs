@@ -146,13 +146,14 @@ namespace SwInventreeAddin.AddIn
 
                 _mappingProvider = new PropertyMappingProvider(config?.MappingSourcePath);
 
+                var createPartValidator = new InventreeClientCreatePartValidationErrorService();
                 _taskPaneControl = new TaskPaneControl(
-                    inventreeClient, propertyService, viewportService, _mappingProvider, _configProvider);
+                    inventreeClient, propertyService, viewportService, _mappingProvider, _configProvider, createPartValidator);
                 _taskPaneControl.SettingsRequested += OnSettingsRequested;
 
                 var assemblyBomService = new SwAssemblyBomService(_swApp);
                 _taskPaneControl.UpdateBomState(assemblyBomService, config?.BomKeyword ?? "inventree");
-                _taskPaneControl.UpdateWaitForAutoPartNumber(config?.WaitForAutoPartNumber ?? true);
+                _taskPaneControl.UpdateWaitForServerAssignedIpn(config?.WaitForServerAssignedIpn ?? true);
 
                 // Refresh the PartNo field whenever the user opens or switches documents.
                 // OnIdleNotify detects when the last document is closed (ActiveDoc becomes null).
@@ -301,13 +302,13 @@ namespace SwInventreeAddin.AddIn
         }
 
         private int OnDocCustomPropertyAdd(string propName, string configuration, string value, int valueType)
-            { OnDocCustomPropertyChanged(); return 0; }
+            { _taskPaneControl?.OnDocumentPropertyChanged(propName, value); return 0; }
 
         private int OnDocCustomPropertyChange(string propName, string configuration, string oldValue, string newValue, int valueType)
-            { OnDocCustomPropertyChanged(); return 0; }
+            { _taskPaneControl?.OnDocumentPropertyChanged(propName, newValue); return 0; }
 
         private int OnDocCustomPropertyDelete(string propName, string configuration, string value, int valueType)
-            { OnDocCustomPropertyChanged(); return 0; }
+            { _taskPaneControl?.LoadPartNumber(); return 0; }
 
         private void OnDocCustomPropertyChanged() => _taskPaneControl?.LoadPartNumber();
 
@@ -347,7 +348,7 @@ namespace SwInventreeAddin.AddIn
                 _httpClient.BaseAddress = new System.Uri(newConfig.Url);
                 var newClient = new InventreeHttpClient(_httpClient, newConfig.ApiKey);
                 _taskPaneControl?.UpdateClient(newClient);
-                _taskPaneControl?.UpdateWaitForAutoPartNumber(newConfig.WaitForAutoPartNumber);
+                _taskPaneControl?.UpdateWaitForServerAssignedIpn(newConfig.WaitForServerAssignedIpn);
             }
         }
     }

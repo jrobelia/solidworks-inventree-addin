@@ -128,7 +128,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void CreatePartAsync_NonSuccessStatus_ExceptionContainsResponseBody()
         {
-            var errorJson = @"{""ipn"": [""Part with this IPN already exists.""]}";
+            var errorJson = @"{""IPN"": [""Part with this IPN already exists.""]}";
             var handler   = new StubHttpMessageHandler(HttpStatusCode.BadRequest, errorJson);
 
             var ex = Assert.ThrowsAsync<HttpRequestException>(() =>
@@ -146,7 +146,10 @@ namespace SwInventreeAddin.Tests
             await CreateClient(handler).CreatePartAsync(7, "New Part", "ABC-001");
 
             using var doc = JsonDocument.Parse(handler.LastRequestBody);
-            Assert.That(doc.RootElement.GetProperty("ipn").GetString(), Is.EqualTo("ABC-001"));
+            // InvenTree's PartSerializer field is "IPN" (uppercase); a lowercase
+            // "ipn" key is silently ignored and the entered IPN never applies.
+            Assert.That(doc.RootElement.GetProperty("IPN").GetString(), Is.EqualTo("ABC-001"));
+            Assert.That(doc.RootElement.TryGetProperty("ipn", out _), Is.False);
         }
 
         [Test]
@@ -158,6 +161,7 @@ namespace SwInventreeAddin.Tests
             await CreateClient(handler).CreatePartAsync(7, "New Part");
 
             using var doc = JsonDocument.Parse(handler.LastRequestBody);
+            Assert.That(doc.RootElement.TryGetProperty("IPN", out _), Is.False);
             Assert.That(doc.RootElement.TryGetProperty("ipn", out _), Is.False);
         }
 

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using SwInventreeAddin.Bom;
@@ -22,14 +23,42 @@ namespace SwInventreeAddin.Tests
         {
             _client     = new StubInventreeClient();
             _bomService = new StubAssemblyBomService();
-            _mapping    = new PropertyMappingConfig();
+            _mapping    = PropertyMappingConfig.WithDefaults();
 
             // Default: assembly part exists and is flagged as Assembly so ApplyAsync guard passes.
             _client.PartByPkToReturn = new InventreePart { Assembly = true };
+
+            // Each test starts with the default (null) SynchronizationContext.
+            SynchronizationContext.SetSynchronizationContext(null);
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            SynchronizationContext.SetSynchronizationContext(null);
         }
 
         private BomCompareViewModel CreateVm(int assemblyPk = 42) =>
             new BomCompareViewModel(_client, _bomService, _mapping, assemblyPk, "inventree");
+
+        [Test]
+        public async Task Constructor_DoesNotBackfillBomColumnAliases()
+        {
+            var partialMapping = new PropertyMappingConfig
+            {
+                SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion,
+                IpnProperty   = "PartNo",
+            };
+
+            _mapping = partialMapping;
+            var vm = CreateVm();
+            await vm.LoadAsync();
+
+            Assert.That(_bomService.ReceivedMapping, Is.SameAs(partialMapping),
+                "BomCompareViewModel must pass the supplied PropertyMappingConfig through without copying or backfilling it.");
+            Assert.That(_bomService.ReceivedMapping!.BomColumnIpn, Is.Null,
+                "Missing BOM column aliases must remain missing; they must not be silently backfilled with defaults at runtime.");
+        }
 
         // ── LoadAsync ─────────────────────────────────────────────────────────
 
@@ -41,10 +70,15 @@ namespace SwInventreeAddin.Tests
                 { new InventreeBomLine { Pk = 1, SubPartPk = 10, Quantity = 1 } };
 
             var vm = CreateVm();
+
+            int changes = 0;
+            vm.Lines.CollectionChanged += (sender, e) => changes++;
+
             await vm.LoadAsync();
 
             Assert.That(vm.Lines.Count, Is.EqualTo(1));
             Assert.That(vm.Lines[0].State, Is.EqualTo(BomDiffState.Match));
+            Assert.That(changes, Is.EqualTo(1), "LoadAsync should refresh Lines with a single CollectionChanged/Reset.");
         }
 
         [Test]
@@ -282,6 +316,18 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public void IsPushing_WhenSet_RaisesPushEnabledChanged()
+        {
+            var vm = CreateVm();
+            var changed = new List<string>();
+            vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName!);
+
+            vm.IsPushing = true;
+
+            Assert.That(changed, Has.Member(nameof(BomCompareViewModel.PushEnabled)));
+        }
+
+        [Test]
         public async Task PushAsync_SetsWorkingStatusBeforeConfirm()
         {
             _bomService.LinesToReturn.Add(new SwBomLine { SubPartPk = 10, Quantity = 1 });
@@ -392,6 +438,48 @@ namespace SwInventreeAddin.Tests
                 "Pushed Conflict row must not be re-checkable by Select All");
             Assert.That(vm.Lines[1].IsChecked, Is.True,
                 "Unpushed New row should still be selectable");
+        }
+
+        [Test]
+        public async Task PushAsync_MarshalsUiUpdatesToSynchronizationContext()
+        {
+            var countingContext = new StubSynchronizationContext();
+            SynchronizationContext.SetSynchronizationContext(countingContext);
+
+            try
+            {
+                _client.BomLinesToReturn = new List<InventreeBomLine>();
+                var vm = CreateVm();
+                var diffLine = new BomDiffLine
+                {
+                    State       = BomDiffState.New,
+                    SubPartPk   = 10,
+                    DisplayIpn  = "A",
+                    SwLine      = new SwBomLine { Quantity = 1, Reference = string.Empty, Note = string.Empty },
+                };
+                var line = new BomDiffLineViewModel(diffLine) { IsChecked = true };
+                vm.Lines.Add(line);
+
+                await vm.PushAsync();
+
+                Assert.That(countingContext.SendCount, Is.GreaterThan(0),
+                    "UI-bound updates after HTTP awaits must be marshalled through the captured SynchronizationContext.");
+            }
+            finally
+            {
+                SynchronizationContext.SetSynchronizationContext(null);
+            }
+        }
+
+        [Test]
+        public async Task PushAsync_NoSelectedRows_StatusText_SaysNoChangesPushed()
+        {
+            _client.BomLinesToReturn = new List<InventreeBomLine>();
+
+            var vm = CreateVm();
+            await vm.PushAsync();
+
+            Assert.That(vm.StatusText, Is.EqualTo("No changes pushed"));
         }
 
         // ── Sort ──────────────────────────────────────────────────────────────

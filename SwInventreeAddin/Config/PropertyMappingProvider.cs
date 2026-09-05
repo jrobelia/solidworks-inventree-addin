@@ -1,17 +1,20 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace SwInventreeAddin.Config
 {
     /// <summary>
-    /// Loads and saves the property-name mapping from/to a local JSON file.
+    /// Fetches and saves the property-name mapping from/to a JSON file.
     ///
     /// Resolution order:
-    ///   1. Source path configured and file exists → use it (read-only).
-    ///   2. Local file exists → use it (editable).
-    ///   3. Neither → write defaults to local path and return them (first run).
+    ///   1. Source path configured and file exists → use it (shared file).
+    ///   2. Source path configured and file missing → <see cref="MappingHealth.Invalid"/> (terminal; no fallback).
+    ///   3. Local file exists → use it (local file).
+    ///   4. Neither → write defaults to local path and return them (first run).
     ///
     /// File I/O, JSON, and access failures are wrapped in
     /// <see cref="InvalidOperationException"/> messages that name the offending path.
@@ -20,6 +23,8 @@ namespace SwInventreeAddin.Config
     {
         private readonly string  _localPath;
         private readonly string? _sourcePath;
+        private readonly JsonSerializerOptions _saveOptions;
+        private MappingHealth? _lastHealth;
 
         /// <summary>Uses the default %APPDATA% local path and optional source path.</summary>
         public PropertyMappingProvider(string? sourcePath = null)
@@ -30,67 +35,142 @@ namespace SwInventreeAddin.Config
         {
             _localPath  = localPath;
             _sourcePath = sourcePath;
+            _saveOptions = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            };
         }
-
-        /// <inheritdoc/>
-        public bool IsReadOnly =>
-            !string.IsNullOrEmpty(_sourcePath) &&
-            File.Exists(_sourcePath);
 
         /// <inheritdoc/>
         public string LocalFilePath => _localPath;
 
         /// <inheritdoc/>
-        public PropertyMappingConfig GetMapping()
+        public event EventHandler? MappingChanged;
+
+        /// <summary>
+        /// Returns the resolved mapping file path: the source path when it is configured
+        /// and the file exists, otherwise the local path.
+        /// </summary>
+        private string ResolvePath() =>
+            !string.IsNullOrEmpty(_sourcePath) && File.Exists(_sourcePath)
+                ? _sourcePath!
+                : _localPath;
+
+        /// <summary>
+        /// Returns the resolved mapping source: shared when the source path is configured
+        /// and the file exists, otherwise local.
+        /// </summary>
+        private MappingSource ResolveSource() =>
+            !string.IsNullOrEmpty(_sourcePath) && File.Exists(_sourcePath)
+                ? MappingSource.Shared
+                : MappingSource.Local;
+
+        /// <inheritdoc/>
+        public MappingResult GetMappingResult()
         {
-            // Source path takes priority when configured and the file exists.
-            if (!string.IsNullOrEmpty(_sourcePath) && File.Exists(_sourcePath))
-                return Fetch(_sourcePath!);
+            var result   = ReadMappingResult();
+            var previous = _lastHealth;
+            _lastHealth  = result.Health;
 
-            if (File.Exists(_localPath))
-                return Fetch(_localPath);
+            if (previous.HasValue && previous.Value != result.Health)
+                MappingChanged?.Invoke(this, EventArgs.Empty);
 
-            // First run — write defaults so the user has a file to edit.
-            var defaults = new PropertyMappingConfig();
+            return result;
+        }
+
+        /// <summary>
+        /// Reads and classifies the resolved mapping file without raising <see cref="MappingChanged"/>.
+        /// The health-change notification lives in <see cref="GetMappingResult"/>.
+        /// </summary>
+        private MappingResult ReadMappingResult()
+        {
+            string? resolvedPath = null;
+            var source = ResolveSource();
+
             try
             {
+                // Source path takes priority when configured and the file exists.
+                if (!string.IsNullOrEmpty(_sourcePath))
+                {
+                    if (File.Exists(_sourcePath))
+                    {
+                        resolvedPath = _sourcePath;
+                        return Classify(Fetch(resolvedPath!), resolvedPath!, MappingSource.Shared);
+                    }
+
+                    return new MappingResult(
+                        MappingHealth.Invalid,
+                        new PropertyMappingConfig(),
+                        $"The configured Property Mapping file was not found: {_sourcePath}",
+                        _localPath,
+                        MappingSource.Shared);
+                }
+
+                if (File.Exists(_localPath))
+                {
+                    resolvedPath = _localPath;
+                    return Classify(Fetch(resolvedPath), resolvedPath, MappingSource.Local);
+                }
+
+                // First run — write defaults so the user has a file to edit.
+                resolvedPath = _localPath;
+                var defaults = PropertyMappingConfig.WithDefaults();
                 SaveMapping(defaults);
+                return new MappingResult(
+                    MappingHealth.Healthy,
+                    defaults,
+                    MappingResult.GetDefaultMessage(MappingHealth.Healthy),
+                    resolvedPath,
+                    MappingSource.Local);
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException(
-                    $"Failed to load mapping file: {_localPath}", ex);
-            }
+                var message = ex is InvalidOperationException
+                    ? ex.Message
+                    : $"Failed to fetch the Property Mapping file: {resolvedPath ?? _localPath}";
 
-            return defaults;
+                return new MappingResult(MappingHealth.Invalid, new PropertyMappingConfig(), message, resolvedPath ?? _localPath, source);
+            }
         }
+
+        /// <inheritdoc/>
+        public MappingResult ValidateMapping(PropertyMappingConfig config)
+            => Classify(config, ResolvePath(), ResolveSource());
 
         /// <inheritdoc/>
         public void SaveMapping(PropertyMappingConfig config)
         {
+            var resolvedPath = ResolvePath();
+
             try
             {
-                EnsureDirectory(_localPath);
-                var json = JsonSerializer.Serialize(config,
-                    new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(_localPath, json, Encoding.UTF8);
+                EnsureDirectory(resolvedPath);
+                var normalized = config.Normalized();
+                var json = JsonSerializer.Serialize(normalized, _saveOptions);
+                File.WriteAllText(resolvedPath, json, Encoding.UTF8);
+                // Update the tracked health before raising so a listener's GetMappingResult
+                // sees the same health and does not raise MappingChanged a second time.
+                _lastHealth = Classify(normalized, resolvedPath, ResolveSource()).Health;
+                MappingChanged?.Invoke(this, EventArgs.Empty);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                throw new InvalidOperationException(
+                    $"The Property Mapping file could not be saved because it is read-only or locked: {resolvedPath}. " +
+                    "Make the file writable, close any other program using it, or choose a different mapping source in Settings.", ex);
+            }
+            catch (IOException ex)
+            {
+                throw new InvalidOperationException(
+                    $"The Property Mapping file could not be saved because it is in use or locked: {resolvedPath}. " +
+                    "Close any other program using it, or choose a different mapping source in Settings.", ex);
             }
             catch (Exception ex)
             {
                 throw new InvalidOperationException(
-                    $"Failed to save mapping file: {_localPath}", ex);
+                    $"Failed to save the Property Mapping file: {resolvedPath}", ex);
             }
-        }
-
-        /// <inheritdoc/>
-        public void CopyToLocal()
-        {
-            if (string.IsNullOrEmpty(_sourcePath) || !File.Exists(_sourcePath))
-                throw new InvalidOperationException(
-                    "No source path is configured or the source file does not exist.");
-
-            var config = Fetch(_sourcePath!);
-            SaveMapping(config);
         }
 
         // ── Private helpers ───────────────────────────────────────────────────
@@ -106,23 +186,133 @@ namespace SwInventreeAddin.Config
                 var config = JsonSerializer.Deserialize<PropertyMappingConfig>(json)
                     ?? new PropertyMappingConfig();
 
-                if (string.Compare(config.SchemaVersion, "3", StringComparison.Ordinal) < 0)
-                {
-                    var defaults = new PropertyMappingConfig();
-                    if (string.IsNullOrEmpty(config.BomColumnIpn))       config.BomColumnIpn       = defaults.BomColumnIpn;
-                    if (string.IsNullOrEmpty(config.BomColumnQty))       config.BomColumnQty       = defaults.BomColumnQty;
-                    if (string.IsNullOrEmpty(config.BomColumnReference)) config.BomColumnReference = defaults.BomColumnReference;
-                    if (string.IsNullOrEmpty(config.BomColumnNote))      config.BomColumnNote      = defaults.BomColumnNote;
-                    config.SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion;
-                }
-
+                config.ExtensionData ??= new Dictionary<string, JsonElement>();
                 return config;
             }
             catch (Exception ex)
             {
                 throw new InvalidOperationException(
-                    $"Failed to load mapping file: {path}", ex);
+                    $"Failed to fetch the Property Mapping file: {path}", ex);
             }
+        }
+
+        internal static MappingResult Classify(PropertyMappingConfig config, string path)
+            => Classify(config, path, MappingSource.Local);
+
+        internal static MappingResult Classify(PropertyMappingConfig config, string path, MappingSource source)
+        {
+            var duplicate = FindDuplicatePropertyName(config);
+            if (duplicate != null)
+            {
+                var location = string.IsNullOrWhiteSpace(path) ? "" : $"The Property Mapping file is invalid: {path}. ";
+                return new MappingResult(MappingHealth.Invalid, config, $"{location}{duplicate}", path, source);
+            }
+
+            var currentVersion = PropertyMappingConfig.CurrentSchemaVersion;
+
+            var comparison = CompareSchemaVersions(config.SchemaVersion, currentVersion);
+            if (comparison == 0)
+                return new MappingResult(
+                    MappingHealth.Healthy,
+                    config,
+                    MappingResult.GetDefaultMessage(MappingHealth.Healthy),
+                    path,
+                    source);
+
+            if (comparison > 0)
+                return new MappingResult(
+                    MappingHealth.NewerSchema,
+                    config,
+                    MappingResult.GetDefaultMessage(MappingHealth.NewerSchema),
+                    path,
+                    source);
+
+            // Older, unversioned (null/empty), or unparseable non-empty schema version.
+            if (comparison < 0 || string.IsNullOrWhiteSpace(config.SchemaVersion))
+                return new MappingResult(
+                    MappingHealth.NeedsUpgrade,
+                    config,
+                    MappingResult.GetDefaultMessage(MappingHealth.NeedsUpgrade),
+                    path,
+                    source);
+
+            var badVersionLocation = string.IsNullOrWhiteSpace(path) ? "" : $"The Property Mapping file is invalid: {path}. ";
+            return new MappingResult(
+                MappingHealth.Invalid,
+                config,
+                $"{badVersionLocation}Unrecognized Property Mapping Schema version '{config.SchemaVersion}'.",
+                path,
+                source);
+        }
+
+        private static int? CompareSchemaVersions(string? fileVersion, string currentVersion)
+        {
+            var fileVer    = TryParseSchemaVersion(fileVersion);
+            var currentVer = TryParseSchemaVersion(currentVersion);
+
+            if (fileVer == null || currentVer == null)
+                return null;
+
+            return new Version(fileVer!.Major, fileVer.Minor)
+                .CompareTo(new Version(currentVer!.Major, currentVer.Minor));
+        }
+
+        /// <summary>
+        /// Parses a schema version string for comparison.
+        /// Single-component versions like "3" are normalized to "3.0" so that
+        /// <see cref="Version"/> can compare them. Only major and minor are kept so
+        /// "3", "3.0" and "3.0.0" are treated as the same schema release while "3.1"
+        /// is correctly seen as newer.
+        /// </summary>
+        private static Version? TryParseSchemaVersion(string? version)
+        {
+            if (version == null || string.IsNullOrWhiteSpace(version))
+                return null;
+
+            var padded = version.Contains(".") ? version : version + ".0";
+
+            if (Version.TryParse(padded, out var parsed))
+                return new Version(parsed.Major, parsed.Minor);
+
+            return null;
+        }
+
+        private static string? FindDuplicatePropertyName(PropertyMappingConfig config)
+        {
+            var map = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+
+            void Add(string? name, string role)
+            {
+                if (name == null || string.IsNullOrWhiteSpace(name))
+                    return;
+
+                var key = name.Trim();
+                if (!map.TryGetValue(key, out var roles))
+                {
+                    roles = new List<string>();
+                    map[key] = roles;
+                }
+
+                roles.Add(role);
+            }
+
+            Add(config.IpnProperty,        "IPN");
+            Add(config.NameProperty,       "Name");
+            Add(config.NotesProperty,      "Notes");
+            Add(config.RevisionProperty,   "Revision");
+            Add(config.DescriptionProperty,"Description");
+            Add(config.PkProperty,         "InvenTree Part PK");
+
+            foreach (var kvp in map)
+            {
+                if (kvp.Value.Count > 1)
+                {
+                    return $"Duplicate SolidWorks Document Property name '{kvp.Key}' " +
+                           $"is used by {string.Join(" and ", kvp.Value)}.";
+                }
+            }
+
+            return null;
         }
 
         private static void EnsureDirectory(string filePath)

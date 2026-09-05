@@ -1,35 +1,33 @@
-# Code-review skill — known environment issues
+# Code-review environment notes
 
-## Manual (author) reviews don't work
+## Why an independent reviewer matters
 
 The agent that wrote the code is the wrong agent to review it. Manual reviews by the authoring agent rarely catch the same assumptions and shortcuts that produced the code. Every code review must be run by an independent reviewer — a subagent if you are working locally, or a child session on Devin Cloud. That separation is what makes the findings worth acting on.
 
-The `/build` workflow runs a two-axis review by default using the custom subagent profiles `code-review-standards` and `code-review-spec` under `.devin/agents/`. Both profiles have `allowed-tools: []`, so they can run in the background without `read`/`exec` permission prompts. The parent `/build` agent pre-computes and pastes the diff, commit list, standards context, and spec contents into each subagent prompt.
+## Default path: tool-enabled custom subagents
 
-## Default path: custom profiles in the background
+`/build` runs the two-axis review using the custom subagent profiles `code-review-standards` and `code-review-spec` under `.devin/agents/`. Those profiles have `read`/`grep`/`glob`/`exec` tool access, so the parent only passes `PRE_BUILD_SHA` and the spec. The subagents fetch the diff and commit list and read `docs/agents/coding-standards.md` themselves.
 
-- **Standards axis:** `run_subagent` with `profile: code-review-standards` in the background. The prompt contains the diff, commit list, `docs/agents/coding-standards.md`, and the Fowler smell baseline.
-- **Spec axis:** `run_subagent` with `profile: code-review-spec` in the background. The prompt contains the diff, commit list, and the originating issue/PRD/spec body.
-- Both subagents return separate `## Standards` and `## Spec` findings blocks. The parent parses and classifies each finding as RED / YELLOW / GREEN.
+For this to work, the active Devin config must allow:
 
-## Fallback path: `subagent_general` or `/code-review`
+- `Exec(git diff)`
+- `Exec(git log)`
+- `Read(**)`
 
-If either profile file is missing, or a custom subagent fails, requests more context, emits a tool-denial error, or returns incomplete output, `/build` falls back to the existing `/code-review` path. In that case:
+The full invocation is in `build/REFERENCE.md`.
 
-- Run both axes in the **foreground** (`is_background=false`) using `subagent_general` with the same pasted context, one after another.
-- The Standards subagent receives the diff and `docs/agents/coding-standards.md`.
-- The Spec subagent receives the diff and the relevant issue/PRD/spec contents.
+## Fallback path
 
-Do **not** edit `.agents/skills/code-review/SKILL.md` to change this; that file is managed by the skill store and may be overwritten on skill updates. Keep project-level notes here; the root `AGENTS.md` links to this file.
+If the custom subagents are missing, fail, or a tool call is denied, fall back to the `/code-review` skill or `subagent_general` in the foreground. In that case the parent must paste the diff, commit list, standards, and spec.
 
 ## Diff base
 
-The diff base for this repo should usually be `origin/main`, not the local `main` branch. The local `main` can lag behind `origin/main` and pull in unrelated skill-setup commits.
+The diff base should usually be `origin/main`, not the local `main` branch. The local `main` can lag behind `origin/main` and pull in unrelated skill-setup commits.
 
-## Legacy foreground-only workaround (superseded)
+## Do not edit the skill file
 
-The old recommendation to default to foreground `subagent_general` is now legacy. Custom profiles with `allowed-tools: []` and pre-computed context are the default. Only use the foreground fallback when the custom profiles are absent or fail.
+Do not edit `.agents/skills/code-review/SKILL.md` to change this; that file is managed by the skill store and may be overwritten on skill updates. Keep project-level notes here and in `build/REFERENCE.md`.
 
 ## Build-skill note
 
-When `/build` runs the two-axis review, that step is part of the workflow, not optional. Use the custom-profile background path when the profiles exist; otherwise use the fallback above and the appropriate diff base, then review the work before declaring it done.
+When `/build` runs the two-axis review, that step is part of the workflow, not optional. Use the custom-profile background path when the profiles and permissions are in place; otherwise use the fallback above and the appropriate diff base, then review the work before declaring it done.

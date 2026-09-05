@@ -17,6 +17,43 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="DesignTokens.xaml" />
             </ResourceDictionary.MergedDictionaries>
+
+            <Style x:Key="MappingFieldStyle" TargetType="TextBox" BasedOn="{StaticResource SWFieldStyle}">
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="TextBox">
+                            <Border Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    Padding="{TemplateBinding Padding}"
+                                    SnapsToDevicePixels="True">
+                                <Grid>
+                                    <TextBlock x:Name="Placeholder"
+                                               Text="{TemplateBinding Tag}"
+                                               Foreground="{StaticResource BrushSubtle}"
+                                               VerticalAlignment="Center"
+                                               IsHitTestVisible="False"
+                                               Visibility="Collapsed"
+                                               Margin="2,0,0,0" />
+                                    <ScrollViewer x:Name="PART_ContentHost"
+                                                  HorizontalScrollBarVisibility="Hidden"
+                                                  VerticalScrollBarVisibility="Hidden"
+                                                  VerticalAlignment="Center" />
+                                </Grid>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <MultiTrigger>
+                                    <MultiTrigger.Conditions>
+                                        <Condition Property="Text" Value="" />
+                                        <Condition Property="IsKeyboardFocused" Value="False" />
+                                    </MultiTrigger.Conditions>
+                                    <Setter TargetName="Placeholder" Property="Visibility" Value="Visible" />
+                                </MultiTrigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
         </ResourceDictionary>
     </Window.Resources>
 
@@ -27,31 +64,17 @@
 
         <StackPanel Margin="16,14,16,16">
 
+            <!-- Property Mappings title -->
+            <TextBlock Text="Property Mappings"
+                       FontWeight="SemiBold"
+                       Foreground="{StaticResource BrushForeground}"
+                       Margin="0,0,0,4" />
+
             <!-- Subtitle -->
             <TextBlock Text="Map InvenTree part properties to your SolidWorks custom property names."
                        Style="{StaticResource FieldLabelStyle}"
                        Margin="0,0,0,8"
                        TextWrapping="Wrap" />
-
-            <!-- Read-only amber info bar (visible when provider.IsReadOnly) -->
-            <Border x:Name="ReadOnlyBanner"
-                    Visibility="Collapsed"
-                    Margin="0,0,0,8">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="4" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0" Background="{StaticResource BrushStatusWarning}" />
-                    <Border Grid.Column="1" Background="#FFF8E1">
-                        <TextBlock
-                            Text="Loaded from a shared file — edit the source file directly to change mappings."
-                            Margin="8,6,8,6"
-                            TextWrapping="Wrap"
-                            Foreground="{StaticResource BrushForeground}" />
-                    </Border>
-                </Grid>
-            </Border>
 
             <!-- Column headers -->
             <Grid Margin="0,0,0,4">
@@ -62,12 +85,10 @@
                 <TextBlock Grid.Column="0" Text="InvenTree Part Property"
                            Style="{StaticResource ColumnHeaderStyle}"
                            HorizontalAlignment="Left" />
-                <TextBlock Grid.Column="1" Text="SolidWorks Custom Property"
+                <TextBlock Grid.Column="1" Text="SolidWorks Document Property"
                            Style="{StaticResource ColumnHeaderStyle}"
                            HorizontalAlignment="Left" />
             </Grid>
-
-            <Separator Background="{StaticResource BrushBorder}" Margin="0,0,0,4" />
 
             <!-- IPN row -->
             <Grid Margin="0,2,0,0">
@@ -79,8 +100,12 @@
                            VerticalAlignment="Center"
                            FontWeight="SemiBold"
                            Foreground="{StaticResource BrushForeground}" />
-                <TextBox x:Name="IpnPropertyBox" Grid.Column="1"
-                         Style="{StaticResource SWFieldStyle}" Height="26" />
+                <TextBox Grid.Column="1"
+                         Style="{StaticResource MappingFieldStyle}"
+                         Height="26"
+                         Text="{Binding IpnProperty, UpdateSourceTrigger=PropertyChanged}"
+                         Tag="{Binding IpnPlaceholder}"
+                         />
             </Grid>
 
             <!-- Name row -->
@@ -93,8 +118,12 @@
                            VerticalAlignment="Center"
                            FontWeight="SemiBold"
                            Foreground="{StaticResource BrushForeground}" />
-                <TextBox x:Name="NamePropertyBox" Grid.Column="1"
-                         Style="{StaticResource SWFieldStyle}" Height="26" />
+                <TextBox Grid.Column="1"
+                         Style="{StaticResource MappingFieldStyle}"
+                         Height="26"
+                         Text="{Binding NameProperty, UpdateSourceTrigger=PropertyChanged}"
+                         Tag="{Binding NamePlaceholder}"
+                         />
             </Grid>
 
             <!-- Description row -->
@@ -107,8 +136,12 @@
                            VerticalAlignment="Center"
                            FontWeight="SemiBold"
                            Foreground="{StaticResource BrushForeground}" />
-                <TextBox x:Name="DescriptionPropertyBox" Grid.Column="1"
-                         Style="{StaticResource SWFieldStyle}" Height="26" />
+                <TextBox Grid.Column="1"
+                         Style="{StaticResource MappingFieldStyle}"
+                         Height="26"
+                         Text="{Binding DescriptionProperty, UpdateSourceTrigger=PropertyChanged}"
+                         Tag="{Binding DescriptionPlaceholder}"
+                         />
             </Grid>
 
             <!-- Revision row -->
@@ -121,8 +154,12 @@
                            VerticalAlignment="Center"
                            FontWeight="SemiBold"
                            Foreground="{StaticResource BrushForeground}" />
-                <TextBox x:Name="RevisionPropertyBox" Grid.Column="1"
-                         Style="{StaticResource SWFieldStyle}" Height="26" />
+                <TextBox Grid.Column="1"
+                         Style="{StaticResource MappingFieldStyle}"
+                         Height="26"
+                         Text="{Binding RevisionProperty, UpdateSourceTrigger=PropertyChanged}"
+                         Tag="{Binding RevisionPlaceholder}"
+                         />
             </Grid>
 
             <!-- Notes row -->
@@ -135,8 +172,12 @@
                            VerticalAlignment="Center"
                            FontWeight="SemiBold"
                            Foreground="{StaticResource BrushForeground}" />
-                <TextBox x:Name="NotesPropertyBox" Grid.Column="1"
-                         Style="{StaticResource SWFieldStyle}" Height="26" />
+                <TextBox Grid.Column="1"
+                         Style="{StaticResource MappingFieldStyle}"
+                         Height="26"
+                         Text="{Binding NotesProperty, UpdateSourceTrigger=PropertyChanged}"
+                         Tag="{Binding NotesPlaceholder}"
+                         />
             </Grid>
 
             <!-- InvenTree PK row -->
@@ -149,28 +190,151 @@
                            VerticalAlignment="Center"
                            FontWeight="SemiBold"
                            Foreground="{StaticResource BrushForeground}" />
-                <TextBox x:Name="PkPropertyBox" Grid.Column="1"
-                         Style="{StaticResource SWFieldStyle}" Height="26" />
+                <TextBox Grid.Column="1"
+                         Style="{StaticResource MappingFieldStyle}"
+                         Height="26"
+                         Text="{Binding PkProperty, UpdateSourceTrigger=PropertyChanged}"
+                         Tag="{Binding PkPlaceholder}"
+                         />
             </Grid>
 
-            <!-- Validation error (visible when duplicate names detected) -->
-            <TextBlock x:Name="ErrorText"
-                       Visibility="Collapsed"
-                       Foreground="{StaticResource BrushStatusError}"
-                       FontSize="{StaticResource FontSizeBody}"
-                       TextWrapping="Wrap"
-                       Margin="0,6,0,0" />
+            <!-- ── Separator ─────────────────────────────────────────────────── -->
+            <Separator Background="{StaticResource BrushBorder}" Margin="0,8,0,0" />
 
-            <!-- Buttons -->
+            <!-- BOM Column Alias section -->
+            <TextBlock Text="BOM Column Aliases"
+                       FontWeight="SemiBold"
+                       Foreground="{StaticResource BrushForeground}"
+                       Margin="0,8,0,4" />
+            <TextBlock Text="Enter comma-separated SolidWorks BOM table column headers for each InvenTree field for assembly BOM comparison."
+                       Style="{StaticResource FieldLabelStyle}"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,4" />
+
+            <!-- BOM Column headers -->
+            <Grid Margin="0,0,0,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="150" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="InvenTree BOM Field"
+                           Style="{StaticResource ColumnHeaderStyle}"
+                           HorizontalAlignment="Left" />
+                <TextBlock Grid.Column="1" Text="SolidWorks BOM Column"
+                           Style="{StaticResource ColumnHeaderStyle}"
+                           HorizontalAlignment="Left" />
+            </Grid>
+
+            <Grid Margin="0,2,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="150" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0"
+                           VerticalAlignment="Center"
+                           FontWeight="SemiBold"
+                           Foreground="{StaticResource BrushForeground}"
+                           ToolTip="BOM Compare needs this alias">
+                    <Run Text="IPN" />
+                    <Run Text="*" Foreground="{StaticResource BrushStatusWarning}" FontWeight="Bold" />
+                </TextBlock>
+                <TextBox Grid.Column="1"
+                         Style="{StaticResource MappingFieldStyle}"
+                         Height="26"
+                         Text="{Binding BomColumnIpn, UpdateSourceTrigger=PropertyChanged}"
+                         Tag="{Binding BomColumnIpnPlaceholder}"
+                         />
+            </Grid>
+
+            <Grid Margin="0,4,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="150" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0"
+                           VerticalAlignment="Center"
+                           FontWeight="SemiBold"
+                           Foreground="{StaticResource BrushForeground}"
+                           ToolTip="BOM Compare needs this alias">
+                    <Run Text="Qty" />
+                    <Run Text="*" Foreground="{StaticResource BrushStatusWarning}" FontWeight="Bold" />
+                </TextBlock>
+                <TextBox Grid.Column="1"
+                         Style="{StaticResource MappingFieldStyle}"
+                         Height="26"
+                         Text="{Binding BomColumnQty, UpdateSourceTrigger=PropertyChanged}"
+                         Tag="{Binding BomColumnQtyPlaceholder}"
+                         />
+            </Grid>
+
+            <Grid Margin="0,4,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="150" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Reference"
+                           VerticalAlignment="Center"
+                           FontWeight="SemiBold"
+                           Foreground="{StaticResource BrushForeground}" />
+                <TextBox Grid.Column="1"
+                         Style="{StaticResource MappingFieldStyle}"
+                         Height="26"
+                         Text="{Binding BomColumnReference, UpdateSourceTrigger=PropertyChanged}"
+                         Tag="{Binding BomColumnReferencePlaceholder}"
+                         />
+            </Grid>
+
+            <Grid Margin="0,4,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="150" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Note"
+                           VerticalAlignment="Center"
+                           FontWeight="SemiBold"
+                           Foreground="{StaticResource BrushForeground}" />
+                <TextBox Grid.Column="1"
+                         Style="{StaticResource MappingFieldStyle}"
+                         Height="26"
+                         Text="{Binding BomColumnNote, UpdateSourceTrigger=PropertyChanged}"
+                         Tag="{Binding BomColumnNotePlaceholder}"
+                         />
+            </Grid>
+
+            <!-- Status bar + buttons -->
             <Grid Margin="0,12,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="8" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="8" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
+
+                <Border x:Name="StatusBar"
+                        Grid.Column="0"
+                        Height="32"
+                        Background="#FFF0F0F0"
+                        BorderBrush="{StaticResource BrushBorder}"
+                        BorderThickness="0,1,0,0"
+                        VerticalAlignment="Center">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="4" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border x:Name="StatusStripe" Grid.Column="0"
+                                Background="{StaticResource BrushStatusNone}" />
+                        <TextBox x:Name="StatusText"
+                                 Grid.Column="1"
+                                 Text="{Binding StatusMessage, Mode=OneWay}"
+                                 ToolTip="{Binding StatusMessage, Mode=OneWay}"
+                                 Style="{StaticResource StatusBarTextStyle}" />
+                    </Grid>
+                </Border>
+
                 <Button x:Name="SaveButton"
-                        Grid.Column="1"
+                        Grid.Column="2"
                         Style="{StaticResource PrimaryButtonStyle}"
                         Width="80" Margin="0"
                         IsDefault="True"
@@ -181,7 +345,7 @@
                                    VerticalAlignment="Center" Margin="6,0,0,0" />
                     </StackPanel>
                 </Button>
-                <Button Grid.Column="3"
+                <Button Grid.Column="4"
                         Style="{StaticResource SecondaryButtonStyle}"
                         Width="80" Margin="0"
                         IsCancel="True"

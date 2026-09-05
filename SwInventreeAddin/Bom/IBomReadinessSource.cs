@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using SwInventreeAddin.Config;
 
 namespace SwInventreeAddin.Bom
 {
@@ -26,6 +27,12 @@ namespace SwInventreeAddin.Bom
 
         /// <summary>The revision value fetched from InvenTree during the last Part Sync.</summary>
         string RevisionPreview    { get; }
+
+        /// <summary>
+        /// The resolved Property Mapping for the current document, including the BOM column
+        /// aliases the BOM Compare pre-flight needs to validate.
+        /// </summary>
+        PropertyMappingConfig CurrentMapping { get; }
 
         /// <summary>
         /// Fetches the InvenTree part for the current IPN and populates the in-memory state.

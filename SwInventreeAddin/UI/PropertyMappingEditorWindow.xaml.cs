@@ -10,13 +10,13 @@ using SwInventreeAddin.Config;
 namespace SwInventreeAddin.UI
 {
     /// <summary>
-    /// Modal dialog for viewing and editing the five InvenTree → SolidWorks property-name mappings.
-    /// Receives <see cref="IPropertyMappingProvider"/> and delegates all persistence to it.
-    /// Opens in read-only mode when <see cref="IPropertyMappingProvider.IsReadOnly"/> is true.
+    /// Modal dialog for viewing and editing the InvenTree → SolidWorks property-name mappings.
+    /// Receives <see cref="IPropertyMappingProvider"/> and delegates all persistence to the
+    /// <see cref="MappingEditorViewModel"/>.
     /// </summary>
     public partial class PropertyMappingEditorWindow : Window
     {
-        private readonly IPropertyMappingProvider _provider;
+        private readonly MappingEditorViewModel _viewModel;
 
         /// <summary>
         /// Creates the mapping editor.
@@ -25,7 +25,9 @@ namespace SwInventreeAddin.UI
         /// <param name="ownerWindow">The parent window. If null, the SolidWorks main window is used.</param>
         public PropertyMappingEditorWindow(IPropertyMappingProvider provider, Window? ownerWindow = null)
         {
-            _provider = provider;
+            _viewModel = new MappingEditorViewModel(provider);
+            DataContext = _viewModel;
+
             InitializeComponent();
 
             Owner = ownerWindow;
@@ -35,98 +37,47 @@ namespace SwInventreeAddin.UI
                 : SolidWorksWindowHandle.Get();
             WindowCentering.Attach(this, ownerHandle);
 
-            var mapping = _provider.GetMapping();
-            IpnPropertyBox.Text         = mapping.IpnProperty         ?? string.Empty;
-            NamePropertyBox.Text        = mapping.NameProperty         ?? string.Empty;
-            DescriptionPropertyBox.Text = mapping.DescriptionProperty  ?? string.Empty;
-            RevisionPropertyBox.Text    = mapping.RevisionProperty     ?? string.Empty;
-            NotesPropertyBox.Text       = mapping.NotesProperty        ?? string.Empty;
-            PkPropertyBox.Text          = mapping.PkProperty           ?? string.Empty;
-
-            if (_provider.IsReadOnly)
-                ApplyReadOnlyMode();
-        }
-
-        // ── Read-only mode ─────────────────────────────────────────────────────
-
-        private void ApplyReadOnlyMode()
-        {
-            ReadOnlyBanner.Visibility = Visibility.Visible;
-            SaveButton.IsEnabled      = false;
-
-            var greyBrush = TryFindResource("BrushSectionHeader") as Brush
-                            ?? SystemColors.ControlBrush;
-            foreach (var box in MappingBoxes())
+            _viewModel.PropertyChanged += (_, e) =>
             {
-                box.IsReadOnly = true;
-                box.Background = greyBrush;
-            }
+                if (e.PropertyName == nameof(MappingEditorViewModel.StatusSeverity))
+                    RefreshStatusStripe();
+            };
+
+            RefreshStatusStripe();
         }
 
         // ── Save ───────────────────────────────────────────────────────────────
 
         private void Save_Click(object sender, RoutedEventArgs e)
         {
-            var names = MappingBoxes()
-                .Select(b => b.Text.Trim())
-                .ToList();
-
-            if (HasDuplicatePropertyNames(names))
-            {
-                ErrorText.Text =
-                    "Two or more fields share the same SolidWorks property name. Each name must be unique.";
-                ErrorText.Visibility = Visibility.Visible;
-                return;
-            }
-
-            ErrorText.Visibility = Visibility.Collapsed;
-
-            try
-            {
-                _provider.SaveMapping(new PropertyMappingConfig
-                {
-                    SchemaVersion       = PropertyMappingConfig.CurrentSchemaVersion,
-                    IpnProperty         = IpnPropertyBox.Text.Trim(),
-                    NameProperty        = NamePropertyBox.Text.Trim(),
-                    DescriptionProperty = DescriptionPropertyBox.Text.Trim(),
-                    RevisionProperty    = RevisionPropertyBox.Text.Trim(),
-                    NotesProperty       = NotesPropertyBox.Text.Trim(),
-                    PkProperty          = PkPropertyBox.Text.Trim(),
-                });
-            }
-            catch (Exception ex)
-            {
-                ErrorText.Text = $"Could not save mapping: {ex.Message}";
-                ErrorText.Visibility = Visibility.Visible;
-                return;
-            }
-
-            DialogResult = true;
+            if (_viewModel.Save())
+                DialogResult = true;
         }
 
         // ── Cancel ─────────────────────────────────────────────────────────────
 
         private void Cancel_Click(object sender, RoutedEventArgs e)
         {
+            _viewModel.Cancel();
             DialogResult = false;
         }
 
-        // ── Helpers ────────────────────────────────────────────────────────────
+        // ── UI refresh ─────────────────────────────────────────────────────────
 
-        private IEnumerable<TextBox> MappingBoxes() =>
-            new[] { IpnPropertyBox, NamePropertyBox, DescriptionPropertyBox,
-                    RevisionPropertyBox, NotesPropertyBox, PkPropertyBox };
-
-        /// <summary>
-        /// Returns true when any two non-blank names in <paramref name="names"/> are
-        /// equal (case-insensitive). Blank/whitespace entries are ignored (unmapped fields).
-        /// Public so unit tests in a separate assembly can call it without STA.
-        /// </summary>
-        public static bool HasDuplicatePropertyNames(IEnumerable<string> names)
+        private void RefreshStatusStripe()
         {
-            var seen = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
-            return names.Where(n => !string.IsNullOrWhiteSpace(n))
-                        .Any(n => !seen.Add(n));
+            if (StatusStripe == null) return;
+
+            var brushKey = _viewModel.StatusSeverity switch
+            {
+                StatusSeverity.Success => "BrushStatusSuccess",
+                StatusSeverity.Warning => "BrushStatusWarning",
+                StatusSeverity.Error   => "BrushStatusError",
+                _                      => "BrushStatusNone",
+            };
+
+            StatusStripe.Background = (Brush)FindResource(brushKey);
         }
+
     }
 }

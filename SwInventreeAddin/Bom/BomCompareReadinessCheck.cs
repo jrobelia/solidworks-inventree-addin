@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using SwInventreeAddin.Config;
 using SwInventreeAddin.SolidWorks;
 
 namespace SwInventreeAddin.Bom
@@ -7,9 +8,9 @@ namespace SwInventreeAddin.Bom
     /// <summary>
     /// Evaluates whether a BOM Compare can proceed given the current Task Pane state.
     /// Encapsulates the pre-flight rules that gate the BOM Compare workflow:
-    /// BOM table existence for the configured keyword, auto-fetch if the InvenTree PK
-    /// is not yet in memory, PK-in-memory check, PK-stamped-in-document check, and
-    /// four-way revision comparison.
+    /// BOM table existence for the configured keyword, the IPN and Qty BOM Column Aliases,
+    /// auto-fetch if the InvenTree PK is not yet in memory, PK-in-memory check,
+    /// PK-stamped-in-document check, and four-way revision comparison.
     /// </summary>
     internal sealed class BomCompareReadinessCheck
     {
@@ -62,13 +63,16 @@ namespace SwInventreeAddin.Bom
             itRev = _source.RevisionPreview?.Trim()  ?? string.Empty;
 
             var revOrder = RevisionComparer.Compare(swRev, itRev);
+            var mapping  = _source.CurrentMapping;
 
             return revOrder switch
             {
                 RevisionOrder.ItIsNewer => Result(BomCompareOutcome.ItIsNewer),
                 RevisionOrder.Ambiguous => Result(BomCompareOutcome.Ambiguous),
                 RevisionOrder.SwIsNewer => Result(BomCompareOutcome.SwIsNewer),
-                _ => Result(BomCompareOutcome.Ready),
+                _ => mapping.GetMissingBomCompareAliases().Count > 0
+                        ? Result(BomCompareOutcome.BomColumnAliasesMissing)
+                        : Result(BomCompareOutcome.Ready),
             };
         }
 

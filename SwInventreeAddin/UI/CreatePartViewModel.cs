@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using SwInventreeAddin.Config;
@@ -30,10 +30,11 @@ namespace SwInventreeAddin.UI
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
 
-        private readonly IInventreeClient          _client;
-        private readonly IDocumentPropertyService  _propertyService;
-        private readonly IPropertyMappingProvider? _mappingProvider;
-        private readonly int                       _ipnPollDelayMs;
+        private readonly IInventreeClient                   _client;
+        private readonly IDocumentPropertyService           _propertyService;
+        private readonly ICreatePartValidationErrorService  _validationService;
+        private readonly IPropertyMappingProvider?          _mappingProvider;
+        private readonly int                                _ipnPollDelayMs;
 
         // ── Bindable properties ───────────────────────────────────────────────
 
@@ -119,6 +120,13 @@ namespace SwInventreeAddin.UI
         {
             get => _statusText;
             private set => Set(ref _statusText, value);
+        }
+
+        private StatusSeverity _statusSeverity;
+        public StatusSeverity StatusSeverity
+        {
+            get => _statusSeverity;
+            private set => Set(ref _statusSeverity, value);
         }
 
         private bool _assembly;
@@ -214,24 +222,36 @@ namespace SwInventreeAddin.UI
             private set => Set(ref _ipnErrorText, value);
         }
 
-        public ObservableCollection<CategoryNode> RootCategories { get; }
-            = new ObservableCollection<CategoryNode>();
+        /// <summary>
+        /// Non-null after a successful Create when the server-assigned IPN differs
+        /// from the IPN the user entered (e.g. a server plugin overwrote it).
+        /// Contains a user-facing notice naming both values; the dialog has already
+        /// closed, so the Task Pane shows it instead.
+        /// </summary>
+        public string? IpnMismatchNotice { get; private set; }
+
+        private readonly BatchObservableCollection<CategoryNode> _rootCategories =
+            new BatchObservableCollection<CategoryNode>();
+
+        public ObservableCollection<CategoryNode> RootCategories => _rootCategories;
 
         // ── Constructor ───────────────────────────────────────────────────────
 
         public CreatePartViewModel(
-            IInventreeClient          client,
-            IDocumentPropertyService  propertyService,
-            string                    initialName,
-            IPropertyMappingProvider? mappingProvider            = null,
-            int                       ipnPollDelayMs             = 500,
-            bool                      waitForServerAssignedIpn = false,
-            DocumentType              documentType               = DocumentType.Unknown)
+            IInventreeClient                   client,
+            IDocumentPropertyService           propertyService,
+            ICreatePartValidationErrorService  validationService,
+            string                             initialName,
+            IPropertyMappingProvider?          mappingProvider            = null,
+            int                                ipnPollDelayMs             = 500,
+            bool                               waitForServerAssignedIpn   = false,
+            DocumentType                       documentType               = DocumentType.Unknown)
         {
-            _client                   = client;
-            _propertyService          = propertyService;
-            _mappingProvider          = mappingProvider;
-            _ipnPollDelayMs           = ipnPollDelayMs;
+            _client                             = client;
+            _propertyService                    = propertyService;
+            _validationService                  = validationService;
+            _mappingProvider                    = mappingProvider;
+            _ipnPollDelayMs                     = ipnPollDelayMs;
             _waitForServerAssignedIpn           = waitForServerAssignedIpn;
             _waitForServerAssignedIpnRemembered = waitForServerAssignedIpn;
             PartName                            = initialName;
@@ -248,27 +268,31 @@ namespace SwInventreeAddin.UI
             && !string.IsNullOrWhiteSpace(_partName)
             && _selectedCategory != null;
 
+        private void SetStatus(string text, StatusSeverity severity)
+        {
+            StatusText    = text;
+            StatusSeverity = severity;
+        }
+
         /// <summary>Loads top-level categories into RootCategories.</summary>
         public async Task LoadRootCategoriesAsync()
         {
             IsBusy             = true;
             IsLoadingCategories = true;
-            StatusText         = "Loading categories\u2026";
+            SetStatus("Loading categories\u2026", StatusSeverity.None);
 
             try
             {
                 var cats = await _client.GetCategoriesAsync(null).ConfigureAwait(false);
                 RunOnUiThread(() =>
                 {
-                    RootCategories.Clear();
-                    foreach (var c in cats)
-                        RootCategories.Add(new CategoryNode(c));
-                    StatusText = string.Empty;
+                    _rootCategories.Reset(cats.Select(c => new CategoryNode(c)));
+                    SetStatus(string.Empty, StatusSeverity.None);
                 });
             }
             catch (Exception ex)
             {
-                RunOnUiThread(() => StatusText = $"Error loading categories: {ex.Message}");
+                RunOnUiThread(() => SetStatus($"Error loading categories: {ex.Message}", StatusSeverity.Error));
             }
             finally
             {
@@ -298,9 +322,7 @@ namespace SwInventreeAddin.UI
                                         .ConfigureAwait(false);
                 RunOnUiThread(() =>
                 {
-                    node.Children.Clear();
-                    foreach (var c in cats)
-                        node.Children.Add(new CategoryNode(c));
+                    node.ResetChildren(cats.Select(c => new CategoryNode(c)));
                     node.IsLoading = false;
                 });
             }
@@ -308,9 +330,9 @@ namespace SwInventreeAddin.UI
             {
                 RunOnUiThread(() =>
                 {
-                    node.Children.Clear();
+                    node.ResetChildren(Array.Empty<CategoryNode?>());
                     node.IsLoading = false;
-                    StatusText = $"Error loading children: {ex.Message}";
+                    SetStatus($"Error loading children: {ex.Message}", StatusSeverity.Error);
                 });
             }
         }
@@ -325,31 +347,27 @@ namespace SwInventreeAddin.UI
 
             IsBusy      = true;
             IpnErrorText = string.Empty;
-            StatusText  = "Checking IPN\u2026";
+            IpnMismatchNotice = null;
 
             try
             {
+                var mappingResult = _mappingProvider?.GetMappingResult();
+
+                if (mappingResult != null && !mappingResult.CanUseForPartSync)
+                {
+                    RunOnUiThread(() =>
+                    {
+                        // The base message is source-independent; the caller can inspect Message for the detail.
+                        SetStatus(MappingResult.GetDefaultMessage(mappingResult.Health), StatusSeverity.Warning);
+                        IsBusy     = false;
+                    });
+                    return;
+                }
+
                 var categoryPk  = _selectedCategory!.Category.Pk;
                 var ipnToSubmit = string.IsNullOrWhiteSpace(_ipnEntry) ? null : _ipnEntry.Trim();
 
-                // If the user supplied an IPN, make sure it is not already in use.
-                // InvenTree may silently auto-generate a different number for a
-                // duplicate, so a client-side check is needed before creating.
-                if (!string.IsNullOrWhiteSpace(ipnToSubmit))
-                {
-                    var existing = await _client.GetPartByIpnAsync(ipnToSubmit!).ConfigureAwait(false);
-                    if (existing != null)
-                    {
-                        RunOnUiThread(() =>
-                        {
-                            StatusText = $"IPN '{ipnToSubmit}' already exists. Enter a different IPN.";
-                            IsBusy     = false;
-                        });
-                        return;
-                    }
-                }
-
-                RunOnUiThread(() => StatusText = "Creating part\u2026");
+                RunOnUiThread(() => SetStatus("Creating part\u2026", StatusSeverity.None));
                 var flags = new PartCreationFlags
                 {
                     Assembly              = _assembly,
@@ -363,7 +381,7 @@ namespace SwInventreeAddin.UI
                 var pk          = await _client.CreatePartAsync(categoryPk, _partName, ipnToSubmit, flags)
                                                .ConfigureAwait(false);
 
-                RunOnUiThread(() => StatusText = "Fetching new part\u2026");
+                RunOnUiThread(() => SetStatus("Fetching new part\u2026", StatusSeverity.None));
 
                 var part = await _client.GetPartByPkAsync(pk).ConfigureAwait(false);
 
@@ -371,7 +389,7 @@ namespace SwInventreeAddin.UI
                 {
                     RunOnUiThread(() =>
                     {
-                        StatusText = "Part created but re-fetch failed. IPN not yet written.";
+                        SetStatus("Part created but re-fetch failed. IPN not yet written.", StatusSeverity.Warning);
                         IsBusy     = false;
                     });
                     return;
@@ -386,8 +404,8 @@ namespace SwInventreeAddin.UI
                     for (int i = 0; i < maxAttempts && string.IsNullOrEmpty(part?.Ipn); i++)
                     {
                         int secondsLeft = (maxAttempts - i) / 2;
-                        RunOnUiThread(() => StatusText =
-                            $"Waiting for server-assigned IPN\u2026 ({secondsLeft}s)");
+                        RunOnUiThread(() => SetStatus(
+                            $"Waiting for server-assigned IPN\u2026 ({secondsLeft}s)", StatusSeverity.None));
                         await Task.Delay(_ipnPollDelayMs).ConfigureAwait(false);
                         part = await _client.GetPartByPkAsync(pk).ConfigureAwait(false);
                     }
@@ -396,19 +414,29 @@ namespace SwInventreeAddin.UI
                 var ipn  = part?.Ipn  ?? string.Empty;
                 var name = part?.Name ?? string.Empty;
 
+                var mapping = mappingResult?.Config ?? PropertyMappingConfig.WithDefaults();
+
                 RunOnUiThread(() =>
                 {
-                    var mapping = _mappingProvider?.GetMapping() ?? new PropertyMappingConfig();
-                    _propertyService.SetCustomProperty(mapping.PkProperty, pk.ToString());
+                    // A server-side IPN plugin can overwrite the submitted IPN. Tell the
+                    // user when the assigned value isn't what they entered.
+                    if (ipnToSubmit != null && !string.Equals(ipnToSubmit, ipn, StringComparison.Ordinal))
+                        IpnMismatchNotice = string.IsNullOrEmpty(ipn)
+                            ? $"Part created, but the server assigned no IPN \u2014 the entered IPN '{ipnToSubmit}' was not applied."
+                            : $"Part created, but the server assigned IPN '{ipn}' instead of the entered IPN '{ipnToSubmit}'.";
+
+                    if (!string.IsNullOrEmpty(mapping.PkProperty))
+                        _propertyService.SetCustomProperty(mapping.PkProperty!, pk.ToString());
                     // Only write IPN if we actually received one — avoid blanking the property
                     // if the plugin timed out.
-                    if (!string.IsNullOrEmpty(ipn))
-                        _propertyService.SetCustomProperty(mapping.IpnProperty, ipn);
-                    _propertyService.SetCustomProperty(mapping.NameProperty, name);
+                    if (!string.IsNullOrEmpty(ipn) && !string.IsNullOrEmpty(mapping.IpnProperty))
+                        _propertyService.SetCustomProperty(mapping.IpnProperty!, ipn);
+                    if (!string.IsNullOrEmpty(mapping.NameProperty))
+                        _propertyService.SetCustomProperty(mapping.NameProperty!, name);
 
                     // Show "refresh manually" only if the poll actually ran but IPN didn't arrive.
                     if (string.IsNullOrEmpty(ipn) && pollEnabled)
-                        StatusText = "Part created. IPN not yet generated \u2014 refresh manually once the server assigns it.";
+                        SetStatus("Part created. IPN not yet generated \u2014 refresh manually once the server assigns it.", StatusSeverity.Warning);
 
                     IsBusy = false;
                     PartCreated?.Invoke(this, part ?? new InventreePart { Pk = pk, Name = name });
@@ -418,64 +446,38 @@ namespace SwInventreeAddin.UI
             {
                 RunOnUiThread(() =>
                 {
-                    var ipnError = ExtractIpnError(ex.Message);
+                    var ipnError = _validationService.ExtractIpnError(ex.Message);
                     if (!string.IsNullOrEmpty(ipnError))
                     {
-                        IpnErrorText = ipnError;
-                        StatusText   = ipnError;
+                        IpnErrorText = ipnError!;
+                        SetStatus(ipnError!, StatusSeverity.Error);
                     }
                     else
                     {
-                        StatusText = $"Error: {ex.Message}";
+                        SetStatus($"Error: {ex.Message}", StatusSeverity.Error);
                     }
                     IsBusy = false;
                 });
             }
         }
 
-        // ── Helpers ───────────────────────────────────────────────────────────
-
-        /// <summary>
-        /// Attempts to extract the first IPN field error from an InvenTree validation
-        /// response embedded in an exception message.
-        /// </summary>
-        private static string ExtractIpnError(string message)
-        {
-            var jsonStart = message.IndexOf('{');
-            if (jsonStart < 0) return string.Empty;
-
-            try
-            {
-                var json = message.Substring(jsonStart);
-                using var doc = JsonDocument.Parse(json);
-                if (doc.RootElement.TryGetProperty("ipn", out var ipnErrors) &&
-                    ipnErrors.ValueKind == JsonValueKind.Array)
-                {
-                    var errors = new List<string>();
-                    foreach (var element in ipnErrors.EnumerateArray())
-                    {
-                        if (element.ValueKind == JsonValueKind.String)
-                            errors.Add(element.GetString() ?? string.Empty);
-                    }
-                    return string.Join(" ", errors);
-                }
-            }
-            catch
-            {
-                // Ignore malformed JSON; the caller will show the raw message.
-            }
-
-            return string.Empty;
-        }
-
         // ── Threading helper ──────────────────────────────────────────────────
 
+        /// <summary>
+        /// UI-thread synchronisation context captured at construction.
+        /// Null when constructed on a thread-pool thread (unit tests) — in
+        /// that case RunOnUiThread executes actions inline.
+        /// </summary>
         private readonly SynchronizationContext? _uiContext
             = SynchronizationContext.Current;
 
+        /// <summary>
+        /// Posts <paramref name="action"/> to the captured UI context.
+        /// Runs inline when no context was captured or when already on the captured context.
+        /// </summary>
         private void RunOnUiThread(Action action)
         {
-            if (_uiContext != null)
+            if (_uiContext != null && SynchronizationContext.Current != _uiContext)
                 _uiContext.Post(_ => action(), null);
             else
                 action();

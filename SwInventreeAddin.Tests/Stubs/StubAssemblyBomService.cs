@@ -11,6 +11,7 @@ namespace SwInventreeAddin.Tests.Stubs
         public bool HasBomTableResult        { get; set; } = true;
         public List<SwBomLine> LinesToReturn { get; set; } = new List<SwBomLine>();
         public bool ThrowOnGetBomLines       { get; set; }
+        public PropertyMappingConfig? ReceivedMapping { get; private set; }
 
         public bool HasBomTable(string keyword) => HasBomTableResult;
 
@@ -21,6 +22,7 @@ namespace SwInventreeAddin.Tests.Stubs
         {
             if (ThrowOnGetBomLines)
                 throw new InvalidOperationException("Stub: no BOM table found");
+            ReceivedMapping = mapping;
             return LinesToReturn;
         }
     }

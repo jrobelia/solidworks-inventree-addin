@@ -82,6 +82,13 @@ namespace SwInventreeAddin.UI
         private void Set<T>(ref T f, T v, [CallerMemberName] string? n = null)
         { if (Equals(f, v)) return; f = v; PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n)); }
 
+        // ── Bindable collections ─────────────────────────────────────────────
+
+        private readonly BatchObservableCollection<BomDiffLineViewModel> _lines = new BatchObservableCollection<BomDiffLineViewModel>();
+        public ObservableCollection<BomDiffLineViewModel> Lines => _lines;
+
+        // ── Dependencies ─────────────────────────────────────────────────────
+
         private readonly IInventreeClient      _client;
         private readonly IAssemblyBomService   _bomService;
         private readonly PropertyMappingConfig _mapping;
@@ -89,8 +96,7 @@ namespace SwInventreeAddin.UI
         private readonly string                _bomKeyword;
         private readonly SynchronizationContext? _uiContext;
 
-        public ObservableCollection<BomDiffLineViewModel> Lines { get; } =
-            new ObservableCollection<BomDiffLineViewModel>();
+        // ── State ────────────────────────────────────────────────────────────
 
         private string _statusText    = string.Empty;
         private bool   _isPushing;
@@ -98,7 +104,15 @@ namespace SwInventreeAddin.UI
         private bool   _sortAscending = true;
 
         public string StatusText    { get => _statusText;    set => Set(ref _statusText,    value); }
-        public bool   IsPushing    { get => _isPushing;    set => Set(ref _isPushing,    value); }
+        public bool   IsPushing
+        {
+            get => _isPushing;
+            set
+            {
+                Set(ref _isPushing, value);
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PushEnabled)));
+            }
+        }
         public string SortColumn    { get => _sortColumn;    set => Set(ref _sortColumn,    value); }
         public bool   SortAscending { get => _sortAscending; set => Set(ref _sortAscending, value); }
 
@@ -111,6 +125,8 @@ namespace SwInventreeAddin.UI
         /// Default returns true (no dialog).
         /// </summary>
         public Func<int, int, bool> ConfirmPush { get; set; } = (_, __) => true;
+
+        // ── Constructors ─────────────────────────────────────────────────────
 
         public BomCompareViewModel(
             IInventreeClient      client,
@@ -126,6 +142,8 @@ namespace SwInventreeAddin.UI
             _bomKeyword = bomKeyword;
             _uiContext  = SynchronizationContext.Current;
         }
+
+        // ── Behaviour ────────────────────────────────────────────────────────
 
         public async Task LoadAsync()
         {
@@ -169,14 +187,15 @@ namespace SwInventreeAddin.UI
             }
 
             // Verify the assembly part is flagged as Assembly in InvenTree before writing.
-            var assemblyPart = await Task.Run(() => _client.GetPartByPkAsync(_assemblyPk));
+            var assemblyPart = await Task.Run(() => _client.GetPartByPkAsync(_assemblyPk)).ConfigureAwait(false);
             if (assemblyPart == null || !assemblyPart.Assembly)
             {
-                StatusText = $"Cannot push — InvenTree part {_assemblyPk} is not flagged as Assembly. Edit it in InvenTree first.";
+                RunOnUiThread(() =>
+                    StatusText = $"Cannot push — InvenTree part {_assemblyPk} is not flagged as Assembly. Edit it in InvenTree first.");
                 return;
             }
 
-            IsPushing = true;
+            RunOnUiThread(() => IsPushing = true);
             int created = 0, updated = 0, failed = 0;
             var failedIpns   = new List<string>();
             var succeededVms = new List<BomDiffLineViewModel>();
@@ -193,7 +212,7 @@ namespace SwInventreeAddin.UI
                         int newPk = await _client.CreateBomLineAsync(
                             _assemblyPk, line.SubPartPk,
                             line.SwLine!.Quantity, line.SwLine.Reference, line.SwLine.Note,
-                            false, false);
+                            false, false).ConfigureAwait(false);
                         // Store the server-assigned PK so a subsequent update can reference it.
                         line.NewBomLinePk = newPk;
                         created++;
@@ -203,7 +222,7 @@ namespace SwInventreeAddin.UI
                         await _client.UpdateBomLineAsync(
                             line.ItLine!.Pk,
                             line.SwLine!.Quantity, line.SwLine.Reference, line.SwLine.Note,
-                            line.ItLine.Consumable, line.ItLine.Optional);
+                            line.ItLine.Consumable, line.ItLine.Optional).ConfigureAwait(false);
                         updated++;
                     }
                     succeededVms.Add(vmByDiffLine[line]);
@@ -216,47 +235,50 @@ namespace SwInventreeAddin.UI
             }
 
             // Update pushed rows in-place — no full reload needed.
-            foreach (var vm in succeededVms)
+            RunOnUiThread(() =>
             {
-                var sw = vm.DiffLine.SwLine!;
-
-                if (vm.DiffLine.ItLine == null)
+                foreach (var vm in succeededVms)
                 {
-                    // New line: create a stub ItLine from the values we just pushed.
-                    vm.DiffLine.ItLine = new InventreeBomLine
+                    var sw = vm.DiffLine.SwLine!;
+
+                    if (vm.DiffLine.ItLine == null)
                     {
-                        Pk         = vm.DiffLine.NewBomLinePk,
-                        SubPartPk  = vm.DiffLine.SubPartPk,
-                        SubPartIpn = vm.DiffLine.DisplayIpn,
-                        Quantity   = sw.Quantity,
-                        Reference  = sw.Reference,
-                        Note       = sw.Note,
-                    };
+                        // New line: create a stub ItLine from the values we just pushed.
+                        vm.DiffLine.ItLine = new InventreeBomLine
+                        {
+                            Pk         = vm.DiffLine.NewBomLinePk,
+                            SubPartPk  = vm.DiffLine.SubPartPk,
+                            SubPartIpn = vm.DiffLine.DisplayIpn,
+                            Quantity   = sw.Quantity,
+                            Reference  = sw.Reference,
+                            Note       = sw.Note,
+                        };
+                    }
+                    else
+                    {
+                        // Conflict: update the IT fields to match what we pushed.
+                        vm.DiffLine.ItLine.Quantity  = sw.Quantity;
+                        vm.DiffLine.ItLine.Reference = sw.Reference;
+                        vm.DiffLine.ItLine.Note      = sw.Note;
+                    }
+
+                    // Clear the checkbox before flipping State to Match: the IsChecked setter
+                    // guards on CanCheck, which is derived from State. Once State == Match the
+                    // guard would silently swallow the clear and leave the row visibly checked.
+                    vm.IsChecked      = false;
+                    vm.DiffLine.State = BomDiffState.Match;
+                    vm.NotifyStateChanged();
                 }
-                else
-                {
-                    // Conflict: update the IT fields to match what we pushed.
-                    vm.DiffLine.ItLine.Quantity  = sw.Quantity;
-                    vm.DiffLine.ItLine.Reference = sw.Reference;
-                    vm.DiffLine.ItLine.Note      = sw.Note;
-                }
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PushEnabled)));
 
-                // Clear the checkbox before flipping State to Match: the IsChecked setter
-                // guards on CanCheck, which is derived from State. Once State == Match the
-                // guard would silently swallow the clear and leave the row visibly checked.
-                vm.IsChecked      = false;
-                vm.DiffLine.State = BomDiffState.Match;
-                vm.NotifyStateChanged();
-            }
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PushEnabled)));
+                IsPushing = false;
 
-            IsPushing = false;
-
-            var parts = new List<string>();
-            if (created > 0) parts.Add($"{created} created");
-            if (updated > 0) parts.Add($"{updated} updated");
-            if (failed  > 0) parts.Add($"{failed} failed ({string.Join(", ", failedIpns)})");
-            StatusText = parts.Count > 0 ? string.Join(", ", parts) : "No changes applied";
+                var parts = new List<string>();
+                if (created > 0) parts.Add($"{created} created");
+                if (updated > 0) parts.Add($"{updated} updated");
+                if (failed  > 0) parts.Add($"{failed} failed ({string.Join(", ", failedIpns)})");
+                StatusText = parts.Count > 0 ? string.Join(", ", parts) : "No changes pushed";
+            });
 
         }
 
@@ -295,13 +317,12 @@ namespace SwInventreeAddin.UI
 
         private void RebindLines(IReadOnlyList<BomDiffLine> diff)
         {
-            Lines.Clear();
-            foreach (var line in diff)
+            _lines.Reset(diff.Select(line =>
             {
                 var vm = new BomDiffLineViewModel(line);
                 vm.PropertyChanged += OnLineCheckedChanged;
-                Lines.Add(vm);
-            }
+                return vm;
+            }));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PushEnabled)));
         }
 
@@ -339,13 +360,14 @@ namespace SwInventreeAddin.UI
 
             sorted.AddRange(problems);
 
-            Lines.Clear();
-            foreach (var item in sorted) Lines.Add(item);
+            _lines.Reset(sorted);
         }
+
+        // ── Helpers ──────────────────────────────────────────────────────────
 
         private void RunOnUiThread(Action action)
         {
-            if (_uiContext != null)
+            if (_uiContext != null && SynchronizationContext.Current != _uiContext)
                 _uiContext.Send(_ => action(), null);
             else
                 action();

@@ -1,0 +1,23 @@
+{
+  "skill_name": "domain-voice",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Tell me about PR 156. What is it doing?",
+      "expected_output": "A concise, domain-language summary of PR 156 that uses project terms (e.g., Mapping Health, Part Sync, Task Pane, Settings, IPN, Create Part) and avoids AI tells.",
+      "files": ["evals/pr-156-summary/source.md"]
+    },
+    {
+      "id": 2,
+      "prompt": "The latest commit changed CanCreatePart in TaskPaneViewModel to also check that the validation error service is present. Summarize what this means for the user.",
+      "expected_output": "A short explanation in domain language: Create Part is now disabled when the validation error service is not wired up, instead of silently doing nothing.",
+      "files": ["evals/can-create-part-change/source.md"]
+    },
+    {
+      "id": 3,
+      "prompt": "Explain the change that moved the Copy-to-local action from the Property Mapping Editor to the Settings window. Why is it better there?",
+      "expected_output": "A domain-language explanation of the Copy-to-local move, mentioning shared/read-only mappings and the Settings workflow.",
+      "files": ["evals/copy-to-local/source.md"]
+    }
+  ]
+}

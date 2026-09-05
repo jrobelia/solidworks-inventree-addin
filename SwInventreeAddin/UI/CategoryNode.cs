@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -27,11 +28,21 @@ namespace SwInventreeAddin.UI
             Category = category;
             // Sentinel child so the TreeView shows an expand arrow before children are loaded.
             if (category.HasChildren)
-                Children.Add(null!);
+                _children.Add(null);
         }
 
-        public ObservableCollection<CategoryNode?> Children { get; }
-            = new ObservableCollection<CategoryNode?>();
+        // ── Bindable collections ─────────────────────────────────────────────
+
+        private readonly BatchObservableCollection<CategoryNode?> _children =
+            new BatchObservableCollection<CategoryNode?>();
+
+        public ObservableCollection<CategoryNode?> Children => _children;
+
+        /// <summary>Batch-resets the children collection without re-entrant WPF layout passes.</summary>
+        internal void ResetChildren(IEnumerable<CategoryNode?> items)
+            => _children.Reset(items);
+
+        // ── State ────────────────────────────────────────────────────────────
 
         private bool _isExpanded;
         public bool IsExpanded

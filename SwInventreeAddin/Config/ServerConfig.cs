@@ -20,8 +20,8 @@
         /// <summary>
         /// When true, the Create Part flow polls InvenTree after creation, waiting
         /// for a server-assigned IPN. When false, the poll is skipped. Defaults to true
-        /// so the Create Part dialog waits for an auto-generated IPN on first run.
+        /// so the Create Part dialog waits for a server-assigned IPN on first run.
         /// </summary>
-        public bool WaitForAutoPartNumber { get; set; } = true;
+        public bool WaitForServerAssignedIpn { get; set; } = true;
     }
 }

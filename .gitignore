@@ -44,5 +44,6 @@ Desktop.ini
 # Git worktrees
 .worktrees/
 
-# --- Devin local config (personal overrides, not shared) ---
+# --- Devin config (personal overrides and project config are not shared) ---
+.devin/config.json
 .devin/config.local.json

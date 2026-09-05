@@ -28,6 +28,6 @@ namespace SwInventreeAddin.Config
         public string BomKeyword { get; set; } = "inventree";
 
         /// <summary>Whether to wait for the server to assign an IPN on part creation.</summary>
-        public bool WaitForAutoPartNumber { get; set; } = true;
+        public bool WaitForServerAssignedIpn { get; set; } = true;
     }
 }
