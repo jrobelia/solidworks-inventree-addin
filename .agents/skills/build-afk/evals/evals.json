@@ -19,7 +19,10 @@
       "files": [],
       "expectations": [
         "PLAN.json includes repo, parent_branch, max (if supplied), and one issue entry for #147.",
-        "workflow.py reads PLAN.json and dispatches a single shared-vm agent with the CHILD_PROMPT.md template.",
+        "workflow.py validates the plan in-process and fails fast on guardrail breaches.",
+        "The build agent runs the /tdd red-green loop and proposes a public seam.",
+        "The workflow dispatches independent Standards and Spec review agents after the build.",
+        "The workflow dispatches an adjudicator and runs at most one fix/re-review pass before capping at two.",
         "RESULTS.json contains the issue number, branch, pr_number, pr_url, status, and reason."
       ]
     },
@@ -31,6 +34,7 @@
       "expectations": [
         "Only three issues are dispatched even if more are ready.",
         "Each issue uses its own worktree and branch build/issue-<number>.",
+        "The parent runs two-axis review and adjudication for each completed issue.",
         "A summary line per ticket is written to RESULTS.json and reported to the user."
       ]
     },
@@ -40,9 +44,21 @@
       "expected_output": "Processes child issues #101 and #102 of spec #100 in chained order if their bodies reference Parent #100.",
       "files": [],
       "expectations": [
-        "The plan sets chained=true.",
+        "The plan sets chained=true and parent_spec=100.",
         "The first child targets PARENT_BRANCH; the second child targets the first child's branch.",
-        "If the first child is BLOCKED, later children are recorded as BLOCKED with a predecessor reason."
+        "If the first child is BLOCKED, later children are recorded as BLOCKED with a predecessor reason.",
+        "If all children complete, a stack agent groups the PRs bottom-to-top."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "/build-afk #200",
+      "expected_output": "If issue #200 is a bug with hard-bug signals, the build agent builds a repro and runs /diagnosing-bugs before fixing.",
+      "files": [],
+      "expectations": [
+        "The orchestrator detects hard-bug signals from the issue title, body, or labels.",
+        "The build agent blocks if it cannot build a red-capable deterministic repro.",
+        "A routine bug without hard-bug signals goes through the standard TDD/review pipeline."
       ]
     }
   ]
