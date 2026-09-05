@@ -52,7 +52,7 @@ Do not move to the next step until the **Done when** criterion for the current s
    **Done when:** every ticket has a user-confirmed seam that has passed a depth check, a green `/tdd` red-green loop (or documented build-only equivalent), passing build/test, and a reference commit on the build branch.
 7. Run the build and test commands once more. If either fails, fix before proceeding.
    **Done when:** both commands exit successfully on the full branch.
-8. Run the two-axis review from `PRE_BUILD_SHA` per `REFERENCE.md`. First read `docs/agents/code-review-known-issues.md`; it determines what context to paste and when to use the foreground fallback. Aggregate the `## Standards` and `## Spec` findings.
+8. Run the two-axis review from `PRE_BUILD_SHA` per `REFERENCE.md`. First read `docs/agents/code-review-known-issues.md`; it determines what context to fetch vs. paste and when to use the foreground fallback. Aggregate the `## Standards` and `## Spec` findings.
    **Done when:** the Standards and Spec findings have been returned.
 9. Verify each Standards and Spec finding against the code and the spec, then classify and act on it following the review guide in `REFERENCE.md`. Continue until every finding is resolved, deferred, or escalated to the user.
    **Done when:** every finding is resolved, deferred, or escalated, or the two-pass cap in `REFERENCE.md` has been reached.

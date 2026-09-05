@@ -11,7 +11,7 @@
 
 - `docs/agents/issue-tracker.md` — GitHub conventions and parent/child issue conventions.
 - `docs/agents/coding-standards.md` — build/test commands, repo standards, and the deep-module design vocabulary in `## Module Design`.
-- `docs/agents/code-review-known-issues.md` — how to run `/code-review` subagents in this environment.
+- `docs/agents/code-review-known-issues.md` — environment notes and fallback triggers for the two-axis review.
 - `CONTEXT.md` / `docs/agents/domain.md` — domain vocabulary.
 
 ## Design vocabulary
@@ -48,36 +48,36 @@ Run the commands from `docs/agents/coding-standards.md` before every commit, aft
 
 The two-axis review needs a fixed point and its source material up front. Use the paths below in order: `run_subagent` is preferred, the Devin cloud child-session fallback covers environments where `run_subagent` is unavailable, and the in-session `/code-review` skill is the last resort.
 
-1. Pre-compute:
-   - `git diff <PRE_BUILD_SHA>...HEAD`
-   - `git log <PRE_BUILD_SHA>..HEAD --oneline`
-   - the contents of `docs/agents/coding-standards.md`
-   - the Fowler smell baseline from the `code-review` skill
-   - the full body of the parent spec and any child tickets being reviewed.
-2. Determine whether the custom profiles exist at `.devin/agents/code-review-standards.md` and `.devin/agents/code-review-spec.md`.
-3. **Preferred: `run_subagent`.** If the profiles exist and `run_subagent` is available, run them in parallel:
+1. Prepare:
+   - `PRE_BUILD_SHA` — the commit the build branch started from.
+   - The full body of the parent spec and any child tickets being reviewed (for the Spec subagent).
+   - Confirm `Exec(git diff)`, `Exec(git log)`, and `Read(**)` are pre-approved in the active Devin config.
+2. Check the diff size with `git diff <PRE_BUILD_SHA>...HEAD --stat`. If the diff exceeds ~500 changed lines, split the review into per-ticket or per-module passes.
+3. Determine whether the custom profiles exist at `.devin/agents/code-review-standards.md` and `.devin/agents/code-review-spec.md`.
+4. **Preferred: `run_subagent`.** If the profiles exist and `run_subagent` is available, run them in parallel in the background:
 
    - **Standards subagent** (`profile: code-review-standards`, `is_background=true`):
-     - Paste the diff, commit list, `docs/agents/coding-standards.md`, and Fowler smell baseline.
+     - Pass `PRE_BUILD_SHA`.
    - **Spec subagent** (`profile: code-review-spec`, `is_background=true`):
-     - Paste the diff, commit list, and the parent spec contents.
+     - Pass `PRE_BUILD_SHA` and the parent spec contents.
 
-   Both prompts already contain all needed context; the subagents should not call `read` or `exec`.
-4. **Fallback: Devin cloud child sessions.** If the profiles exist but `run_subagent` is unavailable (tool-denial, schema not loaded, etc.), run the two axes in parallel Devin cloud sessions via the `devin_session_create` MCP tool:
+   The subagent profiles contain the instructions to fetch the diff and log and to read the standards file; they should not ask for pasted `DIFF:` or `COMMITS:` blocks.
+5. **Fallback: Devin cloud child sessions.** If the profiles exist but `run_subagent` is unavailable (tool-denial, schema not loaded, etc.), run the two axes in parallel Devin cloud sessions via the `devin_session_create` MCP tool:
 
    - Create each session with `devin_session_create`. The `prompt` must contain the full text of the matching `.devin/agents/code-review-*.md` profile followed by the pre-computed context blocks. Use a `title` like `"code-review-standards"` / `"code-review-spec"`. If the tool supports batch creation, pass `sessions: [{...}, {...}]` to create both at once.
 
-     - **Standards:** `prompt` = full `code-review-standards.md` profile + `DIFF:` + `COMMITS:` + `STANDARDS:` + `SMELLS:`
+     Because child sessions may not share tool permissions, pre-compute and paste:
+     - **Standards:** `prompt` = full `code-review-standards.md` profile + `DIFF:` + `COMMITS:` + `STANDARDS:` (full contents of `docs/agents/coding-standards.md`). The profile already contains the `SMELLS:` baseline.
      - **Spec:** `prompt` = full `code-review-spec.md` profile + `DIFF:` + `COMMITS:` + `SPEC:`
 
    - The returned `session_id` is bare; prefix it with `devin-` for all subsequent calls (e.g. `"devin-<session_id>"`).
    - Block until both sessions settle with `devin_session_gather`, passing `session_ids: ["devin-<id>", "devin-<id>"]`.
    - Read the final output or messages from each session and extract the `## Standards` or `## Spec` block.
    - If a session stalls, nudge it with `devin_session_interact` (`action: "message"`) or read its messages with `devin_session_interact` (`action: "get_messages"`) or `devin_session_events`.
-   - Pass all diff, commit list, and axis-specific context inline in the prompt. Do **not** use `file:///C:/...` URIs; child sessions cannot resolve Windows file URIs.
-5. **Fallback: `/code-review`.** If the profiles are missing, or both parallel methods fail, use the existing `/code-review` path (or `subagent_general` in the foreground per `docs/agents/code-review-known-issues.md`).
+   - Do **not** use `file:///C:/...` URIs; child sessions cannot resolve Windows file URIs.
+6. **Fallback: `/code-review`.** If the profiles are missing, or both parallel methods fail, use the existing `/code-review` path (or `subagent_general` in the foreground per `docs/agents/code-review-known-issues.md`).
 
-6. Parse the responses for `## Standards` and `## Spec` headings and translate each finding's severity into the RED / YELLOW / GREEN classification in `## Review classification`.
+7. Parse the responses for `## Standards` and `## Spec` headings and translate each finding's severity into the RED / YELLOW / GREEN classification in `## Review classification`.
 
 ## Review classification
 
@@ -105,7 +105,7 @@ For each finding:
 
 ## Diff-size guard
 
-If the diff exceeds ~500 changed lines, split `/code-review` into per-ticket or per-module passes and synthesize the findings. If a single pass still exceeds the budget, fall back to a main-session review.
+If `git diff <PRE_BUILD_SHA>...HEAD --stat` shows more than ~500 changed lines, split `/code-review` into per-ticket or per-module passes and synthesize the findings. If a single pass still exceeds the budget, fall back to a main-session review.
 
 ## Examples
 
