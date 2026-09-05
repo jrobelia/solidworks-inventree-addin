@@ -79,6 +79,15 @@ The two-axis review needs a fixed point and its source material up front. Use th
 
 7. Parse the responses for `## Standards` and `## Spec` headings and translate each finding's severity into the RED / YELLOW / GREEN classification in `## Review classification`.
 
+## Per-ticket spec check
+
+For batches of more than one ticket, run a spec-axis check inside the step-6 loop so a misunderstood ticket cannot shape the tickets that build on it. It is intentionally cheap: one reviewer over one ticket's diff.
+
+1. Before the ticket's first commit, capture `PRE_TICKET_SHA` (`git rev-parse HEAD`).
+2. After the ticket's commit, dispatch the Spec axis against that range: `run_subagent` with profile `code-review-spec` (`is_background=true`), passing `PRE_TICKET_SHA` and the ticket body as `SPEC:`.
+3. Verify each finding against the diff, fix genuine spec gaps, and re-run the build/test commands before starting the next ticket. Cosmetic or standards findings are not in scope here — they are the step-8 review's job.
+4. Skip this check for a single-ticket build; the step-8 review covers the same diff.
+
 ## Review classification
 
 `/code-review` returns separate **Standards** and **Spec** findings. Classify each finding within its original axis; keep the two lists separate.

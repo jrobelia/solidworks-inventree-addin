@@ -87,7 +87,7 @@ See `REFERENCE.md` for the full `PLAN.json`, child output, and `RESULTS.json` sc
 
 2. Copy the skill's `workflow.py`, `CHILD_PROMPT.md`, `WPF_HARNESS.md`, and the two reviewer profiles `.devin/agents/code-review-standards.md` and `.devin/agents/code-review-spec.md` into `$runDir`.
 
-3. Write `PLAN.json` into `$runDir`. See `REFERENCE.md` for the schema; set `agent_mode` if your Devin environment supports `swe-1.7-standard` or another mode, otherwise `normal` is used.
+3. Write `PLAN.json` into `$runDir`. See `REFERENCE.md` for the schema; set `agent_mode` if your Devin environment supports `swe-1.7-standard` or another mode, otherwise `normal` is used. For `chained` plans, copy the parent spec's full issue body into `parent_spec_body` — the workflow validates it and the final-review phase diffs the whole chain against it.
 
 4. Call `run_workflow` with the copied script, substituting the absolute path for `$runDir`:
    ```text
@@ -115,7 +115,8 @@ Do not merge PRs.
 
 ## Files in this skill
 
-- `workflow.py` — parent orchestrator that validates the plan, dispatches build/review/fix/stack agents, and writes `RESULTS.json`.
+- `workflow.py` — parent orchestrator that validates the plan, dispatches build/review/fix/final-review/stack agents, and writes `RESULTS.json`.
 - `CHILD_PROMPT.md` — prompt template for each build agent.
 - `WPF_HARNESS.md` — step-by-step WPF smoke-harness instructions copied into each run.
-- `REFERENCE.md` — branch naming, JSON schemas, PR body template, two-axis review flow, adjudication rubric, model mode, stacked-PR guidance, and fallback behaviour.
+- `evals/test_workflow.py` — pytest module for the workflow's helpers and dispatch gating; run `python -m pytest evals/test_workflow.py` from the skill directory. Not part of the packaged skill.
+- `REFERENCE.md` — branch naming, JSON schemas, PR body template, two-axis review flow, adjudication rubric, model mode, final-review and stacked-PR guidance, and fallback behaviour.

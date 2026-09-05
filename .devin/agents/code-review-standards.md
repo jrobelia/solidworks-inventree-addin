@@ -44,10 +44,11 @@ Map every significant item in the diff against **repo standards first**, then th
 
 - Cite the standard file and rule for each documented-standard issue.
 - Name the smell and quote the hunk for each baseline smell.
+- Anchor every finding to a `file:line` (or hunk header) in the diff — a finding without an anchor is a guess, and the adjudicator will reject it.
 - A documented standard overrides the baseline; skip the smell when the standard explicitly allows the pattern.
 - Skip anything a tool already enforces.
 - Mark documented-standard breaches as RED when they are hard violations; mark baseline smells as YELLOW (judgement calls) or GREEN (cosmetic).
 
 ## Completion criterion
 
-A single `## Standards` block that lists every finding, or `GREEN - No Standards issues detected.` if none. Under 400 words. No `## Spec` section.
+A single `## Standards` block that lists every finding, or `GREEN - No Standards issues detected.` if none. End the block with a verdict line: `**Ready to merge:** Yes | No | With fixes`. Under 400 words. No `## Spec` section.

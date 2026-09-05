@@ -19,10 +19,16 @@ PROMPT_FILE = Path(__file__).parent / "CHILD_PROMPT.md"
 RESULTS_FILE = Path(__file__).parent / "RESULTS.json"
 RUN_DIR = Path(__file__).parent
 
+# Statuses that mean the child produced reviewable work.
+SUCCESS_STATUSES = ("COMPLETE", "COMPLETE_WITH_CONCERNS")
+
+# What kind of intervention unblocks a BLOCKED ticket.
+BLOCKED_KINDS = ("context", "capability", "size", "ambiguity")
+
 CHILD_SCHEMA = {
     "type": "object",
     "properties": {
-        "status": {"type": "string", "enum": ["COMPLETE", "BLOCKED"]},
+        "status": {"type": "string", "enum": ["COMPLETE", "COMPLETE_WITH_CONCERNS", "BLOCKED"]},
         "branch": {"type": "string"},
         "pr_number": {"type": ["integer", "null"]},
         "pr_url": {"type": ["string", "null"]},
@@ -34,6 +40,11 @@ CHILD_SCHEMA = {
             "type": "array",
             "items": {"type": "string"},
         },
+        "concerns": {
+            "type": "array",
+            "items": {"type": "string"},
+        },
+        "blocked_kind": {"type": "string", "enum": list(BLOCKED_KINDS)},
         "reason": {"type": "string"},
     },
     "required": ["status", "branch", "reason"],
@@ -126,9 +137,10 @@ Apply the repo's documented coding standards first, then the Fowler smell baseli
 - Cite the standard file and rule for each documented-standard issue.
 - A documented standard overrides the baseline.
 - Skip anything a tool already enforces.
+- Anchor every finding to a `file:line` (or hunk) in the diff.
 - Mark documented-standard breaches as RED; baseline smells as YELLOW or GREEN.
 
-Return **only** a JSON object: `{"report": "<single ## Standards block, or GREEN - No Standards issues detected.>"}`. Keep the report under 400 words. No `## Spec` section."""
+Return **only** a JSON object: `{"report": "<single ## Standards block, or GREEN - No Standards issues detected.>"}`. End the report with a verdict line: `**Ready to merge:** Yes | No | With fixes`. Keep the report under 400 words. No `## Spec` section."""
 
 SPEC_REVIEWER_PROMPT = """You are the Spec axis of a two-axis /build-afk review for {{REPO}}.
 
@@ -143,10 +155,15 @@ Review the diff against this issue spec:
 SPEC:
 {{ISSUE_BODY}}
 
-If the issue references a parent spec, ADR, or PR, read those for context.
-For each finding, quote the spec line that is missing, partial, or mis-implemented. Call out scope creep. Do not apply coding-style judgements; those belong in the Standards axis.
+The build agent's self-report follows. Verify every claim against the diff; a claim not visible in the diff is a finding.
 
-Return **only** a JSON object: `{"report": "<single ## Spec block, or GREEN - No Spec issues detected.>"}`. Keep the report under 400 words. No `## Standards` section."""
+IMPLEMENTER CLAIMS:
+{{IMPLEMENTER_CLAIMS}}
+
+If the issue references a parent spec, ADR, or PR, read those for context.
+For each finding, quote the spec line that is missing, partial, or mis-implemented, and anchor it to a `file:line` in the diff. Call out scope creep. Do not apply coding-style judgements; those belong in the Standards axis.
+
+Return **only** a JSON object: `{"report": "<single ## Spec block, or GREEN - No Spec issues detected.>"}`. End the report with a verdict line: `**Ready to merge:** Yes | No | With fixes`. Keep the report under 400 words. No `## Standards` section."""
 
 ADJUDICATE_PROMPT = """You are the parent adjudicator for a /build-afk review.
 
@@ -160,6 +177,9 @@ Standards review:
 
 Spec review:
 {{SPEC_REVIEW}}
+
+Implementer's own report (verify against the diff; do not trust it):
+{{IMPLEMENTER_CLAIMS}}
 
 Diff ({{PRE_BUILD_SHA}}...HEAD):
 {{DIFF}}
@@ -184,7 +204,7 @@ Return **only** a JSON object matching this schema:
 }
 ```
 
-If `status` is PROCEED, the issue is complete. If FIX, make `fix_instructions` specific enough for a fix agent. If BLOCKED, explain the risk."""
+If `status` is PROCEED, the issue is complete. If FIX, make `fix_instructions` specific enough for a fix agent and order them: spec gaps and blocking findings first, then standards fixes, then cosmetic items. If BLOCKED, explain the risk."""
 
 FIX_PROMPT = r"""You are a /build-afk fix agent. The build agent completed issue #{{ISSUE_NUMBER}} in the worktree below and opened a draft PR.
 
@@ -193,10 +213,10 @@ Base commit: `{{PRE_BUILD_SHA}}`
 Branch: `{{BRANCH}}`
 PR URL: `{{PR_URL}}`
 
-The adjudicator's instructions:
+The adjudicator's instructions (ordered: spec gaps and blocking findings first, then standards fixes, then cosmetic items):
 {{FIX_INSTRUCTIONS}}
 
-Apply the fixes in the worktree. Do not change the PR base. Keep the worktree in place.
+Apply the fixes in the given order in the worktree. Do not change the PR base. Keep the worktree in place. Re-run the build and test commands once after the pass, not after each item.
 
 After fixing, run `dotnet format` on changed C# files:
 ```powershell
@@ -219,7 +239,7 @@ If the add-in `bin\Debug\net48\SwInventreeAddin.dll` is locked by SolidWorks, us
 Push the updated branch. Return **only** a JSON object matching the build-afk child schema:
 ```json
 {
-  "status": "COMPLETE" or "BLOCKED",
+  "status": "COMPLETE" or "COMPLETE_WITH_CONCERNS" or "BLOCKED",
   "branch": "<actual branch>",
   "pr_number": <integer or null>,
   "pr_url": "<url or null>",
@@ -228,6 +248,8 @@ Push the updated branch. Return **only** a JSON object matching the build-afk ch
   "test_summary": "<one-line result>",
   "review_summary": "<brief note>",
   "screenshot_paths": [],
+  "concerns": ["<doubt, when COMPLETE_WITH_CONCERNS>"],
+  "blocked_kind": "<context | capability | size | ambiguity — required when BLOCKED>",
   "reason": "<empty when COMPLETE; explanation when BLOCKED>"
 }
 ```"""
@@ -261,6 +283,7 @@ META = {
         {"title": "build", "detail": "Implement each issue in an isolated worktree"},
         {"title": "review", "detail": "Run two independent reviewer agents and an adjudicator"},
         {"title": "fix", "detail": "Apply auto-fixes up to two passes"},
+        {"title": "final-review", "detail": "Review the cumulative chained diff against the parent spec"},
         {"title": "stack", "detail": "Group chained PRs into a series"},
         {"title": "rollup", "detail": "Collect per-issue status and report"},
     ],
@@ -308,9 +331,9 @@ def _load_reviewer_profile(name):
     return text
 
 
-def _result(issue, status, reason, **kwargs):
+def _result(issue, status, reason, blocked_kind="context", **kwargs):
     """Return a normalized per-issue result dictionary."""
-    return {
+    result = {
         "issue_number": issue.get("number"),
         "status": status,
         "branch": issue.get("branch", ""),
@@ -321,9 +344,48 @@ def _result(issue, status, reason, **kwargs):
         "test_summary": "",
         "review_summary": "",
         "screenshot_paths": [],
+        "concerns": [],
         "reason": reason,
         **kwargs,
     }
+    if status == "BLOCKED":
+        result["blocked_kind"] = blocked_kind
+    return result
+
+
+def _implementer_claims(build_result):
+    """Render the build agent's self-report for verification by reviewers."""
+    lines = [
+        f"test_summary: {build_result.get('test_summary', '')}",
+        f"review_summary: {build_result.get('review_summary', '')}",
+        f"reason: {build_result.get('reason', '')}",
+    ]
+    concerns = build_result.get("concerns") or []
+    if concerns:
+        lines.append("concerns:")
+        lines.extend(f"- {c}" for c in concerns)
+    return "\n".join(lines)
+
+
+def _summarize_adjudication(adjudication):
+    """Summarize adjudicated findings as text, not character counts."""
+    findings = adjudication.get("findings") or []
+    groups = {"auto-fix": [], "ignore": [], "BLOCKED": []}
+    for finding in findings:
+        # An out-of-enum classification surfaces as BLOCKED rather than dropping.
+        key = finding.get("classification") if finding.get("classification") in groups else "BLOCKED"
+        groups[key].append((finding.get("text") or "").strip()[:120])
+    parts = []
+    if groups["auto-fix"]:
+        parts.append("auto-fixed: " + "; ".join(groups["auto-fix"]))
+    if groups["ignore"]:
+        parts.append("deferred: " + "; ".join(groups["ignore"]))
+    if groups["BLOCKED"]:
+        parts.append("blocked: " + "; ".join(groups["BLOCKED"]))
+    reason = (adjudication.get("reason") or "").strip()
+    if reason:
+        parts.append(reason)
+    return " | ".join(parts) or "no findings"
 
 
 def _validate_plan(plan):
@@ -346,6 +408,11 @@ def _validate_plan(plan):
     if max_issues is not None:
         if isinstance(max_issues, bool) or not isinstance(max_issues, int) or max_issues < 1:
             errors.append("max must be a positive integer")
+
+    if plan.get("chained") and not isinstance(plan.get("parent_spec_body"), str):
+        errors.append("parent_spec_body is required when chained is true")
+    elif plan.get("chained") and not plan.get("parent_spec_body", "").strip():
+        errors.append("parent_spec_body must not be empty when chained is true")
 
     issues = plan.get("issues")
     if not isinstance(issues, list) or not issues:
@@ -508,11 +575,15 @@ def _build_reviewer_prompt(phase, mapping):
     )
     prompt = _fill(base + context, mapping)
     if phase == "spec":
-        prompt += f"\n\nSPEC:\n{mapping['{{ISSUE_BODY}}']}"
+        prompt += (
+            f"\n\nSPEC:\n{mapping['{{ISSUE_BODY}}']}"
+            "\n\nIMPLEMENTER CLAIMS (the build agent's self-report — verify each claim"
+            f" against the diff; do not trust it):\n{mapping.get('{{IMPLEMENTER_CLAIMS}}', '')}"
+        )
     return prompt
 
 
-async def _run_review(phase, issue, build_result, repo, run_dir, agent_mode):
+async def _run_review(phase, issue, build_result, repo, run_dir, agent_mode, claims=None, label_phase=None):
     worktree = build_result.get("worktree_path")
     pre_build_sha = build_result.get("pre_build_sha")
     if not worktree or not pre_build_sha:
@@ -528,17 +599,19 @@ async def _run_review(phase, issue, build_result, repo, run_dir, agent_mode):
         "{{ISSUE_BODY}}": issue.get("body", ""),
         "{{DIFF}}": review_inputs["diff"],
         "{{COMMITS}}": review_inputs["commits"],
+        "{{IMPLEMENTER_CLAIMS}}": claims if claims is not None else _implementer_claims(build_result),
     }
     prompt = _build_reviewer_prompt(phase, mapping)
 
-    log(f"build-afk: dispatching {phase} review for #{issue['number']}")
+    dispatch_phase = label_phase or f"review-{phase}"
+    log(f"build-afk: dispatching {dispatch_phase} for #{issue['number']}")
     result = await agent(
         prompt,
-        phase=f"review-{phase}",
+        phase=dispatch_phase,
         schema=REVIEW_SCHEMA,
         mode=agent_mode,
         vm_mode="shared",
-        label=f"review-{phase}-{issue['number']}",
+        label=f"{dispatch_phase}-{issue['number']}",
     )
     return result.get("report", f"## {phase.capitalize()}\n<empty review output>")
 
@@ -554,6 +627,7 @@ async def _adjudicate(build_result, standards_review, spec_review, issue, repo, 
         "{{ISSUE_BODY}}": issue.get("body", ""),
         "{{STANDARDS_REVIEW}}": standards_review,
         "{{SPEC_REVIEW}}": spec_review,
+        "{{IMPLEMENTER_CLAIMS}}": _implementer_claims(build_result),
         "{{DIFF}}": review_inputs["diff"],
         "{{COMMITS}}": review_inputs["commits"],
         "{{PRE_BUILD_SHA}}": pre_build_sha or "",
@@ -595,7 +669,19 @@ def _normalize_child_result(result, issue_number, defaults=None):
     result.setdefault("test_summary", "")
     result.setdefault("review_summary", "")
     result.setdefault("screenshot_paths", [])
+    result.setdefault("concerns", [])
     result.setdefault("reason", "")
+    if result["status"] not in (*SUCCESS_STATUSES, "BLOCKED"):
+        reason = result.get("reason") or ""
+        result["reason"] = f"Child returned unrecognized status {result['status']!r}" + (
+            f": {reason}" if reason else ""
+        )
+        result["status"] = "BLOCKED"
+    if result["status"] == "BLOCKED":
+        if result.get("blocked_kind") not in BLOCKED_KINDS:
+            result["blocked_kind"] = "ambiguity"
+    else:
+        result.pop("blocked_kind", None)
     result["issue_number"] = issue_number
     return result
 
@@ -648,14 +734,14 @@ async def _process_issue(template, repo, issue, previous_result, chained, run_di
     )
     build_result = _normalize_child_result(build_result, number)
 
-    if build_result["status"] != "COMPLETE":
+    if build_result["status"] not in SUCCESS_STATUSES:
         _remove_worktree(build_result.get("worktree_path"))
         return build_result
 
     if not build_result.get("pre_build_sha") or not build_result.get("worktree_path"):
         build_result["status"] = "BLOCKED"
         build_result["reason"] = "Build agent did not return pre_build_sha and worktree_path; cannot run independent review."
-        return build_result
+        return _normalize_child_result(build_result, number)
 
     # First review pass.
     standards_review, spec_review, adjudication = await _review_and_adjudicate(
@@ -665,15 +751,18 @@ async def _process_issue(template, repo, issue, previous_result, chained, run_di
     if adjudication["status"] == "BLOCKED":
         build_result["status"] = "BLOCKED"
         build_result["reason"] = f"Review blocked: {adjudication['reason']}"
-        build_result["review_summary"] = f"Standards: {len(standards_review)} chars; Spec: {len(spec_review)} chars; Adjudication: {adjudication['reason']}"
+        build_result["review_summary"] = _summarize_adjudication(adjudication)
         _remove_worktree(build_result.get("worktree_path"))
-        return build_result
+        return _normalize_child_result(build_result, number)
 
     if adjudication["status"] == "FIX":
-        build_result["review_summary"] = f"Standards: {len(standards_review)} chars; Spec: {len(spec_review)} chars; First-pass fix required."
+        first_pass_summary = _summarize_adjudication(adjudication)
         fix_result = await _fix_issue(build_result, adjudication, issue, repo, run_dir, agent_mode)
 
         if fix_result["status"] == "BLOCKED":
+            fix_result["review_summary"] = f"First-pass review: {first_pass_summary}" + (
+                f" | {fix_result['review_summary']}" if fix_result.get("review_summary") else ""
+            )
             _remove_worktree(fix_result.get("worktree_path"))
             return fix_result
 
@@ -688,16 +777,22 @@ async def _process_issue(template, repo, issue, previous_result, chained, run_di
                 fix_result["reason"] = f"Review-fix loop did not converge after two passes: {adjudication_fix['reason']}"
             else:
                 fix_result["reason"] = f"Re-review blocked: {adjudication_fix['reason']}"
-            fix_result["review_summary"] = f"Standards: {len(standards_review_fix)} chars; Spec: {len(spec_review_fix)} chars; Two-pass cap reached."
+            fix_result["review_summary"] = (
+                f"Fixed: {first_pass_summary} | Re-review: {_summarize_adjudication(adjudication_fix)}"
+            )
             _remove_worktree(fix_result.get("worktree_path"))
-            return fix_result
+            return _normalize_child_result(fix_result, number)
 
-        fix_result["review_summary"] = f"Standards: {len(standards_review_fix)} chars; Spec: {len(spec_review_fix)} chars; Fix applied and re-reviewed."
-        _remove_worktree(fix_result.get("worktree_path"))
+        fix_result["review_summary"] = (
+            f"Fixed: {first_pass_summary} | Re-review: {_summarize_adjudication(adjudication_fix)}"
+        )
+        if not chained:
+            _remove_worktree(fix_result.get("worktree_path"))
         return fix_result
 
-    build_result["review_summary"] = f"Standards: {len(standards_review)} chars; Spec: {len(spec_review)} chars; Adjudication: proceed."
-    _remove_worktree(build_result.get("worktree_path"))
+    build_result["review_summary"] = _summarize_adjudication(adjudication)
+    if not chained:
+        _remove_worktree(build_result.get("worktree_path"))
     return build_result
 
 
@@ -706,7 +801,7 @@ async def _process_stack(plan, results, repo, parent_branch, agent_mode):
     if not chained:
         return None
 
-    complete_results = [r for r in results if r.get("status") == "COMPLETE" and r.get("pr_number")]
+    complete_results = [r for r in results if r.get("status") in SUCCESS_STATUSES and r.get("pr_number")]
     if len(complete_results) < 2:
         log("build-afk: not enough chained PRs to stack")
         return None
@@ -742,6 +837,82 @@ def _normalize_stack_result(result):
     result.setdefault("stack_url", None)
     result.setdefault("reason", "")
     return result
+
+
+async def _run_final_review(plan, results, repo, parent_branch, run_dir, agent_mode):
+    """Spec-axis review of the cumulative chained diff (parent_branch...top-of-stack).
+
+    Each chained child passed its own review; this pass checks the whole stacked
+    diff against the parent spec so per-child-clean-but-composition-wrong work
+    cannot slip through. Returns None when there is nothing to review.
+    """
+    top_result = next(
+        (
+            r
+            for r in reversed(results)
+            if r.get("status") in SUCCESS_STATUSES and r.get("worktree_path")
+        ),
+        None,
+    )
+    if not top_result:
+        return None
+
+    parent_spec = plan.get("parent_spec") or top_result.get("issue_number")
+    pseudo_issue = {
+        "number": parent_spec,
+        "title": f"spec #{parent_spec}",
+        "body": plan.get("parent_spec_body") or "",
+    }
+    build_like = dict(top_result)
+    build_like["pre_build_sha"] = parent_branch
+
+    claims = "\n\n".join(
+        f"Issue #{r.get('issue_number')} ({r.get('branch')}):\n{_implementer_claims(r)}"
+        for r in results
+        if r.get("status") in SUCCESS_STATUSES
+    )
+
+    report = await _run_review(
+        "spec", pseudo_issue, build_like, repo, run_dir, agent_mode,
+        claims=claims, label_phase="final-review",
+    )
+    adjudication = await _adjudicate(
+        build_like,
+        "<Standards axis was reviewed per child; final review is spec-axis only.>",
+        report,
+        pseudo_issue,
+        repo,
+        run_dir,
+        agent_mode,
+    )
+
+    if adjudication["status"] == "FIX":
+        fix_result = await _fix_issue(build_like, adjudication, pseudo_issue, repo, run_dir, agent_mode)
+        if fix_result["status"] in SUCCESS_STATUSES:
+            build_like.update(fix_result)
+            # The diff base for the final review is always the parent branch.
+            build_like["pre_build_sha"] = parent_branch
+            report = await _run_review(
+                "spec", pseudo_issue, build_like, repo, run_dir, agent_mode,
+                claims=claims, label_phase="final-review",
+            )
+            adjudication = await _adjudicate(
+                build_like,
+                "<Standards axis was reviewed per child; final review is spec-axis only.>",
+                report,
+                pseudo_issue,
+                repo,
+                run_dir,
+                agent_mode,
+            )
+
+    status = "COMPLETE" if adjudication["status"] == "PROCEED" else "BLOCKED"
+    return {
+        "status": status,
+        "report": report,
+        "reason": adjudication.get("reason", ""),
+        "findings_summary": _summarize_adjudication(adjudication),
+    }
 
 
 async def main():
@@ -791,6 +962,8 @@ async def main():
                 "BLOCKED",
                 issue.get("skip_reason", "Skipped during pre-flight"),
             ))
+            if chained:
+                chained_blocked = True
             continue
 
         if chained and chained_blocked:
@@ -813,14 +986,27 @@ async def main():
             if chained:
                 chained_blocked = True
 
+    final_review = None
     stack_result = None
     if chained and not chained_blocked:
-        stack_result = await _process_stack(plan, results, repo, parent_branch, agent_mode)
+        final_review = await _run_final_review(
+            plan, results, repo, parent_branch, RUN_DIR, agent_mode
+        )
+        if not final_review or final_review.get("status") != "BLOCKED":
+            stack_result = await _process_stack(plan, results, repo, parent_branch, agent_mode)
+
+    # Chained runs keep successful worktrees alive for the final review; clean
+    # up whatever remains now.
+    for r in results:
+        if r.get("worktree_path"):
+            _remove_worktree(r["worktree_path"])
 
     summary_lines = [
         f"- #{r.get('issue_number','?')}: {r.get('status')} - {r.get('reason','')}".rstrip()
         for r in results
     ]
+    if final_review:
+        summary_lines.append(f"- final-review: {final_review.get('status')} - {final_review.get('reason','')}")
     if stack_result:
         summary_lines.append(f"- stack: {stack_result.get('status')} - {stack_result.get('reason','')}")
     summary = "\n".join(summary_lines) or "No results"
@@ -830,6 +1016,8 @@ async def main():
         "parent_branch": parent_branch,
         "results": results,
     }
+    if final_review:
+        report["final_review"] = final_review
     if stack_result:
         report["stack"] = stack_result
     report["summary"] = summary

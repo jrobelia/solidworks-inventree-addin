@@ -23,7 +23,7 @@
         "The build agent runs the /tdd red-green loop and proposes a public seam.",
         "The workflow dispatches independent Standards and Spec review agents after the build.",
         "The workflow dispatches an adjudicator and runs at most one fix/re-review pass before capping at two.",
-        "RESULTS.json contains the issue number, branch, pr_number, pr_url, status, and reason."
+        "RESULTS.json contains the issue number, branch, pr_number, pr_url, status, reason, and concerns; blocked entries carry a blocked_kind."
       ]
     },
     {
@@ -46,8 +46,8 @@
       "expectations": [
         "The plan sets chained=true and parent_spec=100.",
         "The first child targets PARENT_BRANCH; the second child targets the first child's branch.",
-        "If the first child is BLOCKED, later children are recorded as BLOCKED with a predecessor reason.",
-        "If all children complete, a stack agent groups the PRs bottom-to-top."
+        "If the first child is BLOCKED, later children are recorded as BLOCKED with a predecessor reason and blocked_kind=context.",
+        "If all children complete, a final-review phase diffs PARENT_BRANCH...top-of-stack against parent_spec_body, then a stack agent groups the PRs bottom-to-top."
       ]
     },
     {
@@ -59,6 +59,54 @@
         "The orchestrator detects hard-bug signals from the issue title, body, or labels.",
         "The build agent blocks if it cannot build a red-capable deterministic repro.",
         "A routine bug without hard-bug signals goes through the standard TDD/review pipeline."
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "/build-afk #210 where the build agent finishes but has doubts about an untestable edge case",
+      "expected_output": "The build agent returns COMPLETE_WITH_CONCERNS with a concerns list, and the parent routes the concerns into the spec reviewer and the adjudicator instead of blocking or hiding them.",
+      "files": [],
+      "expectations": [
+        "The child result status is COMPLETE_WITH_CONCERNS and carries a non-empty concerns array.",
+        "The spec reviewer prompt contains an IMPLEMENTER CLAIMS block with the concerns.",
+        "The adjudicator receives the same claims and weighs them against the diff.",
+        "The issue is not treated as BLOCKED merely because concerns exist."
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "/build-afk #211 where the build agent cannot finish because the ticket lacks information",
+      "expected_output": "The child returns BLOCKED with blocked_kind=context, and RESULTS.json records the kind so the maintainer knows to supply context.",
+      "files": [],
+      "expectations": [
+        "A BLOCKED child result carries blocked_kind of context, capability, size, or ambiguity.",
+        "A child that returns BLOCKED without a kind is normalized to blocked_kind=ambiguity.",
+        "A non-BLOCKED result does not carry blocked_kind."
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "/build-afk spec #100 with #101 #102 #103 where #102 blocks",
+      "expected_output": "Children after the blocked one are marked BLOCKED with blocked_kind=context, and the final-review and stack phases do not run.",
+      "files": [],
+      "expectations": [
+        "The blocked child's result and all later children carry status=BLOCKED.",
+        "Later children carry blocked_kind=context with a chained-predecessor reason.",
+        "No final-review agent is dispatched for a blocked chain.",
+        "No stack agent is dispatched for a blocked chain."
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "/build-afk spec #100 with #101 #102 (all children complete)",
+      "expected_output": "A final-review agent diffs the cumulative chain against the parent spec body before the stack agent runs, and RESULTS.json records the final_review outcome.",
+      "files": [],
+      "expectations": [
+        "PLAN.json for a chained run carries parent_spec_body; validation fails fast without it.",
+        "The final-review agent reviews the cumulative diff PARENT_BRANCH...top-of-stack, not a single child's diff.",
+        "The final-review prompt contains the parent spec body and all children's IMPLEMENTER CLAIMS.",
+        "RESULTS.json contains a final_review block with status, report, reason, and findings_summary.",
+        "review_summary fields contain adjudicated findings text, not character counts."
       ]
     }
   ]

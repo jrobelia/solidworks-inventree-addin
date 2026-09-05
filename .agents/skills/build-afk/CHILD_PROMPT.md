@@ -118,7 +118,7 @@ Return **only** a JSON object matching this schema (no markdown around it):
 
 ```json
 {
-  "status": "COMPLETE" or "BLOCKED",
+  "status": "COMPLETE" or "COMPLETE_WITH_CONCERNS" or "BLOCKED",
   "branch": "<actual branch used>",
   "pr_number": <integer or null>,
   "pr_url": "<url or null>",
@@ -127,8 +127,20 @@ Return **only** a JSON object matching this schema (no markdown around it):
   "test_summary": "<one-line result>",
   "review_summary": "<brief note>",
   "screenshot_paths": ["<absolute path or empty>"],
+  "concerns": ["<specific doubt, when COMPLETE_WITH_CONCERNS>"],
+  "blocked_kind": "<context | capability | size | ambiguity — required when BLOCKED>",
   "reason": "<empty when COMPLETE; explanation when BLOCKED>"
 }
 ```
+
+Choose the status honestly — the parent routes your report, so a hidden doubt wastes the independent review that would have caught it:
+
+- `COMPLETE` — done, verified, no doubts.
+- `COMPLETE_WITH_CONCERNS` — the work is done and pushed, but you have specific doubts (a seam that felt shallow, an edge case you could not test, a spec line you interpreted loosely). List each doubt in `concerns`. The reviewers and adjudicator see them; that is the point.
+- `BLOCKED` — you cannot finish. Set `blocked_kind` to tell the maintainer what would unblock the ticket:
+  - `context` — missing information or access; the ticket needs more context supplied.
+  - `capability` — the task is beyond what this agent can reliably do; needs a more capable model or a human.
+  - `size` — the ticket is too large; needs splitting.
+  - `ambiguity` — contradictory or unclear requirements; needs a human decision or a re-spec.
 
 If you are blocked at any point, still commit and push any work you have done to the actual branch before returning `BLOCKED`, unless the failure happened before any code was written.

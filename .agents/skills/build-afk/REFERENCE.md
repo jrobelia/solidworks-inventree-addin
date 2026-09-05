@@ -22,6 +22,7 @@ If the branch name `build/issue-<number>` or `build/spec-<parent>-<child>` alrea
     "parent_branch": { "type": "string" },
     "chained": { "type": "boolean", "default": false },
     "parent_spec": { "type": ["integer", "null"], "default": null },
+    "parent_spec_body": { "type": "string" },
     "max": { "type": ["integer", "null"], "default": null },
     "agent_mode": { "type": "string", "default": "normal" },
     "issues": {
@@ -47,6 +48,7 @@ If the branch name `build/issue-<number>` or `build/spec-<parent>-<child>` alrea
 ```
 
 - `parent_spec` is optional. Set it when `chained` is `true` so the final stacking agent can name the series from the parent spec number.
+- `parent_spec_body` is **required when `chained` is `true`** — the final-review phase diffs the whole chain against it. Copy the parent spec's full issue body into the plan when you fetch it during pre-flight; Cloud agents cannot read GitHub issues.
 - `agent_mode` is optional. It sets the `mode` argument for build, review, and fix agents. Use `swe-1.7-standard` only after your Devin environment confirms it is accepted; the default is `normal`.
 
 ## Child agent output schema
@@ -57,7 +59,7 @@ The workflow passes this JSON Schema to each `agent()` call in the build and fix
 {
   "type": "object",
   "properties": {
-    "status": { "type": "string", "enum": ["COMPLETE", "BLOCKED"] },
+    "status": { "type": "string", "enum": ["COMPLETE", "COMPLETE_WITH_CONCERNS", "BLOCKED"] },
     "branch": { "type": "string" },
     "pr_number": { "type": ["integer", "null"] },
     "pr_url": { "type": ["string", "null"] },
@@ -69,6 +71,11 @@ The workflow passes this JSON Schema to each `agent()` call in the build and fix
       "type": "array",
       "items": { "type": "string" }
     },
+    "concerns": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "blocked_kind": { "type": "string", "enum": ["context", "capability", "size", "ambiguity"] },
     "reason": { "type": "string" }
   },
   "required": ["status", "branch", "reason"]
@@ -77,7 +84,13 @@ The workflow passes this JSON Schema to each `agent()` call in the build and fix
 
 The workflow also injects the originating issue number into the returned object as `issue_number` for roll-up purposes.
 
-`pre_build_sha` and `worktree_path` must be present when `status` is `COMPLETE`. They enable the parent to run the independent two-axis review and any fix passes.
+`pre_build_sha` and `worktree_path` must be present when `status` is `COMPLETE` or `COMPLETE_WITH_CONCERNS`. They enable the parent to run the independent two-axis review and any fix passes.
+
+Status meanings:
+
+- `COMPLETE` — done, verified, no doubts.
+- `COMPLETE_WITH_CONCERNS` — done and pushed, with specific doubts listed in `concerns` (the concerns feed the review pass; see the two-axis flow).
+- `BLOCKED` — the agent could not finish. `blocked_kind` is required and tells the maintainer what would unblock the ticket: `context` (supply missing information or access), `capability` (needs a more capable model or a human), `size` (needs splitting), `ambiguity` (contradictory or unclear requirements; needs a decision or re-spec). Pre-flight skips and chained-predecessor blocks are marked `context`; a child that returns `BLOCKED` without a valid `blocked_kind`, or with a status outside the enum, is normalized to `BLOCKED`/`ambiguity`.
 
 ## RESULTS.json schema
 
@@ -97,11 +110,18 @@ After the workflow finishes, `RESULTS.json` in the run directory contains:
       "pre_build_sha": "abc1234",
       "worktree_path": "C:/devin/worktrees/build-issue-41",
       "test_summary": "dotnet test passed (375 tests)",
-      "review_summary": "Standards: ...; Spec: ...",
+      "review_summary": "auto-fixed: missing progress reporting | deferred: magic-number nit",
       "screenshot_paths": [],
+      "concerns": [],
       "reason": ""
     }
   ],
+  "final_review": {
+    "status": "COMPLETE",
+    "report": "## Spec ...",
+    "reason": "",
+    "findings_summary": "..."
+  },
   "stack": {
     "status": "COMPLETE",
     "stack_url": "...",
@@ -111,7 +131,9 @@ After the workflow finishes, `RESULTS.json` in the run directory contains:
 }
 ```
 
-The `stack` field is present only when the input was chained and a stack agent was dispatched.
+`review_summary` carries the adjudicated findings (auto-fixed and deferred items, one line each), not report sizes. `concerns` lists the implementer's doubts when the status is `COMPLETE_WITH_CONCERNS`; `blocked_kind` is present on `BLOCKED` entries.
+
+The `final_review` field is present only when the input was chained and every child completed; the `stack` field is present only when a stack agent was dispatched.
 
 ## Build, format, and test commands
 
@@ -145,12 +167,13 @@ The parent orchestrator, not the build agent, runs the two-axis review. After th
 2. It dispatches two `vm_mode="shared"` reviewer agents in parallel using the profiles copied into `$runDir`:
    - **Standards** — uses `code-review-standards.md` from the run directory. It reads `docs/agents/coding-standards.md`, applies the Fowler smell baseline, and returns a `## Standards` block.
    - **Spec** — uses `code-review-spec.md` from the run directory. It reads the issue body and any referenced parent spec/ADR, and returns a `## Spec` block.
+   - The spec reviewer also receives the build agent's self-report (`test_summary`, `review_summary`, `reason`, `concerns`) as an `IMPLEMENTER CLAIMS:` block with a verify-don't-trust instruction, so it can catch claimed-but-not-implemented work in addition to missing or extra work.
    - If a profile is missing, `workflow.py` falls back to the bundled reviewer prompts.
-3. It dispatches an **adjudicator** (`lite` mode) with the rubric below. The adjudicator returns `PROCEED`, `FIX`, or `BLOCKED`.
-4. If the adjudicator returns `FIX`, the parent dispatches a fix agent with the concrete instructions. After the fix, it re-runs one Standards + Spec pass and re-adjudicates.
+3. It dispatches an **adjudicator** (`lite` mode) with the rubric below and the same implementer claims. The adjudicator returns `PROCEED`, `FIX`, or `BLOCKED`.
+4. If the adjudicator returns `FIX`, the parent dispatches a fix agent with the concrete instructions, ordered spec gaps and blocking findings first, then standards fixes, then cosmetic items. After the fix, it re-runs one Standards + Spec pass and re-adjudicates.
 5. The review-fix loop is capped at **two passes**. If the second pass still returns `FIX`, the parent marks the issue `BLOCKED` with the reason that the loop did not converge.
 
-The build and fix agents do not run an in-session self-review.
+The build and fix agents do not run an in-session self-review; their doubts travel through `concerns` instead.
 
 ## Adjudication rubric
 
@@ -174,6 +197,16 @@ The adjudicator returns a `findings` array: each entry has `axis`, `text`, `clas
 - The default is `normal`.
 - Use `swe-1.7-standard` only after a smoke test in your Devin environment confirms the mode string is accepted.
 - The adjudicator and stack agents run in `lite` mode because they are lightweight classification tasks.
+
+## Final review for chained specs
+
+Each chained child passes its own review, but nobody checks the composition — a stack where every child is individually clean can still fail the parent spec. When `chained` is true and every child completed, the parent runs a `final-review` phase before stacking:
+
+- Successful child worktrees are kept alive until the phase finishes; the review diffs `PARENT_BRANCH...HEAD` on the last completed child's worktree, so the whole chain is covered.
+- The spec-axis profile reviews the cumulative diff against `parent_spec_body`, with every child's claims concatenated as the `IMPLEMENTER CLAIMS:` block.
+- The adjudicator runs on the findings. `PROCEED` records `final_review.status = "COMPLETE"`. `FIX` gets one fix pass on the top branch followed by one re-review; a second `FIX` or a `BLOCKED` records `final_review.status = "BLOCKED"` without touching the per-child results.
+- The phase is skipped entirely when any child is blocked — including a child skipped in pre-flight. `parent_spec_body` must be in `PLAN.json` for chained runs — validation fails fast without it.
+- When `final_review` comes back `BLOCKED`, the stack agent is skipped too: the chain is not presented as a mergeable stack while its composition is unverified.
 
 ## Stacked PRs for chained specs
 

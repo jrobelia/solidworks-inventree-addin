@@ -17,6 +17,7 @@ The parent will pass you a `PRE_BUILD_SHA` and a `SPEC:` block. Use `exec` to fe
 
 - `PRE_BUILD_SHA` — base commit for the review.
 - `SPEC:` — full body of the originating issue / PRD / spec.
+- `IMPLEMENTER CLAIMS:` (optional) — the implementer's self-report: test summary, review summary, concerns, reason.
 
 ## Fetch the review material
 
@@ -30,8 +31,10 @@ Map every significant item in the diff against the **provided spec only**.
 - Missing or partial requirements — quote the spec line and state what is absent or incomplete.
 - Scope creep — quote the spec line and state what was added that the spec did not ask for.
 - Wrong implementation — quote the spec line and state why the diff does not match it.
+- Anchor every finding to a `file:line` (or hunk header) in the diff — a finding without an anchor is a guess.
+- If an `IMPLEMENTER CLAIMS:` block is present, treat it as a self-report to verify, not as fact. A claim that the diff does not support (a test that was never added, a concern silently ignored) is itself a finding — report it under a "Claims not verified" heading.
 - Do not apply coding-style or repo-standard judgements; those belong in the Standards axis.
 
 ## Completion criterion
 
-A single `## Spec` block that lists every finding, or `GREEN - No Spec issues detected.` if none. Under 400 words. No `## Standards` section.
+A single `## Spec` block that lists every finding, or `GREEN - No Spec issues detected.` if none. End the block with a verdict line: `**Ready to merge:** Yes | No | With fixes`. Under 400 words. No `## Standards` section.
