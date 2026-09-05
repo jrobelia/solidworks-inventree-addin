@@ -301,11 +301,11 @@ namespace SwInventreeAddin.UI
 
             var aliasList = string.Join(" and ", missing);
             var valueList = string.Join(" or ", missing);
-            var be        = missing.Count == 1 ? "is" : "are";
+            var verb      = missing.Count == 1 ? "is" : "are";
             var pronoun   = missing.Count == 1 ? "it is" : "they are";
             var aliasWord = missing.Count == 1 ? "Alias" : "Aliases";
 
-            return $"The {aliasList} BOM Column {aliasWord} {be} blank. "
+            return $"The {aliasList} BOM Column {aliasWord} {verb} blank. "
                  + $"BOM Compare will not find {valueList} values until {pronoun} set.";
         }
 

@@ -1322,7 +1322,8 @@ namespace SwInventreeAddin.UI
         }
 
         // ── IBomReadinessSource ────────────────────────────────────────────────
-
+        // The resolved mapping is exposed through the public mapping provider; this
+        // explicit member keeps the pre-flight seam internal to the assembly.
         PropertyMappingConfig IBomReadinessSource.CurrentMapping => GetMappingOrDefault();
     }
 

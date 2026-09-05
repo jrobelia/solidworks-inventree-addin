@@ -13,8 +13,6 @@ namespace SwInventreeAddin.Tests
     {
         private const string DefaultBomKeyword = "inventree";
 
-        // -- Stub -------------------------------------------------------------
-
         // -- Helpers ------------------------------------------------------------
 
         private static IAssemblyBomService CreateBomService(bool hasTable = true) =>
@@ -343,6 +341,29 @@ namespace SwInventreeAddin.Tests
             var result = await check.CheckAsync();
 
             Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.ItIsNewer));
+        }
+
+        [Test]
+        public async Task CheckAsync_SwIsNewer_AfterPush_StillMissingAliases_ReturnsBomColumnAliasesMissing()
+        {
+            var source = new StubSource
+            {
+                CurrentInvenTreePk = 42,
+                CurrentPk          = "42",
+                CurrentRevision    = "B",
+                RevisionPreview    = "A",
+                CurrentMapping     = CreateMapping(ipnAlias: "", qtyAlias: ""),
+            };
+            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
+
+            var beforePush = await check.CheckAsync();
+            Assert.That(beforePush.Outcome, Is.EqualTo(BomCompareOutcome.SwIsNewer));
+
+            await check.PushRevisionAsync();
+            source.RevisionPreview = "B"; // simulate the pre-flight update the UI would see
+
+            var afterPush = await check.CheckAsync();
+            Assert.That(afterPush.Outcome, Is.EqualTo(BomCompareOutcome.BomColumnAliasesMissing));
         }
 
         // -- PushRevisionAsync --------------------------------------------------
