@@ -185,5 +185,50 @@ namespace SwInventreeAddin.Tests
             Assert.That(result.ToolTip, Does.Contain("The Property Mapping file is invalid."));
             Assert.That(result.ToolTip, Does.Contain(MappingResult.InvalidMappingHelp));
         }
+
+        [Test]
+        public void FullStatusMessage_Healthy_ReturnsDefaultMessage()
+        {
+            var result = new MappingResult(MappingHealth.Healthy, PropertyMappingConfig.WithDefaults());
+
+            Assert.That(result.FullStatusMessage, Is.EqualTo("The Property Mapping file is up to date and valid."));
+        }
+
+        [Test]
+        public void FullStatusMessage_NeedsUpgrade_CombinesStateAndAction()
+        {
+            var result = new MappingResult(MappingHealth.NeedsUpgrade, PropertyMappingConfig.WithDefaults());
+
+            Assert.That(result.FullStatusMessage, Does.Contain("The Property Mapping Schema is out of date."));
+            Assert.That(result.FullStatusMessage, Does.Contain("Edit the Property Mapping and save to enable Part Sync."));
+        }
+
+        [Test]
+        public void FullStatusMessage_NewerSchema_CombinesStateAndAction()
+        {
+            var result = new MappingResult(MappingHealth.NewerSchema, PropertyMappingConfig.WithDefaults());
+
+            Assert.That(result.FullStatusMessage, Does.Contain("The Property Mapping Schema is newer than this add-in."));
+            Assert.That(result.FullStatusMessage, Does.Contain("Upgrade the add-in to enable Part Sync."));
+        }
+
+        [Test]
+        public void FullStatusMessage_Invalid_WhenMessageIsNull_UsesDefaultAndHelp()
+        {
+            var result = new MappingResult(MappingHealth.Invalid, PropertyMappingConfig.WithDefaults());
+
+            Assert.That(result.FullStatusMessage, Does.Contain("The Property Mapping file is invalid."));
+            Assert.That(result.FullStatusMessage, Does.Contain(MappingResult.InvalidMappingHelp));
+        }
+
+        [Test]
+        public void FullStatusMessage_Invalid_WhenMessageIsSupplied_IncludesStateMessageAndHelp()
+        {
+            var result = new MappingResult(MappingHealth.Invalid, PropertyMappingConfig.WithDefaults(), "Missing file.");
+
+            Assert.That(result.FullStatusMessage, Does.StartWith("The Property Mapping file is invalid."));
+            Assert.That(result.FullStatusMessage, Does.Contain("Missing file."));
+            Assert.That(result.FullStatusMessage, Does.Contain(MappingResult.InvalidMappingHelp));
+        }
     }
 }

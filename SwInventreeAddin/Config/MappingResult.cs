@@ -36,6 +36,29 @@ namespace SwInventreeAddin.Config
         public string? Message { get; }
 
         /// <summary>
+        /// The full status text shown in a status bar, combining the health state
+        /// with the actionable detail. The tooltip for the same status bar carries
+        /// the same text so the full message is readable and copyable.
+        /// </summary>
+        public string FullStatusMessage
+        {
+            get
+            {
+                var tooltip = ToolTip ?? string.Empty;
+                return Health switch
+                {
+                    MappingHealth.Healthy      => MessageOrDefault,
+                    MappingHealth.NeedsUpgrade => $"{MessageOrDefault} {tooltip}",
+                    MappingHealth.NewerSchema  => $"{MessageOrDefault} {tooltip}",
+                    MappingHealth.Invalid      => string.IsNullOrEmpty(Message)
+                        ? tooltip
+                        : $"{GetDefaultMessage(Health)} {Message} {InvalidMappingHelp}",
+                    _                          => MessageOrDefault,
+                };
+            }
+        }
+
+        /// <summary>
         /// The absolute path of the file the mapping was resolved from.
         /// This is the file <see cref="IPropertyMappingProvider.SaveMapping"/> will write to.
         /// </summary>

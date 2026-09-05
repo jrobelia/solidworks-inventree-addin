@@ -39,11 +39,11 @@ namespace SwInventreeAddin.UI
 
             _viewModel.PropertyChanged += (_, e) =>
             {
-                if (e.PropertyName == nameof(MappingEditorViewModel.ErrorMessage))
-                    RefreshErrorText();
+                if (e.PropertyName == nameof(MappingEditorViewModel.StatusSeverity))
+                    RefreshStatusStripe();
             };
 
-            RefreshErrorText();
+            RefreshStatusStripe();
         }
 
         // ── Save ───────────────────────────────────────────────────────────────
@@ -64,17 +64,19 @@ namespace SwInventreeAddin.UI
 
         // ── UI refresh ─────────────────────────────────────────────────────────
 
-        private void RefreshErrorText()
+        private void RefreshStatusStripe()
         {
-            if (string.IsNullOrEmpty(_viewModel.ErrorMessage))
+            if (StatusStripe == null) return;
+
+            var brushKey = _viewModel.StatusSeverity switch
             {
-                ErrorTextBar.Visibility = Visibility.Collapsed;
-            }
-            else
-            {
-                ErrorText.Text          = _viewModel.ErrorMessage;
-                ErrorTextBar.Visibility = Visibility.Visible;
-            }
+                StatusSeverity.Success => "BrushStatusSuccess",
+                StatusSeverity.Warning => "BrushStatusWarning",
+                StatusSeverity.Error   => "BrushStatusError",
+                _                      => "BrushStatusNone",
+            };
+
+            StatusStripe.Background = (Brush)FindResource(brushKey);
         }
 
     }

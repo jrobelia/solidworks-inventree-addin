@@ -198,12 +198,15 @@
                          />
             </Grid>
 
+            <!-- ── Separator ─────────────────────────────────────────────────── -->
+            <Separator Background="{StaticResource BrushBorder}" Margin="0,8,0,0" />
+
             <!-- BOM Column Alias section -->
             <TextBlock Text="BOM Column Aliases"
                        FontWeight="SemiBold"
                        Foreground="{StaticResource BrushForeground}"
-                       Margin="0,14,0,4" />
-            <TextBlock Text="Enter comma-separated SolidWorks BOM column headers for each InvenTree field."
+                       Margin="0,8,0,4" />
+            <TextBlock Text="Enter comma-separated SolidWorks BOM table column headers for each InvenTree field for assembly BOM comparison."
                        Style="{StaticResource FieldLabelStyle}"
                        TextWrapping="Wrap"
                        Margin="0,0,0,4" />
@@ -290,40 +293,40 @@
                          />
             </Grid>
 
-            <!-- Validation / status -->
-            <Border x:Name="ErrorTextBar"
-                    Height="32" Margin="0,6,0,0"
-                    Background="#FFF0F0F0"
-                    BorderBrush="{StaticResource BrushBorder}"
-                    BorderThickness="0,1,0,0"
-                    Visibility="Collapsed">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="4" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0" Background="{StaticResource BrushStatusError}" />
-                    <TextBlock x:Name="ErrorText"
-                               Grid.Column="1"
-                               VerticalAlignment="Center"
-                               Margin="8,0,4,0"
-                               FontSize="{StaticResource FontSizeBody}"
-                               Foreground="{StaticResource BrushStatusError}"
-                               TextWrapping="Wrap"
-                               Padding="0" />
-                </Grid>
-            </Border>
-
-            <!-- Buttons -->
+            <!-- Status bar + buttons -->
             <Grid Margin="0,12,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="8" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="8" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
+
+                <Border x:Name="StatusBar"
+                        Grid.Column="0"
+                        Height="32"
+                        Background="#FFF0F0F0"
+                        BorderBrush="{StaticResource BrushBorder}"
+                        BorderThickness="0,1,0,0"
+                        VerticalAlignment="Center">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="4" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border x:Name="StatusStripe" Grid.Column="0"
+                                Background="{StaticResource BrushStatusNone}" />
+                        <TextBox x:Name="StatusText"
+                                 Grid.Column="1"
+                                 Text="{Binding StatusMessage, Mode=OneWay}"
+                                 ToolTip="{Binding StatusMessage, Mode=OneWay}"
+                                 Style="{StaticResource StatusBarTextStyle}" />
+                    </Grid>
+                </Border>
+
                 <Button x:Name="SaveButton"
-                        Grid.Column="1"
+                        Grid.Column="2"
                         Style="{StaticResource PrimaryButtonStyle}"
                         Width="80" Margin="0"
                         IsDefault="True"
@@ -334,7 +337,7 @@
                                    VerticalAlignment="Center" Margin="6,0,0,0" />
                     </StackPanel>
                 </Button>
-                <Button Grid.Column="3"
+                <Button Grid.Column="4"
                         Style="{StaticResource SecondaryButtonStyle}"
                         Width="80" Margin="0"
                         IsCancel="True"

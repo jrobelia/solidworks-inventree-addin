@@ -35,11 +35,12 @@ namespace SwInventreeAddin.Tests
             var window = new PropertyMappingEditorWindow(provider);
 
             Assert.That(window.SaveButton.IsEnabled, Is.True);
-            Assert.That(window.ErrorTextBar.Visibility, Is.EqualTo(Visibility.Collapsed));
+            Assert.That(window.StatusBar.Visibility, Is.EqualTo(Visibility.Visible));
+            Assert.That(window.StatusText.Text, Is.EqualTo("No validation errors."));
         }
 
         [Test]
-        public void Constructor_LocalHealthyMapping_EnablesSaveAndHidesStatusError()
+        public void Constructor_LocalHealthyMapping_EnablesSaveAndShowsDefaultStatus()
         {
             var provider = new StubPropertyMappingProvider
             {
@@ -56,7 +57,8 @@ namespace SwInventreeAddin.Tests
             var window = new PropertyMappingEditorWindow(provider);
 
             Assert.That(window.SaveButton.IsEnabled, Is.True);
-            Assert.That(window.ErrorTextBar.Visibility, Is.EqualTo(Visibility.Collapsed));
+            Assert.That(window.StatusBar.Visibility, Is.EqualTo(Visibility.Visible));
+            Assert.That(window.StatusText.Text, Is.EqualTo("No validation errors."));
         }
 
         [Test]
@@ -78,8 +80,9 @@ namespace SwInventreeAddin.Tests
             var window = new PropertyMappingEditorWindow(provider);
             window.SaveButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, window.SaveButton));
 
-            Assert.That(window.ErrorTextBar.Visibility, Is.EqualTo(Visibility.Visible));
-            Assert.That(window.ErrorText.Text, Does.Contain("could not be saved").IgnoreCase);
+            Assert.That(window.StatusBar.Visibility, Is.EqualTo(Visibility.Visible));
+            Assert.That(window.StatusText.Text, Does.Contain("could not be saved").IgnoreCase);
+            Assert.That(window.StatusStripe.Background, Is.SameAs(window.FindResource("BrushStatusError")));
         }
 
         [Test]

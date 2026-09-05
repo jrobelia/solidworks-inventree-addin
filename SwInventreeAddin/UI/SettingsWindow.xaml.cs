@@ -179,27 +179,27 @@ namespace SwInventreeAddin.UI
                 };
 
                 MappingStatusStripe.Background = stripeColor;
-                MappingStatusText.Text         = MappingResult.GetDefaultMessage(result.Health);
-                _mappingStatusDetail           = result.ToolTip;
-                MappingStatusText.ToolTip      = MakeStatusToolTip(_mappingStatusDetail);
+                _mappingStatusDetail           = result.FullStatusMessage;
+                MappingStatusText.Text         = _mappingStatusDetail;
+                MappingStatusText.ToolTip      = _mappingStatusDetail;
                 return true;
             }
             catch (InvalidOperationException ex)
             {
                 EditMappingsButton.IsEnabled   = false;
                 MappingStatusStripe.Background = (Brush)FindResource("BrushStatusError");
-                MappingStatusText.Text         = MappingResult.GetDefaultMessage(MappingHealth.Invalid);
-                _mappingStatusDetail           = $"{ex.Message} {MappingResult.InvalidMappingHelp}";
-                MappingStatusText.ToolTip      = MakeStatusToolTip(_mappingStatusDetail);
+                _mappingStatusDetail           = $"{MappingResult.GetDefaultMessage(MappingHealth.Invalid)} {ex.Message} {MappingResult.InvalidMappingHelp}";
+                MappingStatusText.Text         = _mappingStatusDetail;
+                MappingStatusText.ToolTip      = _mappingStatusDetail;
                 return false;
             }
             catch (Exception ex)
             {
                 EditMappingsButton.IsEnabled   = false;
                 MappingStatusStripe.Background = (Brush)FindResource("BrushStatusError");
-                _mappingStatusDetail           = $"Failed to load the Property Mapping file: {ex.Message} {MappingResult.InvalidMappingHelp}";
-                MappingStatusText.Text         = MappingResult.GetDefaultMessage(MappingHealth.Invalid);
-                MappingStatusText.ToolTip      = MakeStatusToolTip(_mappingStatusDetail);
+                _mappingStatusDetail           = $"{MappingResult.GetDefaultMessage(MappingHealth.Invalid)} Failed to load the Property Mapping file: {ex.Message} {MappingResult.InvalidMappingHelp}";
+                MappingStatusText.Text         = _mappingStatusDetail;
+                MappingStatusText.ToolTip      = _mappingStatusDetail;
                 return false;
             }
         }
@@ -387,27 +387,12 @@ namespace SwInventreeAddin.UI
         private void SetStatusBar(System.Windows.Controls.TextBox textBox, System.Windows.Controls.Border stripe,
                                   string text, bool error, bool success)
         {
-            textBox.Text    = text;
-            textBox.ToolTip = MakeStatusToolTip(text);
+            textBox.Text      = text;
+            textBox.ToolTip   = string.IsNullOrEmpty(text) ? null : text;
             stripe.Background =
                 error   ? (Brush)FindResource("BrushStatusError")
                 : success ? (Brush)FindResource("BrushStatusSuccess")
                 :           (Brush)FindResource("BrushStatusNone");
         }
-
-        // Status text is single-line and can truncate; the full message goes in a
-        // wrapping tooltip so long errors stay readable.
-        private static object? MakeStatusToolTip(string? text) =>
-            string.IsNullOrEmpty(text)
-                ? null
-                : new System.Windows.Controls.ToolTip
-                  {
-                      Content = new System.Windows.Controls.TextBlock
-                      {
-                          Text         = text,
-                          TextWrapping = TextWrapping.Wrap,
-                          MaxWidth     = 360,
-                      },
-                  };
     }
 }

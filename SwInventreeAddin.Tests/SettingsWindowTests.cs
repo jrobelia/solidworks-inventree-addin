@@ -161,12 +161,8 @@ namespace SwInventreeAddin.Tests
             await window.ApplySettingsAsync();
 
             var textBox = (TextBox)System.Windows.LogicalTreeHelper.FindLogicalNode(window, "ActionStatusText")!;
-            var toolTip = textBox.ToolTip as ToolTip;
-            Assert.That(toolTip, Is.Not.Null);
-            var tipText = toolTip!.Content as TextBlock;
-            Assert.That(tipText, Is.Not.Null);
-            Assert.That(tipText!.Text, Does.Contain(longMessage));
-            Assert.That(tipText.TextWrapping, Is.EqualTo(TextWrapping.Wrap));
+            Assert.That(textBox.ToolTip, Is.InstanceOf<string>());
+            Assert.That((string)textBox.ToolTip, Does.Contain(longMessage));
         }
 
         // ── Mapping health status bar ─────────────────────────────────────────
@@ -260,12 +256,26 @@ namespace SwInventreeAddin.Tests
             var window = CreateWindow(mappingProvider: mappingProvider);
             var textBox = (TextBox)System.Windows.LogicalTreeHelper.FindLogicalNode(window, "MappingStatusText")!;
 
-            var toolTip = textBox.ToolTip as ToolTip;
-            Assert.That(toolTip, Is.Not.Null);
-            var tipText = toolTip!.Content as TextBlock;
-            Assert.That(tipText, Is.Not.Null);
-            Assert.That(tipText!.Text, Does.Contain(longMessage));
-            Assert.That(tipText.TextWrapping, Is.EqualTo(TextWrapping.Wrap));
+            Assert.That(textBox.ToolTip, Is.InstanceOf<string>());
+            Assert.That((string)textBox.ToolTip, Does.Contain(longMessage));
+            Assert.That(textBox.ToolTip, Is.EqualTo(textBox.Text));
+        }
+
+        [Test]
+        public void MappingStatusText_NeedsUpgrade_MatchesToolTipAndShowsFullMessage()
+        {
+            var mappingProvider = new StubPropertyMappingProvider
+            {
+                LocalFilePath = _localMappingPath,
+                Config = new PropertyMappingConfig { SchemaVersion = "2" }
+            };
+
+            var window = CreateWindow(mappingProvider: mappingProvider);
+            var textBox = (TextBox)System.Windows.LogicalTreeHelper.FindLogicalNode(window, "MappingStatusText")!;
+
+            Assert.That(textBox.Text, Does.Contain("The Property Mapping Schema is out of date."));
+            Assert.That(textBox.Text, Does.Contain("Edit the Property Mapping and save to enable Part Sync."));
+            Assert.That(textBox.ToolTip, Is.EqualTo(textBox.Text));
         }
 
         [Test]
@@ -284,7 +294,7 @@ namespace SwInventreeAddin.Tests
             mappingProvider.Message = "Invalid after change";
             mappingProvider.RaiseMappingChanged();
 
-            Assert.That(GetText(window, "MappingStatusText"), Is.EqualTo("The Property Mapping file is invalid."));
+            Assert.That(GetText(window, "MappingStatusText"), Does.Contain("The Property Mapping file is invalid."));
             Assert.That(GetStripeBrush(window), Is.SameAs(GetBrush(window, "BrushStatusError")));
         }
 
@@ -312,7 +322,7 @@ namespace SwInventreeAddin.Tests
 
             newProvider.RaiseMappingChanged();
 
-            Assert.That(GetText(window, "MappingStatusText"), Is.EqualTo("The Property Mapping file is invalid."));
+            Assert.That(GetText(window, "MappingStatusText"), Does.Contain("The Property Mapping file is invalid."));
         }
 
         // ── Edit Mappings button ───────────────────────────────────────────────

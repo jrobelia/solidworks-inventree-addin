@@ -17,23 +17,6 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="DesignTokens.xaml" />
             </ResourceDictionary.MergedDictionaries>
-
-            <!-- Status bar text: read-only label-like TextBox so messages stay selectable/copyable;
-                 the full message is shown in a wrapping tooltip (set in code-behind). -->
-            <Style x:Key="SettingsStatusTextStyle" TargetType="TextBox">
-                <Setter Property="VerticalAlignment"        Value="Center" />
-                <Setter Property="Margin"                   Value="8,0,4,0" />
-                <Setter Property="FontSize"                 Value="{StaticResource FontSizeBody}" />
-                <Setter Property="Foreground"               Value="{StaticResource BrushForeground}" />
-                <Setter Property="Background"               Value="Transparent" />
-                <Setter Property="BorderThickness"          Value="0" />
-                <Setter Property="Padding"                  Value="0" />
-                <Setter Property="IsReadOnly"               Value="True" />
-                <Setter Property="IsReadOnlyCaretVisible"   Value="False" />
-                <Setter Property="IsTabStop"                Value="False" />
-                <Setter Property="Focusable"                Value="True" />
-                <Setter Property="TextWrapping"             Value="NoWrap" />
-            </Style>
         </ResourceDictionary>
     </Window.Resources>
 
@@ -99,7 +82,7 @@
                                 Background="{StaticResource BrushStatusNone}" />
                         <TextBox x:Name="ConnectionStatusText"
                                  Grid.Column="1"
-                                 Style="{StaticResource SettingsStatusTextStyle}" />
+                                 Style="{StaticResource StatusBarTextStyle}" />
                     </Grid>
                 </Border>
                 <Button Grid.Column="2"
@@ -191,37 +174,46 @@
                 </Button>
             </Grid>
 
-            <!-- Edit Mappings action for the resolved file -->
-            <Button x:Name="EditMappingsButton"
-                    Style="{StaticResource SecondaryButtonStyle}"
-                    HorizontalAlignment="Right"
-                    Height="28" MinWidth="120"
-                    Margin="0,4,0,0"
-                    Click="EditMappings_Click">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock x:Name="EditMappingsButtonText" Text="Edit Mappings" VerticalAlignment="Center" />
-                    <TextBlock Text="&#xE70F;" FontFamily="Segoe MDL2 Assets" FontSize="13"
-                               VerticalAlignment="Center" Margin="6,0,0,0" />
-                </StackPanel>
-            </Button>
+            <!-- Edit Mappings + mapping status bar -->
+            <Grid Margin="0,8,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
 
-            <!-- Mapping status bar -->
-            <Border x:Name="MappingStatusBar"
-                    Height="32" Margin="0,8,0,0"
-                    Background="#FFF0F0F0"
-                    BorderBrush="#FFD0D0D0" BorderThickness="0,1,0,0">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="4" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Border x:Name="MappingStatusStripe" Grid.Column="0"
-                            Background="{StaticResource BrushSectionHeader}" />
-                    <TextBox x:Name="MappingStatusText"
-                             Grid.Column="1"
-                             Style="{StaticResource SettingsStatusTextStyle}" />
-                </Grid>
-            </Border>
+                <Border x:Name="MappingStatusBar"
+                        Grid.Column="0"
+                        Height="32"
+                        Background="#FFF0F0F0"
+                        BorderBrush="{StaticResource BrushBorder}"
+                        BorderThickness="0,1,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="4" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border x:Name="MappingStatusStripe" Grid.Column="0"
+                                Background="{StaticResource BrushStatusNone}" />
+                        <TextBox x:Name="MappingStatusText"
+                                 Grid.Column="1"
+                                 Style="{StaticResource StatusBarTextStyle}" />
+                    </Grid>
+                </Border>
+
+                <Button x:Name="EditMappingsButton"
+                        Grid.Column="2"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Height="28" MinWidth="120"
+                        VerticalAlignment="Center"
+                        Click="EditMappings_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock x:Name="EditMappingsButtonText" Text="Edit Mappings" VerticalAlignment="Center" />
+                        <TextBlock Text="&#xE70F;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                   VerticalAlignment="Center" Margin="6,0,0,0" />
+                    </StackPanel>
+                </Button>
+            </Grid>
 
             <!-- ── Separator ────────────────────────────────────────────────── -->
             <Separator Background="{StaticResource BrushBorder}" Margin="0,8,0,0" />
@@ -242,18 +234,40 @@
                        TextWrapping="Wrap" />
             <TextBox x:Name="BomKeywordBox" Style="{StaticResource SWFieldStyle}" />
 
-            <!-- Apply / Save / Cancel buttons -->
+            <!-- Apply / Save / Cancel buttons + action status bar -->
             <Grid Margin="0,8,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="8" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="8" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="8" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
+
+                <Border x:Name="ActionStatusBar"
+                        Grid.Column="0"
+                        Height="32"
+                        Background="#FFF0F0F0"
+                        BorderBrush="{StaticResource BrushBorder}"
+                        BorderThickness="0,1,0,0"
+                        VerticalAlignment="Center">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="4" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border x:Name="ActionStatusStripe" Grid.Column="0"
+                                Background="{StaticResource BrushStatusNone}" />
+                        <TextBox x:Name="ActionStatusText"
+                                 Grid.Column="1"
+                                 Style="{StaticResource StatusBarTextStyle}" />
+                    </Grid>
+                </Border>
+
                 <Button x:Name="ApplyButton"
-                        Grid.Column="1"
+                        Grid.Column="2"
                         Style="{StaticResource SecondaryButtonStyle}"
                         Width="80" Margin="0"
                         Click="Apply_Click">
@@ -264,7 +278,7 @@
                     </StackPanel>
                 </Button>
                 <Button x:Name="SaveButton"
-                        Grid.Column="3"
+                        Grid.Column="4"
                         Style="{StaticResource PrimaryButtonStyle}"
                         Width="80" Margin="0"
                         IsDefault="True"
@@ -276,7 +290,7 @@
                     </StackPanel>
                 </Button>
                 <Button x:Name="CancelButton"
-                        Grid.Column="5"
+                        Grid.Column="6"
                         Style="{StaticResource SecondaryButtonStyle}"
                         Width="80" Margin="0"
                         IsCancel="True"
@@ -288,24 +302,6 @@
                     </StackPanel>
                 </Button>
             </Grid>
-
-            <!-- Apply / Save status bar -->
-            <Border x:Name="ActionStatusBar"
-                    Height="32" Margin="0,8,0,0"
-                    Background="#FFF0F0F0"
-                    BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,1,0,0">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="4" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Border x:Name="ActionStatusStripe" Grid.Column="0"
-                            Background="{StaticResource BrushStatusNone}" />
-                    <TextBox x:Name="ActionStatusText"
-                             Grid.Column="1"
-                             Style="{StaticResource SettingsStatusTextStyle}" />
-                </Grid>
-            </Border>
 
         </StackPanel>
     </StackPanel>

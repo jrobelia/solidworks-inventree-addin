@@ -143,8 +143,20 @@ namespace SwInventreeAddin.UI
         public string? ErrorMessage
         {
             get => _errorMessage;
-            private set => Set(ref _errorMessage, value);
+            private set
+            {
+                Set(ref _errorMessage, value);
+                OnPropertyChanged(nameof(StatusMessage));
+                OnPropertyChanged(nameof(StatusSeverity));
+            }
         }
+
+        /// <summary>Validation status text shown in the editor status bar and tooltip.</summary>
+        public string StatusMessage => _errorMessage ?? "No validation errors.";
+
+        /// <summary>Severity stripe colour for the editor status bar.</summary>
+        public StatusSeverity StatusSeverity =>
+            string.IsNullOrEmpty(_errorMessage) ? StatusSeverity.None : StatusSeverity.Error;
 
         // ── Commands ───────────────────────────────────────────────────────────
 
