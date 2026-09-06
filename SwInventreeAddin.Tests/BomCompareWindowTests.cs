@@ -73,7 +73,7 @@ namespace SwInventreeAddin.Tests
             };
             var mapping = PropertyMappingConfig.WithDefaults();
             var vm = new BomCompareViewModel(client, bomService, mapping, 1, "inventree");
-            var dialog = new BomCompareWindow(vm, "TEST-001", "Test Assembly");
+            var dialog = new BomCompareWindow(vm, "TEST-001", "Test Assembly") { Opacity = 0 };
             var tcs = new TaskCompletionSource<bool>();
 
             dialog.ContentRendered += (s, e) =>
@@ -106,6 +106,7 @@ namespace SwInventreeAddin.Tests
 
                     try
                     {
+                        Assert.That(dialog.Opacity, Is.EqualTo(0), "Test dialog must stay invisible for the whole run");
                         Assert.That(dx, Is.LessThan(5), $"Dialog is horizontally off by {dx} pixels");
                         Assert.That(dy, Is.LessThan(5), $"Dialog is vertically off by {dy} pixels");
                         tcs.SetResult(true);

@@ -102,6 +102,7 @@ namespace SwInventreeAddin.Tests
                 ResizeMode = ResizeMode.NoResize,
                 SizeToContent = SizeToContent.Height,
                 ShowInTaskbar = false,
+                Opacity = 0,
                 Content = textBlock,
             };
 
@@ -149,6 +150,7 @@ namespace SwInventreeAddin.Tests
 
                 try
                 {
+                    Assert.That(dialog.Opacity, Is.EqualTo(0), "Test dialog must stay invisible for the whole run");
                     Assert.That(dx, Is.LessThan(5), $"Dialog is horizontally off by {dx} pixels");
                     Assert.That(dy, Is.LessThan(5), $"Dialog is vertically off by {dy} pixels");
                     tcs.SetResult(true);
