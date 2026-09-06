@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
 
 namespace SwInventreeAddin.UI
 {
@@ -18,12 +19,11 @@ namespace SwInventreeAddin.UI
             WindowCentering.Attach(this, SolidWorksWindowHandle.Get());
 
             _vm.ConfirmPush = (newCount, conflictCount) =>
-                System.Windows.Forms.MessageBox.Show(
-                    WindowHandleOwner.FromSolidWorks(),
+                MessageDialog.ShowYesNo(
+                    new WindowInteropHelper(this).Handle,
                     $"Push {newCount} new line(s) and update {conflictCount} conflict(s) to InvenTree?",
                     "Confirm BOM Push",
-                    System.Windows.Forms.MessageBoxButtons.YesNo,
-                    System.Windows.Forms.MessageBoxIcon.Question) == System.Windows.Forms.DialogResult.Yes;
+                    System.Windows.Forms.MessageBoxIcon.Question) == MessageDialogResult.Yes;
 
             DataContext = _vm;
             AssemblyIpn.Text  = assemblyIpn;
@@ -40,11 +40,10 @@ namespace SwInventreeAddin.UI
             }
             catch (Exception ex)
             {
-                System.Windows.Forms.MessageBox.Show(
-                    WindowHandleOwner.FromSolidWorks(),
+                MessageDialog.ShowOK(
+                    new WindowInteropHelper(this).Handle,
                     $"Failed to load BOM data:{System.Environment.NewLine}{ex.Message}",
                     "BOM Load Error",
-                    System.Windows.Forms.MessageBoxButtons.OK,
                     System.Windows.Forms.MessageBoxIcon.Error);
             }
         }
@@ -81,11 +80,10 @@ namespace SwInventreeAddin.UI
             }
             catch (Exception ex)
             {
-                System.Windows.Forms.MessageBox.Show(
-                    WindowHandleOwner.FromSolidWorks(),
+                MessageDialog.ShowOK(
+                    new WindowInteropHelper(this).Handle,
                     $"Failed to push BOM:{System.Environment.NewLine}{ex.Message}",
                     "BOM Push Error",
-                    System.Windows.Forms.MessageBoxButtons.OK,
                     System.Windows.Forms.MessageBoxIcon.Error);
             }
         }
