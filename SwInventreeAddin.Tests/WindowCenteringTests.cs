@@ -90,16 +90,18 @@ namespace SwInventreeAddin.Tests
             {
                 Text = string.Empty,
                 Background = System.Windows.Media.Brushes.White,
+                TextWrapping = System.Windows.TextWrapping.Wrap,
+                Width = 400,
             };
 
             var dialog = new Window
             {
                 Title = "SizeToContent Dialog",
+                Width = 400,
                 WindowStartupLocation = WindowStartupLocation.Manual,
-                ResizeMode = ResizeMode.CanResize,
-                SizeToContent = SizeToContent.WidthAndHeight,
+                ResizeMode = ResizeMode.NoResize,
+                SizeToContent = SizeToContent.Height,
                 ShowInTaskbar = false,
-                Opacity = 0,
                 Content = textBlock,
             };
 
