@@ -2,12 +2,17 @@ using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
 
 namespace SwInventreeAddin.UI
 {
     public partial class BomCompareWindow : Window
     {
         private readonly BomCompareViewModel _vm;
+
+        // This window's own HWND — pop-ups it spawns are owned by and centered
+        // over it, not the SolidWorks main window.
+        private IntPtr WindowHandle => new WindowInteropHelper(this).Handle;
 
         public BomCompareWindow(BomCompareViewModel vm, string assemblyIpn, string partName = "",
                                  string bomTableName = "")
@@ -18,12 +23,11 @@ namespace SwInventreeAddin.UI
             WindowCentering.Attach(this, SolidWorksWindowHandle.Get());
 
             _vm.ConfirmPush = (newCount, conflictCount) =>
-                System.Windows.Forms.MessageBox.Show(
-                    WindowHandleOwner.FromSolidWorks(),
+                MessageDialog.ShowYesNo(
+                    WindowHandle,
                     $"Push {newCount} new line(s) and update {conflictCount} conflict(s) to InvenTree?",
                     "Confirm BOM Push",
-                    System.Windows.Forms.MessageBoxButtons.YesNo,
-                    System.Windows.Forms.MessageBoxIcon.Question) == System.Windows.Forms.DialogResult.Yes;
+                    System.Windows.Forms.MessageBoxIcon.Question) == MessageDialogResult.Yes;
 
             DataContext = _vm;
             AssemblyIpn.Text  = assemblyIpn;
@@ -40,11 +44,10 @@ namespace SwInventreeAddin.UI
             }
             catch (Exception ex)
             {
-                System.Windows.Forms.MessageBox.Show(
-                    WindowHandleOwner.FromSolidWorks(),
+                MessageDialog.ShowOK(
+                    WindowHandle,
                     $"Failed to load BOM data:{System.Environment.NewLine}{ex.Message}",
                     "BOM Load Error",
-                    System.Windows.Forms.MessageBoxButtons.OK,
                     System.Windows.Forms.MessageBoxIcon.Error);
             }
         }
@@ -81,11 +84,10 @@ namespace SwInventreeAddin.UI
             }
             catch (Exception ex)
             {
-                System.Windows.Forms.MessageBox.Show(
-                    WindowHandleOwner.FromSolidWorks(),
+                MessageDialog.ShowOK(
+                    WindowHandle,
                     $"Failed to push BOM:{System.Environment.NewLine}{ex.Message}",
                     "BOM Push Error",
-                    System.Windows.Forms.MessageBoxButtons.OK,
                     System.Windows.Forms.MessageBoxIcon.Error);
             }
         }

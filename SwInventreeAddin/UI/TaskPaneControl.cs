@@ -46,16 +46,15 @@ namespace SwInventreeAddin.UI
             _vm.ConfirmMissingProperties = missing =>
             {
                 var bullet = string.Join(System.Environment.NewLine + "  \u2022 ", missing);
-                var result = System.Windows.Forms.MessageBox.Show(
-                    WindowHandleOwner.FromSolidWorks(),
+                var result = MessageDialog.ShowOKCancel(
+                    SolidWorksWindowHandle.Get(),
                     "The following mapped property names don\u2019t exist in this document:"
                     + System.Environment.NewLine + "  \u2022 " + bullet
                     + System.Environment.NewLine + System.Environment.NewLine
                     + "The property will be created. Write anyway?",
                     "Property Not Found",
-                    System.Windows.Forms.MessageBoxButtons.OKCancel,
                     System.Windows.Forms.MessageBoxIcon.Warning);
-                return result == System.Windows.Forms.DialogResult.OK;
+                return result == MessageDialogResult.Ok;
             };
 
             _vm.ConfirmDuplicateIpn = (allParts, matched) =>
@@ -68,15 +67,14 @@ namespace SwInventreeAddin.UI
                     return $"  PK {p.Pk,6}   Rev {rev}{tag}";
                 }));
                 var matchRev = string.IsNullOrEmpty(matched.Revision) ? "(no revision)" : matched.Revision;
-                var answer = System.Windows.Forms.MessageBox.Show(
-                    WindowHandleOwner.FromSolidWorks(),
+                var answer = MessageDialog.ShowOKCancel(
+                    SolidWorksWindowHandle.Get(),
                     $"IPN \u201c{matched.Ipn}\u201d has {allParts.Count} parts in InvenTree:{nl}{nl}"
                     + lines + nl + nl
                     + $"Loading PK {matched.Pk} (Rev {matchRev}). Proceed?",
                     "Duplicate IPN \u2014 Revision Matched",
-                    System.Windows.Forms.MessageBoxButtons.OKCancel,
                     System.Windows.Forms.MessageBoxIcon.Warning);
-                return answer == System.Windows.Forms.DialogResult.OK;
+                return answer == MessageDialogResult.Ok;
             };
 
             var view = new TaskPaneView { DataContext = _vm };
@@ -148,31 +146,28 @@ namespace SwInventreeAddin.UI
                 switch (readiness.Outcome)
                 {
                     case BomCompareOutcome.PkNotFound:
-                        System.Windows.Forms.MessageBox.Show(
-                            WindowHandleOwner.FromSolidWorks(),
+                        MessageDialog.ShowOK(
+                            SolidWorksWindowHandle.Get(),
                             $"'{readiness.PartNumber}' was not found in InvenTree.\n\nCreate the part in InvenTree first, then try again.",
                             "BOM Compare",
-                            System.Windows.Forms.MessageBoxButtons.OK,
                             System.Windows.Forms.MessageBoxIcon.Warning);
                         return;
 
                     case BomCompareOutcome.PkNotStamped:
-                        System.Windows.Forms.MessageBox.Show(
-                            WindowHandleOwner.FromSolidWorks(),
+                        MessageDialog.ShowOK(
+                            SolidWorksWindowHandle.Get(),
                             "No InvenTree PK is stored in this assembly\u2019s custom properties.\n\n"
                             + "Sync the part with InvenTree first to stamp the PK, then try again.",
                             "BOM Compare \u2014 PK Missing",
-                            System.Windows.Forms.MessageBoxButtons.OK,
                             System.Windows.Forms.MessageBoxIcon.Warning);
                         return;
 
                     case BomCompareOutcome.ItIsNewer:
-                        System.Windows.Forms.MessageBox.Show(
-                            WindowHandleOwner.FromSolidWorks(),
+                        MessageDialog.ShowOK(
+                            SolidWorksWindowHandle.Get(),
                             $"InvenTree is at revision \u201c{readiness.ItRevision}\u201d but this file is revision \u201c{readiness.SwRevision}\u201d.\n\n"
                             + "You have an older file open. Close it \u2014 do not push its BOM to InvenTree.",
                             "BOM Compare \u2014 Old Revision",
-                            System.Windows.Forms.MessageBoxButtons.OK,
                             System.Windows.Forms.MessageBoxIcon.Stop);
                         return;
 
@@ -180,12 +175,11 @@ namespace SwInventreeAddin.UI
                     {
                         var swLabel = string.IsNullOrEmpty(readiness.SwRevision) ? "(blank)" : readiness.SwRevision;
                         var itLabel = string.IsNullOrEmpty(readiness.ItRevision) ? "(blank)" : readiness.ItRevision;
-                        System.Windows.Forms.MessageBox.Show(
-                            WindowHandleOwner.FromSolidWorks(),
+                        MessageDialog.ShowOK(
+                            SolidWorksWindowHandle.Get(),
                             $"Revision mismatch (SolidWorks: {swLabel} / InvenTree: {itLabel}).\n\n"
                             + "The order cannot be determined automatically. Resolve the revision manually before comparing the BOM.",
                             "BOM Compare \u2014 Revision Ambiguous",
-                            System.Windows.Forms.MessageBoxButtons.OK,
                             System.Windows.Forms.MessageBoxIcon.Warning);
                         return;
                     }
@@ -219,11 +213,10 @@ namespace SwInventreeAddin.UI
 
         private static void ShowBomCompareError(string message)
         {
-            System.Windows.Forms.MessageBox.Show(
-                WindowHandleOwner.FromSolidWorks(),
+            MessageDialog.ShowOK(
+                SolidWorksWindowHandle.Get(),
                 message,
                 "BOM Compare",
-                System.Windows.Forms.MessageBoxButtons.OK,
                 System.Windows.Forms.MessageBoxIcon.Error);
         }
 
@@ -241,11 +234,10 @@ namespace SwInventreeAddin.UI
                         + "in Settings > Property Mappings.\n\n"
                         + "Click OK to open the comparison anyway.";
 
-            System.Windows.Forms.MessageBox.Show(
-                WindowHandleOwner.FromSolidWorks(),
+            MessageDialog.ShowOK(
+                SolidWorksWindowHandle.Get(),
                 message,
                 "BOM Compare \u2014 Missing Alias",
-                System.Windows.Forms.MessageBoxButtons.OK,
                 System.Windows.Forms.MessageBoxIcon.Warning);
         }
 
@@ -253,15 +245,14 @@ namespace SwInventreeAddin.UI
         {
             var swLabel = string.IsNullOrEmpty(readiness.SwRevision) ? "(blank)" : readiness.SwRevision;
             var itLabel = string.IsNullOrEmpty(readiness.ItRevision) ? "(blank)" : readiness.ItRevision;
-            var answer = System.Windows.Forms.MessageBox.Show(
-                WindowHandleOwner.FromSolidWorks(),
+            var answer = MessageDialog.ShowOKCancel(
+                SolidWorksWindowHandle.Get(),
                 $"Revision mismatch:\n  SolidWorks:  {swLabel}\n  InvenTree:   {itLabel}\n\n"
                 + $"Update InvenTree to revision \u201c{swLabel}\u201d and proceed?",
                 "BOM Compare \u2014 Revision Mismatch",
-                System.Windows.Forms.MessageBoxButtons.OKCancel,
                 System.Windows.Forms.MessageBoxIcon.Question);
 
-            if (answer != System.Windows.Forms.DialogResult.OK) return false;
+            if (answer != MessageDialogResult.Ok) return false;
 
             try
             {
@@ -269,11 +260,10 @@ namespace SwInventreeAddin.UI
             }
             catch (Exception ex)
             {
-                System.Windows.Forms.MessageBox.Show(
-                    WindowHandleOwner.FromSolidWorks(),
+                MessageDialog.ShowOK(
+                    SolidWorksWindowHandle.Get(),
                     $"Failed to update revision in InvenTree:{System.Environment.NewLine}{ex.Message}",
                     "BOM Compare \u2014 Revision Update Failed",
-                    System.Windows.Forms.MessageBoxButtons.OK,
                     System.Windows.Forms.MessageBoxIcon.Error);
                 return false;
             }
@@ -311,18 +301,5 @@ namespace SwInventreeAddin.UI
             _assemblyBomService = bomService;
             _bomKeyword         = keyword;
         }
-    }
-
-    /// <summary>Wraps an arbitrary Win32 window handle so it can be used as the owner of
-    /// a WinForms message box, which parents the dialog for modality and z-order.</summary>
-    internal sealed class WindowHandleOwner : System.Windows.Forms.IWin32Window
-    {
-        public IntPtr Handle { get; }
-
-        public WindowHandleOwner(IntPtr handle) => Handle = handle;
-
-        /// <summary>Returns an owner parented to the SolidWorks main window.</summary>
-        public static System.Windows.Forms.IWin32Window FromSolidWorks()
-            => new WindowHandleOwner(SolidWorksWindowHandle.Get());
     }
 }
