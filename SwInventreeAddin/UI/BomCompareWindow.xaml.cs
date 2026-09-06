@@ -10,6 +10,10 @@ namespace SwInventreeAddin.UI
     {
         private readonly BomCompareViewModel _vm;
 
+        // This window's own HWND — pop-ups it spawns are owned by and centered
+        // over it, not the SolidWorks main window.
+        private IntPtr WindowHandle => new WindowInteropHelper(this).Handle;
+
         public BomCompareWindow(BomCompareViewModel vm, string assemblyIpn, string partName = "",
                                  string bomTableName = "")
         {
@@ -20,7 +24,7 @@ namespace SwInventreeAddin.UI
 
             _vm.ConfirmPush = (newCount, conflictCount) =>
                 MessageDialog.ShowYesNo(
-                    new WindowInteropHelper(this).Handle,
+                    WindowHandle,
                     $"Push {newCount} new line(s) and update {conflictCount} conflict(s) to InvenTree?",
                     "Confirm BOM Push",
                     System.Windows.Forms.MessageBoxIcon.Question) == MessageDialogResult.Yes;
@@ -41,7 +45,7 @@ namespace SwInventreeAddin.UI
             catch (Exception ex)
             {
                 MessageDialog.ShowOK(
-                    new WindowInteropHelper(this).Handle,
+                    WindowHandle,
                     $"Failed to load BOM data:{System.Environment.NewLine}{ex.Message}",
                     "BOM Load Error",
                     System.Windows.Forms.MessageBoxIcon.Error);
@@ -81,7 +85,7 @@ namespace SwInventreeAddin.UI
             catch (Exception ex)
             {
                 MessageDialog.ShowOK(
-                    new WindowInteropHelper(this).Handle,
+                    WindowHandle,
                     $"Failed to push BOM:{System.Environment.NewLine}{ex.Message}",
                     "BOM Push Error",
                     System.Windows.Forms.MessageBoxIcon.Error);

@@ -1,3 +1,4 @@
+using System;
 using System.Windows.Forms;
 using NUnit.Framework;
 using SwInventreeAddin.UI;
@@ -37,6 +38,18 @@ namespace SwInventreeAddin.Tests
 
             Assert.That((vm.IsOkVisible, vm.IsCancelVisible, vm.IsYesVisible, vm.IsNoVisible),
                         Is.EqualTo((false, false, true, true)));
+        }
+
+        // Only the button sets the MessageDialog helpers produce are supported;
+        // anything else must fail loudly rather than show the wrong choices.
+
+        [Test]
+        [TestCase(MessageBoxButtons.YesNoCancel)]
+        [TestCase(MessageBoxButtons.RetryCancel)]
+        [TestCase(MessageBoxButtons.AbortRetryIgnore)]
+        public void Ctor_UnsupportedButtonSet_Throws(MessageBoxButtons buttons)
+        {
+            Assert.That(() => CreateVm(buttons), Throws.TypeOf<ArgumentOutOfRangeException>());
         }
 
         [Test]
@@ -154,6 +167,20 @@ namespace SwInventreeAddin.Tests
             var vm = CreateVm(icon: MessageBoxIcon.Question);
 
             Assert.That(vm.IconGlyph, Is.EqualTo("\uE897"));
+        }
+
+        [Test]
+        [TestCase(MessageBoxIcon.Warning,     MessageDialogIconKind.Warning)]
+        [TestCase(MessageBoxIcon.Error,       MessageDialogIconKind.Error)]
+        [TestCase(MessageBoxIcon.Stop,        MessageDialogIconKind.Error)]
+        [TestCase(MessageBoxIcon.Question,    MessageDialogIconKind.Question)]
+        [TestCase(MessageBoxIcon.Information, MessageDialogIconKind.Information)]
+        [TestCase(MessageBoxIcon.None,        MessageDialogIconKind.None)]
+        public void IconKind_MapsFromMessageBoxIcon(MessageBoxIcon icon, MessageDialogIconKind expected)
+        {
+            var vm = CreateVm(icon: icon);
+
+            Assert.That(vm.IconKind, Is.EqualTo(expected));
         }
 
         [Test]

@@ -47,18 +47,13 @@
                        Visibility="{Binding IsIconVisible, Converter={StaticResource BoolToVis}}">
                 <TextBlock.Style>
                     <Style TargetType="TextBlock">
+                        <Setter Property="Foreground" Value="{StaticResource BrushAccentBlue}" />
                         <Style.Triggers>
-                            <DataTrigger Binding="{Binding IconGlyph}" Value="&#xE7BA;">
+                            <DataTrigger Binding="{Binding IconKind}" Value="Warning">
                                 <Setter Property="Foreground" Value="{StaticResource BrushStatusWarning}" />
                             </DataTrigger>
-                            <DataTrigger Binding="{Binding IconGlyph}" Value="&#xE783;">
+                            <DataTrigger Binding="{Binding IconKind}" Value="Error">
                                 <Setter Property="Foreground" Value="{StaticResource BrushStatusError}" />
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding IconGlyph}" Value="&#xE897;">
-                                <Setter Property="Foreground" Value="{StaticResource BrushAccentBlue}" />
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding IconGlyph}" Value="&#xE946;">
-                                <Setter Property="Foreground" Value="{StaticResource BrushAccentBlue}" />
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>

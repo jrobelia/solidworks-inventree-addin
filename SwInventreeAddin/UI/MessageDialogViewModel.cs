@@ -21,8 +21,11 @@ namespace SwInventreeAddin.UI
         /// <summary>Segoe MDL2 Assets glyph for the icon, or empty when there is none.</summary>
         public string IconGlyph { get; }
 
+        /// <summary>Which icon the dialog shows; XAML uses this to pick the severity colour.</summary>
+        public MessageDialogIconKind IconKind { get; }
+
         /// <summary>True when an icon should be shown next to the message.</summary>
-        public bool IsIconVisible { get; }
+        public bool IsIconVisible => IconKind != MessageDialogIconKind.None;
 
         public bool IsOkVisible     { get; }
         public bool IsCancelVisible { get; }
@@ -57,18 +60,26 @@ namespace SwInventreeAddin.UI
             Title   = title   ?? throw new ArgumentNullException(nameof(title));
             Message = message ?? throw new ArgumentNullException(nameof(message));
 
-            IsOkVisible     = buttons == System.Windows.Forms.MessageBoxButtons.OK
-                           || buttons == System.Windows.Forms.MessageBoxButtons.OKCancel;
-            IsCancelVisible = buttons == System.Windows.Forms.MessageBoxButtons.OKCancel
-                           || buttons == System.Windows.Forms.MessageBoxButtons.YesNoCancel
-                           || buttons == System.Windows.Forms.MessageBoxButtons.RetryCancel
-                           || buttons == System.Windows.Forms.MessageBoxButtons.AbortRetryIgnore;
-            IsYesVisible    = buttons == System.Windows.Forms.MessageBoxButtons.YesNo
-                           || buttons == System.Windows.Forms.MessageBoxButtons.YesNoCancel;
-            IsNoVisible     = IsYesVisible;
+            // Only the button sets the MessageDialog helpers can produce are
+            // supported — anything else would show the engineer the wrong choices.
+            switch (buttons)
+            {
+                case System.Windows.Forms.MessageBoxButtons.OK:
+                    IsOkVisible = true;
+                    break;
+                case System.Windows.Forms.MessageBoxButtons.OKCancel:
+                    IsOkVisible = IsCancelVisible = true;
+                    break;
+                case System.Windows.Forms.MessageBoxButtons.YesNo:
+                    IsYesVisible = IsNoVisible = true;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(
+                        nameof(buttons), buttons,
+                        "Unsupported button set — add a MessageDialog helper for it first.");
+            }
 
-            IconGlyph     = IconToGlyph(icon);
-            IsIconVisible = IconGlyph.Length > 0;
+            (IconGlyph, IconKind) = IconToGlyphAndKind(icon);
         }
 
         // ── Commands ──────────────────────────────────────────────────────────
@@ -109,7 +120,8 @@ namespace SwInventreeAddin.UI
             CloseRequested?.Invoke(this, EventArgs.Empty);
         }
 
-        private static string IconToGlyph(System.Windows.Forms.MessageBoxIcon icon)
+        private static (string glyph, MessageDialogIconKind kind) IconToGlyphAndKind(
+            System.Windows.Forms.MessageBoxIcon icon)
         {
             switch (icon)
             {
@@ -117,15 +129,15 @@ namespace SwInventreeAddin.UI
                 // WinForms aliases share values (Warning=Exclamation, Error=Stop=Hand,
                 // Information=Asterisk), so one case label per glyph.
                 case System.Windows.Forms.MessageBoxIcon.Warning:
-                    return "\uE7BA";   // Warning triangle
+                    return ("\uE7BA", MessageDialogIconKind.Warning);     // Warning triangle
                 case System.Windows.Forms.MessageBoxIcon.Error:
-                    return "\uE783";   // Error
+                    return ("\uE783", MessageDialogIconKind.Error);       // Error
                 case System.Windows.Forms.MessageBoxIcon.Question:
-                    return "\uE897";   // Help
+                    return ("\uE897", MessageDialogIconKind.Question);    // Help
                 case System.Windows.Forms.MessageBoxIcon.Information:
-                    return "\uE946";   // Info
+                    return ("\uE946", MessageDialogIconKind.Information); // Info
                 default:
-                    return string.Empty;
+                    return (string.Empty, MessageDialogIconKind.None);
             }
         }
     }
