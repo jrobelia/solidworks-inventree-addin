@@ -15,6 +15,12 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="DesignTokens.xaml"/>
             </ResourceDictionary.MergedDictionaries>
+            <!-- Shared text-cell margin so values don't sit flush with the grid lines.
+                 A custom ElementStyle replaces the column's default style, which is what
+                 normally supplies this margin — every text column opts in explicitly. -->
+            <Style x:Key="BomCellTextStyle" TargetType="TextBlock">
+                <Setter Property="Margin" Value="6,0"/>
+            </Style>
         </ResourceDictionary>
     </Window.Resources>
 
@@ -164,14 +170,16 @@
                                     </Style>
                                 </DataGridCheckBoxColumn.HeaderStyle>
                             </DataGridCheckBoxColumn>
-                            <DataGridTextColumn Header="State"   Binding="{Binding StateLabel}"  Width="80"  IsReadOnly="True">
+                            <DataGridTextColumn Header="State"   Binding="{Binding StateLabel}"  Width="80"  IsReadOnly="True"
+                                                ElementStyle="{StaticResource BomCellTextStyle}">
                                 <DataGridTextColumn.HeaderStyle>
                                     <Style TargetType="DataGridColumnHeader">
                                         <Setter Property="Background" Value="#D7D7D7"/>
                                     </Style>
                                 </DataGridTextColumn.HeaderStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="IPN"     Binding="{Binding DisplayIpn}"  Width="100" IsReadOnly="True">
+                            <DataGridTextColumn Header="IPN"     Binding="{Binding DisplayIpn}"  Width="100" IsReadOnly="True"
+                                                ElementStyle="{StaticResource BomCellTextStyle}">
                                 <DataGridTextColumn.HeaderStyle>
                                     <Style TargetType="DataGridColumnHeader">
                                         <Setter Property="Background" Value="#D7D7D7"/>
@@ -185,7 +193,7 @@
                                     </Style>
                                 </DataGridTextColumn.HeaderStyle>
                                 <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock">
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource BomCellTextStyle}">
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding QtyConflict}" Value="True">
                                                 <Setter Property="FontWeight" Value="Bold"/>
@@ -202,7 +210,7 @@
                                     </Style>
                                 </DataGridTextColumn.HeaderStyle>
                                 <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock">
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource BomCellTextStyle}">
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding ReferenceConflict}" Value="True">
                                                 <Setter Property="FontWeight" Value="Bold"/>
@@ -219,7 +227,7 @@
                                     </Style>
                                 </DataGridTextColumn.HeaderStyle>
                                 <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock">
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource BomCellTextStyle}">
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding NoteConflict}" Value="True">
                                                 <Setter Property="FontWeight" Value="Bold"/>
@@ -236,7 +244,7 @@
                                     </Style>
                                 </DataGridTextColumn.HeaderStyle>
                                 <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock">
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource BomCellTextStyle}">
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding QtyConflict}" Value="True">
                                                 <Setter Property="FontWeight" Value="Bold"/>
@@ -253,7 +261,7 @@
                                     </Style>
                                 </DataGridTextColumn.HeaderStyle>
                                 <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock">
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource BomCellTextStyle}">
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding ReferenceConflict}" Value="True">
                                                 <Setter Property="FontWeight" Value="Bold"/>
@@ -270,7 +278,7 @@
                                     </Style>
                                 </DataGridTextColumn.HeaderStyle>
                                 <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock">
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource BomCellTextStyle}">
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding NoteConflict}" Value="True">
                                                 <Setter Property="FontWeight" Value="Bold"/>
@@ -280,7 +288,8 @@
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="Substitute Parts" Binding="{Binding HasSubstitutesLabel}" Width="96" IsReadOnly="True">
+                            <DataGridTextColumn Header="Substitute Parts" Binding="{Binding HasSubstitutesLabel}" Width="96" IsReadOnly="True"
+                                                ElementStyle="{StaticResource BomCellTextStyle}">
                                 <DataGridTextColumn.HeaderStyle>
                                     <Style TargetType="DataGridColumnHeader">
                                         <Setter Property="Background" Value="#FFFDE7"/>
