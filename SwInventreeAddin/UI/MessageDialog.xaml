@@ -41,7 +41,6 @@
                        Text="{Binding IconGlyph}"
                        FontFamily="Segoe MDL2 Assets"
                        FontSize="32"
-                       Foreground="{StaticResource BrushForeground}"
                        Margin="0,0,16,0"
                        VerticalAlignment="Top"
                        Visibility="{Binding IsIconVisible, Converter={StaticResource BoolToVis}}">
