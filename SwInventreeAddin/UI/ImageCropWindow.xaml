@@ -7,7 +7,6 @@
     MinWidth="600" MinHeight="400"
     WindowStartupLocation="Manual"
     ShowInTaskbar="False"
-    Opacity="0"
     FontFamily="Segoe UI"
     FontSize="12">
 
