@@ -808,6 +808,60 @@ namespace SwInventreeAddin.Tests
             Assert.That(_vm.CreatePartEnabled, Is.True);
         }
 
+        // ── BOM Compare state ──────────────────────────────────────────────────
+
+        [Test]
+        public void CreateBomCompareReadinessCheck_NoBomService_ReturnsNull()
+        {
+            CreateVm();
+
+            Assert.That(_vm.CreateBomCompareReadinessCheck(), Is.Null);
+        }
+
+        [Test]
+        public async Task CreateBomCompareReadinessCheck_AfterUpdateBomState_QueriesUpdatedKeyword()
+        {
+            var bomService = new StubAssemblyBomService { HasBomTableResult = false };
+            CreateVm();
+            _vm.UpdateBomState(bomService, "mycompany");
+
+            var check = _vm.CreateBomCompareReadinessCheck();
+            Assert.That(check, Is.Not.Null);
+            await check!.CheckAsync();
+
+            Assert.That(bomService.LastKeywordUsed, Is.EqualTo("mycompany"));
+        }
+
+        [Test]
+        public void BomKeyword_AfterUpdateBomState_ReturnsUpdatedKeyword()
+        {
+            CreateVm();
+
+            _vm.UpdateBomState(new StubAssemblyBomService(), "mycompany");
+
+            Assert.That(_vm.BomKeyword, Is.EqualTo("mycompany"));
+        }
+
+        [Test]
+        public void GetBomTableName_AfterUpdateBomState_QueriesUpdatedKeyword()
+        {
+            var bomService = new StubAssemblyBomService();
+            CreateVm();
+            _vm.UpdateBomState(bomService, "mycompany");
+
+            _vm.GetBomTableName();
+
+            Assert.That(bomService.LastKeywordUsed, Is.EqualTo("mycompany"));
+        }
+
+        [Test]
+        public void GetBomTableName_NoBomService_ReturnsNull()
+        {
+            CreateVm();
+
+            Assert.That(_vm.GetBomTableName(), Is.Null);
+        }
+
         // ── Mapping schema check ───────────────────────────────────────────────────
 
         [Test]

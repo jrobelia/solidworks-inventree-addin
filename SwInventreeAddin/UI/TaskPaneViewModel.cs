@@ -1321,6 +1321,41 @@ namespace SwInventreeAddin.UI
                 action();
         }
 
+        // ── BOM Compare state ─────────────────────────────────────────────────
+
+        private IAssemblyBomService? _assemblyBomService;
+        private string               _bomKeyword = "inventree";
+
+        /// <summary>The BOM Keyword that identifies the SolidWorks BOM table used by BOM Compare.</summary>
+        internal string BomKeyword => _bomKeyword;
+
+        /// <summary>
+        /// Replaces the BOM table service and BOM Keyword used by BOM Compare.
+        /// Called at startup and whenever settings are applied, so a newly saved
+        /// BOM Keyword takes effect without reloading the add-in.
+        /// </summary>
+        public void UpdateBomState(IAssemblyBomService bomService, string bomKeyword)
+        {
+            _assemblyBomService = bomService;
+            _bomKeyword         = bomKeyword;
+        }
+
+        /// <summary>Builds the BOM Compare pre-flight check; null when no BOM service is wired.</summary>
+        internal BomCompareReadinessCheck? CreateBomCompareReadinessCheck()
+            => _assemblyBomService == null
+                ? null
+                : new BomCompareReadinessCheck(this, _assemblyBomService, _bomKeyword);
+
+        /// <summary>Builds the BOM Compare ViewModel; null when the client or BOM service is missing.</summary>
+        internal BomCompareViewModel? CreateBomCompareViewModel(PropertyMappingConfig mapping, int assemblyPk)
+            => (_client == null || _assemblyBomService == null)
+                ? null
+                : new BomCompareViewModel(_client, _assemblyBomService, mapping, assemblyPk, _bomKeyword);
+
+        /// <summary>Returns the matched BOM table's feature name; null when no BOM service is wired.</summary>
+        internal string? GetBomTableName()
+            => _assemblyBomService?.GetBomTableName(_bomKeyword);
+
         // ── IBomReadinessSource ────────────────────────────────────────────────
         // The resolved mapping is exposed through the public mapping provider; this
         // explicit member keeps the pre-flight seam internal to the assembly.

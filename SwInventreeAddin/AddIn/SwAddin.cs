@@ -107,6 +107,7 @@ namespace SwInventreeAddin.AddIn
         private int                     _addinCookie;
         private EncryptedConfigProvider? _configProvider;
         private IPropertyMappingProvider? _mappingProvider;
+        private IAssemblyBomService?     _assemblyBomService;
 
         public bool ConnectToSW(object thisSW, int cookie)
         {
@@ -151,8 +152,8 @@ namespace SwInventreeAddin.AddIn
                     inventreeClient, propertyService, viewportService, _mappingProvider, _configProvider, createPartValidator);
                 _taskPaneControl.SettingsRequested += OnSettingsRequested;
 
-                var assemblyBomService = new SwAssemblyBomService(_swApp);
-                _taskPaneControl.UpdateBomState(assemblyBomService, config?.BomKeyword ?? "inventree");
+                _assemblyBomService = new SwAssemblyBomService(_swApp);
+                _taskPaneControl.UpdateBomState(_assemblyBomService, config?.BomKeyword ?? "inventree");
                 _taskPaneControl.UpdateWaitForServerAssignedIpn(config?.WaitForServerAssignedIpn ?? true);
 
                 // Refresh the PartNo field whenever the user opens or switches documents.
@@ -330,16 +331,20 @@ namespace SwInventreeAddin.AddIn
                     new AssemblyVersionInfo(),
                     settingsService,
                     mappingFactory);
+                var settingsApplied = false;
                 form.MappingApplied += (_, provider) =>
                 {
+                    settingsApplied  = true;
                     _mappingProvider = provider;
                     _taskPaneControl?.UpdateMapping(provider);
                 };
 
-                if (form.ShowDialog() != true) return;
+                form.ShowDialog();
 
-                // MappingApplied already updated _mappingProvider and refreshed the task pane.
-                // Only rebuild the HTTP client with the saved credentials.
+                // Apply saves without closing the dialog, so propagate whenever
+                // ApplySettingsAsync ran — not only when the dialog returns true.
+                if (!settingsApplied) return;
+
                 var newConfig = _configProvider.GetServerConfig();
                 if (newConfig == null) return;
 
@@ -349,6 +354,8 @@ namespace SwInventreeAddin.AddIn
                 var newClient = new InventreeHttpClient(_httpClient, newConfig.ApiKey);
                 _taskPaneControl?.UpdateClient(newClient);
                 _taskPaneControl?.UpdateWaitForServerAssignedIpn(newConfig.WaitForServerAssignedIpn);
+                if (_assemblyBomService != null)
+                    _taskPaneControl?.UpdateBomState(_assemblyBomService, newConfig.BomKeyword ?? "inventree");
             }
         }
     }
