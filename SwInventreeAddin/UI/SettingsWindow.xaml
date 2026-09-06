@@ -8,7 +8,6 @@
     ResizeMode="NoResize"
     WindowStartupLocation="Manual"
     ShowInTaskbar="False"
-    Opacity="0"
     FontFamily="Segoe UI"
     FontSize="12">
 

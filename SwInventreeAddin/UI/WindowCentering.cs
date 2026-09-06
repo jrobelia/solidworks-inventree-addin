@@ -81,20 +81,23 @@ namespace SwInventreeAddin.UI
         /// </summary>
         /// <remarks>
         /// <para>
-        /// The window starts at <c>Opacity="0"</c>. It is placed far off-screen by setting
-        /// <see cref="Window.WindowStartupLocation"/> to <c>Manual</c> and <see cref="Window.Left"/>/
-        /// <see cref="Window.Top"/> before <c>Show()</c>, then again via <c>SetWindowPos</c> at
-        /// <see cref="Window.SourceInitialized"/>, so the first visible frame is never drawn at a
-        /// default location. The window is then centered and revealed once it stabilizes in
-        /// <see cref="Window.ContentRendered"/>.
+        /// The window is hidden by position, not opacity: it is placed far off-screen by
+        /// setting <see cref="Window.WindowStartupLocation"/> to <c>Manual</c> and
+        /// <see cref="Window.Left"/>/<see cref="Window.Top"/> before <c>Show()</c>, then
+        /// again via <c>SetWindowPos</c> at <see cref="Window.SourceInitialized"/>, so no
+        /// frame is ever drawn at a default location. Setting <c>Opacity="0"</c> would
+        /// stop WPF rendering the window entirely, leaving an unpainted (black) surface
+        /// for the first visible frames — so opacity must not be used as the hide
+        /// mechanism. The window is moved on-screen, centered on its owner, only once
+        /// its native rectangle has stabilized after <see cref="Window.ContentRendered"/>.
         /// </para>
         /// <para>
         /// Resizable and <c>SizeToContent</c> dialogs may still be adjusting their native
         /// rectangle after <c>ContentRendered</c> (for example, when DWM applies the resizable
         /// border or when async content changes the window size). A low-priority
         /// <see cref="DispatcherTimer"/> polls <c>GetWindowRect</c> until the rectangle is
-        /// stable and re-centers on any change. The window is revealed only when the final
-        /// position has been set.
+        /// stable and re-centers on any change. Because the window renders normally while
+        /// off-screen, its content is already painted by the time it moves on-screen.
         /// </para>
         /// </remarks>
         public static void Attach(Window window, IntPtr ownerHandle)
@@ -149,8 +152,8 @@ namespace SwInventreeAddin.UI
                 if (ownerHandle == IntPtr.Zero || dialogHandle == IntPtr.Zero)
                     return;
 
-                // Move the transparent window off-screen before it has a chance to paint
-                // a frame at the default location.
+                // Re-assert the off-screen position in case the pre-Show Left/Top
+                // were clamped or ignored by the platform.
                 _ = SetWindowPos(
                     dialogHandle,
                     IntPtr.Zero,
@@ -165,11 +168,9 @@ namespace SwInventreeAddin.UI
 
         private static void OnContentRendered(Window window, IntPtr ownerHandle)
         {
-            // First centering pass while still transparent. Resizable / SizeToContent
-            // windows may still change size after this, so the reveal is deferred until
+            // Stay parked off-screen for now: resizable / SizeToContent windows may
+            // still change size after this, so the move on-screen is deferred until
             // the native rectangle has stabilized.
-            Center(window, ownerHandle);
-
             _ = new CenteringState(window, ownerHandle);
         }
 
@@ -206,9 +207,10 @@ namespace SwInventreeAddin.UI
         // ── Stabilization helper ──────────────────────────────────────────────
 
         /// <summary>
-        /// Tracks the native rectangle of a dialog until it is stable, re-centers on
-        /// <see cref="Window.SizeChanged"/> or native-rect changes, and reveals the window
-        /// only when the final position has been applied.
+        /// Tracks the native rectangle of a dialog until it is stable and re-centers on
+        /// <see cref="Window.SizeChanged"/> or native-rect changes. The window is already
+        /// painted by then — it renders normally while parked off-screen — so nothing
+        /// else is needed to make it appear without a black frame.
         /// </summary>
         private sealed class CenteringState
         {
@@ -220,7 +222,7 @@ namespace SwInventreeAddin.UI
 
             private NativeRect? _lastDialogRect;
             private int _stableTickCount;
-            private bool _isRevealed;
+            private bool _isCentered;
             private bool _isClosed;
 
             public CenteringState(Window window, IntPtr ownerHandle)
@@ -244,11 +246,11 @@ namespace SwInventreeAddin.UI
 
             private void OnSizeChanged(object sender, SizeChangedEventArgs e)
             {
-                if (_isRevealed || _isClosed)
+                if (_isCentered || _isClosed)
                     return;
 
-                // The window size is still changing; keep it hidden and reset the
-                // stability count so the timer does not reveal too early.
+                // The window size is still changing; reset the stability count so
+                // the timer does not finish while the rectangle is still moving.
                 _stableTickCount = 0;
                 _lastDialogRect = null;
             }
@@ -261,15 +263,16 @@ namespace SwInventreeAddin.UI
 
             private void OnTimerTick(object? sender, EventArgs e)
             {
-                if (_isRevealed || _isClosed)
+                if (_isCentered || _isClosed)
                 {
                     StopAndCleanup();
                     return;
                 }
 
-                // Re-center before reading the rectangle, so a SizeToContent / resizable
-                // window that has grown is moved to the correct centered position.
-                Center(_window, _ownerHandle);
+                // Force pending layout so a SizeToContent / resizable window reaches
+                // its current size before we read the native rectangle. The window
+                // stays off-screen — only its size matters while polling.
+                _window.UpdateLayout();
 
                 if (!TryGetDialogRect(out var dialogRect))
                 {
@@ -290,11 +293,11 @@ namespace SwInventreeAddin.UI
                 if (_stableTickCount < StableTickThreshold)
                     return;
 
-                // The native rectangle has stayed the same for several consecutive ticks.
-                // Center one last time and reveal the window.
+                // The native rectangle has stayed the same for several consecutive
+                // ticks. Move the window on-screen at its centered position — it is
+                // already painted, so it appears without a black frame.
                 Center(_window, _ownerHandle);
-                _window.Opacity = 1.0;
-                _isRevealed = true;
+                _isCentered = true;
                 StopAndCleanup();
             }
 
