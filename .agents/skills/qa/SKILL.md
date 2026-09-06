@@ -137,11 +137,21 @@ Before presenting the first step, print the Severity Guide table from [CHECKLIST
 
 ### Present one step at a time
 
-Present one step at a time from the approved plan. Print the full step (preconditions, action, and expected result) to the chat panel as the assistant's message first. Only after the step is visible in chat, call `ask_user_question` with a concise prompt:
+Present one step at a time from the approved plan. Put the full step (preconditions, action, and expected result) directly in the `question` field of `ask_user_question`, because a separate assistant message may render in the IDE's thoughts area instead of the chat panel.
 
-> Pass, Fail, or Skip?
+Format the `question` field like this:
 
-Never call `ask_user_question` for a step without first printing the step in the chat message. The question body must contain only the short prompt and the three options.
+```
+Group X Step N: Step title
+
+- Preconditions: ...
+- Action: ...
+- Expected: ...
+
+Pass, Fail, or Skip?
+```
+
+Use the `header` field only for the short step label (e.g. "G1 Step 1" or "177.1 Step 4"). Keep the options as Pass / Fail / Skip with one-sentence descriptions.
 
 Interpret the answer. If the result is unclear, confirm before moving on:
 
