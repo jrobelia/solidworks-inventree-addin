@@ -107,7 +107,6 @@ namespace SwInventreeAddin.AddIn
         private int                     _addinCookie;
         private EncryptedConfigProvider? _configProvider;
         private IPropertyMappingProvider? _mappingProvider;
-        private IAssemblyBomService?     _assemblyBomService;
 
         public bool ConnectToSW(object thisSW, int cookie)
         {
@@ -152,8 +151,7 @@ namespace SwInventreeAddin.AddIn
                     inventreeClient, propertyService, viewportService, _mappingProvider, _configProvider, createPartValidator);
                 _taskPaneControl.SettingsRequested += OnSettingsRequested;
 
-                _assemblyBomService = new SwAssemblyBomService(_swApp);
-                _taskPaneControl.UpdateBomState(_assemblyBomService, config?.BomKeyword ?? "inventree");
+                _taskPaneControl.UpdateBomState(new SwAssemblyBomService(_swApp));
                 _taskPaneControl.UpdateWaitForServerAssignedIpn(config?.WaitForServerAssignedIpn ?? true);
 
                 // Refresh the PartNo field whenever the user opens or switches documents.
@@ -354,8 +352,6 @@ namespace SwInventreeAddin.AddIn
                 var newClient = new InventreeHttpClient(_httpClient, newConfig.ApiKey);
                 _taskPaneControl?.UpdateClient(newClient);
                 _taskPaneControl?.UpdateWaitForServerAssignedIpn(newConfig.WaitForServerAssignedIpn);
-                if (_assemblyBomService != null)
-                    _taskPaneControl?.UpdateBomState(_assemblyBomService, newConfig.BomKeyword ?? "inventree");
             }
         }
     }

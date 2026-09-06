@@ -306,8 +306,8 @@ namespace SwInventreeAddin.UI
             _vm.WaitForServerAssignedIpn = value;
         }
 
-        public void UpdateBomState(IAssemblyBomService bomService, string keyword)
-            => _vm.UpdateBomState(bomService, keyword);
+        public void UpdateBomState(IAssemblyBomService bomService)
+            => _vm.UpdateBomState(bomService);
     }
 
     /// <summary>Wraps an arbitrary Win32 window handle so it can be used as the owner of

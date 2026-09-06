@@ -810,6 +810,10 @@ namespace SwInventreeAddin.Tests
 
         // ── BOM Compare state ──────────────────────────────────────────────────
 
+        private TaskPaneViewModel CreateVmWithConfig(StubConfigProvider configProvider)
+            => new TaskPaneViewModel(_client, _propertyService, null,
+                configProvider: configProvider, createPartValidator: _createPartValidator);
+
         [Test]
         public void CreateBomCompareReadinessCheck_NoBomService_ReturnsNull()
         {
@@ -819,35 +823,52 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public async Task CreateBomCompareReadinessCheck_AfterUpdateBomState_QueriesUpdatedKeyword()
+        public async Task CreateBomCompareReadinessCheck_AfterKeywordResaved_UsesLatestKeyword()
         {
-            var bomService = new StubAssemblyBomService { HasBomTableResult = false };
-            CreateVm();
-            _vm.UpdateBomState(bomService, "mycompany");
+            var bomService     = new StubAssemblyBomService { HasBomTableResult = false };
+            var configProvider = new StubConfigProvider();
+            _vm = CreateVmWithConfig(configProvider);
+            _vm.UpdateBomState(bomService);
 
-            var check = _vm.CreateBomCompareReadinessCheck();
-            Assert.That(check, Is.Not.Null);
-            await check!.CheckAsync();
+            var first = _vm.CreateBomCompareReadinessCheck();
+            Assert.That(first, Is.Not.Null);
+            await first!.CheckAsync();
+            Assert.That(bomService.LastKeywordUsed, Is.EqualTo("inventree"));
 
+            configProvider.Config.BomKeyword = "mycompany";
+
+            var second = _vm.CreateBomCompareReadinessCheck();
+            Assert.That(second, Is.Not.Null);
+            await second!.CheckAsync();
             Assert.That(bomService.LastKeywordUsed, Is.EqualTo("mycompany"));
         }
 
         [Test]
-        public void BomKeyword_AfterUpdateBomState_ReturnsUpdatedKeyword()
+        public void BomKeyword_NoConfigProvider_DefaultsToInventree()
         {
             CreateVm();
 
-            _vm.UpdateBomState(new StubAssemblyBomService(), "mycompany");
+            Assert.That(_vm.BomKeyword, Is.EqualTo("inventree"));
+        }
+
+        [Test]
+        public void BomKeyword_SavedKeyword_ReturnsSavedKeyword()
+        {
+            var configProvider = new StubConfigProvider();
+            configProvider.Config.BomKeyword = "mycompany";
+            _vm = CreateVmWithConfig(configProvider);
 
             Assert.That(_vm.BomKeyword, Is.EqualTo("mycompany"));
         }
 
         [Test]
-        public void GetBomTableName_AfterUpdateBomState_QueriesUpdatedKeyword()
+        public void GetBomTableName_UsesSavedKeyword()
         {
-            var bomService = new StubAssemblyBomService();
-            CreateVm();
-            _vm.UpdateBomState(bomService, "mycompany");
+            var bomService     = new StubAssemblyBomService();
+            var configProvider = new StubConfigProvider();
+            configProvider.Config.BomKeyword = "mycompany";
+            _vm = CreateVmWithConfig(configProvider);
+            _vm.UpdateBomState(bomService);
 
             _vm.GetBomTableName();
 
