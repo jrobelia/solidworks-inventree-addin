@@ -112,7 +112,12 @@ namespace SwInventreeAddin.UI
             GhColSw.Width   = new GridLength(sw);
             GhColIt.Width   = new GridLength(it);
 
-            GroupHeaderGrid.Width = left + sw + it;
+            double swInventreeBoundary = left + sw;
+            GroupHeaderGrid.Width = swInventreeBoundary + it;
+
+            // Keep the SolidWorks/InvenTree divider on the zone boundary so it reads as
+            // one line from the group header down through the data rows.
+            SwInventreeDivider.Margin = new Thickness(swInventreeBoundary, 0, 0, 0);
         }
     }
 }

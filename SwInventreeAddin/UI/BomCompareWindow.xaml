@@ -29,7 +29,6 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
@@ -70,211 +69,240 @@
                         Width="110" Style="{StaticResource SecondaryButtonStyle}" Margin="0"/>
             </StackPanel>
 
-            <!-- Column group header — widths set in code-behind via BomGrid_LayoutUpdated -->
-            <Grid x:Name="GroupHeaderGrid" Grid.Row="3" Height="22" HorizontalAlignment="Left">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition x:Name="GhColLeft" Width="208"/>
-                    <ColumnDefinition x:Name="GhColSw"   Width="165"/>
-                    <ColumnDefinition x:Name="GhColIt"   Width="1"/>
-                </Grid.ColumnDefinitions>
-                <Border Grid.Column="0" Background="#D7D7D7"/>
-                <Border Grid.Column="1" Background="#C8E6FF">
-                    <TextBlock Text="SolidWorks" FontWeight="SemiBold" FontSize="11"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                </Border>
-                <Border Grid.Column="2" Background="#FFF9C4"
-                        BorderBrush="#AAAAAA" BorderThickness="1,0,0,0">
-                    <TextBlock Text="InvenTree" FontWeight="SemiBold" FontSize="11"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                </Border>
-            </Grid>
+            <!-- Whole-table frame — one border encloses the group header band and the DataGrid -->
+            <Border Grid.Row="3"
+                    BorderBrush="{StaticResource BrushBorder}" BorderThickness="1"
+                    Margin="0,0,0,8"
+                    SnapsToDevicePixels="True">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
 
-            <!-- DataGrid -->
-            <DataGrid Grid.Row="4"
-                      x:Name="BomGrid"
-                      ItemsSource="{Binding Lines}"
-                      AutoGenerateColumns="False"
-                      CanUserAddRows="False" CanUserDeleteRows="False"
-                      IsReadOnly="False" SelectionMode="Single"
-                      RowHeaderWidth="0"
-                      LayoutUpdated="BomGrid_LayoutUpdated"
-                      Margin="0,0,0,8">
-                <DataGrid.RowStyle>
-                    <Style TargetType="DataGridRow">
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding State}" Value="New">
-                                <Setter Property="Background" Value="#F0FFF0"/>
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding State}" Value="Conflict">
-                                <Setter Property="Background" Value="#FFFDE7"/>
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding State}" Value="InvenTreeOnly">
-                                <Setter Property="Background" Value="#FFFFFEF0"/>
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding State}" Value="NoIpn">
-                                <Setter Property="Background" Value="#F5F5F5"/>
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding State}" Value="IpnNotFound">
-                                <Setter Property="Background" Value="#FFF0EE"/>
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding State}" Value="Ambiguous">
-                                <Setter Property="Background" Value="#FFF8EE"/>
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </DataGrid.RowStyle>
-                <!-- Suppress the default blue/grey cell selection highlight.
-                     Row colour comes from RowStyle above; checkbox shows selection. -->
-                <DataGrid.CellStyle>
-                    <Style TargetType="DataGridCell">
-                        <Setter Property="BorderThickness" Value="0"/>
-                        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
-                        <Style.Triggers>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Background" Value="Transparent"/>
-                                <Setter Property="BorderBrush"  Value="Transparent"/>
-                                <Setter Property="Foreground"   Value="{StaticResource BrushForeground}"/>
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </DataGrid.CellStyle>
-                <DataGrid.Columns>
-                    <DataGridCheckBoxColumn Binding="{Binding IsChecked, UpdateSourceTrigger=PropertyChanged}"
-                                            Header="" Width="28">
-                        <DataGridCheckBoxColumn.HeaderStyle>
-                            <Style TargetType="DataGridColumnHeader">
-                                <Setter Property="Background" Value="#D7D7D7"/>
-                            </Style>
-                        </DataGridCheckBoxColumn.HeaderStyle>
-                    </DataGridCheckBoxColumn>
-                    <DataGridTextColumn Header="State"   Binding="{Binding StateLabel}"  Width="80"  IsReadOnly="True">
-                        <DataGridTextColumn.HeaderStyle>
-                            <Style TargetType="DataGridColumnHeader">
-                                <Setter Property="Background" Value="#D7D7D7"/>
-                            </Style>
-                        </DataGridTextColumn.HeaderStyle>
-                    </DataGridTextColumn>
-                    <DataGridTextColumn Header="IPN"     Binding="{Binding DisplayIpn}"  Width="100" IsReadOnly="True">
-                        <DataGridTextColumn.HeaderStyle>
-                            <Style TargetType="DataGridColumnHeader">
-                                <Setter Property="Background" Value="#D7D7D7"/>
-                            </Style>
-                        </DataGridTextColumn.HeaderStyle>
-                    </DataGridTextColumn>
-                    <DataGridTextColumn Header="SW Qty"  Binding="{Binding SwQty}"       Width="55"  IsReadOnly="True">
-                        <DataGridTextColumn.HeaderStyle>
-                            <Style TargetType="DataGridColumnHeader">
-                                <Setter Property="Background" Value="#E3F2FF"/>
-                            </Style>
-                        </DataGridTextColumn.HeaderStyle>
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock">
+                    <!-- Column group header — widths set in code-behind via BomGrid_LayoutUpdated -->
+                    <Grid x:Name="GroupHeaderGrid" Grid.Row="0" Height="22" HorizontalAlignment="Left">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition x:Name="GhColLeft" Width="208"/>
+                            <ColumnDefinition x:Name="GhColSw"   Width="165"/>
+                            <ColumnDefinition x:Name="GhColIt"   Width="1"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Background="#D7D7D7"/>
+                        <Border Grid.Column="1" Background="#C8E6FF">
+                            <TextBlock Text="SolidWorks" FontWeight="SemiBold" FontSize="11"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <Border Grid.Column="2" Background="#FFF9C4"
+                                BorderBrush="{StaticResource BrushBorder}" BorderThickness="1,0,0,0">
+                            <TextBlock Text="InvenTree" FontWeight="SemiBold" FontSize="11"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </Grid>
+
+                    <!-- Separator between the group header band and the column headers -->
+                    <Border Grid.Row="0" VerticalAlignment="Bottom" Height="1"
+                            Background="{StaticResource BrushGridLine}" SnapsToDevicePixels="True"/>
+
+                    <!-- DataGrid -->
+                    <DataGrid Grid.Row="1"
+                              x:Name="BomGrid"
+                              ItemsSource="{Binding Lines}"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False" CanUserDeleteRows="False"
+                              IsReadOnly="False" SelectionMode="Single"
+                              RowHeaderWidth="0"
+                              LayoutUpdated="BomGrid_LayoutUpdated"
+                              BorderThickness="0"
+                              GridLinesVisibility="All"
+                              HorizontalGridLinesBrush="{StaticResource BrushGridLine}"
+                              VerticalGridLinesBrush="{StaticResource BrushGridLine}">
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow">
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding QtyConflict}" Value="True">
-                                        <Setter Property="FontWeight" Value="Bold"/>
-                                        <Setter Property="Foreground" Value="#B45309"/>
+                                    <DataTrigger Binding="{Binding State}" Value="New">
+                                        <Setter Property="Background" Value="#F0FFF0"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding State}" Value="Conflict">
+                                        <Setter Property="Background" Value="#FFFDE7"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding State}" Value="InvenTreeOnly">
+                                        <Setter Property="Background" Value="#FFFFFEF0"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding State}" Value="NoIpn">
+                                        <Setter Property="Background" Value="#F5F5F5"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding State}" Value="IpnNotFound">
+                                        <Setter Property="Background" Value="#FFF0EE"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding State}" Value="Ambiguous">
+                                        <Setter Property="Background" Value="#FFF8EE"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
-                        </DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
-                    <DataGridTextColumn Header="SW Ref." Binding="{Binding SwReference}" Width="*"   IsReadOnly="True">
-                        <DataGridTextColumn.HeaderStyle>
-                            <Style TargetType="DataGridColumnHeader">
-                                <Setter Property="Background" Value="#E3F2FF"/>
-                            </Style>
-                        </DataGridTextColumn.HeaderStyle>
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock">
+                        </DataGrid.RowStyle>
+                        <!-- Suppress the default blue/grey cell selection highlight.
+                             Row colour comes from RowStyle above; checkbox shows selection. -->
+                        <DataGrid.CellStyle>
+                            <Style TargetType="DataGridCell">
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding ReferenceConflict}" Value="True">
-                                        <Setter Property="FontWeight" Value="Bold"/>
-                                        <Setter Property="Foreground" Value="#B45309"/>
-                                    </DataTrigger>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="BorderBrush"  Value="Transparent"/>
+                                        <Setter Property="Foreground"   Value="{StaticResource BrushForeground}"/>
+                                    </Trigger>
                                 </Style.Triggers>
                             </Style>
-                        </DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
-                    <DataGridTextColumn Header="SW Note" Binding="{Binding SwNote}"      Width="*"   IsReadOnly="True">
-                        <DataGridTextColumn.HeaderStyle>
-                            <Style TargetType="DataGridColumnHeader">
-                                <Setter Property="Background" Value="#E3F2FF"/>
-                            </Style>
-                        </DataGridTextColumn.HeaderStyle>
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding NoteConflict}" Value="True">
-                                        <Setter Property="FontWeight" Value="Bold"/>
-                                        <Setter Property="Foreground" Value="#B45309"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
-                    <DataGridTextColumn Header="Inv Qty"  Binding="{Binding ItQty}"       Width="55"  IsReadOnly="True">
-                        <DataGridTextColumn.HeaderStyle>
-                            <Style TargetType="DataGridColumnHeader">
-                                <Setter Property="Background" Value="#FFFDE7"/>
-                            </Style>
-                        </DataGridTextColumn.HeaderStyle>
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding QtyConflict}" Value="True">
-                                        <Setter Property="FontWeight" Value="Bold"/>
-                                        <Setter Property="Foreground" Value="#B45309"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
-                    <DataGridTextColumn Header="Inv Ref." Binding="{Binding ItReference}" Width="*"   IsReadOnly="True">
-                        <DataGridTextColumn.HeaderStyle>
-                            <Style TargetType="DataGridColumnHeader">
-                                <Setter Property="Background" Value="#FFFDE7"/>
-                            </Style>
-                        </DataGridTextColumn.HeaderStyle>
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding ReferenceConflict}" Value="True">
-                                        <Setter Property="FontWeight" Value="Bold"/>
-                                        <Setter Property="Foreground" Value="#B45309"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
-                    <DataGridTextColumn Header="Inv Note" Binding="{Binding ItNote}"      Width="*"   IsReadOnly="True">
-                        <DataGridTextColumn.HeaderStyle>
-                            <Style TargetType="DataGridColumnHeader">
-                                <Setter Property="Background" Value="#FFFDE7"/>
-                            </Style>
-                        </DataGridTextColumn.HeaderStyle>
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding NoteConflict}" Value="True">
-                                        <Setter Property="FontWeight" Value="Bold"/>
-                                        <Setter Property="Foreground" Value="#B45309"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
-                    <DataGridTextColumn Header="Substitute Parts" Binding="{Binding HasSubstitutesLabel}" Width="96" IsReadOnly="True">
-                        <DataGridTextColumn.HeaderStyle>
-                            <Style TargetType="DataGridColumnHeader">
-                                <Setter Property="Background" Value="#FFFDE7"/>
-                            </Style>
-                        </DataGridTextColumn.HeaderStyle>
-                    </DataGridTextColumn>
-                </DataGrid.Columns>
-            </DataGrid>
+                        </DataGrid.CellStyle>
+                        <DataGrid.Columns>
+                            <DataGridCheckBoxColumn Binding="{Binding IsChecked, UpdateSourceTrigger=PropertyChanged}"
+                                                    Header="" Width="28">
+                                <DataGridCheckBoxColumn.HeaderStyle>
+                                    <Style TargetType="DataGridColumnHeader">
+                                        <Setter Property="Background" Value="#D7D7D7"/>
+                                    </Style>
+                                </DataGridCheckBoxColumn.HeaderStyle>
+                            </DataGridCheckBoxColumn>
+                            <DataGridTextColumn Header="State"   Binding="{Binding StateLabel}"  Width="80"  IsReadOnly="True">
+                                <DataGridTextColumn.HeaderStyle>
+                                    <Style TargetType="DataGridColumnHeader">
+                                        <Setter Property="Background" Value="#D7D7D7"/>
+                                    </Style>
+                                </DataGridTextColumn.HeaderStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="IPN"     Binding="{Binding DisplayIpn}"  Width="100" IsReadOnly="True">
+                                <DataGridTextColumn.HeaderStyle>
+                                    <Style TargetType="DataGridColumnHeader">
+                                        <Setter Property="Background" Value="#D7D7D7"/>
+                                    </Style>
+                                </DataGridTextColumn.HeaderStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="SW Qty"  Binding="{Binding SwQty}"       Width="55"  IsReadOnly="True">
+                                <DataGridTextColumn.HeaderStyle>
+                                    <Style TargetType="DataGridColumnHeader">
+                                        <Setter Property="Background" Value="#E3F2FF"/>
+                                    </Style>
+                                </DataGridTextColumn.HeaderStyle>
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding QtyConflict}" Value="True">
+                                                <Setter Property="FontWeight" Value="Bold"/>
+                                                <Setter Property="Foreground" Value="#B45309"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="SW Ref." Binding="{Binding SwReference}" Width="*"   IsReadOnly="True">
+                                <DataGridTextColumn.HeaderStyle>
+                                    <Style TargetType="DataGridColumnHeader">
+                                        <Setter Property="Background" Value="#E3F2FF"/>
+                                    </Style>
+                                </DataGridTextColumn.HeaderStyle>
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ReferenceConflict}" Value="True">
+                                                <Setter Property="FontWeight" Value="Bold"/>
+                                                <Setter Property="Foreground" Value="#B45309"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="SW Note" Binding="{Binding SwNote}"      Width="*"   IsReadOnly="True">
+                                <DataGridTextColumn.HeaderStyle>
+                                    <Style TargetType="DataGridColumnHeader">
+                                        <Setter Property="Background" Value="#E3F2FF"/>
+                                    </Style>
+                                </DataGridTextColumn.HeaderStyle>
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding NoteConflict}" Value="True">
+                                                <Setter Property="FontWeight" Value="Bold"/>
+                                                <Setter Property="Foreground" Value="#B45309"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="Inv Qty"  Binding="{Binding ItQty}"       Width="55"  IsReadOnly="True">
+                                <DataGridTextColumn.HeaderStyle>
+                                    <Style TargetType="DataGridColumnHeader">
+                                        <Setter Property="Background" Value="#FFFDE7"/>
+                                    </Style>
+                                </DataGridTextColumn.HeaderStyle>
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding QtyConflict}" Value="True">
+                                                <Setter Property="FontWeight" Value="Bold"/>
+                                                <Setter Property="Foreground" Value="#B45309"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="Inv Ref." Binding="{Binding ItReference}" Width="*"   IsReadOnly="True">
+                                <DataGridTextColumn.HeaderStyle>
+                                    <Style TargetType="DataGridColumnHeader">
+                                        <Setter Property="Background" Value="#FFFDE7"/>
+                                    </Style>
+                                </DataGridTextColumn.HeaderStyle>
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ReferenceConflict}" Value="True">
+                                                <Setter Property="FontWeight" Value="Bold"/>
+                                                <Setter Property="Foreground" Value="#B45309"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="Inv Note" Binding="{Binding ItNote}"      Width="*"   IsReadOnly="True">
+                                <DataGridTextColumn.HeaderStyle>
+                                    <Style TargetType="DataGridColumnHeader">
+                                        <Setter Property="Background" Value="#FFFDE7"/>
+                                    </Style>
+                                </DataGridTextColumn.HeaderStyle>
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding NoteConflict}" Value="True">
+                                                <Setter Property="FontWeight" Value="Bold"/>
+                                                <Setter Property="Foreground" Value="#B45309"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="Substitute Parts" Binding="{Binding HasSubstitutesLabel}" Width="96" IsReadOnly="True">
+                                <DataGridTextColumn.HeaderStyle>
+                                    <Style TargetType="DataGridColumnHeader">
+                                        <Setter Property="Background" Value="#FFFDE7"/>
+                                    </Style>
+                                </DataGridTextColumn.HeaderStyle>
+                            </DataGridTextColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- SolidWorks/InvenTree group divider — positioned in code-behind via
+                         BomGrid_LayoutUpdated so it runs continuously from the group header
+                         down through the data rows -->
+                    <Border x:Name="SwInventreeDivider" Grid.RowSpan="2"
+                            Width="1" HorizontalAlignment="Left"
+                            Background="{StaticResource BrushBorder}"
+                            IsHitTestVisible="False"
+                            SnapsToDevicePixels="True"/>
+                </Grid>
+            </Border>
 
             <!-- Footer -->
-            <Border Grid.Row="5" BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,1,0,0" Padding="0,6,0,0">
+            <Border Grid.Row="4" BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,1,0,0" Padding="0,6,0,0">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
