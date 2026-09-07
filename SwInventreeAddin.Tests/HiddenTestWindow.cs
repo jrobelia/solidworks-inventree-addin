@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Windows.Forms;
+using SwInventreeAddin.UI;
 
 namespace SwInventreeAddin.Tests
 {
@@ -10,25 +11,21 @@ namespace SwInventreeAddin.Tests
     /// </summary>
     internal static class HiddenTestWindow
     {
-        // Same far off-screen position production uses to park windows before reveal.
-        internal const int HiddenLeft = -32000;
-        internal const int HiddenTop  = -32000;
-
         /// <summary>
-        /// Creates a large owner form parked far off-screen so a dialog centered on it
-        /// lands outside every monitor. It cannot be maximized — a maximized window
-        /// snaps back onto a monitor. WinForms <c>Opacity</c> is applied at the window
-        /// level (layered window), so 0 hides even the frame if the position is ever
-        /// clamped back on-screen.
+        /// Creates a large owner form parked at the same far off-screen position
+        /// production uses, so a dialog centered on it lands outside every monitor.
+        /// It cannot be maximized — a maximized window snaps back onto a monitor.
+        /// WinForms <c>Opacity</c> is applied at the window level (layered window),
+        /// so 0 hides even the frame if the position is ever clamped back on-screen.
         /// </summary>
-        internal static Form CreateOwnerForm(int width = 2000, int height = 1200)
+        internal static Form CreateOwnerForm()
             => new Form
             {
                 StartPosition = FormStartPosition.Manual,
-                Left = HiddenLeft,
-                Top = HiddenTop,
-                Width = width,
-                Height = height,
+                Left = WindowCentering.HiddenLeft,
+                Top = WindowCentering.HiddenTop,
+                Width = 2000,
+                Height = 1200,
                 WindowState = FormWindowState.Normal,
                 ShowInTaskbar = false,
                 Opacity = 0,

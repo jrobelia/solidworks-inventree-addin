@@ -83,7 +83,7 @@ namespace SwInventreeAddin.Tests
         [Test, Timeout(10000)]
         public void Attach_CentersSizeToContentWindow_AfterContentResizesAfterContentRendered()
         {
-            using var form = CreateOwnerForm();
+            using var form = HiddenTestWindow.CreateOwnerForm();
             form.Show();
 
             var textBlock = new System.Windows.Controls.TextBlock
@@ -195,7 +195,7 @@ namespace SwInventreeAddin.Tests
         [TestCase(ResizeMode.NoResize)]
         public void Attach_CentersWindowOnOwner(ResizeMode resizeMode)
         {
-            using var form = CreateOwnerForm();
+            using var form = HiddenTestWindow.CreateOwnerForm();
             form.Show();
 
             var dialog = new Window
@@ -216,9 +216,6 @@ namespace SwInventreeAddin.Tests
 
             RunCenteringTest(dialog, form);
         }
-
-        private static Form CreateOwnerForm()
-            => HiddenTestWindow.CreateOwnerForm();
 
         private static void RunCenteringTest(Window dialog, Form form)
         {
