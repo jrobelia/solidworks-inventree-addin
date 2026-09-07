@@ -156,8 +156,8 @@ namespace SwInventreeAddin.UI
                     case BomCompareOutcome.PkNotStamped:
                         MessageDialog.ShowOK(
                             SolidWorksWindowHandle.Get(),
-                            "No InvenTree PK is stored in this assembly\u2019s custom properties.\n\n"
-                            + "Sync the part with InvenTree first to stamp the PK, then try again.",
+                            "No InvenTree Part PK is stored in this assembly\u2019s Document Properties.\n\n"
+                            + "Apply the InvenTree PK to the document first, then try again.",
                             "BOM Compare \u2014 PK Missing",
                             System.Windows.Forms.MessageBoxIcon.Warning);
                         return;
