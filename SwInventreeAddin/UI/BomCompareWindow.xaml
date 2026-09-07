@@ -139,14 +139,24 @@
                     </Style>
                 </DataGrid.CellStyle>
                 <DataGrid.Columns>
-                    <DataGridCheckBoxColumn Binding="{Binding IsChecked, UpdateSourceTrigger=PropertyChanged}"
-                                            Header="" Width="28">
-                        <DataGridCheckBoxColumn.HeaderStyle>
+                    <DataGridTemplateColumn Header="" Width="28" CanUserSort="False">
+                        <DataGridTemplateColumn.HeaderStyle>
                             <Style TargetType="DataGridColumnHeader">
                                 <Setter Property="Background" Value="#D7D7D7"/>
                             </Style>
-                        </DataGridCheckBoxColumn.HeaderStyle>
-                    </DataGridCheckBoxColumn>
+                        </DataGridTemplateColumn.HeaderStyle>
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <!-- A template CheckBox toggles on first click; an editing
+                                     column (DataGridCheckBoxColumn) spends the first click
+                                     entering edit mode. IsChecked's setter still refuses
+                                     rows that cannot be pushed. -->
+                                <CheckBox HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          IsEnabled="{Binding CanCheck}"
+                                          IsChecked="{Binding IsChecked, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                     <DataGridTextColumn Header="State"   Binding="{Binding StateLabel}"  Width="80"  IsReadOnly="True">
                         <DataGridTextColumn.HeaderStyle>
                             <Style TargetType="DataGridColumnHeader">
