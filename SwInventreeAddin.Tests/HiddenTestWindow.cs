@@ -15,8 +15,6 @@ namespace SwInventreeAddin.Tests
         /// Creates a large owner form parked at the same far off-screen position
         /// production uses, so a dialog centered on it lands outside every monitor.
         /// It cannot be maximized — a maximized window snaps back onto a monitor.
-        /// WinForms <c>Opacity</c> is applied at the window level (layered window),
-        /// so 0 hides even the frame if the position is ever clamped back on-screen.
         /// </summary>
         internal static Form CreateOwnerForm()
             => new Form
@@ -28,7 +26,6 @@ namespace SwInventreeAddin.Tests
                 Height = 1200,
                 WindowState = FormWindowState.Normal,
                 ShowInTaskbar = false,
-                Opacity = 0,
             };
 
         /// <summary>True when the native window rectangle overlaps any display.</summary>
