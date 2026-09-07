@@ -483,8 +483,7 @@ namespace SwInventreeAddin.UI
 
             var mapping    = GetMappingOrDefault();
             var partNo     = GetCustomPropertyOrEmpty(mapping.IpnProperty);
-            var pkRaw      = GetCustomPropertyOrEmpty(mapping.PkProperty);
-            bool pkPresent = int.TryParse(pkRaw, out int pkVal) && pkVal > 0;
+            bool pkPresent = TryReadDocumentPk(mapping, out int pkVal);
 
             // A document switch can leave stale LINKED-by-PK state from the previous part.
             // Re-sync from the current document before deciding which fetch path to use
@@ -523,7 +522,9 @@ namespace SwInventreeAddin.UI
                     NotifySessionProperties();
                 }
 
-                _isDocumentOpen    = true;
+                _isDocumentOpen = true;
+                // ClearAll() above wipes the PK link synced at the top of this method —
+                // restore it so this document keeps its LINKED-by-PK state.
                 _documentPkPresent = true;
                 _documentPk        = pkVal;
                 PartNumber         = string.Empty;
@@ -790,8 +791,13 @@ namespace SwInventreeAddin.UI
 
             RefreshCurrentProperties();
 
+            // The stamped PK can change mid-session without a LoadPartNumber —
+            // Apply writes and manual edits matching the loaded session only get
+            // a light refresh — so re-read it before choosing the fetch path.
+            _documentPkPresent = TryReadDocumentPk(GetMappingOrDefault(), out _documentPk);
+
             // ── LINKED-by-PK path ─────────────────────────────────────────────
-            if (_documentPkPresent && _documentPk > 0)
+            if (_documentPkPresent)
             {
                 SetStatus("Fetching from InvenTree\u2026", StatusSeverity.None);
                 ClearSession();
@@ -1248,6 +1254,13 @@ namespace SwInventreeAddin.UI
             string.IsNullOrEmpty(propertyName)
                 ? string.Empty
                 : _propertyService.GetCustomProperty(propertyName!);
+
+        /// <summary>Reads the mapped PK Document Property; returns true when it holds a positive integer.</summary>
+        private bool TryReadDocumentPk(PropertyMappingConfig mapping, out int pk)
+        {
+            pk = 0;
+            return int.TryParse(GetCustomPropertyOrEmpty(mapping.PkProperty), out pk) && pk > 0;
+        }
 
         // Mapping-health warnings take precedence over document/client status messages,
         // so any state change that could hide a schema mismatch must re-evaluate here.
