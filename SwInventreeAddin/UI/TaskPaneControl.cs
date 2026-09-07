@@ -21,8 +21,6 @@ namespace SwInventreeAddin.UI
         private IInventreeClient?                      _client;
         private ICreatePartValidationErrorService      _createPartValidator;
         private IPropertyMappingProvider?              _mappingProvider;
-        private IAssemblyBomService?                   _assemblyBomService;
-        private string                                 _bomKeyword = "inventree";
 
         public event EventHandler? SettingsRequested;
 
@@ -89,14 +87,16 @@ namespace SwInventreeAddin.UI
 
         private async void OnCompareBomRequested(object? sender, EventArgs e)
         {
-            if (_client == null || _assemblyBomService == null) return;
+            if (_client == null) return;
+
+            var preFlightCheck = _vm.CreateBomCompareReadinessCheck();
+            if (preFlightCheck == null) return;
 
             var mappingResult = _mappingProvider?.GetMappingResult()
                 ?? new MappingResult(MappingHealth.Healthy, PropertyMappingConfig.WithDefaults());
             if (!mappingResult.CanUseForPartSync)
                 return;
 
-            var preFlightCheck = new BomCompareReadinessCheck(_vm, _assemblyBomService, _bomKeyword);
             BomCompareReadiness readiness;
             try
             {
@@ -192,17 +192,17 @@ namespace SwInventreeAddin.UI
 
                     case BomCompareOutcome.BomTableMissing:
                     {
-                        new BomTableMissingDialog(_bomKeyword, SolidWorksWindowHandle.Get()).ShowDialog();
+                        new BomTableMissingDialog(_vm.BomKeyword, SolidWorksWindowHandle.Get()).ShowDialog();
                         return;
                     }
                 }
             }
 
             int pk      = _vm.CurrentInvenTreePk;
-            var bomVm   = new BomCompareViewModel(
-                _client, _assemblyBomService, mappingResult.Config, pk, _bomKeyword);
+            var bomVm   = _vm.CreateBomCompareViewModel(mappingResult.Config, pk);
+            if (bomVm == null) return;
 
-            var tableName = _assemblyBomService.GetBomTableName(_bomKeyword);
+            var tableName = _vm.GetBomTableName() ?? string.Empty;
             var window  = new BomCompareWindow(bomVm, _vm.PartNumber, _vm.NamePreview,
                                                tableName);
             try
@@ -306,11 +306,8 @@ namespace SwInventreeAddin.UI
             _vm.WaitForServerAssignedIpn = value;
         }
 
-        public void UpdateBomState(IAssemblyBomService bomService, string keyword)
-        {
-            _assemblyBomService = bomService;
-            _bomKeyword         = keyword;
-        }
+        public void UpdateBomState(IAssemblyBomService bomService)
+            => _vm.UpdateBomState(bomService);
     }
 
     /// <summary>Wraps an arbitrary Win32 window handle so it can be used as the owner of
