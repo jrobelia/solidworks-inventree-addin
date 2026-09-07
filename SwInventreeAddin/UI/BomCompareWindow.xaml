@@ -25,6 +25,8 @@
                  separator so the vertical grid lines continue through the header row. -->
             <Style x:Key="BomHeaderStyle" TargetType="DataGridColumnHeader">
                 <Setter Property="Padding" Value="6,4,4,4"/>
+                <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                <Setter Property="BorderBrush" Value="{StaticResource BrushBorder}"/>
             </Style>
         </ResourceDictionary>
     </Window.Resources>
@@ -98,7 +100,8 @@
                             <ColumnDefinition x:Name="GhColSw"   Width="165"/>
                             <ColumnDefinition x:Name="GhColIt"   Width="1"/>
                         </Grid.ColumnDefinitions>
-                        <Border Grid.Column="0" Background="#F0F0F0"/>
+                        <Border Grid.Column="0" Background="#F0F0F0"
+                                BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,0,1,0"/>
                         <Border Grid.Column="1" Background="#C8E6FF">
                             <TextBlock Text="SolidWorks" FontWeight="SemiBold" FontSize="11"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -123,6 +126,7 @@
                               IsReadOnly="False" SelectionMode="Single"
                               RowHeaderWidth="0"
                               LayoutUpdated="BomGrid_LayoutUpdated"
+                              ColumnHeaderHeight="26"
                               BorderThickness="0"
                               GridLinesVisibility="All"
                               HorizontalGridLinesBrush="{StaticResource BrushGridLine}"
@@ -298,6 +302,7 @@
                                 <DataGridTextColumn.HeaderStyle>
                                     <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource BomHeaderStyle}">
                                         <Setter Property="Background" Value="#FFFDE7"/>
+                                        <Setter Property="BorderThickness" Value="0,0,0,1"/>
                                     </Style>
                                 </DataGridTextColumn.HeaderStyle>
                             </DataGridTextColumn>
@@ -308,7 +313,7 @@
                          BomGrid_LayoutUpdated so it runs continuously from the group header
                          down through the data rows -->
                     <Border x:Name="SwInventreeDivider" Grid.RowSpan="2"
-                            Width="2" HorizontalAlignment="Left"
+                            Width="3" HorizontalAlignment="Left"
                             Background="{StaticResource BrushBorder}"
                             IsHitTestVisible="False"
                             SnapsToDevicePixels="True"/>

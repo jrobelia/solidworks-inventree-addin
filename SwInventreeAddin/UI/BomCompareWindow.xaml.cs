@@ -117,7 +117,7 @@ namespace SwInventreeAddin.UI
 
             // Keep the SolidWorks/InvenTree divider on the zone boundary so it reads as
             // one line from the group header down through the data rows.
-            SwInventreeDivider.Margin = new Thickness(swInventreeBoundary, 0, 0, 0);
+            SwInventreeDivider.Margin = new Thickness(swInventreeBoundary - 1, 0, 0, 0);
         }
     }
 }
