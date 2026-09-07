@@ -1,0 +1,107 @@
+<Window
+    x:Class="SwInventreeAddin.UI.MessageDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="{Binding Title}"
+    Width="460"
+    SizeToContent="Height"
+    ResizeMode="NoResize"
+    WindowStartupLocation="Manual"
+    ShowInTaskbar="False"
+    FontFamily="Segoe UI"
+    FontSize="12">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="DesignTokens.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <StackPanel>
+
+        <!-- Blue header stripe -->
+        <Border Height="4" Background="{StaticResource BrushAccentBlue}" />
+
+        <Grid Margin="20,16,20,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Severity icon; colour follows the glyph, matching BomTableMissingDialog -->
+            <TextBlock Grid.Column="0"
+                       Grid.Row="0"
+                       Text="{Binding IconGlyph}"
+                       FontFamily="Segoe MDL2 Assets"
+                       FontSize="32"
+                       Margin="0,0,16,0"
+                       VerticalAlignment="Top"
+                       Visibility="{Binding IsIconVisible, Converter={StaticResource BoolToVis}}">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Foreground" Value="{StaticResource BrushAccentBlue}" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IconKind}" Value="Warning">
+                                <Setter Property="Foreground" Value="{StaticResource BrushStatusWarning}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IconKind}" Value="Error">
+                                <Setter Property="Foreground" Value="{StaticResource BrushStatusError}" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+
+            <TextBlock Grid.Column="1"
+                       Grid.Row="0"
+                       Text="{Binding Message}"
+                       TextWrapping="Wrap"
+                       Foreground="{StaticResource BrushForeground}" />
+
+            <StackPanel Grid.Column="1"
+                        Grid.Row="1"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Margin="0,16,0,0">
+
+                <Button Content="OK"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Width="70"
+                        Margin="8,0,0,0"
+                        IsDefault="{Binding IsOkVisible}"
+                        Visibility="{Binding IsOkVisible, Converter={StaticResource BoolToVis}}"
+                        Click="Ok_Click" />
+
+                <Button Content="Yes"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Width="70"
+                        Margin="8,0,0,0"
+                        IsDefault="{Binding IsYesVisible}"
+                        Visibility="{Binding IsYesVisible, Converter={StaticResource BoolToVis}}"
+                        Click="Yes_Click" />
+
+                <Button Content="No"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Width="70"
+                        Margin="8,0,0,0"
+                        Visibility="{Binding IsNoVisible, Converter={StaticResource BoolToVis}}"
+                        Click="No_Click" />
+
+                <Button Content="Cancel"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Width="70"
+                        Margin="8,0,0,0"
+                        Visibility="{Binding IsCancelVisible, Converter={StaticResource BoolToVis}}"
+                        Click="Cancel_Click" />
+
+            </StackPanel>
+        </Grid>
+    </StackPanel>
+</Window>
