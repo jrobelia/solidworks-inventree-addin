@@ -4,7 +4,6 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 using System.Windows.Interop;
 using System.Windows.Threading;
 using NUnit.Framework;
@@ -44,17 +43,7 @@ namespace SwInventreeAddin.Tests
         [Test, Timeout(10000)]
         public void ShowDialog_CentersOnOwnerWindow()
         {
-            using var form = new Form
-            {
-                StartPosition = FormStartPosition.Manual,
-                Left = 100,
-                Top = 100,
-                Width = 1000,
-                Height = 1000,
-                WindowState = FormWindowState.Maximized,
-                ShowInTaskbar = false,
-                Opacity = 0,
-            };
+            using var form = HiddenTestWindow.CreateOwnerForm();
             form.Show();
 
             SolidWorksWindowHandle.Set(form.Handle);
@@ -93,6 +82,9 @@ namespace SwInventreeAddin.Tests
 
                     try
                     {
+                        Assert.That(
+                            HiddenTestWindow.IsOnScreen(dialogRect.Left, dialogRect.Top, dialogRect.Right, dialogRect.Bottom),
+                            Is.False, "Test dialog must stay off every monitor");
                         Assert.That(dx, Is.LessThan(5), $"Dialog is horizontally off by {dx} pixels");
                         Assert.That(dy, Is.LessThan(5), $"Dialog is vertically off by {dy} pixels");
                         tcs.SetResult(true);
