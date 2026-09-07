@@ -1321,6 +1321,45 @@ namespace SwInventreeAddin.UI
                 action();
         }
 
+        // ── BOM Compare state ─────────────────────────────────────────────────
+
+        private IAssemblyBomService? _assemblyBomService;
+
+        /// <summary>
+        /// The saved BOM Keyword identifying the SolidWorks BOM table for BOM Compare.
+        /// Read live from the config so a keyword change in Settings takes effect on
+        /// the next Compare without anyone propagating it.
+        /// </summary>
+        internal string BomKeyword
+        {
+            get
+            {
+                // Corrupt settings surface in the Settings window; Compare falls back to the default.
+                try   { return _configProvider?.GetServerConfig()?.BomKeyword ?? "inventree"; }
+                catch { return "inventree"; }
+            }
+        }
+
+        /// <summary>Wires the SolidWorks BOM table service used by BOM Compare.</summary>
+        public void UpdateBomState(IAssemblyBomService bomService)
+            => _assemblyBomService = bomService;
+
+        /// <summary>Builds the BOM Compare pre-flight check; null when no BOM service is wired.</summary>
+        internal BomCompareReadinessCheck? CreateBomCompareReadinessCheck()
+            => _assemblyBomService == null
+                ? null
+                : new BomCompareReadinessCheck(this, _assemblyBomService, BomKeyword);
+
+        /// <summary>Builds the BOM Compare ViewModel; null when the client or BOM service is missing.</summary>
+        internal BomCompareViewModel? CreateBomCompareViewModel(PropertyMappingConfig mapping, int assemblyPk)
+            => (_client == null || _assemblyBomService == null)
+                ? null
+                : new BomCompareViewModel(_client, _assemblyBomService, mapping, assemblyPk, BomKeyword);
+
+        /// <summary>Returns the matched BOM table's feature name; null when no BOM service is wired.</summary>
+        internal string? GetBomTableName()
+            => _assemblyBomService?.GetBomTableName(BomKeyword);
+
         // ── IBomReadinessSource ────────────────────────────────────────────────
         // The resolved mapping is exposed through the public mapping provider; this
         // explicit member keeps the pre-flight seam internal to the assembly.
