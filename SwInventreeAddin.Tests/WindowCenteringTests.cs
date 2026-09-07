@@ -102,7 +102,6 @@ namespace SwInventreeAddin.Tests
                 ResizeMode = ResizeMode.NoResize,
                 SizeToContent = SizeToContent.Height,
                 ShowInTaskbar = false,
-                Opacity = 0,
                 Content = textBlock,
             };
 
@@ -150,7 +149,9 @@ namespace SwInventreeAddin.Tests
 
                 try
                 {
-                    Assert.That(dialog.Opacity, Is.EqualTo(0), "Test dialog must stay invisible for the whole run");
+                    Assert.That(
+                        HiddenTestWindow.IsOnScreen(dialogRect.Left, dialogRect.Top, dialogRect.Right, dialogRect.Bottom),
+                        Is.False, "Test dialog must stay off every monitor");
                     Assert.That(dx, Is.LessThan(5), $"Dialog is horizontally off by {dx} pixels");
                     Assert.That(dy, Is.LessThan(5), $"Dialog is vertically off by {dy} pixels");
                     tcs.SetResult(true);
@@ -179,7 +180,6 @@ namespace SwInventreeAddin.Tests
                 Width = 400,
                 Height = 300,
                 ShowInTaskbar = false,
-                Opacity = 0,
             };
 
             WindowCentering.Attach(dialog, IntPtr.Zero);
@@ -206,7 +206,6 @@ namespace SwInventreeAddin.Tests
                 WindowStartupLocation = WindowStartupLocation.Manual,
                 ResizeMode = resizeMode,
                 ShowInTaskbar = false,
-                Opacity = 0,
                 Content = new System.Windows.Controls.TextBlock
                 {
                     Text = "Test",
@@ -219,17 +218,7 @@ namespace SwInventreeAddin.Tests
         }
 
         private static Form CreateOwnerForm()
-            => new Form
-            {
-                StartPosition = FormStartPosition.Manual,
-                Left = 100,
-                Top = 100,
-                Width = 1000,
-                Height = 1000,
-                WindowState = FormWindowState.Maximized,
-                ShowInTaskbar = false,
-                Opacity = 0,
-            };
+            => HiddenTestWindow.CreateOwnerForm();
 
         private static void RunCenteringTest(Window dialog, Form form)
         {
@@ -266,6 +255,9 @@ namespace SwInventreeAddin.Tests
 
                     try
                     {
+                        Assert.That(
+                            HiddenTestWindow.IsOnScreen(dialogRect.Left, dialogRect.Top, dialogRect.Right, dialogRect.Bottom),
+                            Is.False, "Test dialog must stay off every monitor");
                         Assert.That(dx, Is.LessThan(5), $"Dialog is horizontally off by {dx} pixels");
                         Assert.That(dy, Is.LessThan(5), $"Dialog is vertically off by {dy} pixels");
                         tcs.SetResult(true);

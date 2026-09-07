@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 using System.Windows.Interop;
 using System.Windows.Threading;
 using NUnit.Framework;
@@ -51,17 +50,7 @@ namespace SwInventreeAddin.Tests
         [Test, Timeout(10000)]
         public void ShowDialog_CentersOnOwnerWindow()
         {
-            using var form = new Form
-            {
-                StartPosition = FormStartPosition.Manual,
-                Left = 100,
-                Top = 100,
-                Width = 1000,
-                Height = 1000,
-                WindowState = FormWindowState.Maximized,
-                ShowInTaskbar = false,
-                Opacity = 0,
-            };
+            using var form = HiddenTestWindow.CreateOwnerForm();
             form.Show();
 
             SolidWorksWindowHandle.Set(form.Handle);
@@ -73,7 +62,7 @@ namespace SwInventreeAddin.Tests
             };
             var mapping = PropertyMappingConfig.WithDefaults();
             var vm = new BomCompareViewModel(client, bomService, mapping, 1, "inventree");
-            var dialog = new BomCompareWindow(vm, "TEST-001", "Test Assembly") { Opacity = 0 };
+            var dialog = new BomCompareWindow(vm, "TEST-001", "Test Assembly");
             var tcs = new TaskCompletionSource<bool>();
 
             dialog.ContentRendered += (s, e) =>
@@ -106,7 +95,9 @@ namespace SwInventreeAddin.Tests
 
                     try
                     {
-                        Assert.That(dialog.Opacity, Is.EqualTo(0), "Test dialog must stay invisible for the whole run");
+                        Assert.That(
+                            HiddenTestWindow.IsOnScreen(dialogRect.Left, dialogRect.Top, dialogRect.Right, dialogRect.Bottom),
+                            Is.False, "Test dialog must stay off every monitor");
                         Assert.That(dx, Is.LessThan(5), $"Dialog is horizontally off by {dx} pixels");
                         Assert.That(dy, Is.LessThan(5), $"Dialog is vertically off by {dy} pixels");
                         tcs.SetResult(true);
