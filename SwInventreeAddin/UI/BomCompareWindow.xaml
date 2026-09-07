@@ -21,6 +21,11 @@
             <Style x:Key="BomCellTextStyle" TargetType="TextBlock">
                 <Setter Property="Margin" Value="6,0"/>
             </Style>
+            <!-- Shared column-header chrome: left gutter matching the cells and a
+                 separator so the vertical grid lines continue through the header row. -->
+            <Style x:Key="BomHeaderStyle" TargetType="DataGridColumnHeader">
+                <Setter Property="Padding" Value="6,4,4,4"/>
+            </Style>
         </ResourceDictionary>
     </Window.Resources>
 
@@ -93,7 +98,7 @@
                             <ColumnDefinition x:Name="GhColSw"   Width="165"/>
                             <ColumnDefinition x:Name="GhColIt"   Width="1"/>
                         </Grid.ColumnDefinitions>
-                        <Border Grid.Column="0" Background="#D7D7D7"/>
+                        <Border Grid.Column="0" Background="#F0F0F0"/>
                         <Border Grid.Column="1" Background="#C8E6FF">
                             <TextBlock Text="SolidWorks" FontWeight="SemiBold" FontSize="11"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -165,30 +170,30 @@
                             <DataGridCheckBoxColumn Binding="{Binding IsChecked, UpdateSourceTrigger=PropertyChanged}"
                                                     Header="" Width="28">
                                 <DataGridCheckBoxColumn.HeaderStyle>
-                                    <Style TargetType="DataGridColumnHeader">
-                                        <Setter Property="Background" Value="#D7D7D7"/>
+                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource BomHeaderStyle}">
+                                        <Setter Property="Background" Value="#F0F0F0"/>
                                     </Style>
                                 </DataGridCheckBoxColumn.HeaderStyle>
                             </DataGridCheckBoxColumn>
                             <DataGridTextColumn Header="State"   Binding="{Binding StateLabel}"  Width="80"  IsReadOnly="True"
                                                 ElementStyle="{StaticResource BomCellTextStyle}">
                                 <DataGridTextColumn.HeaderStyle>
-                                    <Style TargetType="DataGridColumnHeader">
-                                        <Setter Property="Background" Value="#D7D7D7"/>
+                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource BomHeaderStyle}">
+                                        <Setter Property="Background" Value="#F0F0F0"/>
                                     </Style>
                                 </DataGridTextColumn.HeaderStyle>
                             </DataGridTextColumn>
                             <DataGridTextColumn Header="IPN"     Binding="{Binding DisplayIpn}"  Width="100" IsReadOnly="True"
                                                 ElementStyle="{StaticResource BomCellTextStyle}">
                                 <DataGridTextColumn.HeaderStyle>
-                                    <Style TargetType="DataGridColumnHeader">
-                                        <Setter Property="Background" Value="#D7D7D7"/>
+                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource BomHeaderStyle}">
+                                        <Setter Property="Background" Value="#F0F0F0"/>
                                     </Style>
                                 </DataGridTextColumn.HeaderStyle>
                             </DataGridTextColumn>
                             <DataGridTextColumn Header="SW Qty"  Binding="{Binding SwQty}"       Width="55"  IsReadOnly="True">
                                 <DataGridTextColumn.HeaderStyle>
-                                    <Style TargetType="DataGridColumnHeader">
+                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource BomHeaderStyle}">
                                         <Setter Property="Background" Value="#E3F2FF"/>
                                     </Style>
                                 </DataGridTextColumn.HeaderStyle>
@@ -205,7 +210,7 @@
                             </DataGridTextColumn>
                             <DataGridTextColumn Header="SW Ref." Binding="{Binding SwReference}" Width="*"   IsReadOnly="True">
                                 <DataGridTextColumn.HeaderStyle>
-                                    <Style TargetType="DataGridColumnHeader">
+                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource BomHeaderStyle}">
                                         <Setter Property="Background" Value="#E3F2FF"/>
                                     </Style>
                                 </DataGridTextColumn.HeaderStyle>
@@ -222,7 +227,7 @@
                             </DataGridTextColumn>
                             <DataGridTextColumn Header="SW Note" Binding="{Binding SwNote}"      Width="*"   IsReadOnly="True">
                                 <DataGridTextColumn.HeaderStyle>
-                                    <Style TargetType="DataGridColumnHeader">
+                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource BomHeaderStyle}">
                                         <Setter Property="Background" Value="#E3F2FF"/>
                                     </Style>
                                 </DataGridTextColumn.HeaderStyle>
@@ -239,7 +244,7 @@
                             </DataGridTextColumn>
                             <DataGridTextColumn Header="Inv Qty"  Binding="{Binding ItQty}"       Width="55"  IsReadOnly="True">
                                 <DataGridTextColumn.HeaderStyle>
-                                    <Style TargetType="DataGridColumnHeader">
+                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource BomHeaderStyle}">
                                         <Setter Property="Background" Value="#FFFDE7"/>
                                     </Style>
                                 </DataGridTextColumn.HeaderStyle>
@@ -256,7 +261,7 @@
                             </DataGridTextColumn>
                             <DataGridTextColumn Header="Inv Ref." Binding="{Binding ItReference}" Width="*"   IsReadOnly="True">
                                 <DataGridTextColumn.HeaderStyle>
-                                    <Style TargetType="DataGridColumnHeader">
+                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource BomHeaderStyle}">
                                         <Setter Property="Background" Value="#FFFDE7"/>
                                     </Style>
                                 </DataGridTextColumn.HeaderStyle>
@@ -273,7 +278,7 @@
                             </DataGridTextColumn>
                             <DataGridTextColumn Header="Inv Note" Binding="{Binding ItNote}"      Width="*"   IsReadOnly="True">
                                 <DataGridTextColumn.HeaderStyle>
-                                    <Style TargetType="DataGridColumnHeader">
+                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource BomHeaderStyle}">
                                         <Setter Property="Background" Value="#FFFDE7"/>
                                     </Style>
                                 </DataGridTextColumn.HeaderStyle>
@@ -291,7 +296,7 @@
                             <DataGridTextColumn Header="Substitute Parts" Binding="{Binding HasSubstitutesLabel}" Width="96" IsReadOnly="True"
                                                 ElementStyle="{StaticResource BomCellTextStyle}">
                                 <DataGridTextColumn.HeaderStyle>
-                                    <Style TargetType="DataGridColumnHeader">
+                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource BomHeaderStyle}">
                                         <Setter Property="Background" Value="#FFFDE7"/>
                                     </Style>
                                 </DataGridTextColumn.HeaderStyle>
@@ -303,7 +308,7 @@
                          BomGrid_LayoutUpdated so it runs continuously from the group header
                          down through the data rows -->
                     <Border x:Name="SwInventreeDivider" Grid.RowSpan="2"
-                            Width="1" HorizontalAlignment="Left"
+                            Width="2" HorizontalAlignment="Left"
                             Background="{StaticResource BrushBorder}"
                             IsHitTestVisible="False"
                             SnapsToDevicePixels="True"/>
