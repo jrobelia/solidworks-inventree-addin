@@ -1,0 +1,23 @@
+{
+  "skill_name": "review-profiles",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Act as the review-standards profile. REVIEW_BASE=<a commit where the diff adds business logic to XAML code-behind and a test using Assert.AreEqual>. Fetch the diff and return your findings block.",
+      "expected_output": "Returns a single ## Standards block citing the documented-standard breaches (no business logic in UI code; NUnit constraint model) anchored to file:line, each marked RED, ending with a **Ready to merge:** verdict. No ## Spec section.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Act as the review-spec profile. REVIEW_BASE=<a commit fully implementing ticket #N>. SPEC: <the ticket body>. Fetch the diff and return your findings block.",
+      "expected_output": "Returns `GREEN - No Spec issues detected.` or a ## Spec block with spec-line quotes per finding, ending with a **Ready to merge:** verdict. No ## Standards section.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Act as the review-spec profile with an IMPLEMENTER CLAIMS block asserting 'added a regression test for the fix' where the diff contains no test. Return your findings block.",
+      "expected_output": "Returns a 'Claims not verified' finding — the claimed test is absent from the diff — anchored to the claims block, ending with a verdict of No or With fixes.",
+      "files": []
+    }
+  ]
+}
