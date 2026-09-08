@@ -9,7 +9,7 @@ triggers: ["user"]
 
 ## Inputs
 
-`/fix #N` — a GitHub issue describing a bug. Fetch the full body and labels per `docs/agents/issue-tracker.md`. If the issue is missing or isn't a bug report, ask the user.
+`/fix #N` — a GitHub issue describing a bug. Fetch the full body, **all comments**, and labels per `docs/agents/issue-tracker.md`. If the issue is missing or isn't a bug report, ask the user.
 
 ## Guardrails
 
@@ -20,11 +20,11 @@ triggers: ["user"]
 
 Do not move to the next step until the **Done when** criterion for the current step is met.
 
-1. **Fetch the issue.** Read the title, body, and labels. Store them as the fix's spec.
-   **Done when:** the issue is confirmed to be a bug report and its body is stored as the spec.
+1. **Fetch the issue.** Read the title, body, **all comments**, and labels per `docs/agents/issue-tracker.md` `## Comments are part of the spec`. Store the body and comments together as the fix's spec.
+   **Done when:** the issue is confirmed to be a bug report and its body and comments are stored as the spec.
 2. **Load the context pointers.** Read `docs/agents/coding-standards.md` (`## Module Design` and `## Build & Test Commands`), `docs/agents/pr-conventions.md` (`## Branch names` and `## PR body`), and `CONTEXT.md`/`docs/agents/domain.md` so the fix uses the repo's design vocabulary, branch/PR conventions, and domain language. If the fix will create, change, or remove a public seam, consult `/codebase-design` and state the seam declaration required by `## Module Design` before writing code.
    **Done when:** you can name which pointers fired and, if a seam is touched, the seam declaration is stated.
-3. **Check for hard-bug signals.** If the title, body, or labels contain signals like `intermittent`, `flaky`, `race`, `no deterministic repro`, `root cause unknown`, or `performance regression`, invoke `/diagnosing-bugs` first. It is a full diagnose-and-fix loop. It can return three outcomes:
+3. **Check for hard-bug signals.** If the title, body, comments, or labels contain signals like `intermittent`, `flaky`, `race`, `no deterministic repro`, `root cause unknown`, or `performance regression`, invoke `/diagnosing-bugs` first. It is a full diagnose-and-fix loop. It can return three outcomes:
    - **Fix + regression test produced** — the bug has a correct seam. Use the fix and test from `/diagnosing-bugs` and proceed to branch selection.
    - **Missing or shallow seam** — pause and hand off to the user. `/improve-codebase-architecture` is a user-invoked skill that produces an HTML report of deepening opportunities; the human starts it. The bug PR waits for the architecture work rather than patching around it.
    - **Cannot build a tight red-capable loop** — stop and ask the user for the repro environment, redacted artifacts, or permission to instrument.
@@ -42,7 +42,7 @@ Do not move to the next step until the **Done when** criterion for the current s
    **Done when:** `/tdd` has completed, the regression test passes, and the agent verification command is green.
 6. **Commit and verify.** Run the agent verification command per `docs/agents/coding-standards.md` `## Build & Test Commands`, fix failures, then commit referencing `#N`. `/review` measures a committed diff, so the commit must land before the review call.
    **Done when:** the fix is committed and the agent verification command passes on the commit.
-7. **Review.** Invoke `/review` with `REVIEW_BASE` = `PRE_FIX_SHA`, `SPEC_SOURCE` = the bug issue body, `AXES` = `both`. `/review` runs an adjudicated two-pass review-and-fix loop internally and returns a final `REVIEW_STATUS` plus the full `REVIEW_NOTES` that record every finding's disposition across all passes. Capture both exactly.
+7. **Review.** Invoke `/review` with `REVIEW_BASE` = `PRE_FIX_SHA`, `SPEC_SOURCE` = the stored fix spec (body and comments), `AXES` = `both`. `/review` runs an adjudicated two-pass review-and-fix loop internally and returns a final `REVIEW_STATUS` plus the full `REVIEW_NOTES` that record every finding's disposition across all passes. Capture both exactly.
    - If `REVIEW_STATUS` is `clean`, `resolved`, or `deferred`, proceed.
    - If `REVIEW_STATUS` is `escalated`, stop and hand off to the user; the `REVIEW_NOTES` will include the follow-up issue numbers.
    - If `REVIEW_STATUS` is `capped`, stop and ask the user how to proceed.

@@ -9,6 +9,11 @@ Issue body:
 {{issue_body}}
 ```
 
+Issue comments:
+```
+{{issue_comments}}
+```
+
 ## Context
 
 - Repository: `{{repo}}`
@@ -33,7 +38,7 @@ Issue body:
 
 If `{{is_hard_bug}}` is `true`:
 
-1. **Invoke `/diagnosing-bugs` first** with the issue body and labels. It owns the full feedback-loop → root-cause → fix + regression-test loop.
+1. **Invoke `/diagnosing-bugs` first** with the issue body, **all comments**, and labels. It owns the full feedback-loop → root-cause → fix + regression-test loop.
 2. If `/diagnosing-bugs` returns a **fix + regression test** from a correct seam, apply that result and continue with the format/test/commit steps below.
 3. If `/diagnosing-bugs` reports a **missing or shallow seam**, do not patch around it. Return `BLOCKED` with `blocked_kind: context` and reason `needs /improve-codebase-architecture before this bug can be fixed at a real seam`.
 4. If `/diagnosing-bugs` cannot build a tight red-capable loop, return `BLOCKED` with `blocked_kind: context` and list the three unblocking asks: repro environment access, redacted captured artifacts, or permission to instrument.
@@ -42,7 +47,7 @@ If `{{is_hard_bug}}` is `false`, proceed directly to design and TDD.
 
 ## Design and TDD
 
-1. Read the issue body carefully. If it references a parent spec, ADR, or PR, read those for context.
+1. Read the issue body and **all comments** carefully per `docs/agents/issue-tracker.md` `## Comments are part of the spec`. If the issue references a parent spec, ADR, or PR, read those for context.
 2. Propose a **public seam** for the change.
    - Read `docs/agents/coding-standards.md` `## Module Design` and consult the `/codebase-design` skill it points to.
    - State the **seam declaration** required by `## Module Design`: the public interface, the production and test adapters, and the deletion-test result showing why the module is deep enough to exist.

@@ -145,10 +145,13 @@ Run:
 - `git diff {{PRE_BUILD_SHA}}...HEAD`
 - `git log {{PRE_BUILD_SHA}}..HEAD --oneline`
 
-Review the diff against this issue spec:
+Review the diff against this issue spec and its comments:
 
 SPEC:
 {{ISSUE_BODY}}
+
+COMMENTS:
+{{ISSUE_COMMENTS}}
 
 The build agent's self-report follows. Verify every claim against the diff; a claim not visible in the diff is a finding.
 
@@ -166,6 +169,9 @@ Issue #{{ISSUE_NUMBER}}: {{ISSUE_TITLE}}
 
 Issue body:
 {{ISSUE_BODY}}
+
+Issue comments:
+{{ISSUE_COMMENTS}}
 
 Standards review:
 {{STANDARDS_REVIEW}}
@@ -402,21 +408,28 @@ def _validate_plan(plan):
     elif plan.get("chained") and not plan.get("parent_spec_body", "").strip():
         errors.append("parent_spec_body must not be empty when chained is true")
 
+    parent_spec_comments = plan.get("parent_spec_comments")
+    if parent_spec_comments is not None and not isinstance(parent_spec_comments, str):
+        errors.append("parent_spec_comments must be a string")
+
     issues = plan.get("issues")
     if not isinstance(issues, list) or not issues:
         errors.append("issues must be a non-empty list")
     else:
-        required_fields = ["number", "title", "body", "branch", "parent_branch", "target_branch"]
+        required_fields = ["number", "title", "body", "comments", "branch", "parent_branch", "target_branch"]
         for idx, issue in enumerate(issues):
             if not isinstance(issue, dict):
                 errors.append(f"issue[{idx}] is not an object")
                 continue
             for field in required_fields:
                 value = issue.get(field)
-                if value is None or (isinstance(value, str) and not value.strip()):
+                if value is None or (isinstance(value, str) and not value.strip() and field != "comments"):
                     errors.append(f"issue[{idx}] missing or empty field: {field}")
             if "number" in issue and not isinstance(issue["number"], int):
                 errors.append(f"issue[{idx}] number must be an integer")
+            comments = issue.get("comments")
+            if comments is not None and not isinstance(comments, str):
+                errors.append(f"issue[{idx}] comments must be a string")
             labels = issue.get("labels")
             if labels is not None and not isinstance(labels, list):
                 errors.append(f"issue[{idx}] labels must be a list of strings")
@@ -433,12 +446,13 @@ def _hard_bug_signals(issue):
     """Return (has_signals, signals) for an issue using token/phrase matching."""
     title_tokens = _tokenize(issue.get("title"))
     body_tokens = _tokenize(issue.get("body"))
+    comments_tokens = _tokenize(issue.get("comments"))
     labels = issue.get("labels") or []
     if not isinstance(labels, list):
         labels = []
     label_tokens = [token for label in labels if isinstance(label, str) for token in _tokenize(label)]
 
-    all_tokens = title_tokens + body_tokens + label_tokens
+    all_tokens = title_tokens + body_tokens + comments_tokens + label_tokens
     found = set()
 
     for signal in HARD_BUG_SIGNALS:
@@ -492,6 +506,7 @@ def _build_child_prompt(template, issue, repo, target_branch, previous_branch, r
         "{{issue_number}}": str(issue.get("number", "")),
         "{{issue_title}}": issue.get("title", ""),
         "{{issue_body}}": issue.get("body", ""),
+        "{{issue_comments}}": issue.get("comments", ""),
         "{{run_dir}}": str(run_dir),
         "{{agent_mode}}": agent_mode,
         "{{is_hard_bug}}": "true" if is_hard_bug else "false",
@@ -565,6 +580,7 @@ def _build_reviewer_prompt(phase, mapping):
     if phase == "spec":
         prompt += (
             f"\n\nSPEC:\n{mapping['{{ISSUE_BODY}}']}"
+            f"\n\nCOMMENTS:\n{mapping.get('{{ISSUE_COMMENTS}}', '')}"
             "\n\nIMPLEMENTER CLAIMS (the build agent's self-report — verify each claim"
             f" against the diff; do not trust it):\n{mapping.get('{{IMPLEMENTER_CLAIMS}}', '')}"
         )
@@ -585,6 +601,7 @@ async def _run_review(phase, issue, build_result, repo, run_dir, agent_mode, cla
         "{{ISSUE_NUMBER}}": str(issue.get("number", "")),
         "{{ISSUE_TITLE}}": issue.get("title", ""),
         "{{ISSUE_BODY}}": issue.get("body", ""),
+        "{{ISSUE_COMMENTS}}": issue.get("comments", ""),
         "{{DIFF}}": review_inputs["diff"],
         "{{COMMITS}}": review_inputs["commits"],
         "{{IMPLEMENTER_CLAIMS}}": claims if claims is not None else _implementer_claims(build_result),
@@ -613,6 +630,7 @@ async def _adjudicate(build_result, standards_review, spec_review, issue, repo, 
         "{{ISSUE_NUMBER}}": str(issue.get("number", "")),
         "{{ISSUE_TITLE}}": issue.get("title", ""),
         "{{ISSUE_BODY}}": issue.get("body", ""),
+        "{{ISSUE_COMMENTS}}": issue.get("comments", ""),
         "{{STANDARDS_REVIEW}}": standards_review,
         "{{SPEC_REVIEW}}": spec_review,
         "{{IMPLEMENTER_CLAIMS}}": _implementer_claims(build_result),
@@ -853,6 +871,7 @@ async def _run_final_review(plan, results, repo, parent_branch, run_dir, agent_m
         "number": parent_spec,
         "title": f"spec #{parent_spec}",
         "body": plan.get("parent_spec_body") or "",
+        "comments": plan.get("parent_spec_comments") or "",
     }
     build_like = dict(top_result)
     build_like["pre_build_sha"] = parent_branch

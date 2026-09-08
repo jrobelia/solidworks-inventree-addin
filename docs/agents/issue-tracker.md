@@ -21,6 +21,10 @@ Create a GitHub issue.
 
 Run `gh issue view <number> --comments`.
 
+## Comments are part of the spec
+
+When an agent reads a GitHub issue, it must read the full body **and all comments**. A comment that clarifies or overrides the body is part of the spec. Triage agent briefs and clarifying decisions often land as comments, so skipping them misses requirements.
+
 ## Parent and child issues
 
 This repo uses the conventions from `to-tickets`:
