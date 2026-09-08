@@ -4,13 +4,13 @@
     {
       "id": 1,
       "prompt": "Run /fix #77 where #77 is a routine bug ('Push button throws NullReferenceException when no document is open') and the current branch has an open PR #42. Describe the steps you take.",
-      "expected_output": "Agent detects the open PR on the current branch, checks whether the bug relates to the PR's work (spec overlap or changed files), works in-place without creating a branch if related, runs /tdd for the fix, calls /review with REVIEW_BASE=PRE_FIX_SHA, and appends Closes #77 to PR #42's body.",
+      "expected_output": "Agent detects the open PR on the current branch, checks whether the bug relates to the PR's work (spec overlap or changed files), works in-place without creating a branch if related, invokes /tdd via the skill tool for the fix, invokes /review via the skill tool with REVIEW_BASE=PRE_FIX_SHA, and appends Closes #77 and the final REVIEW_NOTES verbatim to PR #42's body.",
       "files": []
     },
     {
       "id": 2,
       "prompt": "Run /fix #88 where #88 says 'Task Pane intermittently shows stale data — flaky, no deterministic repro, root cause unknown'. The current branch has no open PR. Describe the steps you take.",
-      "expected_output": "Agent detects hard-bug signals and invokes /diagnosing-bugs. If /diagnosing-bugs produces a fix and regression test, the agent applies that result; if it cannot build a tight loop, the agent asks the user; if it finds a missing or shallow seam, the agent pauses and tells the user to run /improve-codebase-architecture. Otherwise it creates fix/issue-88, commits the fix, and calls /review before opening a draft PR.",
+      "expected_output": "Agent detects hard-bug signals and invokes /diagnosing-bugs via the skill tool. If /diagnosing-bugs produces a fix and regression test, the agent applies that result; if it cannot build a tight loop, the agent asks the user; if it finds a missing or shallow seam, the agent pauses and tells the user to run /improve-codebase-architecture. Otherwise it creates fix/issue-88, commits the fix, invokes /review via the skill tool, and opens a draft PR with Closes #88 and the final REVIEW_NOTES verbatim.",
       "files": []
     },
     {
@@ -22,7 +22,7 @@
     {
       "id": 4,
       "prompt": "Run /fix #55 on a clean tree where no open PR exists on the current branch. What branch and PR result?",
-      "expected_output": "Agent creates fix/issue-55 from the current branch, commits referencing #55, and opens a draft PR ending with the /qa handoff line.",
+      "expected_output": "Agent creates fix/issue-55 from the current branch, invokes /tdd via the skill tool, commits referencing #55, invokes /review via the skill tool, and opens a draft PR with Closes #55, the final REVIEW_NOTES verbatim, and the /qa handoff line.",
       "files": []
     }
   ]

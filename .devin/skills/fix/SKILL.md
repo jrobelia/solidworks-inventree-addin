@@ -38,14 +38,17 @@ Do not move to the next step until the **Done when** criterion for the current s
    **Done when:** the branch is chosen, `PRE_FIX_SHA` is captured, and the working tree is ready for the fix commit.
 5. **Fix.** The path depends on how you got here:
    - **Hard bug** — apply the fix and regression test produced by `/diagnosing-bugs`.
-   - **Normal bug** — run `/tdd`: red first (a failing regression test that reproduces the bug), then green. If the bug can't be reproduced as a failing test, state why — an unreproducible red is a hard-bug signal. If `/diagnosing-bugs` has already run for this issue, stop and ask the user; otherwise go back to step 3 and invoke `/diagnosing-bugs`.
-   **Done when:** the failing regression test passes and build/test are green.
+   - **Normal bug** — invoke the `/tdd` skill first using the `skill` tool (`command: "invoke"`, `skill: "tdd"`). Write a failing regression test that reproduces the bug, then write the minimal fix that makes it pass. Do not write the fix or its test outside the `/tdd` red-green loop. If the bug cannot be expressed as a failing test, treat it as a hard-bug signal and go back to step 3 to invoke `/diagnosing-bugs`.
+   **Done when:** `/tdd` has completed, the regression test passes, and build/test are green.
 6. **Commit and verify.** Run build and test per `docs/agents/coding-standards.md` `## Build & Test Commands`, fix failures, then commit referencing `#N`. `/review` measures a committed diff, so the commit must land before the review call.
    **Done when:** the fix is committed and build/test pass on the commit.
-7. **Review.** Call `/review` with `REVIEW_BASE` = `PRE_FIX_SHA`, `SPEC_SOURCE` = the bug issue body, `AXES` = `both`. Act on `REVIEW_STATUS` per `/review`'s output contract; review fixes land as follow-up commits.
-   **Done when:** `/review` has returned a `REVIEW_STATUS` that permits proceeding, or the user has been consulted on `escalated`/`capped`.
-8. **Ship.** Push the branch. On an existing PR, append `Closes #N` and the `REVIEW_NOTES` to its body with `gh pr edit`. Otherwise open a draft PR per `docs/agents/pr-conventions.md` `## PR body`.
-   **Done when:** the branch is pushed and the PR body is updated or the draft PR is open.
+7. **Review.** Invoke `/review` with `REVIEW_BASE` = `PRE_FIX_SHA`, `SPEC_SOURCE` = the bug issue body, `AXES` = `both`. `/review` runs an adjudicated two-pass review-and-fix loop internally and returns a final `REVIEW_STATUS` plus the full `REVIEW_NOTES` that record every finding's disposition across all passes. Capture both exactly.
+   - If `REVIEW_STATUS` is `clean`, `resolved`, or `deferred`, proceed.
+   - If `REVIEW_STATUS` is `escalated`, stop and hand off to the user; the `REVIEW_NOTES` will include the follow-up issue numbers.
+   - If `REVIEW_STATUS` is `capped`, stop and ask the user how to proceed.
+   **Done when:** `/review` has completed and returned `clean`, `resolved`, or `deferred`, or the user has been consulted on `escalated`/`capped`.
+8. **Ship.** Push the branch. Use the final `REVIEW_NOTES` from the completed `/review` loop. On an existing PR, append `Closes #N` and the final `REVIEW_NOTES` to its body with `gh pr edit`; on a new PR, include them when opening it. Paste the notes verbatim under `### Review notes` and any `deferred` or `escalated` items under `### Deferred and follow-up issues`, per `docs/agents/pr-conventions.md` `## PR body`. Do not summarize, paraphrase, or reduce the subagent blocks to verdict lines.
+   **Done when:** the branch is pushed and the PR body contains the full final `REVIEW_NOTES`.
 
 ## Skills invoked
 
