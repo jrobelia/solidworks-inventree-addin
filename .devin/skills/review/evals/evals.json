@@ -1,0 +1,29 @@
+{
+  "skill_name": "review",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "You are mid-/build on branch build/issue-99. The just-committed diff adds business logic to XAML code-behind and a test using Assert.AreEqual. Run /review with REVIEW_BASE=<commit before the work> and SPEC_SOURCE=<issue #99 body, which asked for a Push button>. Walk through the process: state the inputs you resolve, which profiles you would dispatch and with what arguments, then adjudicate the expected findings and produce REVIEW_STATUS and REVIEW_NOTES.",
+      "expected_output": "Agent resolves REVIEW_BASE, names review-standards and review-spec as the dispatch targets with REVIEW_BASE (and SPEC) passed, classifies code-behind logic and Assert.AreEqual as RED (documented standards), and produces REVIEW_STATUS plus REVIEW_NOTES with per-finding dispositions.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Run /review for a per-ticket spec check: REVIEW_BASE=<pre-ticket commit>, SPEC_SOURCE=<ticket body>, AXES=spec. The ticket asked for a rename the diff fully implements. State your dispatch plan and outputs.",
+      "expected_output": "Agent dispatches only review-spec (AXES=spec suppresses the Standards axis) and returns REVIEW_STATUS=clean with REVIEW_NOTES noting the spec-only scope.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Run /review where the Spec axis reports a hard spec gap requiring restructuring across two modules — too large to fix safely in-session. State what you do and what you return.",
+      "expected_output": "Agent classifies RED, does not attempt the fix, creates or proposes a follow-up issue, records it in REVIEW_NOTES, and returns REVIEW_STATUS=escalated.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Run /review where the first re-review after a fix still reports an unresolved finding, and the second pass also fails to clear it. State what happens at that point.",
+      "expected_output": "Agent stops at the two-pass cap, returns REVIEW_STATUS=capped, and asks the user rather than looping further.",
+      "files": []
+    }
+  ]
+}

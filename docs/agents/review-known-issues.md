@@ -1,4 +1,4 @@
-# Code-review environment notes
+# Review environment notes
 
 ## Why an independent reviewer matters
 
@@ -26,7 +26,7 @@ The diff base should usually be `origin/main`, not the local `main` branch. The 
 
 ## Do not edit the skill file
 
-Do not edit `.agents/skills/code-review/SKILL.md` to change this; that file is managed by the skill store and may be overwritten on skill updates. Keep project-level notes here and in `build/REFERENCE.md`.
+Do not edit `.agents/skills/code-review/SKILL.md` to change this; that file is managed by the skill store and may be overwritten on skill updates. Keep project-level notes here and in `.devin/skills/review/SKILL.md`.
 
 ## Review note
 

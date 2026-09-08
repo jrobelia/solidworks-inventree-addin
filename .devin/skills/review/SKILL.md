@@ -28,7 +28,7 @@ Do not move to the next step until the current step's condition holds.
 
 1. **Resolve inputs.** `git rev-parse REVIEW_BASE` must resolve and `git diff REVIEW_BASE...HEAD` must be non-empty — a bad ref or empty diff fails here, not inside subagents. If `SPEC_SOURCE` is an issue number, fetch the body per `docs/agents/issue-tracker.md`; if it is a path, read the file.
 2. **Check diff size.** If `git diff REVIEW_BASE...HEAD --stat` exceeds ~500 changed lines, split the review into per-ticket or per-module passes and aggregate the results.
-3. **Read `docs/agents/code-review-known-issues.md`** — it carries the environment notes: required tool approvals and diff-base guidance.
+3. **Read `docs/agents/review-known-issues.md`** — it carries the environment notes: required tool approvals and diff-base guidance.
 4. **Dispatch the axes.** Preferred: `run_subagent` with profiles `review-standards` and `review-spec` in parallel (`is_background=true`), passing `REVIEW_BASE`; pass the `SPEC_SOURCE` contents to the Spec axis as its `SPEC:` block. `AXES: spec` dispatches only `review-spec`; `SPEC_SOURCE: none` skips it and records "no spec available". Fallback: if `run_subagent` is unavailable or denied, run `subagent_general` in the foreground — read the profile file from `.devin/agents/` and use its full text as the task, appended with the same inputs. The Devin cloud child-session fallback is deliberately dropped; `build-afk` covers unattended review.
 5. **Aggregate.** Collect the `## Standards` and `## Spec` blocks verbatim and keep the axes separate — one axis must never mask the other.
 6. **Adjudicate every finding:**
