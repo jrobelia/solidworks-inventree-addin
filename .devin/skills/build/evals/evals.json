@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "Run /build #51 where #51 is a single child ticket. Walk through the loop: identify the ticket, create the branch, and state how the review step runs.",
-      "expected_output": "Agent creates build/issue-51, and for the review step calls /review with REVIEW_BASE=PRE_BUILD_SHA and SPEC_SOURCE=the spec/issue body — no inline two-axis dispatch, no review-known-issues read in the build skill itself.",
+      "expected_output": "Agent creates build/issue-51, and for the review step calls /review with REVIEW_BASE=PRE_BUILD_SHA and SPEC_SOURCE=the spec/issue body — no inline two-axis dispatch, no review-environment doc read in the build skill itself.",
       "files": []
     },
     {

@@ -85,7 +85,7 @@ See `REFERENCE.md` for the full `PLAN.json`, child output, and `RESULTS.json` sc
    New-Item -ItemType Directory -Path $runDir -Force
    ```
 
-2. Copy the skill's `workflow.py`, `CHILD_PROMPT.md`, `WPF_HARNESS.md`, and the two reviewer profiles `.devin/agents/code-review-standards.md` and `.devin/agents/code-review-spec.md` into `$runDir`.
+2. Copy the skill's `workflow.py`, `CHILD_PROMPT.md`, `WPF_HARNESS.md`, and the two reviewer profiles `.devin/agents/review-standards.md` and `.devin/agents/review-spec.md` into `$runDir`.
 
 3. Write `PLAN.json` into `$runDir`. See `REFERENCE.md` for the schema; set `agent_mode` if your Devin environment supports `swe-1.7-standard` or another mode, otherwise `normal` is used. For `chained` plans, copy the parent spec's full issue body into `parent_spec_body` — the workflow validates it and the final-review phase diffs the whole chain against it.
 

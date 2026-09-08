@@ -165,8 +165,8 @@ The parent orchestrator, not the build agent, runs the two-axis review. After th
 
 1. The parent fetches the diff (`git diff <PRE_BUILD_SHA>...HEAD`) and commit list (`git log <PRE_BUILD_SHA>..HEAD --oneline`) from the worktree.
 2. It dispatches two `vm_mode="shared"` reviewer agents in parallel using the profiles copied into `$runDir`:
-   - **Standards** — uses `code-review-standards.md` from the run directory. It reads `docs/agents/coding-standards.md`, applies the Fowler smell baseline, and returns a `## Standards` block.
-   - **Spec** — uses `code-review-spec.md` from the run directory. It reads the issue body and any referenced parent spec/ADR, and returns a `## Spec` block.
+   - **Standards** — uses `review-standards.md` from the run directory. It reads `docs/agents/coding-standards.md`, applies the Fowler smell baseline, and returns a `## Standards` block.
+   - **Spec** — uses `review-spec.md` from the run directory. It reads the issue body and any referenced parent spec/ADR, and returns a `## Spec` block.
    - The spec reviewer also receives the build agent's self-report (`test_summary`, `review_summary`, `reason`, `concerns`) as an `IMPLEMENTER CLAIMS:` block with a verify-don't-trust instruction, so it can catch claimed-but-not-implemented work in addition to missing or extra work.
    - If a profile is missing, `workflow.py` falls back to the bundled reviewer prompts.
 3. It dispatches an **adjudicator** (`lite` mode) with the rubric below and the same implementer claims. The adjudicator returns `PROCEED`, `FIX`, or `BLOCKED`.

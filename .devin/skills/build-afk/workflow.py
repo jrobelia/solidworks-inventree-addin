@@ -563,7 +563,7 @@ def _remove_worktree(worktree):
 
 def _build_reviewer_prompt(phase, mapping):
     """Prefer the copied .devin/agents profile; fall back to the bundled prompt."""
-    profile = _load_reviewer_profile(f"code-review-{phase}")
+    profile = _load_reviewer_profile(f"review-{phase}")
     if profile:
         base = profile
     else:

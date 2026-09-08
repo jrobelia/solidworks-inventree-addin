@@ -24,4 +24,3 @@ Before any design decision that creates, changes, or removes a public seam, modu
 - [User communication preferences](docs/agents/user-preferences.md)
 - [Domain glossary and ADRs](docs/agents/domain.md) — see also [CONTEXT.md](CONTEXT.md)
 - [Issue tracker conventions](docs/agents/issue-tracker.md) — see also [triage labels](docs/agents/triage-labels.md)
-- [Review environment notes](docs/agents/review-known-issues.md)
