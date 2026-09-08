@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "Run /build #51 where #51 is a single child ticket. Walk through the loop: identify the ticket, create the branch, and state how the review step runs.",
-      "expected_output": "Agent creates build/issue-51, and for the review step calls /review with REVIEW_BASE=PRE_BUILD_SHA and SPEC_SOURCE=the spec/issue body — no inline two-axis dispatch, no review doc read in the build skill itself.",
+      "expected_output": "Agent creates build/issue-51, runs /tdd, and for the final review invokes /review via the skill tool with REVIEW_BASE=PRE_BUILD_SHA and SPEC_SOURCE=the spec/issue body. /review runs an adjudicated two-pass review-and-fix loop and returns REVIEW_STATUS plus the full REVIEW_NOTES; the build skill does not do an inline two-axis dispatch.",
       "files": []
     },
     {
@@ -16,13 +16,13 @@
     {
       "id": 3,
       "prompt": "At the end of a /build run, /review returns REVIEW_STATUS=escalated because a RED spec gap became follow-up issue #200. What does /build do next?",
-      "expected_output": "Agent keeps the PR in draft, records the blocking follow-up in the PR body via REVIEW_NOTES, and stops for the user rather than proceeding.",
+      "expected_output": "Agent keeps the PR in draft, records the blocking follow-up and the full final REVIEW_NOTES verbatim in the PR body, and stops for the user rather than proceeding.",
       "files": []
     },
     {
       "id": 4,
       "prompt": "/review returns REVIEW_STATUS=capped after two passes on a stubborn finding. What does /build do?",
-      "expected_output": "Agent stops and asks the user — it does not loop a third pass or silently proceed.",
+      "expected_output": "Agent stops and asks the user because the two-pass review loop is capped — it does not loop a third pass or silently proceed.",
       "files": []
     }
   ]
