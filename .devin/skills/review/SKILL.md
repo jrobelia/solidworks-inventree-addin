@@ -1,6 +1,6 @@
 ---
 name: review
-description: "Two-axis code review (Standards + Spec) over a diff from a fixed REVIEW_BASE, followed by an adjudicated fix-and-reverify loop. Invoke when /build or /fix reaches its review step, or when asked to 'run /review' on a branch, PR, or work-in-progress diff against a spec."
+description: "Two-axis code review (Standards + Spec) over a committed diff from a fixed REVIEW_BASE, followed by an adjudicated fix-and-reverify loop. Invoke when /build or /fix reaches its review step, or when asked to 'run /review' on a committed branch, PR, or diff against a spec."
 ---
 
 # /review

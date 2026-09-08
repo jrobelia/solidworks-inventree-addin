@@ -15,7 +15,7 @@ triggers: ["user"]
 
 ## Guardrails
 
-- Never commit to `main`/`master`. If the current branch is `main`/`master`, it cannot have a PR-blocking bug target — branch off it in step 3.
+- Never commit to `main`/`master`. If the current branch is `main`/`master`, it cannot have a PR-blocking bug target — branch off it in step 4.
 - The handoff is to `/qa`. Do not merge.
 
 ## Process
@@ -34,7 +34,7 @@ triggers: ["user"]
    - **No open PR** — verify `git status --short` is clean (stop and ask otherwise), then create `fix/issue-<N>` from the current branch. `PRE_FIX_SHA` was already captured above. A draft PR opens at step 7.
 5. **Fix.** The path depends on how you got here:
    - **Hard bug** — apply the fix and regression test produced by `/diagnosing-bugs`.
-   - **Normal bug** — run `/tdd`: red first (a failing regression test that reproduces the bug), then green. If the bug can't be reproduced as a failing test, state why and fall back to the build and test commands from `docs/agents/coding-standards.md` `## Build & Test Commands` — an unreproducible red is itself a hard-bug signal; go back to step 3.
+   - **Normal bug** — run `/tdd`: red first (a failing regression test that reproduces the bug), then green. If the bug can't be reproduced as a failing test, state why — an unreproducible red is a hard-bug signal. If `/diagnosing-bugs` has already run for this issue, stop and ask the user; otherwise go back to step 3 and invoke `/diagnosing-bugs`.
 6. **Commit and verify.** Run build and test per `docs/agents/coding-standards.md` `## Build & Test Commands`, fix failures, then commit referencing `#N`. `/review` measures a committed diff, so the commit must land before the review call.
 7. **Review.** Call `/review` with `REVIEW_BASE` = `PRE_FIX_SHA`, `SPEC_SOURCE` = the bug issue body, `AXES` = `both`. Act on `REVIEW_STATUS` per `/review`'s output contract; review fixes land as follow-up commits.
 8. **Ship.** Push the branch. On an existing PR, append `Closes #N` and the review notes to its body with `gh pr edit`. Otherwise open a draft PR: `Closes #N`, the root cause in one line, the regression test added, build/test commands run, and `REVIEW_NOTES` under `### Review notes` and `### Deferred and follow-up issues`. End the PR body with: `Run /qa on this branch. /qa will take the PR out of draft if QA passes and ask whether to merge.`
