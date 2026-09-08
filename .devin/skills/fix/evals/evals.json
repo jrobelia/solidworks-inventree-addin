@@ -1,0 +1,29 @@
+{
+  "skill_name": "fix",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Run /fix #77 where #77 is a routine bug ('Push button throws NullReferenceException when no document is open') and the current branch has an open PR #42. Describe the steps you take.",
+      "expected_output": "Agent detects the open PR on the current branch, works in-place without creating a branch, runs /tdd for the fix, calls /review with REVIEW_BASE=PRE_FIX_SHA, and appends Closes #77 to PR #42's body.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Run /fix #88 where #88 says 'Task Pane intermittently shows stale data — flaky, no deterministic repro, root cause unknown'. The current branch has no open PR. Describe the steps you take.",
+      "expected_output": "Agent detects hard-bug signals and runs /diagnosing-bugs BEFORE writing any fix; then creates fix/issue-88, runs /tdd, and calls /review before opening a draft PR.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Run /fix #99 where diagnosis reveals the bug's root cause is that the Task Pane ViewModel owns document state directly — a missing seam. What happens to the bug fix?",
+      "expected_output": "Agent hands off to /improve-codebase-architecture and pauses the bug PR rather than patching around the missing seam.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Run /fix #55 on a clean tree where no open PR exists on the current branch. What branch and PR result?",
+      "expected_output": "Agent creates fix/issue-55 from the current branch, commits referencing #55, and opens a draft PR ending with the /qa handoff line.",
+      "files": []
+    }
+  ]
+}
