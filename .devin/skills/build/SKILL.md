@@ -34,17 +34,17 @@ If the parent spec or child tickets are missing or ambiguous, ask the user.
 
 Do not move to the next step until the **Done when** criterion for the current step is met.
 
-1. Identify the parent spec and child tickets from the user's input (see `REFERENCE.md` for the input cases and `docs/agents/issue-tracker.md` for the shared conventions). If only a parent spec is given, find its child issues and confirm the batch. If inputs are missing, ask.
-   **Done when:** the parent spec and all child tickets are identified and the user has confirmed the batch.
-2. Load the context files and design vocabulary listed in `REFERENCE.md`.
-   **Done when:** every file in `REFERENCE.md` `## Context files` has been loaded and the design vocabulary in `## Design vocabulary` has been consulted.
+1. Identify the parent spec and resolve the child-ticket **task graph** (see `REFERENCE.md` for input cases and `docs/agents/issue-tracker.md` for conventions). The **frontier** is the set of unblocked child tickets — start with those. If only a parent spec is given, find its child issues, resolve blocking links, identify the frontier, and confirm the batch. If inputs are missing, ask.
+   **Done when:** the parent spec, the task graph, and the frontier of unblocked child tickets are identified and the user has confirmed the batch.
+2. Load the **context pointers** in `REFERENCE.md` (`## Context pointers` and `## Design vocabulary`) only for the branches the current run needs.
+   **Done when:** the relevant context pointers have been reached and the design vocabulary has been consulted.
 3. Verify the working tree is clean. If `git status --short` is non-empty, stop and ask the user to commit or stash their changes before `/build` starts.
    **Done when:** `git status --short` returns no output.
 4. Capture the current branch as `PARENT_BRANCH` and the current commit as `PRE_BUILD_SHA`.
    **Done when:** both values are stored and visible.
 5. Create the build branch from `PARENT_BRANCH` using the naming rules in `REFERENCE.md`.
    **Done when:** the new branch exists, is checked out, and is based on `PARENT_BRANCH`.
-6. **Run the `/tdd` red-green loop for each ticket** in dependency order:
+6. **Run the `/tdd` red-green loop for each ticket** in frontier order (unblocked tickets first):
    - **Propose the public seam and justify its depth.** Before proposing, read `docs/agents/coding-standards.md` `## Module Design` and consult the `/codebase-design` skill it points to. State the recommended seam in domain language and give a one-sentence rationale. Then give a depth check: the public interface surface, the production and test adapters that will sit at the seam, the complexity the module hides from callers, and the deletion test (if the module were removed, would its complexity reappear across callers?). If the interface is nearly as complex as the implementation, the seam is shallow — go back and find a deeper cut. If two or more seams are equally good, present the candidates with the same depth check and ask which to use; otherwise pause and ask the user to confirm the recommended seam before proceeding.
    - **Run `/tdd` — red first, then green.** Invoke the `/tdd` skill and do not skip the red → green loop. If the ticket is build-system, CI, or documentation-only and the spec explicitly states no new unit tests, run the build and test commands from `REFERENCE.md` in place of the `/tdd` red-green loop and state why in the response. If `/tdd` exits with failing tests, fix the failures and re-run it before proceeding. If you cannot make it green, stop and ask.
    - Run the build and test commands from `REFERENCE.md`. If either fails, fix before proceeding.

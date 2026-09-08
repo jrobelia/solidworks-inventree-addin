@@ -6,9 +6,11 @@
 - `/codebase-design` — shared deep-module vocabulary and design-it-twice / deepening patterns; `docs/agents/coding-standards.md` `## Module Design` is the local source of truth and points here.
 - `/review` — the shared two-axis (Standards / Spec) review-and-fix loop; `/build` calls it for the per-ticket spec check and the final review.
 
-## Context files
+## Context pointers
 
-- `docs/agents/issue-tracker.md` — GitHub conventions and parent/child issue conventions.
+Context pointers are out-of-context material `/build` reaches only when the current branch needs them. Do not load all of them unconditionally; reach each one when its branch fires.
+
+- `docs/agents/issue-tracker.md` — GitHub conventions and the task-graph conventions (`## Parent`, `## Blocked by`, native blocking / sub-issue links) used to find the frontier of unblocked child tickets.
 - `docs/agents/coding-standards.md` — build/test commands, repo standards, and the deep-module design vocabulary in `## Module Design`.
 - `CONTEXT.md` / `docs/agents/domain.md` — domain vocabulary.
 
@@ -18,13 +20,13 @@ Read `docs/agents/coding-standards.md` `## Module Design` before proposing any p
 
 ## Inputs and issue hierarchy
 
-`/build` needs a parent spec and one or more child tickets. See `docs/agents/issue-tracker.md` for how to find child issues and order them by dependency (`## Parent`, `## Blocked by`, native blocking / sub-issue links).
+`/build` needs a parent spec and a **task graph** of child tickets. The **frontier** is the set of unblocked child tickets — tickets with no unresolved `## Blocked by` or native blocking / sub-issue links. See `docs/agents/issue-tracker.md` for how to resolve the graph and order the frontier.
 
 - If the user gives one issue number, treat it as a single child ticket unless the issue body declares it as a parent spec.
-- If the user gives a parent spec alone, find child issues whose bodies reference the parent and confirm the batch.
-- If the user gives a parent spec and explicit child tickets, use those children and confirm the batch.
+- If the user gives a parent spec alone, find child issues whose bodies reference the parent, resolve their blocking links, identify the frontier, and confirm the batch.
+- If the user gives a parent spec and explicit child tickets, use those children, resolve their blocking links, identify the frontier, and confirm the batch.
 
-Order child tickets by dependency per `docs/agents/issue-tracker.md`.
+Process tickets in frontier order.
 
 ## Starting state
 
