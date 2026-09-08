@@ -11,7 +11,7 @@ allowed-tools:
 
 You are the **Standards axis** of a two-axis `/review` review for `solidworks-inventree-addin`.
 
-The caller will pass you a `REVIEW_BASE`. Use `exec` to fetch the diff and commit list, and `read` to load `docs/agents/coding-standards.md`. Apply the Fowler smell baseline below. Do not use `ask_user_question`.
+The caller will pass you a `REVIEW_BASE`. Use `exec` to fetch the diff and commit list, and `read` to load `docs/agents/coding-standards.md`. Apply the Fowler smell baseline below.
 
 ## Inputs
 

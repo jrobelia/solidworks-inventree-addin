@@ -26,17 +26,17 @@ triggers: ["user"]
    - **Fix + regression test produced** — the bug has a correct seam. Use the fix and test from `/diagnosing-bugs` and proceed to branch selection.
    - **Missing or shallow seam** — pause and hand off to the user. `/improve-codebase-architecture` is a user-invoked skill that produces an HTML report of deepening opportunities; the human starts it. The bug PR waits for the architecture work rather than patching around it.
    - **Cannot build a tight red-capable loop** — stop and ask the user for the repro environment, redacted artifacts, or permission to instrument.
-4. **Pick the branch.** Check whether the current branch already has an open PR:
+4. **Pick the branch and capture `PRE_FIX_SHA`.** Run `git rev-parse HEAD` and store the result as `PRE_FIX_SHA` before any fix work lands. Then check whether the current branch already has an open PR:
    ```powershell
    gh pr list --state open --head <current-branch> --json number,url,body
    ```
    - **Open PR found** — the bug may block that PR. Check whether the bug relates to the PR's work: does the PR's body, spec, or changed files overlap with the bug? If yes, treat it as PR-blocking and work on the current branch, commit in-place, and update the PR body with `Closes #N` at ship time. If the bug is unrelated or the overlap is ambiguous, stop and ask the user whether to branch off to `fix/issue-<N>` or still commit in-place.
-   - **No open PR** — verify `git status --short` is clean (stop and ask otherwise), then create `fix/issue-<N>` from the current branch and capture `PRE_FIX_SHA`. A draft PR opens at step 7.
+   - **No open PR** — verify `git status --short` is clean (stop and ask otherwise), then create `fix/issue-<N>` from the current branch. `PRE_FIX_SHA` was already captured above. A draft PR opens at step 7.
 5. **Fix.** The path depends on how you got here:
    - **Hard bug** — apply the fix and regression test produced by `/diagnosing-bugs`.
-   - **Normal bug** — run `/tdd`: red first (a failing regression test that reproduces the bug), then green. If the bug can't be reproduced as a failing test, state why and fall back to the build/test commands from `docs/agents/coding-standards.md` — an unreproducible red is itself a hard-bug signal; go back to step 3.
-6. **Commit and verify.** Run build and test per `docs/agents/coding-standards.md`, fix failures, then commit referencing `#N`. `/review` measures a committed diff, so the commit must land before the review call.
-7. **Review.** Call `/review` with `REVIEW_BASE` = `PRE_FIX_SHA`, `SPEC_SOURCE` = the bug issue body, `AXES` = `both`. Act on the returned `REVIEW_STATUS`: proceed on `clean`/`resolved`/`deferred`, keep the PR in draft and stop for the user on `escalated`, ask the user on `capped`. Review fixes land as follow-up commits.
+   - **Normal bug** — run `/tdd`: red first (a failing regression test that reproduces the bug), then green. If the bug can't be reproduced as a failing test, state why and fall back to the build and test commands from `docs/agents/coding-standards.md` `## Build & Test Commands` — an unreproducible red is itself a hard-bug signal; go back to step 3.
+6. **Commit and verify.** Run build and test per `docs/agents/coding-standards.md` `## Build & Test Commands`, fix failures, then commit referencing `#N`. `/review` measures a committed diff, so the commit must land before the review call.
+7. **Review.** Call `/review` with `REVIEW_BASE` = `PRE_FIX_SHA`, `SPEC_SOURCE` = the bug issue body, `AXES` = `both`. Act on `REVIEW_STATUS` per `/review`'s output contract; review fixes land as follow-up commits.
 8. **Ship.** Push the branch. On an existing PR, append `Closes #N` and the review notes to its body with `gh pr edit`. Otherwise open a draft PR: `Closes #N`, the root cause in one line, the regression test added, build/test commands run, and `REVIEW_NOTES` under `### Review notes` and `### Deferred and follow-up issues`. End the PR body with: `Run /qa on this branch. /qa will take the PR out of draft if QA passes and ask whether to merge.`
 
 ## Skills invoked

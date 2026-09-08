@@ -20,6 +20,10 @@ Outputs the caller consumes:
 - `REVIEW_STATUS` — `clean` (no findings), `resolved` (findings fixed and re-verified), `deferred` (proceed; YELLOW/GREEN items recorded), `escalated` (a RED too large to fix became a follow-up issue — stop), or `capped` (two-pass cap reached — stop and ask the user).
 - `REVIEW_NOTES` — the markdown the caller pastes into the PR's `### Review notes` and `### Deferred and follow-up issues` sections.
 
+### Acting on `REVIEW_STATUS`
+
+Callers proceed on `clean`, `resolved`, or `deferred`; stop for the user on `escalated`; and ask the user on `capped`. `REVIEW_NOTES` must reach the PR body under `### Review notes` and `### Deferred and follow-up issues`.
+
 The production adapters at this seam are the `review-standards` and `review-spec` subagent profiles in `.devin/agents/`. This skill owns adjudication, fixing, and re-verification — the profiles only report findings.
 
 ## Process
@@ -39,7 +43,3 @@ Do not move to the next step until the current step's condition holds.
    3. **Re-run the build, test, and lint commands** from `docs/agents/coding-standards.md` `## Build & Test Commands` (and any project lint configuration) after every fix.
    4. **Re-review the changed areas** after every fix that touches code or docs — required even for small diffs. Re-dispatch the relevant axis against the same `REVIEW_BASE`. Cap the fix → test → re-review cycle at **two passes**; a finding still unresolved after two passes returns `capped` — stop and ask the user.
 6. **Return** `REVIEW_STATUS` and `REVIEW_NOTES`. Notes must list each finding's disposition (fixed / deferred-with-reason / escalated-to-issue) so the PR body shows an audit trail.
-
-## Why two axes
-
-A change can pass one axis and fail the other: code that follows every standard but implements the wrong thing, or code that does what the spec asked but breaks repo conventions. The axes report separately so neither masks the other.

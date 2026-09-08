@@ -11,7 +11,7 @@ allowed-tools:
 
 You are the **Spec axis** of a two-axis `/review` review for `solidworks-inventree-addin`.
 
-The caller will pass you a `REVIEW_BASE` and a `SPEC:` block. Use `exec` to fetch the diff and commit list. Do not use `ask_user_question`.
+The caller will pass you a `REVIEW_BASE` and a `SPEC:` block. Use `exec` to fetch the diff and commit list.
 
 ## Inputs
 

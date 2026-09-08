@@ -13,15 +13,7 @@ triggers: ["user"]
 
 ## Inputs
 
-Run when the user says `/build` or passes a parent spec and child tickets.
-
-`/build` can be invoked with:
-
-1. A single ticket: `/build #N`.
-2. A parent spec and explicit child tickets: `/build spec #44 with #45 #46` or any natural phrasing.
-3. A parent spec alone: `/build spec #44` — the agent finds the linked child issues.
-
-If the parent spec or child tickets are missing or ambiguous, ask the user.
+`/build` can be invoked with a single ticket, a parent spec alone, or a parent spec with explicit child tickets. See `REFERENCE.md` `## Inputs and issue hierarchy` for how to resolve each case. If the parent spec or child tickets are missing or ambiguous, ask the user.
 
 ## Guardrails
 
@@ -34,10 +26,10 @@ If the parent spec or child tickets are missing or ambiguous, ask the user.
 
 Do not move to the next step until the **Done when** criterion for the current step is met.
 
-1. Identify the parent spec and resolve the child-ticket **task graph** (see `REFERENCE.md` for input cases and `docs/agents/issue-tracker.md` for conventions). The **frontier** is the set of unblocked child tickets — start with those. If only a parent spec is given, find its child issues, resolve blocking links, identify the frontier, and confirm the batch. If inputs are missing, ask.
+1. Identify the parent spec and resolve the child-ticket **task graph** and **frontier** per `REFERENCE.md` `## Inputs and issue hierarchy`. Confirm the batch with the user. If inputs are missing, ask.
    **Done when:** the parent spec, the task graph, and the frontier of unblocked child tickets are identified and the user has confirmed the batch.
-2. Load the **context pointers** in `REFERENCE.md` (`## Context pointers` and `## Design vocabulary`) only for the branches the current run needs.
-   **Done when:** the relevant context pointers have been reached and the design vocabulary has been consulted.
+2. Load the **context pointers** in `REFERENCE.md` (`## Context pointers`) only for the branches the current run needs.
+   **Done when:** you can name which context pointers fired for this run and the design vocabulary has been consulted.
 3. Verify the working tree is clean. If `git status --short` is non-empty, stop and ask the user to commit or stash their changes before `/build` starts.
    **Done when:** `git status --short` returns no output.
 4. Capture the current branch as `PARENT_BRANCH` and the current commit as `PRE_BUILD_SHA`.
@@ -46,16 +38,16 @@ Do not move to the next step until the **Done when** criterion for the current s
    **Done when:** the new branch exists, is checked out, and is based on `PARENT_BRANCH`.
 6. **Run the `/tdd` red-green loop for each ticket** in frontier order (unblocked tickets first):
    - **Propose the public seam and justify its depth.** Before proposing, read `docs/agents/coding-standards.md` `## Module Design` and consult the `/codebase-design` skill it points to. State the recommended seam in domain language and give a one-sentence rationale. Then give a depth check: the public interface surface, the production and test adapters that will sit at the seam, the complexity the module hides from callers, and the deletion test (if the module were removed, would its complexity reappear across callers?). If the interface is nearly as complex as the implementation, the seam is shallow — go back and find a deeper cut. If two or more seams are equally good, present the candidates with the same depth check and ask which to use; otherwise pause and ask the user to confirm the recommended seam before proceeding.
-   - **Run `/tdd` — red first, then green.** Invoke the `/tdd` skill and do not skip the red → green loop. If the ticket is build-system, CI, or documentation-only and the spec explicitly states no new unit tests, run the build and test commands from `REFERENCE.md` in place of the `/tdd` red-green loop and state why in the response. If `/tdd` exits with failing tests, fix the failures and re-run it before proceeding. If you cannot make it green, stop and ask.
-   - Run the build and test commands from `REFERENCE.md`. If either fails, fix before proceeding.
+   - **Run `/tdd` — red first, then green.** Invoke the `/tdd` skill and do not skip the red → green loop. If the ticket is build-system, CI, or documentation-only and the spec explicitly states no new unit tests, run the build and test commands from `docs/agents/coding-standards.md` `## Build & Test Commands` in place of the `/tdd` red-green loop and state why in the response. If `/tdd` exits with failing tests, fix the failures and re-run it before proceeding. If you cannot make it green, stop and ask.
+   - Run the build and test commands from `docs/agents/coding-standards.md` `## Build & Test Commands`. If either fails, fix before proceeding.
    - Commit with a message that references the ticket. Default to one logical commit per ticket; use multiple commits only if the ticket has clearly separate logical steps and the user agrees. Include the parent spec reference in the first commit so the work traces back to the parent spec in the issue tracker.
    - For batches of more than one ticket, call `/review` on the ticket's own diff before starting the next ticket — `REVIEW_BASE` = `PRE_TICKET_SHA`, `SPEC_SOURCE` = the ticket body, `AXES` = `spec` — and resolve any spec gaps it returns. Skip it for a single-ticket build — the step-8 review covers the same diff.
    **Done when:** every ticket has a user-confirmed seam that has passed a depth check, a green `/tdd` red-green loop (or documented build-only equivalent), passing build/test, a reference commit on the build branch, and — for multi-ticket batches — a clean per-ticket `/review` call.
 7. Run the build and test commands once more. If either fails, fix before proceeding.
    **Done when:** both commands exit successfully on the full branch.
 8. Call `/review` with `REVIEW_BASE` = `PRE_BUILD_SHA`, `SPEC_SOURCE` = the parent spec body, `AXES` = `both`. `/review` runs the two axes, adjudicates, fixes, and re-verifies; it returns `REVIEW_STATUS` and `REVIEW_NOTES`.
-   **Done when:** `/review` has returned.
-9. Act on `REVIEW_STATUS` per `REFERENCE.md` `## Review calls`: proceed on `clean`/`resolved`/`deferred` (carry `REVIEW_NOTES` into the PR body), stop on `escalated`, and ask the user on `capped`.
+   **Done when:** `/review` has returned `REVIEW_STATUS` and `REVIEW_NOTES`.
+9. Act on `REVIEW_STATUS` per `/review`'s output contract: proceed on `clean`/`resolved`/`deferred` (carry `REVIEW_NOTES` into the PR body), stop on `escalated`, and ask the user on `capped`.
    **Done when:** `REVIEW_STATUS` permits proceeding or the user has been consulted.
 10. Push and open a draft PR to `PARENT_BRANCH`.
     **Done when:** the branch is pushed and a draft PR is open.
