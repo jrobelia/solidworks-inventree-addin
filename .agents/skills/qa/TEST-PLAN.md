@@ -85,6 +85,15 @@ Add a GUI functionality group when the change touches the **Task Pane**, a **dia
    - Action: Attempt to create the part
    - Expected: The **Create Part** button is disabled or a validation message explains that a category is required
 
+## Plan sizing
+
+Size the plan by risk, not step count.
+
+- One step per distinct behavior the diff changes, plus one per interaction the change has with a neighboring feature — shared state, a shared prompt, a shared command gate.
+- Keep the smoke tail from [CHECKLIST.md](CHECKLIST.md) on every pass; a diff-scoped plan cannot see environment or load-path regressions.
+- Cut a step when its observable result is produced by another step in the plan.
+- Unit-test coverage retires a step only for pure ViewModel logic — anything reached through a SolidWorks event, WPF binding, or the add-in load path keeps its step.
+
 ## Step quality reminder
 
 Every step must be:

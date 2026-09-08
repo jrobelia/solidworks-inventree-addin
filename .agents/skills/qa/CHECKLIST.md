@@ -43,3 +43,11 @@ Every test step must have:
 | Generic bug titles ("button broken") | Hard to triage and search | Be specific: "[Task Pane] Fetch does nothing when IPN is blank" |
 | Skipping error paths | Miss critical bugs | Include empty IPN, not-found, and offline behavior |
 | Source-file references in issues | Go stale after refactors | Describe the symptom in domain terms from `CONTEXT.md` |
+
+## Smoke tail
+
+Run these on every pass, regardless of the diff:
+
+1. The add-in loads — the InvenTree Task Pane appears and renders without error when SolidWorks opens a document.
+2. The Task Pane shows document state — stamped Document Properties appear and commands sit in their expected enabled states.
+3. Fetch works on a plain document — a document with an IPN and no InvenTree Part PK fetches and populates cleanly.
