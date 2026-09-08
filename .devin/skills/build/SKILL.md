@@ -36,17 +36,20 @@ Do not move to the next step until the **Done when** criterion for the current s
 6. **Run the `/tdd` red-green loop for each ticket** in frontier order (unblocked tickets first):
    - **Capture `PRE_TICKET_SHA`.** Before any code changes for this ticket, run `git rev-parse HEAD` and store it as `PRE_TICKET_SHA` for this ticket's per-ticket review.
    - **Propose the public seam and justify its depth.** Before proposing, read `docs/agents/coding-standards.md` `## Module Design` and consult the `/codebase-design` skill it points to. State the seam declaration required by `## Module Design` (public interface, production and test adapters, deletion-test result). If the interface is nearly as complex as the implementation, the seam is shallow — go back and find a deeper cut. If two or more seams are equally good, present the candidates with the same seam declaration and ask which to use; otherwise pause and ask the user to confirm the recommended seam before proceeding.
-   - **Run `/tdd` — red first, then green.** Invoke the `/tdd` skill and run the full red → green loop. If the ticket is build-system, CI, or documentation-only and the spec explicitly states no new unit tests, use the build and test commands from `docs/agents/coding-standards.md` `## Build & Test Commands` in place of the red → green loop and state why in the response. Either way, if the commands fail or `/tdd` exits still red, fix and re-run until green. If you cannot make it green, stop and ask.
+   - **Run `/tdd` — red first, then green.** Invoke the `/tdd` skill using the `skill` tool (`command: "invoke"`, `skill: "tdd"`) and run the full red → green loop. Do not write the fix or its tests outside that loop. If the ticket is build-system, CI, or documentation-only and the spec explicitly states no new unit tests, use the build and test commands from `docs/agents/coding-standards.md` `## Build & Test Commands` in place of the red → green loop and state why in the response. Either way, if the commands fail or `/tdd` exits still red, fix and re-run until green. If you cannot make it green, stop and ask.
    - Commit with a message that references the ticket. Default to one logical commit per ticket; use multiple commits only if the ticket has clearly separate logical steps and the user agrees. Include the parent spec reference in the first commit so the work traces back to the parent spec in the issue tracker.
    - For batches of more than one ticket, call `/review` on the ticket's own diff before starting the next ticket — `REVIEW_BASE` = `PRE_TICKET_SHA`, `SPEC_SOURCE` = the ticket body, `AXES` = `spec` — and resolve any spec gaps it returns. Skip it for a single-ticket build — the step-8 review covers the same diff.
    **Done when:** every ticket has a user-confirmed seam declaration, a green `/tdd` red-green loop (or documented build-only equivalent), passing build/test, a reference commit on the build branch, and — for multi-ticket batches — a per-ticket `/review` call whose `REVIEW_STATUS` permits proceeding.
 7. Run the build and test commands once more. If either fails, fix before proceeding.
    **Done when:** both commands exit successfully on the full branch.
-8. Call `/review` with `REVIEW_BASE` = `PRE_BUILD_SHA`, `SPEC_SOURCE` = the parent spec body, `AXES` = `both`. `/review` returns `REVIEW_STATUS` and `REVIEW_NOTES`.
-   **Done when:** `/review` has returned `REVIEW_STATUS` and `REVIEW_NOTES`.
+8. Invoke `/review` with `REVIEW_BASE` = `PRE_BUILD_SHA`, `SPEC_SOURCE` = the parent spec body, `AXES` = `both`. `/review` runs an adjudicated two-pass review-and-fix loop internally and returns a final `REVIEW_STATUS` plus the full `REVIEW_NOTES` that record every finding's disposition across all passes. Capture both exactly.
+   - If `REVIEW_STATUS` is `clean`, `resolved`, or `deferred`, proceed.
+   - If `REVIEW_STATUS` is `escalated`, stop and hand off to the user; the `REVIEW_NOTES` will include the follow-up issue numbers.
+   - If `REVIEW_STATUS` is `capped`, stop and ask the user how to proceed.
+   **Done when:** `/review` has completed and returned `clean`, `resolved`, or `deferred`, or the user has been consulted on `escalated`/`capped`.
 9. Act on `REVIEW_STATUS` per `/review`'s output contract.
    **Done when:** `REVIEW_STATUS` permits proceeding or the user has been consulted.
-10. Push and open a draft PR to `PARENT_BRANCH` per `docs/agents/pr-conventions.md` `## PR body`.
-    **Done when:** the branch is pushed and a draft PR is open.
+10. Push and open a draft PR to `PARENT_BRANCH` per `docs/agents/pr-conventions.md` `## PR body`. Include the final `REVIEW_NOTES` from the completed `/review` loop. Paste them verbatim under `### Review notes` and place any `deferred` or `escalated` items under `### Deferred and follow-up issues`. Do not summarize, paraphrase, or reduce the subagent blocks to verdict lines.
+    **Done when:** the branch is pushed and a draft PR is open with the full final `REVIEW_NOTES`.
 
 See [`REFERENCE.md`](REFERENCE.md) for examples and `docs/agents/pr-conventions.md` for branch naming and PR body.
