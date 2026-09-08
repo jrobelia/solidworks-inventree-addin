@@ -75,6 +75,25 @@ namespace SwInventreeAddin.UI
                 return answer == MessageDialogResult.Ok;
             };
 
+            _vm.ConfirmLinkMismatch = (docIpn, docRev, part) =>
+            {
+                var nl           = System.Environment.NewLine;
+                var docIpnLabel  = string.IsNullOrEmpty(docIpn)        ? "(blank)" : docIpn;
+                var docRevLabel  = string.IsNullOrEmpty(docRev)        ? "(blank)" : docRev;
+                var partIpnLabel = string.IsNullOrEmpty(part.Ipn)      ? "(blank)" : part.Ipn;
+                var partRevLabel = string.IsNullOrEmpty(part.Revision) ? "(blank)" : part.Revision;
+                var answer = MessageDialog.ShowOKCancel(
+                    SolidWorksWindowHandle.Get(),
+                    $"The InvenTree Part PK stamped on this document resolves to a part that disagrees with it:{nl}{nl}"
+                    + $"  This document      IPN {docIpnLabel}   Rev {docRevLabel}{nl}"
+                    + $"  InvenTree PK {part.Pk}   IPN {partIpnLabel}   Rev {partRevLabel}{nl}{nl}"
+                    + "Load the PK-addressed part anyway?" + nl + nl
+                    + "To fetch by IPN instead, clear the InvenTree Part PK Document Property and Fetch again.",
+                    "Link Mismatch",
+                    System.Windows.Forms.MessageBoxIcon.Warning);
+                return answer == MessageDialogResult.Ok;
+            };
+
             var view = new TaskPaneView { DataContext = _vm };
             var host = new ElementHost { Dock = DockStyle.Fill, Child = view };
             Controls.Add(host);
