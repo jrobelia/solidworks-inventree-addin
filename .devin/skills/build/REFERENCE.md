@@ -5,7 +5,7 @@
 - `/tdd` — red-green loop and seams.
 - `/codebase-design` — shared deep-module vocabulary and design-it-twice / deepening patterns; `docs/agents/coding-standards.md` `## Module Design` is the local source of truth and points here.
 - `/code-review` — two-axis (Standards / Spec) review (fallback when the custom subagent profiles below are absent).
-- `run_subagent` with profiles `code-review-standards` and `code-review-spec` — the preferred two-axis review when `.devin/agents/code-review-standards.md` and `.devin/agents/code-review-spec.md` exist.
+- `run_subagent` with profiles `review-standards` and `review-spec` — the preferred two-axis review when `.devin/agents/review-standards.md` and `.devin/agents/review-spec.md` exist.
 
 ## Context files
 
@@ -53,22 +53,22 @@ The two-axis review needs a fixed point and its source material up front. Use th
    - The full body of the parent spec and any child tickets being reviewed (for the Spec subagent).
    - Confirm `Exec(git diff)`, `Exec(git log)`, and `Read(**)` are pre-approved in the active Devin config.
 2. Check the diff size with `git diff <PRE_BUILD_SHA>...HEAD --stat`. If the diff exceeds ~500 changed lines, split the review into per-ticket or per-module passes.
-3. Determine whether the custom profiles exist at `.devin/agents/code-review-standards.md` and `.devin/agents/code-review-spec.md`.
+3. Determine whether the custom profiles exist at `.devin/agents/review-standards.md` and `.devin/agents/review-spec.md`.
 4. **Preferred: `run_subagent`.** If the profiles exist and `run_subagent` is available, run them in parallel in the background:
 
-   - **Standards subagent** (`profile: code-review-standards`, `is_background=true`):
-     - Pass `PRE_BUILD_SHA`.
-   - **Spec subagent** (`profile: code-review-spec`, `is_background=true`):
-     - Pass `PRE_BUILD_SHA` and the parent spec contents.
+   - **Standards subagent** (`profile: review-standards`, `is_background=true`):
+     - Pass `PRE_BUILD_SHA` as `REVIEW_BASE`.
+   - **Spec subagent** (`profile: review-spec`, `is_background=true`):
+     - Pass `PRE_BUILD_SHA` as `REVIEW_BASE`, and the parent spec contents.
 
    The subagent profiles contain the instructions to fetch the diff and log and to read the standards file; they should not ask for pasted `DIFF:` or `COMMITS:` blocks.
 5. **Fallback: Devin cloud child sessions.** If the profiles exist but `run_subagent` is unavailable (tool-denial, schema not loaded, etc.), run the two axes in parallel Devin cloud sessions via the `devin_session_create` MCP tool:
 
-   - Create each session with `devin_session_create`. The `prompt` must contain the full text of the matching `.devin/agents/code-review-*.md` profile followed by the pre-computed context blocks. Use a `title` like `"code-review-standards"` / `"code-review-spec"`. If the tool supports batch creation, pass `sessions: [{...}, {...}]` to create both at once.
+   - Create each session with `devin_session_create`. The `prompt` must contain the full text of the matching `.devin/agents/review-*.md` profile followed by the pre-computed context blocks. Use a `title` like `"review-standards"` / `"review-spec"`. If the tool supports batch creation, pass `sessions: [{...}, {...}]` to create both at once.
 
      Because child sessions may not share tool permissions, pre-compute and paste:
-     - **Standards:** `prompt` = full `code-review-standards.md` profile + `DIFF:` + `COMMITS:` + `STANDARDS:` (full contents of `docs/agents/coding-standards.md`). The profile already contains the `SMELLS:` baseline.
-     - **Spec:** `prompt` = full `code-review-spec.md` profile + `DIFF:` + `COMMITS:` + `SPEC:`
+     - **Standards:** `prompt` = full `review-standards.md` profile + `DIFF:` + `COMMITS:` + `STANDARDS:` (full contents of `docs/agents/coding-standards.md`). The profile already contains the `SMELLS:` baseline.
+     - **Spec:** `prompt` = full `review-spec.md` profile + `DIFF:` + `COMMITS:` + `SPEC:`
 
    - The returned `session_id` is bare; prefix it with `devin-` for all subsequent calls (e.g. `"devin-<session_id>"`).
    - Block until both sessions settle with `devin_session_gather`, passing `session_ids: ["devin-<id>", "devin-<id>"]`.
@@ -84,7 +84,7 @@ The two-axis review needs a fixed point and its source material up front. Use th
 For batches of more than one ticket, run a spec-axis check inside the step-6 loop so a misunderstood ticket cannot shape the tickets that build on it. It is intentionally cheap: one reviewer over one ticket's diff.
 
 1. Before the ticket's first commit, capture `PRE_TICKET_SHA` (`git rev-parse HEAD`).
-2. After the ticket's commit, dispatch the Spec axis against that range: `run_subagent` with profile `code-review-spec` (`is_background=true`), passing `PRE_TICKET_SHA` and the ticket body as `SPEC:`.
+2. After the ticket's commit, dispatch the Spec axis against that range: `run_subagent` with profile `review-spec` (`is_background=true`), passing `PRE_TICKET_SHA` as `REVIEW_BASE` and the ticket body as `SPEC:`.
 3. Verify each finding against the diff, fix genuine spec gaps, and re-run the build/test commands before starting the next ticket. Cosmetic or standards findings are not in scope here — they are the step-8 review's job.
 4. Skip this check for a single-ticket build; the step-8 review covers the same diff.
 

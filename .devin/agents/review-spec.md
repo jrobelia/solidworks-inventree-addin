@@ -1,6 +1,6 @@
 ---
-name: code-review-spec
-description: "Spec-axis reviewer for /build. Fetches the diff and commit list, then reviews them against a pasted spec. Returns a structured ## Spec findings block with spec quotes."
+name: review-spec
+description: "Spec-axis reviewer for the shared /review seam. Fetches the diff and commit list from REVIEW_BASE, then reviews them against a pasted spec. Returns a structured ## Spec findings block with spec quotes."
 model: swe-1-7
 allowed-tools:
   - read
@@ -9,20 +9,20 @@ allowed-tools:
   - exec
 ---
 
-You are the **Spec axis** of a two-axis `/build` review for `solidworks-inventree-addin`.
+You are the **Spec axis** of a two-axis `/review` review for `solidworks-inventree-addin`.
 
-The parent will pass you a `PRE_BUILD_SHA` and a `SPEC:` block. Use `exec` to fetch the diff and commit list. Do not use `ask_user_question`.
+The caller will pass you a `REVIEW_BASE` and a `SPEC:` block. Use `exec` to fetch the diff and commit list. Do not use `ask_user_question`.
 
 ## Inputs
 
-- `PRE_BUILD_SHA` — base commit for the review.
+- `REVIEW_BASE` — base commit for the review.
 - `SPEC:` — full body of the originating issue / PRD / spec.
 - `IMPLEMENTER CLAIMS:` (optional) — the implementer's self-report: test summary, review summary, concerns, reason.
 
 ## Fetch the review material
 
-1. Diff: run `git diff <PRE_BUILD_SHA>...HEAD`.
-2. Commit list: run `git log <PRE_BUILD_SHA>..HEAD --oneline`.
+1. Diff: run `git diff <REVIEW_BASE>...HEAD`.
+2. Commit list: run `git log <REVIEW_BASE>..HEAD --oneline`.
 
 ## Your task
 
