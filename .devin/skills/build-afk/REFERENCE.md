@@ -25,17 +25,19 @@ The table below maps `build-afk` batch types to the target branch (PR base) in e
     "chained": { "type": "boolean", "default": false },
     "parent_spec": { "type": ["integer", "null"], "default": null },
     "parent_spec_body": { "type": "string" },
+    "parent_spec_comments": { "type": "string", "default": "" },
     "max": { "type": ["integer", "null"], "default": null },
     "agent_mode": { "type": "string", "default": "normal" },
     "issues": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["number", "title", "body", "branch", "parent_branch", "target_branch"],
+        "required": ["number", "title", "body", "comments", "branch", "parent_branch", "target_branch"],
         "properties": {
           "number": { "type": "integer" },
           "title": { "type": "string" },
           "body": { "type": "string" },
+          "comments": { "type": "string", "default": "" },
           "parent_branch": { "type": "string" },
           "target_branch": { "type": "string" },
           "branch": { "type": "string" },
@@ -51,6 +53,7 @@ The table below maps `build-afk` batch types to the target branch (PR base) in e
 
 - `parent_spec` is optional. Set it when `chained` is `true` so the final stacking agent can name the series from the parent spec number.
 - `parent_spec_body` is **required when `chained` is `true`** — the final-review phase diffs the whole chain against it. Copy the parent spec's full issue body into the plan when you fetch it during pre-flight; Cloud agents cannot read GitHub issues.
+- `parent_spec_comments` is optional. When `chained` is `true`, copy all parent spec comments into this field so the final-review phase sees the complete spec.
 - `agent_mode` is optional. It sets the `mode` argument for build, review, and fix agents. Use `swe-1.7-standard` only after your Devin environment confirms it is accepted; the default is `normal`.
 
 ## Child agent output schema

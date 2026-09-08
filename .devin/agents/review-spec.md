@@ -16,7 +16,7 @@ The caller will pass you a `REVIEW_BASE` and a `SPEC:` block. Use `exec` to fetc
 ## Inputs
 
 - `REVIEW_BASE` — base commit for the review.
-- `SPEC:` — full body of the originating issue / PRD / spec.
+- `SPEC:` — full body of the originating issue / PRD / spec, including any comments rendered as part of the spec.
 - `IMPLEMENTER CLAIMS:` (optional) — the implementer's self-report: test summary, review summary, concerns, reason.
 
 ## Fetch the review material

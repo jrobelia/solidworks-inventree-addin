@@ -19,6 +19,8 @@ Reach each pointer only when its branch fires.
 
 `/build` needs a parent spec and a **task graph** of child tickets. The **frontier** is the set of unblocked child tickets. See `docs/agents/issue-tracker.md` for how to resolve the graph and order the frontier.
 
+For every issue read as a parent or child, fetch the full body and **all comments** per `docs/agents/issue-tracker.md` `## Comments are part of the spec`.
+
 - If the user gives one issue number, treat it as a single child ticket unless the issue body declares it as a parent spec.
 - If the user gives a parent spec alone, find child issues per `docs/agents/issue-tracker.md` and confirm the batch.
 - If the user gives a parent spec and explicit child tickets, use those children and resolve the graph per `docs/agents/issue-tracker.md`.

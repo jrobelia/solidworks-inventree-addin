@@ -50,6 +50,7 @@ def _issue(n):
         "number": n,
         "title": f"ticket {n}",
         "body": f"body for ticket {n}",
+        "comments": f"comments for ticket {n}",
         "branch": f"build/issue-{n}",
         "parent_branch": "feature/x",
         "target_branch": "feature/x",
@@ -148,17 +149,19 @@ def _review_mapping(wf):
         "{{ISSUE_NUMBER}}": "5",
         "{{ISSUE_TITLE}}": "t",
         "{{ISSUE_BODY}}": "the spec text",
+        "{{ISSUE_COMMENTS}}": "a clarifying comment",
         "{{DIFF}}": "d",
         "{{COMMITS}}": "c",
         "{{IMPLEMENTER_CLAIMS}}": "test_summary: 539 passed\nconcerns:\n- flaky timing",
     }
 
 
-def test_spec_review_prompt_carries_implementer_claims(wf):
+def test_spec_review_prompt_carries_implementer_claims_and_comments(wf):
     prompt = wf._build_reviewer_prompt("spec", _review_mapping(wf))
     assert "IMPLEMENTER CLAIMS" in prompt
     assert "flaky timing" in prompt
     assert "the spec text" in prompt
+    assert "a clarifying comment" in prompt
 
 
 def test_adjudicator_prompt_orders_fix_instructions(wf):
@@ -169,6 +172,29 @@ def test_adjudicator_prompt_orders_fix_instructions(wf):
 
 def test_adjudicator_receives_implementer_claims(wf):
     assert "{{IMPLEMENTER_CLAIMS}}" in wf.ADJUDICATE_PROMPT
+
+
+def test_child_prompt_carries_comments(wf):
+    issue = _issue(7)
+    issue["comments"] = "clarifying comment"
+    prompt = wf._build_child_prompt(
+        "Issue body:\n{{issue_body}}\n\nIssue comments:\n{{issue_comments}}",
+        issue,
+        "github.com/example/repo",
+        "feature/x",
+        "",
+        Path("C:/devin/run"),
+        "normal",
+    )
+    assert "clarifying comment" in prompt
+
+
+def test_hard_bug_signals_detected_in_comments(wf):
+    issue = _issue(8)
+    issue["comments"] = "this is flaky on CI"
+    has_signals, signals = wf._hard_bug_signals(issue)
+    assert has_signals
+    assert "flaky" in signals
 
 
 # -- review summary -----------------------------------------------------------

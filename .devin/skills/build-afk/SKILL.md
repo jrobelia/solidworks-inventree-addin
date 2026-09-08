@@ -51,26 +51,26 @@ With no arguments, the orchestrator lists all matching `ready-for-agent` issues 
 
 3. Resolve the issue list.
    - For no args: list open `ready-for-agent` issues and stop for user confirmation.
-   - For `--all`/`--max`: fetch open `ready-for-agent` issues, limit to `max` if provided, and continue.
-   - For explicit numbers: fetch each issue body and labels.
-   - For `spec #N`: fetch the spec and find children with `## Parent #N`; order children by resolving `## Blocked by` references (blockers first).
+   - For `--all`/`--max`: fetch open `ready-for-agent` issues with body, comments, and labels, limit to `max` if provided, and continue.
+   - For explicit numbers: fetch each issue body, **all comments**, and labels.
+   - For `spec #N`: fetch the spec body, **all comments**, and labels; copy them into `parent_spec_body` and `parent_spec_comments` in `PLAN.json`. Then find children with `## Parent #N`; order children by resolving `## Blocked by` references (blockers first).
 
-4. Fetch the full body **and labels** for every remaining issue. The labels help the orchestrator decide whether a `bug` ticket is a hard-bug signal or a routine already-triaged bug.
+4. Fetch the full body, **all comments**, and labels for every remaining issue per `docs/agents/issue-tracker.md` `## Comments are part of the spec`. Render all comments as a markdown block in the issue's `comments` field.
 
 5. Inline triage the `PLAN.json` deterministically:
    - `parent_branch` exists and is not `main`/`master`.
    - `GITHUB_TOKEN` is set.
    - `max`, if present, is a positive integer.
-   - `issues` is a non-empty list and each issue has `number`, `title`, `body`, `branch`, `parent_branch`, and `target_branch`.
+   - `issues` is a non-empty list and each issue has `number`, `title`, `body`, `comments` (rendered markdown of all issue comments), `branch`, `parent_branch`, and `target_branch`.
    - No `lite` triage child is spawned.
 
-6. Detect hard-bug signals. If the issue title, body, or labels contain phrases like `intermittent`, `flaky`, `race`, `no deterministic repro`, `root cause unknown`, or `performance regression`, the child agent invokes `/diagnosing-bugs` first. It can return: a fix + regression test (proceed), a missing or shallow seam (return `BLOCKED` with `blocked_kind: context`), or no tight red-capable loop (return `BLOCKED` with `blocked_kind: context`). Routine `ready-for-agent` bugs proceed through the normal TDD/review pipeline.
+6. Detect hard-bug signals. If the issue title, body, comments, or labels contain phrases like `intermittent`, `flaky`, `race`, `no deterministic repro`, `root cause unknown`, or `performance regression`, the child agent invokes `/diagnosing-bugs` first. It can return: a fix + regression test (proceed), a missing or shallow seam (return `BLOCKED` with `blocked_kind: context`), or no tight red-capable loop (return `BLOCKED` with `blocked_kind: context`). Routine `ready-for-agent` bugs proceed through the normal TDD/review pipeline.
 
 ## Plan and branch naming
 
 For each issue, decide if the batch is **chained** or **independent**. Branch names follow `docs/agents/pr-conventions.md` `## Branch names`; see `build-afk/REFERENCE.md` for the worktree and PR-base table.
 
-- **Chained** when the user invoked `spec #N` and the children have `## Blocked by` ordering, or when the user explicitly requested chained PRs. Each child PR targets the previous child's branch. Add `parent_spec` to `PLAN.json` so the final stack agent can name the series.
+- **Chained** when the user invoked `spec #N` and the children have `## Blocked by` ordering, or when the user explicitly requested chained PRs. Each child PR targets the previous child's branch. Add `parent_spec` to `PLAN.json` so the final stack agent can name the series. `parent_spec_body` must contain the spec body and `parent_spec_comments` must contain all spec comments.
 - **Independent** by default. Each PR targets `PARENT_BRANCH`.
 
 See `REFERENCE.md` for the full `PLAN.json`, child output, and `RESULTS.json` schemas.
