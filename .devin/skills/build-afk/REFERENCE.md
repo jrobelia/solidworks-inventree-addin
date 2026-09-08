@@ -2,13 +2,15 @@
 
 ## Branch naming
 
-| Batch type | Branch pattern | PR base |
-| --- | --- | --- |
-| Single issue | `build/issue-<number>` | `PARENT_BRANCH` |
-| Independent batch | `build/issue-<number>` per ticket | `PARENT_BRANCH` |
-| Chained spec | `build/spec-<parent>-<child>` per child | previous child branch, or `PARENT_BRANCH` for the first |
+See `docs/agents/pr-conventions.md` `## Branch names` for the branch patterns and collision suffix rule.
 
-If the branch name `build/issue-<number>` or `build/spec-<parent>-<child>` already exists locally or remotely, the child agent should append a `-<N>` suffix (starting at `2`) until a free name is found, and use that name for both the worktree and the PR.
+The table below maps `build-afk` batch types to the target branch (PR base) in each worktree:
+
+| Batch type | PR base |
+| --- | --- |
+| Single issue | `PARENT_BRANCH` |
+| Independent batch | `PARENT_BRANCH` |
+| Chained spec | previous child branch, or `PARENT_BRANCH` for the first |
 
 ## PLAN.json schema
 
@@ -137,14 +139,7 @@ The `final_review` field is present only when the input was chained and every ch
 
 ## Build, format, and test commands
 
-Use the commands from `docs/agents/coding-standards.md` `## Build & Test Commands`:
-
-```powershell
-dotnet build "SwInventreeAddin/SwInventreeAddin.csproj" --disable-build-servers
-dotnet test "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj" --disable-build-servers
-```
-
-If `SwInventreeAddin.dll` is locked by SolidWorks, the test command is the safe compile path because it writes to `bin_unit_test\net48`.
+Run the build and test commands from `docs/agents/coding-standards.md` `## Build & Test Commands`.
 
 `dotnet format` runs before the first commit and again before the PR. Target only changed C# files:
 
@@ -228,6 +223,7 @@ See `docs/agents/pr-conventions.md` for branch naming, draft-PR rules, and the c
 build-afk: <concise title>
 
 Closes #{issue_number}
+Part of #{parent_spec}  <!-- include when this is a child of a parent spec -->
 
 ## Summary
 <one paragraph>
@@ -236,9 +232,10 @@ Closes #{issue_number}
 - [ ] <criterion>
 
 ## Build, format, and test
+
+Run the build and test commands from `docs/agents/coding-standards.md` `## Build & Test Commands`. Before committing, run `dotnet format` on changed C# files:
+
 ```powershell
-dotnet build "SwInventreeAddin/SwInventreeAddin.csproj" --disable-build-servers
-dotnet test "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj" --disable-build-servers
 $files = (git diff --name-only --diff-filter=AM HEAD) + (git ls-files --others --exclude-standard) |
          Where-Object { $_ -like '*.cs' }
 if ($files) {
@@ -257,6 +254,10 @@ if ($files) {
 <only if something was intentionally skipped>
 
 <screenshots if applicable>
+
+Run /qa on this branch. /qa will take the PR out of draft if QA passes and ask whether to merge.
+
+<!-- If this PR targets a milestone branch, GitHub will not auto-close the issue on merge. Apply qa-verified/done labels and manually close the issue. -->
 ```
 
 ## Fallback when Dynamic Workflows are unavailable

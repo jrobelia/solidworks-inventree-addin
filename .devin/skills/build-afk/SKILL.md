@@ -64,16 +64,14 @@ With no arguments, the orchestrator lists all matching `ready-for-agent` issues 
    - `issues` is a non-empty list and each issue has `number`, `title`, `body`, `branch`, `parent_branch`, and `target_branch`.
    - No `lite` triage child is spawned.
 
-6. Detect hard-bug signals. If the issue title, body, or labels contain phrases like `intermittent`, `flaky`, `race`, `no deterministic repro`, `root cause unknown`, `performance regression`, etc., the build agent will attempt to build a tight, red-capable repro and run `/diagnosing-bugs` before fixing. Routine `ready-for-agent` bugs proceed through the normal TDD/review pipeline.
+6. Detect hard-bug signals. If the issue title, body, or labels contain phrases like `intermittent`, `flaky`, `race`, `no deterministic repro`, `root cause unknown`, or `performance regression`, the child agent invokes `/diagnosing-bugs` first. It can return: a fix + regression test (proceed), a missing or shallow seam (return `BLOCKED` with `blocked_kind: context`), or no tight red-capable loop (return `BLOCKED` with `blocked_kind: context`). Routine `ready-for-agent` bugs proceed through the normal TDD/review pipeline.
 
 ## Plan and branch naming
 
-For each issue, decide if the batch is **chained** or **independent**.
+For each issue, decide if the batch is **chained** or **independent**. Branch names follow `docs/agents/pr-conventions.md` `## Branch names`; see `build-afk/REFERENCE.md` for the worktree and PR-base table.
 
-- **Chained** when the user invoked `spec #N` and the children have `## Blocked by` ordering, or when the user explicitly requested chained PRs. Each child PR targets the previous child's branch. Branch names: `build/spec-{parent}-{child1}`, `build/spec-{parent}-{child2}`, etc. Add `parent_spec` to `PLAN.json` so the final stack agent can name the series.
-- **Independent** by default. Each PR targets `PARENT_BRANCH`. Branch names: `build/issue-{number}`.
-
-If the branch name `build/issue-{number}` or `build/spec-{parent}-{child}` already exists locally or remotely, the child agent should append a `-{N}` suffix (starting at `2`) until a free name is found, and use that name for both the worktree and the PR.
+- **Chained** when the user invoked `spec #N` and the children have `## Blocked by` ordering, or when the user explicitly requested chained PRs. Each child PR targets the previous child's branch. Add `parent_spec` to `PLAN.json` so the final stack agent can name the series.
+- **Independent** by default. Each PR targets `PARENT_BRANCH`.
 
 See `REFERENCE.md` for the full `PLAN.json`, child output, and `RESULTS.json` schemas.
 

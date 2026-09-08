@@ -38,6 +38,11 @@ packages/
 Thumbs.db
 Desktop.ini
 
+# --- Python cache ---
+__pycache__/
+*.pyc
+*.pyo
+
 # --- VS Code ---
 .vscode/
 

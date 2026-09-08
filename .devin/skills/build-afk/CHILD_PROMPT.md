@@ -26,16 +26,17 @@ Issue body:
 2. If `{{branch}}` already exists locally or remotely, append `-2`, `-3`, ... until a free name is found. Use that name for the worktree and the PR, and report the actual branch name in your return value.
 3. Create a git worktree for this ticket at the worktree path from `{{target_branch}}`.
    - If the directory already exists, reuse it only if it is on `{{target_branch}}`; otherwise remove it and recreate.
-4. Inside the worktree, configure git to use the same remote and credentials as the main clone. `GITHUB_TOKEN` is available for HTTPS operations. Use direct git commands and Devin git builtins (`git_create_pr`, `git_view_pr`, `git_pr_checks`). `gh` is not installed in Cloud sessions.
+4. Inside the worktree, configure git to use the same remote and credentials as the main clone. `GITHUB_TOKEN` is available for HTTPS operations. Use direct git commands and Devin git builtins (`git_create_pr`, `git_view_pr`, `git_pr_checks`). `gh` is not installed in Cloud sessions; translate any `gh` examples in `docs/agents/issue-tracker.md` to `https://api.github.com` calls with `GITHUB_TOKEN`.
 5. Read `docs/agents/coding-standards.md` and `docs/agents/issue-tracker.md`.
 
 ## Hard-bug routing
 
 If `{{is_hard_bug}}` is `true`:
 
-1. Before writing a fix, attempt to build a **tight, red-capable, deterministic repro** at a public seam.
-2. If you cannot build one, return `BLOCKED` with the hard-bug signals and a summary of the repro attempts.
-3. If you can build one, run `/diagnosing-bugs` to find the root cause, then fix it and continue with the design and TDD steps below.
+1. **Invoke `/diagnosing-bugs` first** with the issue body and labels. It owns the full feedback-loop → root-cause → fix + regression-test loop.
+2. If `/diagnosing-bugs` returns a **fix + regression test** from a correct seam, apply that result and continue with the format/build/test/commit steps below.
+3. If `/diagnosing-bugs` reports a **missing or shallow seam**, do not patch around it. Return `BLOCKED` with `blocked_kind: context` and reason `needs /improve-codebase-architecture before this bug can be fixed at a real seam`.
+4. If `/diagnosing-bugs` cannot build a tight red-capable loop, return `BLOCKED` with `blocked_kind: context` and list the three unblocking asks: repro environment access, redacted captured artifacts, or permission to instrument.
 
 If `{{is_hard_bug}}` is `false`, proceed directly to design and TDD.
 
@@ -43,9 +44,8 @@ If `{{is_hard_bug}}` is `false`, proceed directly to design and TDD.
 
 1. Read the issue body carefully. If it references a parent spec, ADR, or PR, read those for context.
 2. Propose a **public seam** for the change.
-   - Read `docs/agents/coding-standards.md` `## Module Design` and consult the `/codebase-design` skill.
-   - State the public interface, the production and test adapters that will sit at the seam, and the complexity the module hides from callers.
-   - Run the **deletion test**: if the module were removed, would its complexity reappear across callers?
+   - Read `docs/agents/coding-standards.md` `## Module Design` and consult the `/codebase-design` skill it points to.
+   - State the **seam declaration** required by `## Module Design`: the public interface, the production and test adapters, and the deletion-test result showing why the module is deep enough to exist.
    - If the interface is nearly as complex as the implementation, the seam is shallow. Go back and find a deeper cut.
    - If two or more seams are equally good, return `BLOCKED` with the candidates and your rationale.
 3. Run the `/tdd` red-green loop:
@@ -56,18 +56,11 @@ If `{{is_hard_bug}}` is `false`, proceed directly to design and TDD.
 
 ## Format, build, test, and commit
 
-Run the build and test commands from `docs/agents/coding-standards.md` `## Build & Test Commands`:
-
-```powershell
-dotnet build "SwInventreeAddin/SwInventreeAddin.csproj" --disable-build-servers
-dotnet test "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj" --disable-build-servers
-```
-
-If the add-in `bin\Debug\net48\SwInventreeAddin.dll` is locked by SolidWorks and the build fails, use the test command as the primary compile loop; it builds the same code into `bin_unit_test\net48`.
+Run the build and test commands from `docs/agents/coding-standards.md` `## Build & Test Commands`.
 
 If either build or test fails, fix the failure and re-run. If you cannot make them green, return `BLOCKED` with the failure output as the reason.
 
-Before your first commit, run `dotnet format` on the changed C# files:
+Before your first commit, run `dotnet format` on changed C# files:
 
 ```powershell
 $files = (git diff --name-only --diff-filter=AM HEAD) + (git ls-files --others --exclude-standard) |
@@ -101,16 +94,19 @@ If the diff touches files under `SwInventreeAddin/UI/`, any `*ViewModel*.cs` fil
 3. Run `dotnet format` again with the same `--include` list as before the first commit.
 4. If `dotnet format` changed any files, re-run build and test, then amend the commit (or add a fixup commit) and push the updated branch.
 5. Push your branch to origin.
-6. Create a **draft PR** using `git_create_pr(repo="{{repo}}", base_branch="{{target_branch}}", head_branch="<actual-branch>", title=..., body=..., draft=True)`.
+6. Create a **draft PR** using `git_create_pr(repo="{{repo}}", base_branch="{{target_branch}}", head_branch="<actual-branch>", title=..., body=..., draft=True)`. Follow `docs/agents/pr-conventions.md` `## PR body`, with the build-afk-specific additions below.
    - Title prefix: `build-afk:` followed by a concise summary.
    - Body must include:
      - `Closes #{{issue_number}}`
+     - `Part of #<parent_spec>` if this ticket is a child of a parent spec
      - A summary of the change and the acceptance criteria addressed
      - The exact build, test, and `dotnet format` commands that were run and their result
      - Any changed GUI flows or edge cases
      - A `### Review notes` section with any findings that were auto-fixed or deferred
      - A `### Deferred and follow-up issues` section if anything was intentionally skipped or escalated
      - Screenshot file paths in markdown image syntax if screenshots were captured
+     - The `/qa` handoff line from `docs/agents/pr-conventions.md` `## PR body`
+     - The milestone-branch auto-close caveat from `docs/agents/pr-conventions.md` `## Milestone branch auto-close` if the PR targets a milestone branch
 
 ## Return value
 

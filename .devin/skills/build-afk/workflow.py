@@ -74,6 +74,7 @@ ADJUDICATION_SCHEMA = {
             },
         },
         "fix_instructions": {"type": "string"},
+        "blocked_kind": {"type": "string", "enum": list(BLOCKED_KINDS)},
         "reason": {"type": "string"},
     },
     "required": ["status", "findings", "fix_instructions", "reason"],
@@ -96,18 +97,12 @@ HARD_BUG_SIGNALS = [
     "non-deterministic",
     "race",
     "deadlock",
-    "cross-seam",
-    "cross seam",
     "no deterministic repro",
     "not deterministic",
     "root cause unknown",
-    "root-cause",
     "performance regression",
-    "performance issue",
-    "slow",
-    "hang",
-    "hangs",
-    "timeout",
+    "cross-seam",
+    "cross seam",
 ]
 
 STANDARDS_REVIEWER_PROMPT = """You are the Standards axis of a two-axis /build-afk review for {{REPO}}.
@@ -200,6 +195,7 @@ Return **only** a JSON object matching this schema:
     {"axis": "Standards" | "Spec", "text": "<the original finding>", "classification": "auto-fix" | "ignore" | "BLOCKED", "reason": "<why this classification>"}
   ],
   "fix_instructions": "<concrete ordered list if FIX; empty otherwise>",
+  "blocked_kind": "<context | capability | size | ambiguity — required when status is BLOCKED>",
   "reason": "<overall explanation>"
 }
 ```
@@ -216,7 +212,7 @@ PR URL: `{{PR_URL}}`
 The adjudicator's instructions (ordered: spec gaps and blocking findings first, then standards fixes, then cosmetic items):
 {{FIX_INSTRUCTIONS}}
 
-Apply the fixes in the given order in the worktree. Do not change the PR base. Keep the worktree in place. Re-run the build and test commands once after the pass, not after each item.
+Apply the fixes in the given order in the worktree. Do not change the PR base. Keep the worktree in place. Re-run the build and test commands once after the pass, not after each item, using `docs/agents/coding-standards.md` `## Build & Test Commands`.
 
 After fixing, run `dotnet format` on changed C# files:
 ```powershell
@@ -227,14 +223,6 @@ if ($files) {
     dotnet format "Solidworks Inventree Add-In.sln" @include
 }
 ```
-
-Then run the build and test commands:
-```powershell
-dotnet build "SwInventreeAddin/SwInventreeAddin.csproj" --disable-build-servers
-dotnet test "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj" --disable-build-servers
-```
-
-If the add-in `bin\Debug\net48\SwInventreeAddin.dll` is locked by SolidWorks, use the test command as the primary compile loop.
 
 Push the updated branch. Return **only** a JSON object matching the build-afk child schema:
 ```json
@@ -750,6 +738,7 @@ async def _process_issue(template, repo, issue, previous_result, chained, run_di
 
     if adjudication["status"] == "BLOCKED":
         build_result["status"] = "BLOCKED"
+        build_result["blocked_kind"] = adjudication.get("blocked_kind", "ambiguity")
         build_result["reason"] = f"Review blocked: {adjudication['reason']}"
         build_result["review_summary"] = _summarize_adjudication(adjudication)
         _remove_worktree(build_result.get("worktree_path"))
@@ -774,8 +763,10 @@ async def _process_issue(template, repo, issue, previous_result, chained, run_di
         if adjudication_fix["status"] in ("FIX", "BLOCKED"):
             fix_result["status"] = "BLOCKED"
             if adjudication_fix["status"] == "FIX":
+                fix_result["blocked_kind"] = "capability"
                 fix_result["reason"] = f"Review-fix loop did not converge after two passes: {adjudication_fix['reason']}"
             else:
+                fix_result["blocked_kind"] = adjudication_fix.get("blocked_kind", "ambiguity")
                 fix_result["reason"] = f"Re-review blocked: {adjudication_fix['reason']}"
             fix_result["review_summary"] = (
                 f"Fixed: {first_pass_summary} | Re-review: {_summarize_adjudication(adjudication_fix)}"
@@ -912,6 +903,7 @@ async def _run_final_review(plan, results, repo, parent_branch, run_dir, agent_m
         "report": report,
         "reason": adjudication.get("reason", ""),
         "findings_summary": _summarize_adjudication(adjudication),
+        "blocked_kind": adjudication.get("blocked_kind") if status == "BLOCKED" else None,
     }
 
 

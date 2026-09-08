@@ -5,13 +5,15 @@ This doc owns the branch, PR body, and PR lifecycle conventions that `/build`, `
 ## Branch names
 
 - Single build ticket: `build/issue-<number>`
-- Batch build (parent + children): `build/spec-<parent>-<child>-<child>-...` (e.g. `build/spec-44-45-46-47`)
+- Batch build (parent + children, one branch for all): `build/spec-<parent>-<child>-<child>-...` (e.g. `build/spec-44-45-46-47`)
   - The first number is the parent spec; the rest are the child tickets in frontier order.
+- Chained build-afk batch (one branch per child): `build/spec-<parent>-<child>` per child
+  - Each child PR targets the previous child branch; the first targets `PARENT_BRANCH`.
 - Fix: `fix/issue-<number>`
 - General agent work (git skill fallback): `devin/<issue-or-task-slug>`
 - If a name already exists, append or increment a trailing `-<N>` suffix until free.
 
-The branch is always cut from the branch the skill was invoked on (the `PARENT_BRANCH` in `/build` and `/fix`).
+The branch is always cut from the branch the skill was invoked on (the `PARENT_BRANCH` in `/build` and `/fix`), or from the previous child branch in a chained `build-afk` run.
 
 ## When to open a PR vs. update one
 

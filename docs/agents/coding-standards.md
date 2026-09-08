@@ -57,6 +57,7 @@ Rules:
 - Each test verifies one logical assertion using the NUnit constraint model: `Assert.That(x, Is.EqualTo(y))` — never the classic `Assert.AreEqual`.
 - Tests must not depend on each other or rely on execution order.
 - ViewModels must be constructable in tests without STA threads, WinForms, or WPF controls.
+- Live-window tests that `Show()` a real window must keep it off every monitor via `HiddenTestWindow`. Park the owner with `CreateOwnerForm()` and assert the dialog rect stays off-screen with `IsOnScreen`. Never hide with `Opacity` (it stops rendering and leaves an unpainted black window) or with a maximized on-screen owner (it snaps back onto a monitor).
 - Use `[SetUp]` to construct stubs; use a private factory method (e.g. `CreateVm(...)`) to construct the subject under test.
 
 ---
@@ -141,4 +142,5 @@ For the shared vocabulary, design-it-twice patterns, and deepening guidance, con
 - Missing locality: business logic or state duplicated across callers instead of living in a deep module.
 - Hypothetical seams: a new cross-layer dependency with an interface but no `Stub*` test adapter.
 - Tests that bypass the seam and exercise internal helpers rather than the module's public interface.
+- Live-window tests missing the `HiddenTestWindow` off-screen guard.
 - New modules or seams introduced before the code shows a real need for them (YAGNI / over-engineering).
