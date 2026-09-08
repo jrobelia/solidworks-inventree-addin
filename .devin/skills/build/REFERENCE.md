@@ -4,14 +4,12 @@
 
 - `/tdd` — red-green loop and seams.
 - `/codebase-design` — shared deep-module vocabulary and design-it-twice / deepening patterns; `docs/agents/coding-standards.md` `## Module Design` is the local source of truth and points here.
-- `/code-review` — two-axis (Standards / Spec) review (fallback when the custom subagent profiles below are absent).
-- `run_subagent` with profiles `review-standards` and `review-spec` — the preferred two-axis review when `.devin/agents/review-standards.md` and `.devin/agents/review-spec.md` exist.
+- `/review` — the shared two-axis (Standards / Spec) review-and-fix loop; `/build` calls it for the per-ticket spec check and the final review.
 
 ## Context files
 
 - `docs/agents/issue-tracker.md` — GitHub conventions and parent/child issue conventions.
 - `docs/agents/coding-standards.md` — build/test commands, repo standards, and the deep-module design vocabulary in `## Module Design`.
-- `docs/agents/code-review-known-issues.md` — environment notes and fallback triggers for the two-axis review.
 - `CONTEXT.md` / `docs/agents/domain.md` — domain vocabulary.
 
 ## Design vocabulary
@@ -44,63 +42,21 @@ Order child tickets by dependency per `docs/agents/issue-tracker.md`.
 
 Run the commands from `docs/agents/coding-standards.md` before every commit, after any review fix, and once more before opening the PR. If `dotnet build "SwInventreeAddin/SwInventreeAddin.csproj"` fails on the final copy to `bin\Debug\net48\SwInventreeAddin.dll` because SolidWorks has it locked, use `dotnet test "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj" --disable-build-servers` as the primary loop. It compiles the same add-in code into `bin_unit_test` and never touches the locked `bin\Debug` assembly.
 
-## Code review invocation
+## Review calls
 
-The two-axis review needs a fixed point and its source material up front. Use the paths below in order: `run_subagent` is preferred, the Devin cloud child-session fallback covers environments where `run_subagent` is unavailable, and the in-session `/code-review` skill is the last resort.
+`/build` delegates review to `/review` (`.devin/skills/review/SKILL.md`); dispatch mechanics, the adjudication rubric, the re-review rule, and the two-pass cap live there. `/build` supplies the scope and acts on the status.
 
-1. Prepare:
-   - `PRE_BUILD_SHA` — the commit the build branch started from.
-   - The full body of the parent spec and any child tickets being reviewed (for the Spec subagent).
-   - Confirm `Exec(git diff)`, `Exec(git log)`, and `Read(**)` are pre-approved in the active Devin config.
-2. Check the diff size with `git diff <PRE_BUILD_SHA>...HEAD --stat`. If the diff exceeds ~500 changed lines, split the review into per-ticket or per-module passes.
-3. Determine whether the custom profiles exist at `.devin/agents/review-standards.md` and `.devin/agents/review-spec.md`.
-4. **Preferred: `run_subagent`.** If the profiles exist and `run_subagent` is available, run them in parallel in the background:
+Two calls per build:
 
-   - **Standards subagent** (`profile: review-standards`, `is_background=true`):
-     - Pass `PRE_BUILD_SHA` as `REVIEW_BASE`.
-   - **Spec subagent** (`profile: review-spec`, `is_background=true`):
-     - Pass `PRE_BUILD_SHA` as `REVIEW_BASE`, and the parent spec contents.
+1. **Per-ticket spec check** — inside the step-6 loop, multi-ticket batches only. After the ticket's commit, call `/review` with `REVIEW_BASE` = `PRE_TICKET_SHA` (captured before the ticket's first commit), `SPEC_SOURCE` = the ticket body, `AXES` = `spec`. Resolve spec gaps it returns before starting the next ticket. Skip for a single-ticket build — the final review covers the same diff.
+2. **Final review** — step 8. Call `/review` with `REVIEW_BASE` = `PRE_BUILD_SHA`, `SPEC_SOURCE` = the parent spec body, `AXES` = `both`.
 
-   The subagent profiles contain the instructions to fetch the diff and log and to read the standards file; they should not ask for pasted `DIFF:` or `COMMITS:` blocks.
-5. **Fallback: Devin cloud child sessions.** If the profiles exist but `run_subagent` is unavailable (tool-denial, schema not loaded, etc.), run the two axes in parallel Devin cloud sessions via the `devin_session_create` MCP tool:
+### Acting on REVIEW_STATUS
 
-   - Create each session with `devin_session_create`. The `prompt` must contain the full text of the matching `.devin/agents/review-*.md` profile followed by the pre-computed context blocks. Use a `title` like `"review-standards"` / `"review-spec"`. If the tool supports batch creation, pass `sessions: [{...}, {...}]` to create both at once.
-
-     Because child sessions may not share tool permissions, pre-compute and paste:
-     - **Standards:** `prompt` = full `review-standards.md` profile + `DIFF:` + `COMMITS:` + `STANDARDS:` (full contents of `docs/agents/coding-standards.md`). The profile already contains the `SMELLS:` baseline.
-     - **Spec:** `prompt` = full `review-spec.md` profile + `DIFF:` + `COMMITS:` + `SPEC:`
-
-   - The returned `session_id` is bare; prefix it with `devin-` for all subsequent calls (e.g. `"devin-<session_id>"`).
-   - Block until both sessions settle with `devin_session_gather`, passing `session_ids: ["devin-<id>", "devin-<id>"]`.
-   - Read the final output or messages from each session and extract the `## Standards` or `## Spec` block.
-   - If a session stalls, nudge it with `devin_session_interact` (`action: "message"`) or read its messages with `devin_session_interact` (`action: "get_messages"`) or `devin_session_events`.
-   - Do **not** use `file:///C:/...` URIs; child sessions cannot resolve Windows file URIs.
-6. **Fallback: `/code-review`.** If the profiles are missing, or both parallel methods fail, use the existing `/code-review` path (or `subagent_general` in the foreground per `docs/agents/code-review-known-issues.md`).
-
-7. Parse the responses for `## Standards` and `## Spec` headings and translate each finding's severity into the RED / YELLOW / GREEN classification in `## Review classification`.
-
-## Per-ticket spec check
-
-For batches of more than one ticket, run a spec-axis check inside the step-6 loop so a misunderstood ticket cannot shape the tickets that build on it. It is intentionally cheap: one reviewer over one ticket's diff.
-
-1. Before the ticket's first commit, capture `PRE_TICKET_SHA` (`git rev-parse HEAD`).
-2. After the ticket's commit, dispatch the Spec axis against that range: `run_subagent` with profile `review-spec` (`is_background=true`), passing `PRE_TICKET_SHA` as `REVIEW_BASE` and the ticket body as `SPEC:`.
-3. Verify each finding against the diff, fix genuine spec gaps, and re-run the build/test commands before starting the next ticket. Cosmetic or standards findings are not in scope here — they are the step-8 review's job.
-4. Skip this check for a single-ticket build; the step-8 review covers the same diff.
-
-## Review classification
-
-`/code-review` returns separate **Standards** and **Spec** findings. Classify each finding within its original axis; keep the two lists separate.
-
-For each finding:
-
-1. **Verify it against the code.** Subagent findings are opinions, not tasks. If the finding is factually wrong or contradicts the spec, skip it.
-2. **Classify within its axis** as **RED / YELLOW / GREEN**.
-   - **RED** — a hard spec gap (Spec) or a documented hard-standards violation (Standards). Fix it if the fix is safe and small. If the fix is too large or risky to complete in the session, create a follow-up issue, link it as a blocking dependency on the PR, and stop without merging.
-   - **YELLOW** — a real quality or partial-spec issue. Propose a fix; ask the user if the rework is large or if the trade-off is unclear.
-   - **GREEN** — style or cosmetic. Auto-fix if trivial; otherwise add it to `### Review notes`.
-3. **Re-run the build/test commands** after any fix.
-4. **Re-run `/code-review`.** A targeted re-review of the changed areas is required after every fix that touches code or docs, even when the diff is small. This is not optional. Limit the fix → build/test → re-review cycle to **two passes**. If the finding is still unresolved after two passes, or if review loops aren't converging, stop and ask the user. If the user explicitly accepts a YELLOW finding as-is, record the decision in the PR's `### Review notes` and `### Deferred and follow-up issues` sections.
+- `clean`, `resolved` — proceed.
+- `deferred` — proceed; carry `REVIEW_NOTES` into the PR's `### Review notes` and `### Deferred and follow-up issues` sections.
+- `escalated` — a RED finding became a follow-up issue; keep the PR in draft, note the blocker, and stop for the user.
+- `capped` — the two-pass cap was hit; stop and ask the user.
 
 ## PR body
 
@@ -108,13 +64,9 @@ For each finding:
 - Acceptance criteria copied from the tickets.
 - Build and test commands that were run.
 - Changed GUI flows and edge cases.
-- `### Review notes` from `/code-review`, including any deferred or escalated findings.
+- `### Review notes` from `/review`'s `REVIEW_NOTES`, including any deferred or escalated findings.
 - `### Deferred and follow-up issues` — list any YELLOW findings intentionally deferred (with the user's explicit agreement and reason) and any RED findings converted into follow-up issues with their issue numbers.
 - `Run /qa on this branch. /qa will take the PR out of draft if QA passes and ask whether to merge.`
-
-## Diff-size guard
-
-If `git diff <PRE_BUILD_SHA>...HEAD --stat` shows more than ~500 changed lines, split `/code-review` into per-ticket or per-module passes and synthesize the findings. If a single pass still exceeds the budget, fall back to a main-session review.
 
 ## Examples
 
@@ -125,7 +77,7 @@ If `git diff <PRE_BUILD_SHA>...HEAD --stat` shows more than ~500 changed lines, 
 - Issue `#51` is the child ticket.
 - Create `build/issue-51` from `PARENT_BRANCH`.
 - Propose the public seam, run `/tdd`, run build/test, commit.
-- Run `/code-review` per the invocation guide above.
+- Call `/review` per `## Review calls` above.
 - Push and open a draft PR to `PARENT_BRANCH`.
 
 ### Parent spec with linked child issues

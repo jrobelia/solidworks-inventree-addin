@@ -1,6 +1,6 @@
 ---
 name: build
-description: "Build a reviewed, test-passing draft PR from a spec or tickets using /tdd and /code-review."
+description: "Build a reviewed, test-passing draft PR from a spec or tickets using /tdd and /review."
 disable-model-invocation: true
 triggers: ["user"]
 ---
@@ -48,16 +48,16 @@ Do not move to the next step until the **Done when** criterion for the current s
    - **Propose the public seam and justify its depth.** Before proposing, read `docs/agents/coding-standards.md` `## Module Design` and consult the `/codebase-design` skill it points to. State the recommended seam in domain language and give a one-sentence rationale. Then give a depth check: the public interface surface, the production and test adapters that will sit at the seam, the complexity the module hides from callers, and the deletion test (if the module were removed, would its complexity reappear across callers?). If the interface is nearly as complex as the implementation, the seam is shallow — go back and find a deeper cut. If two or more seams are equally good, present the candidates with the same depth check and ask which to use; otherwise pause and ask the user to confirm the recommended seam before proceeding.
    - **Run `/tdd` — red first, then green.** Invoke the `/tdd` skill and do not skip the red → green loop. If the ticket is build-system, CI, or documentation-only and the spec explicitly states no new unit tests, run the build and test commands from `REFERENCE.md` in place of the `/tdd` red-green loop and state why in the response. If `/tdd` exits with failing tests, fix the failures and re-run it before proceeding. If you cannot make it green, stop and ask.
    - Run the build and test commands from `REFERENCE.md`. If either fails, fix before proceeding.
-   - Commit with a message that references the ticket. Default to one logical commit per ticket; use multiple commits only if the ticket has clearly separate logical steps and the user agrees. Include the parent spec reference in the first commit so `/code-review` can locate it.
-   - For batches of more than one ticket, run the per-ticket spec check from `REFERENCE.md` on the ticket's own diff before starting the next ticket, and resolve any spec gaps it finds. Skip it for a single-ticket build — the step-8 review covers the same diff.
-   **Done when:** every ticket has a user-confirmed seam that has passed a depth check, a green `/tdd` red-green loop (or documented build-only equivalent), passing build/test, a reference commit on the build branch, and — for multi-ticket batches — a clean per-ticket spec check.
+   - Commit with a message that references the ticket. Default to one logical commit per ticket; use multiple commits only if the ticket has clearly separate logical steps and the user agrees. Include the parent spec reference in the first commit so `/review` can locate it.
+   - For batches of more than one ticket, call `/review` on the ticket's own diff before starting the next ticket — `REVIEW_BASE` = `PRE_TICKET_SHA`, `SPEC_SOURCE` = the ticket body, `AXES` = `spec` — and resolve any spec gaps it returns. Skip it for a single-ticket build — the step-8 review covers the same diff.
+   **Done when:** every ticket has a user-confirmed seam that has passed a depth check, a green `/tdd` red-green loop (or documented build-only equivalent), passing build/test, a reference commit on the build branch, and — for multi-ticket batches — a clean per-ticket `/review` call.
 7. Run the build and test commands once more. If either fails, fix before proceeding.
    **Done when:** both commands exit successfully on the full branch.
-8. Run the two-axis review from `PRE_BUILD_SHA` per `REFERENCE.md`. First read `docs/agents/code-review-known-issues.md`; it determines what context to fetch vs. paste and when to use the foreground fallback. Aggregate the `## Standards` and `## Spec` findings.
-   **Done when:** the Standards and Spec findings have been returned.
-9. Verify each Standards and Spec finding against the code and the spec, then classify and act on it following the review guide in `REFERENCE.md`. Continue until every finding is resolved, deferred, or escalated to the user.
-   **Done when:** every finding is resolved, deferred, or escalated, or the two-pass cap in `REFERENCE.md` has been reached.
+8. Call `/review` with `REVIEW_BASE` = `PRE_BUILD_SHA`, `SPEC_SOURCE` = the parent spec body, `AXES` = `both`. `/review` runs the two axes, adjudicates, fixes, and re-verifies; it returns `REVIEW_STATUS` and `REVIEW_NOTES`.
+   **Done when:** `/review` has returned.
+9. Act on `REVIEW_STATUS` per `REFERENCE.md` `## Review calls`: proceed on `clean`/`resolved`/`deferred` (carry `REVIEW_NOTES` into the PR body), stop on `escalated`, and ask the user on `capped`.
+   **Done when:** `REVIEW_STATUS` permits proceeding or the user has been consulted.
 10. Push and open a draft PR to `PARENT_BRANCH`.
     **Done when:** the branch is pushed and a draft PR is open.
 
-See [`REFERENCE.md`](REFERENCE.md) for branch naming, code review invocation, review classification, PR body, diff-size guard, and examples.
+See [`REFERENCE.md`](REFERENCE.md) for branch naming, `/review` calls, PR body, and examples.
