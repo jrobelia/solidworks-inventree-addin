@@ -39,9 +39,9 @@ Do not move to the next step until the **Done when** criterion for the current s
 5. **Fix.** The path depends on how you got here:
    - **Hard bug** — apply the fix and regression test produced by `/diagnosing-bugs`.
    - **Normal bug** — invoke the `/tdd` skill first using the `skill` tool (`command: "invoke"`, `skill: "tdd"`). Write a failing regression test that reproduces the bug, then write the minimal fix that makes it pass. Do not write the fix or its test outside the `/tdd` red-green loop. If the bug cannot be expressed as a failing test, treat it as a hard-bug signal and go back to step 3 to invoke `/diagnosing-bugs`.
-   **Done when:** `/tdd` has completed, the regression test passes, and build/test are green.
-6. **Commit and verify.** Run build and test per `docs/agents/coding-standards.md` `## Build & Test Commands`, fix failures, then commit referencing `#N`. `/review` measures a committed diff, so the commit must land before the review call.
-   **Done when:** the fix is committed and build/test pass on the commit.
+   **Done when:** `/tdd` has completed, the regression test passes, and the agent verification command is green.
+6. **Commit and verify.** Run the agent verification command per `docs/agents/coding-standards.md` `## Build & Test Commands`, fix failures, then commit referencing `#N`. `/review` measures a committed diff, so the commit must land before the review call.
+   **Done when:** the fix is committed and the agent verification command passes on the commit.
 7. **Review.** Invoke `/review` with `REVIEW_BASE` = `PRE_FIX_SHA`, `SPEC_SOURCE` = the bug issue body, `AXES` = `both`. `/review` runs an adjudicated two-pass review-and-fix loop internally and returns a final `REVIEW_STATUS` plus the full `REVIEW_NOTES` that record every finding's disposition across all passes. Capture both exactly.
    - If `REVIEW_STATUS` is `clean`, `resolved`, or `deferred`, proceed.
    - If `REVIEW_STATUS` is `escalated`, stop and hand off to the user; the `REVIEW_NOTES` will include the follow-up issue numbers.

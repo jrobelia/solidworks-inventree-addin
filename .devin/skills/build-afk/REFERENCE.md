@@ -137,9 +137,9 @@ After the workflow finishes, `RESULTS.json` in the run directory contains:
 
 The `final_review` field is present only when the input was chained and every child completed; the `stack` field is present only when a stack agent was dispatched.
 
-## Build, format, and test commands
+## Format and test commands
 
-Run the build and test commands from `docs/agents/coding-standards.md` `## Build & Test Commands`.
+Run the agent verification command from `docs/agents/coding-standards.md` `## Build & Test Commands`.
 
 `dotnet format` runs before the first commit and again before the PR. Target only changed C# files:
 
@@ -174,7 +174,7 @@ The build and fix agents do not run an in-session self-review; their doubts trav
 
 For each finding reported by the Standards or Spec axis, the adjudicator applies one of:
 
-- **Auto-fix** — safe and small standards/spec gaps and deterministic trivial fixes (rename a symbol, move a method, add a null check, fix a comparison, add a missing assertion, etc.). A fix agent can apply these and run build/test unattended.
+- **Auto-fix** — safe and small standards/spec gaps and deterministic trivial fixes (rename a symbol, move a method, add a null check, fix a comparison, add a missing assertion, etc.). A fix agent can apply these and run the agent verification command unattended.
 - **Ignore** — false positives, lintable style nits already covered by `dotnet format`, or reviewer guesses not supported by the diff.
 - **BLOCKED** — big seam/architectural risk, ambiguous or contradictory spec, missing domain knowledge, a fix too large or risky for unattended work, or the two review axes contradict each other.
 
@@ -231,9 +231,9 @@ Part of #{parent_spec}  <!-- include when this is a child of a parent spec -->
 ## Acceptance criteria
 - [ ] <criterion>
 
-## Build, format, and test
+## Format and test
 
-Run the build and test commands from `docs/agents/coding-standards.md` `## Build & Test Commands`. Before committing, run `dotnet format` on changed C# files:
+Run the agent verification command from `docs/agents/coding-standards.md` `## Build & Test Commands`. Before committing, run `dotnet format` on changed C# files:
 
 ```powershell
 $files = (git diff --name-only --diff-filter=AM HEAD) + (git ls-files --others --exclude-standard) |

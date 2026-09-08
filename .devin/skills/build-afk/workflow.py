@@ -183,7 +183,7 @@ Commit list:
 {{COMMITS}}
 
 Classify **every finding** in the Standards and Spec reviews using this rubric:
-- **auto-fix** — safe and small standards/spec gaps and deterministic trivial fixes (rename a symbol, move a method, add a null check, fix a comparison, add a missing assertion, etc.). A fix agent can apply these and run build/test unattended.
+- **auto-fix** — safe and small standards/spec gaps and deterministic trivial fixes (rename a symbol, move a method, add a null check, fix a comparison, add a missing assertion, etc.). A fix agent can apply these and run the agent verification command unattended.
 - **ignore** — false positives, lintable style nits already covered by `dotnet format`, or reviewer guesses not supported by the diff.
 - **BLOCKED** — big seam/architectural risk, ambiguous or contradictory spec, missing domain knowledge, a fix too large or risky for unattended work, or the two review axes contradict each other.
 
@@ -212,7 +212,7 @@ PR URL: `{{PR_URL}}`
 The adjudicator's instructions (ordered: spec gaps and blocking findings first, then standards fixes, then cosmetic items):
 {{FIX_INSTRUCTIONS}}
 
-Apply the fixes in the given order in the worktree. Do not change the PR base. Keep the worktree in place. Re-run the build and test commands once after the pass, not after each item, using `docs/agents/coding-standards.md` `## Build & Test Commands`.
+Apply the fixes in the given order in the worktree. Do not change the PR base. Keep the worktree in place. Re-run the agent verification command once after the pass, not after each item, using `docs/agents/coding-standards.md` `## Build & Test Commands`.
 
 After fixing, run `dotnet format` on changed C# files:
 ```powershell

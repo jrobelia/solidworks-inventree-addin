@@ -5,8 +5,8 @@ A C# WPF add-in for SolidWorks that bridges parts and assemblies to an InvenTree
 ## Quick commands
 
 - Test: `dotnet test "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj" --disable-build-servers` — primary verification loop. Builds the add-in into a throwaway `bin_unit_test` folder, so it can run while SolidWorks is open.
-- Build: `dotnet build "SwInventreeAddin/SwInventreeAddin.csproj" --disable-build-servers` — produces the SolidWorks-facing `bin\Debug\net48` output. Run with SolidWorks closed if it needs to overwrite a locked `bin\Debug\net48\SwInventreeAddin.dll`.
-- Full solution build: `dotnet build "Solidworks Inventree Add-In.sln" --disable-build-servers` — builds the solution and the test project; still valid but not the primary agent build command because it also writes the add-in to the `bin\Debug` path.
+- Build: `dotnet build "SwInventreeAddin/SwInventreeAddin.csproj" --disable-build-servers` — produces the SolidWorks-facing `bin\Debug\net48` output. Manual step only: SolidWorks locks `bin\Debug\net48\SwInventreeAddin.dll` while running, so agents verify with the test command and never run this one.
+- Full solution build: `dotnet build "Solidworks Inventree Add-In.sln" --disable-build-servers` — builds the solution and the test project; same SolidWorks-closed constraint as Build, so it is not an agent verification command.
 - Package manager: NuGet (restored automatically by `dotnet build`).
 
 ## Skill layout

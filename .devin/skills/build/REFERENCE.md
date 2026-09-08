@@ -29,9 +29,9 @@ Process tickets in frontier order.
 
 See `docs/agents/pr-conventions.md` for branch naming, PR body sections, draft-PR rules, and the milestone-branch auto-close rule.
 
-## Build and test commands
+## Agent verification
 
-Run the commands from `docs/agents/coding-standards.md` `## Build & Test Commands`.
+Run the agent verification command from `docs/agents/coding-standards.md` `## Build & Test Commands`.
 
 ## Review calls
 
@@ -45,7 +45,7 @@ The exact `/review` call parameters are in `SKILL.md` step 6 (per-ticket spec ch
 
 - Issue `#51` is the child ticket.
 - Create `build/issue-51` from `PARENT_BRANCH`.
-- Propose the public seam, run `/tdd`, run build/test, commit.
+- Propose the public seam, run `/tdd`, run the agent verification command, commit.
 - Call `/review` per `## Review calls` above.
 - Push and open a draft PR to `PARENT_BRANCH`.
 

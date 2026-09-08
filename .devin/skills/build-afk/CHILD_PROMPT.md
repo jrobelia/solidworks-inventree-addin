@@ -34,7 +34,7 @@ Issue body:
 If `{{is_hard_bug}}` is `true`:
 
 1. **Invoke `/diagnosing-bugs` first** with the issue body and labels. It owns the full feedback-loop → root-cause → fix + regression-test loop.
-2. If `/diagnosing-bugs` returns a **fix + regression test** from a correct seam, apply that result and continue with the format/build/test/commit steps below.
+2. If `/diagnosing-bugs` returns a **fix + regression test** from a correct seam, apply that result and continue with the format/test/commit steps below.
 3. If `/diagnosing-bugs` reports a **missing or shallow seam**, do not patch around it. Return `BLOCKED` with `blocked_kind: context` and reason `needs /improve-codebase-architecture before this bug can be fixed at a real seam`.
 4. If `/diagnosing-bugs` cannot build a tight red-capable loop, return `BLOCKED` with `blocked_kind: context` and list the three unblocking asks: repro environment access, redacted captured artifacts, or permission to instrument.
 
@@ -54,11 +54,11 @@ If `{{is_hard_bug}}` is `false`, proceed directly to design and TDD.
    - Refactor only after green.
    - Do not skip the red step.
 
-## Format, build, test, and commit
+## Format, test, and commit
 
-Run the build and test commands from `docs/agents/coding-standards.md` `## Build & Test Commands`.
+Run the agent verification command from `docs/agents/coding-standards.md` `## Build & Test Commands`.
 
-If either build or test fails, fix the failure and re-run. If you cannot make them green, return `BLOCKED` with the failure output as the reason.
+If it fails, fix the failure and re-run. If you cannot make it green, return `BLOCKED` with the failure output as the reason.
 
 Before your first commit, run `dotnet format` on changed C# files:
 
@@ -75,9 +75,9 @@ If `dotnet format` is not available, note it in the PR and continue.
 
 Before your first commit, capture the base commit of your worktree: `$preBuildSha = git rev-parse HEAD`. Store this in the `pre_build_sha` field of your return value.
 
-After build, test, and `dotnet format` are green, make **one logical commit** with a message referencing `#{{issue_number}}` and the parent spec where applicable.
+After the agent verification command and `dotnet format` are green, make **one logical commit** with a message referencing `#{{issue_number}}` and the parent spec where applicable.
 
-Run the build and test commands again after the commit to confirm the committed state is green.
+Run the agent verification command again after the commit to confirm the committed state is green.
 
 ## GUI evidence
 
@@ -92,7 +92,7 @@ If the diff touches files under `SwInventreeAddin/UI/`, any `*ViewModel*.cs` fil
 1. Keep the worktree in place; the parent orchestrator will run an independent two-axis review and may dispatch fix passes.
 2. Before creating the PR, fetch the repo template with `fetch_pr_template(repo="{{repo}}", base_branch="{{target_branch}}")`.
 3. Run `dotnet format` again with the same `--include` list as before the first commit.
-4. If `dotnet format` changed any files, re-run build and test, then amend the commit (or add a fixup commit) and push the updated branch.
+4. If `dotnet format` changed any files, re-run the agent verification command, then amend the commit (or add a fixup commit) and push the updated branch.
 5. Push your branch to origin.
 6. Create a **draft PR** using `git_create_pr(repo="{{repo}}", base_branch="{{target_branch}}", head_branch="<actual-branch>", title=..., body=..., draft=True)`. Follow `docs/agents/pr-conventions.md` `## PR body`, with the build-afk-specific additions below.
    - Title prefix: `build-afk:` followed by a concise summary.
@@ -100,7 +100,7 @@ If the diff touches files under `SwInventreeAddin/UI/`, any `*ViewModel*.cs` fil
      - `Closes #{{issue_number}}`
      - `Part of #<parent_spec>` if this ticket is a child of a parent spec
      - A summary of the change and the acceptance criteria addressed
-     - The exact build, test, and `dotnet format` commands that were run and their result
+     - The exact `dotnet test` and `dotnet format` commands that were run and their result
      - Any changed GUI flows or edge cases
      - A `### Review notes` section with any findings that were auto-fixed or deferred
      - A `### Deferred and follow-up issues` section if anything was intentionally skipped or escalated
