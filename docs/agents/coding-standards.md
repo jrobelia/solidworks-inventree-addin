@@ -1,6 +1,6 @@
 # Coding Standards
 
-This file defines the coding standards for this project. It is the Standards-axis rulebook for `/review` — run by `/build`, `/fix`, and `/build-afk`'s review step — and the source of the build/test commands and module-design rules those skills apply.
+This file defines the coding standards for this project. It is the Standards-axis rulebook for `/review` — run by `/build`, `/fix`, and `/build-afk`'s review step — and the source of the agent verification command and module-design rules those skills apply.
 
 ---
 
@@ -27,7 +27,7 @@ Solution build: `dotnet build "Solidworks Inventree Add-In.sln" --disable-build-
 Check: (none — no separate lint step)
 
 Notes:
-- All build/test commands use `--disable-build-servers` and `UseSharedCompilation=false` in `Directory.Build.props` to stop long-running `dotnet` and `VBCSCompiler` processes from holding file locks.
+- All commands above use `--disable-build-servers` and `UseSharedCompilation=false` in `Directory.Build.props` to stop long-running `dotnet` and `VBCSCompiler` processes from holding file locks.
 
 ---
 
