@@ -9,6 +9,10 @@ A C# WPF add-in for SolidWorks that bridges parts and assemblies to an InvenTree
 - Full solution build: `dotnet build "Solidworks Inventree Add-In.sln" --disable-build-servers` — builds the solution and the test project; still valid but not the primary agent build command because it also writes the add-in to the `bin\Debug` path.
 - Package manager: NuGet (restored automatically by `dotnet build`).
 
+## Skill layout
+
+Custom skills live in `.devin/skills/`. `.agents/skills/` holds downloaded skills installed via `npx skills add` — reinstall with the installer rather than editing in place. `.devin/skills-retired/` holds inactive skills kept for reference.
+
 ## Design discipline
 
 Before any design decision that creates, changes, or removes a public seam, module, or interface, read `docs/agents/coding-standards.md` `## Module Design` and consult the `/codebase-design` skill it points to. Proceed only when you can state the public interface, the production and test adapters at the seam, and the deletion test result.
