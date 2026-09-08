@@ -10,7 +10,7 @@
     {
       "id": 2,
       "prompt": "Run /fix #88 where #88 says 'Task Pane intermittently shows stale data — flaky, no deterministic repro, root cause unknown'. The current branch has no open PR. Describe the steps you take.",
-      "expected_output": "Agent detects hard-bug signals and runs /diagnosing-bugs BEFORE writing any fix; then creates fix/issue-88, runs /tdd, and calls /review before opening a draft PR.",
+      "expected_output": "Agent detects hard-bug signals and invokes /diagnosing-bugs. If /diagnosing-bugs produces a fix and regression test, the agent applies that result; if it cannot build a tight loop, the agent asks the user; if it finds a missing or shallow seam, the agent pauses and tells the user to run /improve-codebase-architecture. Otherwise it creates fix/issue-88, commits the fix, and calls /review before opening a draft PR.",
       "files": []
     },
     {

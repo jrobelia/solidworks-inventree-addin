@@ -21,15 +21,20 @@ triggers: ["user"]
 ## Process
 
 1. **Fetch the issue.** Read the title, body, and labels. Store them as the fix's spec.
-2. **Check for hard-bug signals.** If the title, body, or labels contain signals like `intermittent`, `flaky`, `race`, `no deterministic repro`, `root cause unknown`, or `performance regression`, invoke `/diagnosing-bugs` before touching code — the fix must target the diagnosed cause, not the symptom. If the diagnosis shows the root cause is a missing or shallow seam, pause here and hand off to the user: `/improve-codebase-architecture` is a user-invoked skill, so the human starts it. The bug PR waits for the architecture work rather than patching around it.
+2. **Check for hard-bug signals.** If the title, body, or labels contain signals like `intermittent`, `flaky`, `race`, `no deterministic repro`, `root cause unknown`, or `performance regression`, invoke `/diagnosing-bugs` first. It is a full diagnose-and-fix loop, not just a pre-step. It can return three outcomes:
+   - **Fix + regression test produced** — the bug has a correct seam. Use the fix and test from `/diagnosing-bugs` and proceed to branch selection.
+   - **Missing or shallow seam** — pause and hand off to the user. `/improve-codebase-architecture` is a user-invoked skill that produces an HTML report of deepening opportunities; the human starts it. The bug PR waits for the architecture work rather than patching around it.
+   - **Cannot build a tight red-capable loop** — stop and ask the user for the repro environment, redacted artifacts, or permission to instrument.
 3. **Pick the branch.** Check whether the current branch already has an open PR:
    ```powershell
    gh pr list --state open --head <current-branch> --json number,url,body
    ```
    - **Open PR found** — the bug may block that PR. Check whether the bug relates to the PR's work: does the PR's body, spec, or changed files overlap with the bug? If yes, treat it as PR-blocking and work on the current branch, commit in-place, and update the PR body with `Closes #N` at ship time. If the bug is unrelated or the overlap is ambiguous, stop and ask the user whether to branch off to `fix/issue-<N>` or still commit in-place.
-   - **No open PR** — verify `git status --short` is clean (stop and ask otherwise), then create `fix/issue-<N>` from the current branch and capture `PRE_FIX_SHA`. A draft PR opens at step 7.
-4. **Fix with `/tdd`.** Red first: a failing regression test that reproduces the bug, then green. If the bug can't be reproduced as a failing test, state why and fall back to the build/test commands from `docs/agents/coding-standards.md` — an unreproducible red is itself a hard-bug signal; go back to step 2 if you skipped it.
-5. **Commit the fix.** Run build and test per `docs/agents/coding-standards.md`, fix failures, then commit referencing `#N`. `/review` measures a committed diff, so the commit must land before the review call.
+   - **No open PR** — verify `git status --short` is clean (stop and ask otherwise), then create `fix/issue-<N>` from the current branch and capture `PRE_FIX_SHA`. A draft PR opens at step 6.
+4. **Fix.** The path depends on how you got here:
+   - **Hard bug** — apply the fix and regression test produced by `/diagnosing-bugs`.
+   - **Normal bug** — run `/tdd`: red first (a failing regression test that reproduces the bug), then green. If the bug can't be reproduced as a failing test, state why and fall back to the build/test commands from `docs/agents/coding-standards.md` — an unreproducible red is itself a hard-bug signal; go back to step 2.
+5. **Commit and verify.** Run build and test per `docs/agents/coding-standards.md`, fix failures, then commit referencing `#N`. `/review` measures a committed diff, so the commit must land before the review call.
 6. **Review.** Call `/review` with `REVIEW_BASE` = `PRE_FIX_SHA`, `SPEC_SOURCE` = the bug issue body, `AXES` = `both`. Act on the returned `REVIEW_STATUS`: proceed on `clean`/`resolved`/`deferred`, keep the PR in draft and stop for the user on `escalated`, ask the user on `capped`. Review fixes land as follow-up commits.
 7. **Ship.** Push the branch. On an existing PR, append `Closes #N` and the review notes to its body with `gh pr edit`. Otherwise open a draft PR: `Closes #N`, the root cause in one line, the regression test added, build/test commands run, and `REVIEW_NOTES` under `### Review notes` and `### Deferred and follow-up issues`. End the PR body with: `Run /qa on this branch. /qa will take the PR out of draft if QA passes and ask whether to merge.`
 
