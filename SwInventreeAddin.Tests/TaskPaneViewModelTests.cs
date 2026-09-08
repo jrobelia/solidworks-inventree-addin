@@ -2489,6 +2489,9 @@ namespace SwInventreeAddin.Tests
 // ── PartCreated handler state (issue #17 / #19) ─────────────────────────────────
 namespace SwInventreeAddin.Tests
 {
+    using System.Collections.Generic;
+    using System.Threading.Tasks;
+    using SwInventreeAddin.Config;
     using SwInventreeAddin.InvenTree;
     using SwInventreeAddin.Tests.Stubs;
     using SwInventreeAddin.UI;
@@ -2650,6 +2653,255 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(vm.NamePreview, Is.EqualTo("New Part").And.Not.EqualTo("Stale Part"));
             Assert.That(vm.PartNumber,  Is.EqualTo("NEW-001"));
+        }
+    }
+
+    /// <summary>
+    /// Issue #186: a PK stamped mid-session must be honored on the next Fetch.
+    /// Reproduces the QA scenario — an IPN shared by two parts where exactly one
+    /// matches the document Revision — and varies how the PK reaches the
+    /// document (Apply, manual edit, no event) around the duplicate-IPN prompt.
+    /// </summary>
+    [TestFixture]
+    public class MidSessionPkStampTests
+    {
+        private StubInventreeClient               _client              = null!;
+        private StubDocumentPropertyService       _propertyService     = null!;
+        private ICreatePartValidationErrorService _createPartValidator = null!;
+
+        private bool                          _promptShown;
+        private IReadOnlyList<InventreePart>? _promptCandidates;
+        private InventreePart?                _promptMatch;
+
+        private static readonly PropertyMappingConfig Mapping = PropertyMappingConfig.WithDefaults();
+
+        // QA server state: two parts share the IPN; only PK 11 matches Rev B.
+        private static readonly List<InventreePart> DuplicateIpnParts = new List<InventreePart>
+        {
+            new InventreePart { Pk = 10, Ipn = "PART-001", Revision = "A", Name = "Rev A part" },
+            new InventreePart { Pk = 11, Ipn = "PART-001", Revision = "B", Name = "Rev B part" },
+        };
+
+        [SetUp]
+        public void SetUp()
+        {
+            _client              = new StubInventreeClient();
+            _propertyService     = new StubDocumentPropertyService();
+            _createPartValidator = new StubCreatePartValidationErrorService();
+            _promptShown         = false;
+
+            _propertyService.Seed(Mapping.IpnProperty!,      "PART-001");
+            _propertyService.Seed(Mapping.RevisionProperty!, "B");
+            _client.PartsByIpnToReturn = DuplicateIpnParts;
+        }
+
+        private TaskPaneViewModel CreateVm()
+        {
+            var vm = new TaskPaneViewModel(_client, _propertyService, null,
+                                           createPartValidator: _createPartValidator);
+            vm.ConfirmDuplicateIpn = (all, matched) =>
+            {
+                _promptShown      = true;
+                _promptCandidates = all;
+                _promptMatch      = matched;
+                return true;
+            };
+            return vm;
+        }
+
+        // QA's first scenario: no PK stamped — the prompt is the designed safety net.
+        [Test]
+        public async Task NoPkStamped_DuplicatePromptShown()
+        {
+            var vm = CreateVm();
+            await vm.FetchPartAsync();
+
+            Assert.That(_promptShown,          Is.True);
+            Assert.That(_promptCandidates,     Has.Count.EqualTo(2));
+            Assert.That(_promptMatch!.Pk,      Is.EqualTo(11));
+            Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(11));
+        }
+
+        // PK stamped under the mapped Document Property before load: the PK path wins.
+        [Test]
+        public async Task PkStampedUnderMappedProperty_DuplicatePromptSkipped()
+        {
+            _propertyService.Seed(Mapping.PkProperty!, "11");
+            _client.PartByPkToReturn =
+                new InventreePart { Pk = 11, Ipn = "PART-001", Revision = "B", Name = "Rev B part" };
+
+            var vm = CreateVm();
+            await vm.FetchPartAsync();
+
+            Assert.That(_client.LastGetPartByPkPk, Is.EqualTo(11));
+            Assert.That(_promptShown,              Is.False);
+            Assert.That(vm.CurrentInvenTreePk,     Is.EqualTo(11));
+        }
+
+        // A PK under a Document Property name the Property Mapping does not map
+        // is invisible to the add-in — Fetch still resolves by IPN.
+        [Test]
+        public async Task PkStampedUnderUnmappedPropertyName_DuplicatePromptShown()
+        {
+            _propertyService.Seed("SomeOtherPkProperty", "11");
+
+            var vm = CreateVm();
+            await vm.FetchPartAsync();
+
+            Assert.That(_promptShown, Is.True);
+        }
+
+        // A stamped value that is not a positive integer is not a valid PK.
+        [TestCase("TBD")]
+        [TestCase("0")]
+        [TestCase("-7")]
+        public async Task PkStampedAsNonPositiveOrNonNumeric_DuplicatePromptShown(string pk)
+        {
+            _propertyService.Seed(Mapping.PkProperty!, pk);
+
+            var vm = CreateVm();
+            await vm.FetchPartAsync();
+
+            Assert.That(_promptShown, Is.True);
+        }
+
+        // QA's actual sequence: Fetch by IPN shows the prompt, the user confirms,
+        // then Apply stamps the PK onto the document. A second Fetch must take
+        // the PK path — the property-changed handler treats the add-in's own
+        // write as a no-op light refresh, so the flag never caught up.
+        [Test]
+        public async Task PkStampedByApply_ThenRefetch_DuplicatePromptShouldNotReappear()
+        {
+            var vm = CreateVm();
+            await vm.FetchPartAsync();                  // prompt → confirm → session = PK 11
+            Assert.That(_promptShown, Is.True);
+
+            _promptShown = false;
+            vm.ConfirmMissingProperties = _ => true;    // PK property doesn't exist yet
+            vm.ApplyPkToDocument();
+            Assert.That(_propertyService.GetCustomProperty(Mapping.PkProperty!), Is.EqualTo("11"));
+
+            vm.OnDocumentPropertyChanged(Mapping.PkProperty!, "11");
+            _client.PartByPkToReturn =
+                new InventreePart { Pk = 11, Ipn = "PART-001", Revision = "B" };
+
+            await vm.FetchPartAsync();
+
+            Assert.That(_client.LastGetPartByPkPk, Is.EqualTo(11));
+            Assert.That(_promptShown,              Is.False);
+        }
+
+        // Manual edit in the SW properties window while a session is loaded:
+        // typing the same PK the session holds is classified as an add-in write
+        // (values match) and only gets a light refresh — the PK shows in the
+        // Task Pane but the next Fetch must still honor it.
+        [Test]
+        public async Task ManualPkEditMatchingSession_ThenRefetch_PromptShouldNotReappear()
+        {
+            var vm = CreateVm();
+            await vm.FetchPartAsync();                    // session = PK 11
+            _promptShown = false;
+
+            _propertyService.SetCustomProperty(Mapping.PkProperty!, "11");
+            vm.OnDocumentPropertyChanged(Mapping.PkProperty!, "11");
+            _client.PartByPkToReturn =
+                new InventreePart { Pk = 11, Ipn = "PART-001", Revision = "B" };
+
+            await vm.FetchPartAsync();
+
+            Assert.That(_client.LastGetPartByPkPk, Is.EqualTo(11));
+            Assert.That(_promptShown,              Is.False);
+        }
+
+        // Editing the PK to a value that differs from the loaded session takes
+        // the identity-change branch and forces a full reload — already worked.
+        [Test]
+        public async Task ManualPkEditDifferentFromSession_HonoredOnNextFetch()
+        {
+            var vm = CreateVm();
+            await vm.FetchPartAsync();                    // session = PK 11
+            _promptShown = false;
+
+            _propertyService.SetCustomProperty(Mapping.PkProperty!, "42");
+            vm.OnDocumentPropertyChanged(Mapping.PkProperty!, "42");
+            _client.PartByPkToReturn = new InventreePart { Pk = 42, Ipn = "OTHER-042" };
+
+            await vm.FetchPartAsync();
+
+            Assert.That(_client.LastGetPartByPkPk, Is.EqualTo(42));
+            Assert.That(_promptShown,              Is.False);
+        }
+
+        // The PK can also appear after the last LoadPartNumber with no property
+        // event at all. Fetch re-reads it at decision time, so the PK path wins
+        // even when the change notification never arrived.
+        [Test]
+        public async Task PkStampedAfterLastLoadPartNumber_HonoredOnNextFetch()
+        {
+            var vm = CreateVm();                           // loads with no PK
+            _propertyService.Seed(Mapping.PkProperty!, "11"); // stamped later, no event
+            _client.PartByPkToReturn =
+                new InventreePart { Pk = 11, Ipn = "PART-001", Revision = "B" };
+
+            await vm.FetchPartAsync();
+
+            Assert.That(_client.LastGetPartByPkPk, Is.EqualTo(11));
+            Assert.That(_promptShown,              Is.False);
+        }
+
+        // Switching to another document and back fires LoadPartNumber, which
+        // re-reads the stamped PK — the workaround QA observed.
+        [Test]
+        public async Task ManualPkEditMatchingSession_DocumentSwitchResyncs()
+        {
+            var vm = CreateVm();
+            await vm.FetchPartAsync();                    // session = PK 11
+            _promptShown = false;
+
+            _propertyService.SetCustomProperty(Mapping.PkProperty!, "11");
+            vm.OnDocumentPropertyChanged(Mapping.PkProperty!, "11");
+
+            vm.LoadPartNumber();                          // switch away and back
+            _client.PartByPkToReturn =
+                new InventreePart { Pk = 11, Ipn = "PART-001", Revision = "B" };
+            await vm.FetchPartAsync();
+
+            Assert.That(_client.LastGetPartByPkPk, Is.EqualTo(11));
+            Assert.That(_promptShown,              Is.False);
+        }
+
+        // ClearAll() inside the LINKED-by-PK branch wipes the flag the reload
+        // just synced; a later command-state refresh must not disable Fetch or
+        // enable Create Part on a PK-linked document.
+        [Test]
+        public void LinkedByPk_MappingRefresh_KeepsFetchEnabledAndCreateDisabled()
+        {
+            _propertyService.Seed(Mapping.IpnProperty!, string.Empty);
+            _propertyService.Seed(Mapping.PkProperty!,  "42");
+            var vm = CreateVm();
+
+            vm.UpdateMapping(new StubPropertyMappingProvider { Config = PropertyMappingConfig.WithDefaults() });
+
+            Assert.That(vm.FetchEnabled,      Is.True);
+            Assert.That(vm.CreatePartEnabled, Is.False);
+        }
+
+        // The Option-B gap documented by #186: on the PK path the fetched part's
+        // IPN and Revision are never compared to the document — a stale PK is
+        // followed silently. Characterizes current behavior, not a target.
+        [Test]
+        public async Task StalePk_PartIpnAndRevisionDiffer_FollowedSilently()
+        {
+            _propertyService.Seed(Mapping.PkProperty!, "99");
+            _client.PartByPkToReturn =
+                new InventreePart { Pk = 99, Ipn = "RENAMED-999", Revision = "C", Name = "Renamed part" };
+
+            var vm = CreateVm();
+            await vm.FetchPartAsync();
+
+            Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(99));
+            Assert.That(_promptShown,          Is.False);
+            Assert.That(vm.StatusText,         Is.Empty);
         }
     }
 }

@@ -46,6 +46,9 @@ One of four states: EMPTY (no document open), UNLINKED (document open, no IPN an
 Retrieve an InvenTree part by IPN (or InvenTree Part PK) from the server and display its field values as a preview in the Task Pane.
 _Avoid_: load, sync, pull
 
+**Link Mismatch**:
+The condition where the **InvenTree Part PK** stamped on a document resolves to an InvenTree part whose IPN or Revision disagrees with the document's stamped values. Surfaced during **Fetch** as a confirmation prompt before the Task Pane loads the PK-addressed part.
+
 **Apply** (Apply to SW Doc):
 Write fetched InvenTree preview values into the SolidWorks Document Properties of the active document. Direction: InvenTree → SW. Labelled "Apply to SW Doc" in the UI.
 _Avoid_: write, import, save to document
