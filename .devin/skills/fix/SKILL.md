@@ -22,7 +22,7 @@ Do not move to the next step until the **Done when** criterion for the current s
 
 1. **Fetch the issue.** Read the title, body, and labels. Store them as the fix's spec.
    **Done when:** the issue is confirmed to be a bug report and its body is stored as the spec.
-2. **Load the context pointers.** Read `docs/agents/coding-standards.md` (`## Module Design` and `## Build & Test Commands`) and `CONTEXT.md`/`docs/agents/domain.md` so the fix uses the repo's design vocabulary and domain language. If the fix will create, change, or remove a public seam, consult `/codebase-design` and state the seam declaration required by `## Module Design` before writing code.
+2. **Load the context pointers.** Read `docs/agents/coding-standards.md` (`## Module Design` and `## Build & Test Commands`), `docs/agents/pr-conventions.md` (`## Branch names` and `## PR body`), and `CONTEXT.md`/`docs/agents/domain.md` so the fix uses the repo's design vocabulary, branch/PR conventions, and domain language. If the fix will create, change, or remove a public seam, consult `/codebase-design` and state the seam declaration required by `## Module Design` before writing code.
    **Done when:** you can name which pointers fired and, if a seam is touched, the seam declaration is stated.
 3. **Check for hard-bug signals.** If the title, body, or labels contain signals like `intermittent`, `flaky`, `race`, `no deterministic repro`, `root cause unknown`, or `performance regression`, invoke `/diagnosing-bugs` first. It is a full diagnose-and-fix loop. It can return three outcomes:
    - **Fix + regression test produced** — the bug has a correct seam. Use the fix and test from `/diagnosing-bugs` and proceed to branch selection.
@@ -34,7 +34,7 @@ Do not move to the next step until the **Done when** criterion for the current s
    gh pr list --state open --head <current-branch> --json number,url,body
    ```
    - **Open PR found** — the bug may block that PR. Check whether the bug relates to the PR's work: does the PR's body, spec, or changed files overlap with the bug? If yes, treat it as PR-blocking and work on the current branch, verify `git status --short` is clean or commit only the files the fix touches, and update the PR body with `Closes #N` at ship time. If the bug is unrelated or the overlap is ambiguous, stop and ask the user whether to branch off to `fix/issue-<N>` or still commit in-place.
-   - **No open PR** — verify `git status --short` is clean (stop and ask otherwise), then create `fix/issue-<N>` from the current branch. `PRE_FIX_SHA` was already captured above. A draft PR opens at step 8.
+   - **No open PR** — verify `git status --short` is clean (stop and ask otherwise), then create a fix branch per `docs/agents/pr-conventions.md` `## Branch names`. `PRE_FIX_SHA` was already captured above. A draft PR opens at step 8.
    **Done when:** the branch is chosen, `PRE_FIX_SHA` is captured, and the working tree is ready for the fix commit.
 5. **Fix.** The path depends on how you got here:
    - **Hard bug** — apply the fix and regression test produced by `/diagnosing-bugs`.
@@ -44,7 +44,7 @@ Do not move to the next step until the **Done when** criterion for the current s
    **Done when:** the fix is committed and build/test pass on the commit.
 7. **Review.** Call `/review` with `REVIEW_BASE` = `PRE_FIX_SHA`, `SPEC_SOURCE` = the bug issue body, `AXES` = `both`. Act on `REVIEW_STATUS` per `/review`'s output contract; review fixes land as follow-up commits.
    **Done when:** `/review` has returned a `REVIEW_STATUS` that permits proceeding, or the user has been consulted on `escalated`/`capped`.
-8. **Ship.** Push the branch. On an existing PR, append `Closes #N` and the `REVIEW_NOTES` to its body with `gh pr edit`. Otherwise open a draft PR following `build/REFERENCE.md` `## PR body`.
+8. **Ship.** Push the branch. On an existing PR, append `Closes #N` and the `REVIEW_NOTES` to its body with `gh pr edit`. Otherwise open a draft PR per `docs/agents/pr-conventions.md` `## PR body`.
    **Done when:** the branch is pushed and the PR body is updated or the draft PR is open.
 
 ## Skills invoked

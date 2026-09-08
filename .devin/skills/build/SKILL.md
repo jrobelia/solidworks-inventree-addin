@@ -31,7 +31,7 @@ Do not move to the next step until the **Done when** criterion for the current s
    **Done when:** `git status --short` returns no output.
 4. Capture the current branch as `PARENT_BRANCH` and the current commit as `PRE_BUILD_SHA`.
    **Done when:** both values are stored and visible.
-5. Create the build branch from `PARENT_BRANCH` using the naming rules in `REFERENCE.md`.
+5. Create the build branch from `PARENT_BRANCH` per `docs/agents/pr-conventions.md` `## Branch names`.
    **Done when:** the new branch exists, is checked out, and is based on `PARENT_BRANCH`.
 6. **Run the `/tdd` red-green loop for each ticket** in frontier order (unblocked tickets first):
    - **Capture `PRE_TICKET_SHA`.** Before any code changes for this ticket, run `git rev-parse HEAD` and store it as `PRE_TICKET_SHA` for this ticket's per-ticket review.
@@ -46,7 +46,7 @@ Do not move to the next step until the **Done when** criterion for the current s
    **Done when:** `/review` has returned `REVIEW_STATUS` and `REVIEW_NOTES`.
 9. Act on `REVIEW_STATUS` per `/review`'s output contract.
    **Done when:** `REVIEW_STATUS` permits proceeding or the user has been consulted.
-10. Push and open a draft PR to `PARENT_BRANCH` per `REFERENCE.md` `## PR body`.
+10. Push and open a draft PR to `PARENT_BRANCH` per `docs/agents/pr-conventions.md` `## PR body`.
     **Done when:** the branch is pushed and a draft PR is open.
 
-See [`REFERENCE.md`](REFERENCE.md) for branch naming, PR body, and examples.
+See [`REFERENCE.md`](REFERENCE.md) for examples and `docs/agents/pr-conventions.md` for branch naming and PR body.

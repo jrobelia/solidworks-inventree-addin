@@ -12,6 +12,7 @@ Reach each pointer only when its branch fires.
 
 - `docs/agents/issue-tracker.md` — needed in step 1 to resolve the task graph and frontier.
 - `docs/agents/coding-standards.md` — needed before proposing any public seam (`## Module Design`) and for `## Build & Test Commands`.
+- `docs/agents/pr-conventions.md` — needed when creating or updating a PR (step 5 branch naming, step 10 PR body).
 - `CONTEXT.md` / `docs/agents/domain.md` — needed when the ticket or spec language needs the repo's domain terms.
 
 ## Inputs and issue hierarchy
@@ -24,31 +25,17 @@ Reach each pointer only when its branch fires.
 
 Process tickets in frontier order.
 
-## Branch names
+## Branch names and PR body
 
-- Single ticket: `build/issue-<number>`
-- Batch: `build/spec-<parent>-<child>-<child>-...` (e.g. `build/spec-44-45-46-47`)
-  - The first number is the parent spec; the following numbers are the child tickets.
-- If the name exists, append or increment a trailing `-<N>` suffix until free.
+See `docs/agents/pr-conventions.md` for branch naming, PR body sections, draft-PR rules, and the milestone-branch auto-close rule.
 
 ## Build and test commands
 
-Run the commands from `docs/agents/coding-standards.md` `## Build & Test Commands` before every commit, after any review fix, and once more before opening the PR.
+Run the commands from `docs/agents/coding-standards.md` `## Build & Test Commands`.
 
 ## Review calls
 
-The exact call parameters are in `SKILL.md` step 6 (per-ticket spec check) and step 8 (final review). `/build` supplies the scope and acts on `REVIEW_STATUS` per `/review`'s output contract.
-
-## PR body
-
-- `Closes #<ticket>` for each child ticket (or the bug issue for a `/fix` PR); `Part of #<parent>` to reference the parent spec without closing it.
-- For a `/fix` PR, add the root cause in one line and the regression test added.
-- Acceptance criteria copied from the tickets.
-- Build and test commands that were run.
-- Changed GUI flows and edge cases.
-- `### Review notes` from `/review`'s `REVIEW_NOTES`, including any deferred or escalated findings.
-- `### Deferred and follow-up issues` — list any YELLOW findings intentionally deferred (with the user's explicit agreement and reason) and any RED findings converted into follow-up issues with their issue numbers.
-- End with the `/qa` handoff line: `Run /qa on this branch. /qa will take the PR out of draft if QA passes and ask whether to merge.`
+The exact `/review` call parameters are in `SKILL.md` step 6 (per-ticket spec check) and step 8 (final review). `/build` supplies the scope and acts on `REVIEW_STATUS` per `/review`'s output contract.
 
 ## Examples
 

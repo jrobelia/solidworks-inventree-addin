@@ -20,6 +20,7 @@ Before any design decision that creates, changes, or removes a public seam, read
 ## Where to look next
 
 - [Build, test, language, naming, and code-quality rules](docs/agents/coding-standards.md)
+- [Branch and pull request conventions](docs/agents/pr-conventions.md)
 - [Scope: what the add-in does and out-of-bounds](docs/agents/scope.md)
 - [User communication preferences](docs/agents/user-preferences.md)
 - [Domain glossary and ADRs](docs/agents/domain.md) — see also [CONTEXT.md](CONTEXT.md)

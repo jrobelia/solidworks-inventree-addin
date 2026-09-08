@@ -21,7 +21,7 @@ This repo uses a milestone release branch as the integration target (e.g., `mile
 
 ## Closing issues from milestone branches
 
-GitHub only auto-closes an issue when a commit or PR is merged into the **default** branch (usually `main`). When a PR targets a milestone branch, keywords like `Closes #N` or `Fixes #N` in the PR body or commit message will **not** auto-close the issue when the PR merges. To keep issue tracking clean, manually close the issue or add the `qa-verified`/`done` label when the PR lands in its milestone branch, and rely on the eventual `main` merge only for the final close if needed.
+See `docs/agents/pr-conventions.md` `## Milestone branch auto-close`. After a milestone-branch merge, manually close the issue or add the `qa-verified`/`done` label.
 
 ## Before committing
 
@@ -81,7 +81,7 @@ gh pr merge <number> --merge --delete-branch
   ```powershell
   gh api -X PUT /repos/<owner>/<repo>/pulls/<number>/merge -f merge_method=merge
   ```
-- For PRs targeting a milestone branch, `Closes #N` keywords in commits/PR body will **not** auto-close the issue. Apply `qa-verified`/`done` labels and manually close the child issues after the PR lands.
+- For PRs targeting a milestone branch, follow `docs/agents/pr-conventions.md` `## Milestone branch auto-close` and apply `qa-verified`/`done` labels.
 
 ## Branch hygiene
 

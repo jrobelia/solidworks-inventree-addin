@@ -222,6 +222,8 @@ Independent issues are never grouped into a stack; they remain separate draft PR
 
 ## PR body template
 
+See `docs/agents/pr-conventions.md` for branch naming, draft-PR rules, and the canonical PR-body sections. The template below is the `build-afk`-specific layout.
+
 ```markdown
 build-afk: <concise title>
 
