@@ -8,19 +8,19 @@
 
 ## Context pointers
 
-Context pointers are out-of-context material `/build` reaches only when the current branch needs them. Do not load all of them unconditionally; reach each one when its branch fires.
+Reach each pointer only when its branch fires.
 
-- `docs/agents/issue-tracker.md` — GitHub conventions and the task-graph conventions (`## Parent`, `## Blocked by`, native blocking / sub-issue links) used to find the frontier of unblocked child tickets.
-- `docs/agents/coding-standards.md` — build/test commands, repo standards, and the deep-module design vocabulary in `## Module Design`.
-- `CONTEXT.md` / `docs/agents/domain.md` — domain vocabulary.
+- `docs/agents/issue-tracker.md` — needed in step 1 to resolve the task graph and frontier.
+- `docs/agents/coding-standards.md` — needed before proposing any public seam (`## Module Design`) and for `## Build & Test Commands`.
+- `CONTEXT.md` / `docs/agents/domain.md` — needed when the ticket or spec language needs the repo's domain terms.
 
 ## Inputs and issue hierarchy
 
-`/build` needs a parent spec and a **task graph** of child tickets. The **frontier** is the set of unblocked child tickets — tickets with no unresolved `## Blocked by` or native blocking / sub-issue links. See `docs/agents/issue-tracker.md` for how to resolve the graph and order the frontier.
+`/build` needs a parent spec and a **task graph** of child tickets. The **frontier** is the set of unblocked child tickets. See `docs/agents/issue-tracker.md` for how to resolve the graph and order the frontier.
 
 - If the user gives one issue number, treat it as a single child ticket unless the issue body declares it as a parent spec.
-- If the user gives a parent spec alone, find child issues whose bodies reference the parent, resolve their blocking links, identify the frontier, and confirm the batch.
-- If the user gives a parent spec and explicit child tickets, use those children, resolve their blocking links, identify the frontier, and confirm the batch.
+- If the user gives a parent spec alone, find child issues per `docs/agents/issue-tracker.md` and confirm the batch.
+- If the user gives a parent spec and explicit child tickets, use those children and resolve the graph per `docs/agents/issue-tracker.md`.
 
 Process tickets in frontier order.
 
@@ -29,26 +29,26 @@ Process tickets in frontier order.
 - Single ticket: `build/issue-<number>`
 - Batch: `build/spec-<parent>-<child>-<child>-...` (e.g. `build/spec-44-45-46-47`)
   - The first number is the parent spec; the following numbers are the child tickets.
-  - This makes the branch unambiguous and reproducible.
-- If the name exists, increment the trailing `-<N>` suffix until free.
+- If the name exists, append or increment a trailing `-<N>` suffix until free.
 
 ## Build and test commands
 
-Run the commands from `docs/agents/coding-standards.md` `## Build & Test Commands` before every commit, after any review fix, and once more before opening the PR. If `dotnet build "SwInventreeAddin/SwInventreeAddin.csproj"` fails on the final copy to `bin\Debug\net48\SwInventreeAddin.dll` because SolidWorks has it locked, use `dotnet test "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj" --disable-build-servers` as the primary loop. It compiles the same add-in code into `bin_unit_test` and never touches the locked `bin\Debug` assembly.
+Run the commands from `docs/agents/coding-standards.md` `## Build & Test Commands` before every commit, after any review fix, and once more before opening the PR.
 
 ## Review calls
 
-`/build` delegates review to `/review` (`.devin/skills/review/SKILL.md`); dispatch mechanics, the adjudication rubric, the re-review rule, and the two-pass cap live there. The exact call parameters are in `SKILL.md` step 6 (per-ticket spec check) and step 8 (final review). `/build` supplies the scope and acts on `REVIEW_STATUS` per `/review`'s output contract.
+The exact call parameters are in `SKILL.md` step 6 (per-ticket spec check) and step 8 (final review). `/build` supplies the scope and acts on `REVIEW_STATUS` per `/review`'s output contract.
 
 ## PR body
 
-- `Closes #<ticket>` for each child ticket; `Part of #<parent>` to reference the parent spec without closing it.
+- `Closes #<ticket>` for each child ticket (or the bug issue for a `/fix` PR); `Part of #<parent>` to reference the parent spec without closing it.
+- For a `/fix` PR, add the root cause in one line and the regression test added.
 - Acceptance criteria copied from the tickets.
 - Build and test commands that were run.
 - Changed GUI flows and edge cases.
 - `### Review notes` from `/review`'s `REVIEW_NOTES`, including any deferred or escalated findings.
 - `### Deferred and follow-up issues` — list any YELLOW findings intentionally deferred (with the user's explicit agreement and reason) and any RED findings converted into follow-up issues with their issue numbers.
-- `Run /qa on this branch. /qa will take the PR out of draft if QA passes and ask whether to merge.`
+- End with the `/qa` handoff line: `Run /qa on this branch. /qa will take the PR out of draft if QA passes and ask whether to merge.`
 
 ## Examples
 

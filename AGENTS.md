@@ -15,7 +15,7 @@ Custom skills live in `.devin/skills/`. `.agents/skills/` holds downloaded skill
 
 ## Design discipline
 
-Before any design decision that creates, changes, or removes a public seam, module, or interface, read `docs/agents/coding-standards.md` `## Module Design` and consult the `/codebase-design` skill it points to. Proceed only when you can state the public interface, the production and test adapters at the seam, and the deletion test result.
+Before any design decision that creates, changes, or removes a public seam, read `docs/agents/coding-standards.md` `## Module Design`, consult `/codebase-design`, and proceed only when you can state the seam declaration it requires.
 
 ## Where to look next
 
