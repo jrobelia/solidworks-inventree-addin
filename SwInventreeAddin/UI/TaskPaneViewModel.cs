@@ -63,6 +63,15 @@ namespace SwInventreeAddin.UI
         public Func<IReadOnlyList<InventreePart>, InventreePart, bool> ConfirmDuplicateIpn { get; set; } = (_, __) => true;
 
         /// <summary>
+        /// Called on the PK fetch path when the fetched part's IPN or Revision disagrees
+        /// with the document's stamped values — a Link Mismatch. Receives
+        /// (documentIpn, documentRevision, fetchedPart). Return true to load the
+        /// PK-addressed part, false to leave the document LINKED with no session.
+        /// Default always proceeds.
+        /// </summary>
+        public Func<string, string, InventreePart, bool> ConfirmLinkMismatch { get; set; } = (_, __, ___) => true;
+
+        /// <summary>
         /// Called when the InvenTree thumbnail is clicked and a part URL is available.
         /// Defaults to opening the URL in the system's default browser.
         /// </summary>
@@ -839,11 +848,29 @@ namespace SwInventreeAddin.UI
                         return;
                     }
 
-                    // Write IPN to SW document when the server has one and the document IPN is blank
-                    // so the document is linked by IPN going forward without an explicit Apply.
                     var m      = GetMappingOrDefault();
                     var docIpn = GetCustomPropertyOrEmpty(m.IpnProperty);
-                    if (!string.IsNullOrEmpty(pkPart.Ipn) && string.IsNullOrEmpty(docIpn) && !string.IsNullOrEmpty(m.IpnProperty))
+                    var docRev = _currentRevision?.Trim() ?? string.Empty;
+
+                    // Link Mismatch: a stamped field counts only when both sides
+                    // carry values that disagree — blank on either side means
+                    // "can't verify" and stays silent.
+                    var ipnMismatch = !string.IsNullOrWhiteSpace(docIpn)
+                        && !string.IsNullOrWhiteSpace(pkPart.Ipn)
+                        && !string.Equals(docIpn.Trim(), pkPart.Ipn!.Trim(), StringComparison.OrdinalIgnoreCase);
+                    var revMismatch = !string.IsNullOrWhiteSpace(docRev)
+                        && !string.IsNullOrWhiteSpace(pkPart.Revision)
+                        && RevisionComparer.Compare(docRev, pkPart.Revision!.Trim()) != RevisionOrder.Equal;
+
+                    if ((ipnMismatch || revMismatch) && !ConfirmLinkMismatch(docIpn, docRev, pkPart))
+                    {
+                        SetStatus("Fetch cancelled \u2014 Link Mismatch.", StatusSeverity.Warning);
+                        return;
+                    }
+
+                    // Write IPN to SW document when the server has one and the document IPN is blank
+                    // so the document is linked by IPN going forward without an explicit Apply.
+                    if (!string.IsNullOrWhiteSpace(pkPart.Ipn) && string.IsNullOrWhiteSpace(docIpn) && !string.IsNullOrWhiteSpace(m.IpnProperty))
                     {
                         _propertyService.SetCustomProperty(m.IpnProperty!, pkPart.Ipn);
                         PartNumber = pkPart.Ipn;

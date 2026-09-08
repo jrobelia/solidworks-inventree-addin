@@ -2484,6 +2484,226 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.ApplyEnabled, Is.True);
         }
     }
+
+    // ── Link Mismatch on PK Fetch (issue #194) ────────────────────────────────
+
+    [TestFixture]
+    public class FetchLinkMismatchTests
+    {
+        private StubInventreeClient         _client;
+        private StubDocumentPropertyService _propertyService;
+        private ICreatePartValidationErrorService _createPartValidator = null!;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _client              = new StubInventreeClient();
+            _propertyService     = new StubDocumentPropertyService();
+            _createPartValidator = new StubCreatePartValidationErrorService();
+            // LINKED-by-PK with a stamped IPN and Revision to verify against.
+            _propertyService.Seed("PartNo",       "DOC-001");
+            _propertyService.Seed("Revision",     "B");
+            _propertyService.Seed("InvenTree PK", "42");
+        }
+
+        private TaskPaneViewModel CreateVm() =>
+            new TaskPaneViewModel(_client, _propertyService, null, createPartValidator: _createPartValidator);
+
+        [Test]
+        public async Task FetchPartAsync_LinkMismatch_IpnDiffers_UserConfirms_EntersPopulatedState()
+        {
+            _client.PartByPkToReturn = new InventreePart
+                { Pk = 42, Ipn = "RENAMED-001", Revision = "B", Name = "Widget" };
+            var vm = CreateVm();
+            (string Ipn, string Rev, InventreePart Part)? seen = null;
+            vm.ConfirmLinkMismatch = (ipn, rev, part) => { seen = (ipn, rev, part); return true; };
+
+            await vm.FetchPartAsync();
+
+            Assert.That(seen, Is.Not.Null);
+            Assert.That(seen!.Value.Ipn,  Is.EqualTo("DOC-001"));
+            Assert.That(seen!.Value.Rev,  Is.EqualTo("B"));
+            Assert.That(seen!.Value.Part, Is.SameAs(_client.PartByPkToReturn));
+            Assert.That(vm.ApplyEnabled, Is.True);
+        }
+
+        [Test]
+        public async Task FetchPartAsync_LinkMismatch_UserCancels_StaysLinked()
+        {
+            _client.PartByPkToReturn = new InventreePart
+                { Pk = 42, Ipn = "RENAMED-001", Revision = "B" };
+            var vm = CreateVm();
+            vm.ConfirmLinkMismatch = (_, __, ___) => false;
+
+            await vm.FetchPartAsync();
+
+            Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(0));
+            Assert.That(vm.ApplyEnabled,       Is.False);
+            Assert.That(vm.StatusText,         Does.Contain("cancel").IgnoreCase);
+            Assert.That(vm.StatusSeverity,     Is.EqualTo(StatusSeverity.Warning));
+        }
+
+        [Test]
+        public async Task FetchPartAsync_LinkMismatch_UserCancels_DoesNotWriteIpnToDocument()
+        {
+            // Doc IPN blank → IPN can't be verified; the Revision mismatch still prompts,
+            // and Cancel must abort before the PK path's IPN write-back runs.
+            _propertyService.Seed("PartNo", string.Empty);
+            _client.PartByPkToReturn = new InventreePart
+                { Pk = 42, Ipn = "RENAMED-001", Revision = "C" };
+            var vm = CreateVm();
+            vm.ConfirmLinkMismatch = (_, __, ___) => false;
+
+            await vm.FetchPartAsync();
+
+            Assert.That(_propertyService.GetCustomProperty("PartNo"), Is.EqualTo(string.Empty));
+            Assert.That(_propertyService.SetCallLog, Does.Not.Contain("PartNo"));
+        }
+
+        [Test]
+        public async Task FetchPartAsync_LinkMismatch_OnlyRevisionDiffers_Prompts()
+        {
+            _client.PartByPkToReturn = new InventreePart
+                { Pk = 42, Ipn = "DOC-001", Revision = "C" };
+            var vm = CreateVm();
+            var prompted = false;
+            vm.ConfirmLinkMismatch = (_, __, ___) => { prompted = true; return true; };
+
+            await vm.FetchPartAsync();
+
+            Assert.That(prompted, Is.True);
+        }
+
+        [Test]
+        public async Task FetchPartAsync_RevisionSchemesIncomparable_Prompts()
+        {
+            // Both sides stamped but RevisionComparer can't order them (Ambiguous:
+            // "B" is alpha, "1.2" is dot-numeric) — can't prove agreement, so warn.
+            _client.PartByPkToReturn = new InventreePart
+                { Pk = 42, Ipn = "DOC-001", Revision = "1.2" };
+            var vm = CreateVm();
+            var prompted = false;
+            vm.ConfirmLinkMismatch = (_, __, ___) => { prompted = true; return true; };
+
+            await vm.FetchPartAsync();
+
+            Assert.That(prompted, Is.True);
+        }
+
+        [Test]
+        public async Task FetchPartAsync_DocRevisionBlank_NoPrompt()
+        {
+            _propertyService.Seed("Revision", string.Empty);
+            _client.PartByPkToReturn = new InventreePart
+                { Pk = 42, Ipn = "DOC-001", Revision = "C" };
+            var vm = CreateVm();
+            var prompted = false;
+            vm.ConfirmLinkMismatch = (_, __, ___) => { prompted = true; return true; };
+
+            await vm.FetchPartAsync();
+
+            Assert.That(prompted,        Is.False);
+            Assert.That(vm.ApplyEnabled, Is.True);
+        }
+
+        [Test]
+        public async Task FetchPartAsync_PartRevisionBlank_NoPrompt()
+        {
+            _client.PartByPkToReturn = new InventreePart
+                { Pk = 42, Ipn = "DOC-001", Revision = string.Empty };
+            var vm = CreateVm();
+            var prompted = false;
+            vm.ConfirmLinkMismatch = (_, __, ___) => { prompted = true; return true; };
+
+            await vm.FetchPartAsync();
+
+            Assert.That(prompted,        Is.False);
+            Assert.That(vm.ApplyEnabled, Is.True);
+        }
+
+        [Test]
+        public async Task FetchPartAsync_DocIpnBlank_NoPromptAndWritesIpn()
+        {
+            _propertyService.Seed("PartNo", string.Empty);
+            _client.PartByPkToReturn = new InventreePart
+                { Pk = 42, Ipn = "RENAMED-001", Revision = "B" };
+            var vm = CreateVm();
+            var prompted = false;
+            vm.ConfirmLinkMismatch = (_, __, ___) => { prompted = true; return true; };
+
+            await vm.FetchPartAsync();
+
+            Assert.That(prompted, Is.False);
+            Assert.That(_propertyService.GetCustomProperty("PartNo"), Is.EqualTo("RENAMED-001"));
+            Assert.That(vm.ApplyEnabled, Is.True);
+        }
+
+        [Test]
+        public async Task FetchPartAsync_PartIpnBlank_NoPrompt()
+        {
+            _client.PartByPkToReturn = new InventreePart
+                { Pk = 42, Ipn = string.Empty, Revision = "B" };
+            var vm = CreateVm();
+            var prompted = false;
+            vm.ConfirmLinkMismatch = (_, __, ___) => { prompted = true; return true; };
+
+            await vm.FetchPartAsync();
+
+            Assert.That(prompted,        Is.False);
+            Assert.That(vm.ApplyEnabled, Is.True);
+        }
+
+        [Test]
+        public async Task FetchPartAsync_AgreeingValues_NoPrompt()
+        {
+            _client.PartByPkToReturn = new InventreePart
+                { Pk = 42, Ipn = "DOC-001", Revision = "B" };
+            var vm = CreateVm();
+            var prompted = false;
+            vm.ConfirmLinkMismatch = (_, __, ___) => { prompted = true; return true; };
+
+            await vm.FetchPartAsync();
+
+            Assert.That(prompted,        Is.False);
+            Assert.That(vm.ApplyEnabled, Is.True);
+        }
+
+        [Test]
+        public async Task FetchPartAsync_RevisionDiffersOnlyByCase_NoPrompt()
+        {
+            // Revision ordering goes through RevisionComparer, not raw string equality:
+            // "b" and "B" are the same revision.
+            _propertyService.Seed("Revision", "b");
+            _client.PartByPkToReturn = new InventreePart
+                { Pk = 42, Ipn = "DOC-001", Revision = "B" };
+            var vm = CreateVm();
+            var prompted = false;
+            vm.ConfirmLinkMismatch = (_, __, ___) => { prompted = true; return true; };
+
+            await vm.FetchPartAsync();
+
+            Assert.That(prompted, Is.False);
+        }
+
+        [Test]
+        public async Task FetchPartAsync_IpnResolutionPath_NeverPrompts()
+        {
+            // No stamped PK → the IPN path runs and must not consult ConfirmLinkMismatch.
+            _propertyService.Seed("InvenTree PK", string.Empty);
+            _client.PartsByIpnToReturn = new System.Collections.Generic.List<InventreePart>
+            {
+                new InventreePart { Pk = 7, Ipn = "OTHER-999", Revision = "Z" },
+            };
+            var vm = CreateVm();
+            var prompted = false;
+            vm.ConfirmLinkMismatch = (_, __, ___) => { prompted = true; return true; };
+
+            await vm.FetchPartAsync();
+
+            Assert.That(prompted,               Is.False);
+            Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(7));
+        }
+    }
 }
 
 // ── PartCreated handler state (issue #17 / #19) ─────────────────────────────────
