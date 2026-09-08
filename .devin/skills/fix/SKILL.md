@@ -26,7 +26,7 @@ triggers: ["user"]
    ```powershell
    gh pr list --state open --head <current-branch> --json number,url,body
    ```
-   - **Open PR found** — the bug blocks that PR: work on the current branch and commit in-place; the `Closes #N` body update happens at ship time. Store the commit before your work as `PRE_FIX_SHA`.
+   - **Open PR found** — the bug may block that PR. Check whether the bug relates to the PR's work: does the PR's body, spec, or changed files overlap with the bug? If yes, treat it as PR-blocking and work on the current branch, commit in-place, and update the PR body with `Closes #N` at ship time. If the bug is unrelated or the overlap is ambiguous, stop and ask the user whether to branch off to `fix/issue-<N>` or still commit in-place.
    - **No open PR** — verify `git status --short` is clean (stop and ask otherwise), then create `fix/issue-<N>` from the current branch and capture `PRE_FIX_SHA`. A draft PR opens at step 7.
 4. **Fix with `/tdd`.** Red first: a failing regression test that reproduces the bug, then green. If the bug can't be reproduced as a failing test, state why and fall back to the build/test commands from `docs/agents/coding-standards.md` — an unreproducible red is itself a hard-bug signal; go back to step 2 if you skipped it.
 5. **Commit the fix.** Run build and test per `docs/agents/coding-standards.md`, fix failures, then commit referencing `#N`. `/review` measures a committed diff, so the commit must land before the review call.

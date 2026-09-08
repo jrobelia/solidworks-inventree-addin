@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "You are mid-/build on branch build/issue-99. The just-committed diff adds business logic to XAML code-behind and a test using Assert.AreEqual. Run /review with REVIEW_BASE=<commit before the work> and SPEC_SOURCE=<issue #99 body, which asked for a Push button>. Walk through the process: state the inputs you resolve, which profiles you would dispatch and with what arguments, then adjudicate the expected findings and produce REVIEW_STATUS and REVIEW_NOTES.",
-      "expected_output": "Agent resolves REVIEW_BASE, names review-standards and review-spec as the dispatch targets with REVIEW_BASE (and SPEC) passed, classifies code-behind logic and Assert.AreEqual as RED (documented standards), and produces REVIEW_STATUS plus REVIEW_NOTES with per-finding dispositions.",
+      "expected_output": "Agent resolves REVIEW_BASE, names review-standards and review-spec as the dispatch targets with REVIEW_BASE (and SPEC) passed, classifies code-behind logic and Assert.AreEqual as RED documented-standard violations, fixes the Assert.AreEqual assertion style in-session because it is mechanical and does not change a seam, and either fixes the code-behind delegation in-session if it is a one-line move to the existing ViewModel or escalates it if it requires a new seam; returns REVIEW_STATUS with REVIEW_NOTES.",
       "files": []
     },
     {

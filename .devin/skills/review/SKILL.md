@@ -34,7 +34,7 @@ Do not move to the next step until the current step's condition holds.
 6. **Adjudicate every finding:**
    1. **Verify it against the code.** Subagent findings are opinions, not tasks; skip findings that are factually wrong or contradict the spec.
    2. **Classify within its axis:**
-      - **RED** — a hard spec gap (Spec) or documented hard-standards violation (Standards). Fix it if the fix is safe and small. If too large or risky, create a follow-up issue, link it as a blocking dependency on the PR, record it in `REVIEW_NOTES`, and return `escalated`.
+      - **RED** — a hard spec gap (Spec) or documented hard-standards violation (Standards). Fix it in-session only if it is mechanical and does not touch a public seam, module boundary, or behavior. Examples: assertion-style rewrites, one-line delegations to an existing ViewModel method, null-check additions, or local renames that match the spec. If the RED changes a public seam, a module's boundary, or any runtime behavior beyond the immediate fix, create a follow-up issue, link it as a blocking dependency on the PR, record it in `REVIEW_NOTES`, and return `escalated`.
       - **YELLOW** — a real quality or partial-spec issue. Propose a fix; ask the user when the rework is large or the trade-off is unclear. A YELLOW the user explicitly accepts is deferred — record it and the reason in `REVIEW_NOTES`.
       - **GREEN** — style or cosmetic. Auto-fix if trivial; otherwise record in `REVIEW_NOTES`.
    3. **Re-run the build and test commands** from `docs/agents/coding-standards.md` `## Build & Test Commands` after every fix.
