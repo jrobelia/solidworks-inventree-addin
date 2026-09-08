@@ -17,15 +17,16 @@ Style guide: Microsoft C# coding conventions. Nullable reference types enabled. 
 
 ## Build & Test Commands
 
-Test: `dotnet test "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj" --disable-build-servers` — primary verification loop.
-Build: `dotnet build "SwInventreeAddin/SwInventreeAddin.csproj" --disable-build-servers` — produces the SolidWorks-facing `bin\Debug\net48` output.
-Solution build: `dotnet build "Solidworks Inventree Add-In.sln" --disable-build-servers` — builds the full solution; still valid but not the primary agent build command because it also writes the add-in to the `bin\Debug` path.
+Agent verification: `dotnet test "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj" --disable-build-servers`. Agents run this command only — it compiles the add-in into `bin_unit_test\net48` and runs the suite while SolidWorks is open.
+
+The `dotnet build` commands below produce the SolidWorks-facing `bin\Debug\net48` output. SolidWorks locks `bin\Debug\net48\SwInventreeAddin.dll` while running, so they fail on the file copy and are manual steps only — run them with SolidWorks closed when the add-in DLL itself needs refreshing.
+
+Build: `dotnet build "SwInventreeAddin/SwInventreeAddin.csproj" --disable-build-servers` — builds just the add-in project.
+Solution build: `dotnet build "Solidworks Inventree Add-In.sln" --disable-build-servers` — builds the full solution, including the test project.
 
 Check: (none — no separate lint step)
 
 Notes:
-- `dotnet test` builds the referenced add-in into `bin_unit_test\net48` so it can run while SolidWorks is open.
-- `dotnet build` of the add-in project writes `bin\Debug\net48\SwInventreeAddin.dll`, which SolidWorks may have locked. Run it with SolidWorks closed when the locked DLL must be overwritten.
 - All build/test commands use `--disable-build-servers` and `UseSharedCompilation=false` in `Directory.Build.props` to stop long-running `dotnet` and `VBCSCompiler` processes from holding file locks.
 
 ---
