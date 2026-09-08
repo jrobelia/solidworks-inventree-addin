@@ -1,6 +1,6 @@
 # Coding Standards
 
-This file defines the coding standards for this project. It is used by RALPH's review agent to evaluate code quality after each implementation.
+This file defines the coding standards for this project. It is the Standards-axis rulebook for `/review` — run by `/build`, `/fix`, and `/build-afk`'s review step — and the source of the build/test commands and module-design rules those skills apply.
 
 ---
 
@@ -53,6 +53,7 @@ Structure: Arrange / Act / Assert (implicit). Use `[TestFixture]`, `[SetUp]`, `[
 Location: All tests in `SwInventreeAddin.Tests/`. Stubs live in `SwInventreeAddin.Tests/Stubs/`. One test file per production class.
 
 Rules:
+- Unit tests must run on a machine with no SolidWorks installed. Every host-facing dependency sits behind a `Stub*` adapter so the suite never loads SolidWorks interop assemblies.
 - Tests use stub implementations (from `Stubs/`), never mocking frameworks.
 - Each test verifies one logical assertion using the NUnit constraint model: `Assert.That(x, Is.EqualTo(y))` — never the classic `Assert.AreEqual`.
 - Tests must not depend on each other or rely on execution order.
@@ -110,11 +111,14 @@ For the shared vocabulary, design-it-twice patterns, and deepening guidance, con
 - **Interfaces for all cross-layer dependencies.** Every external service (InvenTree client, document property service, viewport capture) must be accessed through an interface so it can be stubbed in tests.
 - **`System.Text.Json` only.** Never use Newtonsoft.Json.
 - **SolidWorks DLLs never copied to output.** `Private=False`, `EmbedInteropTypes=True` — no exceptions.
+- **Release field-held SolidWorks COM references in `DisconnectFromSW`.** Interop objects stored in fields (`_swApp`, `_taskPaneView`) are released with `Marshal.ReleaseComObject` and nulled during teardown. Short-lived per-call COM references do not require explicit release.
 - **Property names user-configurable.** Never hardcode SolidWorks ↔ InvenTree property name mappings; always read from `IPropertyMappingProvider`.
 - **IPN is server-side.** After creating a part, always re-fetch from InvenTree to get the assigned IPN. Never assume or generate the IPN locally.
 - **InvenTree-only BOM lines are read-only.** The add-in must never modify or delete them.
 - **No comments describing what the code does.** Only explain non-obvious *why* decisions. XML doc comments on public APIs are welcome.
 - **`ConfigureAwait(false)` on all HTTP awaits; `RunOnUiThread` for UI updates.** In ViewModels, await HTTP calls with `.ConfigureAwait(false)` so they run on the thread pool. Then wrap all property sets and status updates in `RunOnUiThread(...)` to marshal back to the STA thread. Do not use `ConfigureAwait(true)` as a substitute for `RunOnUiThread`. See ADR 0002.
+- **`async void` only on event handlers.** Every other async method returns `Task`. An unhandled throw in `async void` has no caller to catch it and crashes the SolidWorks host process.
+- **Catch at the event-handler boundary and surface errors in a dialog.** Event handlers catch exceptions and show `MessageDialog` owned by the SolidWorks window handle (`SolidWorksWindowHandle.Get()`) or the add-in window that spawned the action. An error that only reaches Task Pane status text can pass unnoticed.
 - **`Set<T>` for all `INotifyPropertyChanged` properties.** Use the `Set(ref _field, value)` helper rather than calling `PropertyChanged` directly. Computed properties (no backing field) fire `PropertyChanged` explicitly from the setters of their dependencies.
 - **Batch data-bound collection updates.** When updating a data-bound `ObservableCollection`, update items in place or raise a single `Reset` notification rather than calling `Clear()` followed by multiple `Add()` calls. Each `Clear`/`Add` raises a separate `CollectionChanged` event and triggers a WPF layout pass; during a host repaint callback (e.g. a SolidWorks view notification), re-entrant layout can crash the host process.
 - **Section separator comments.** Use `// ── Section name ─────` dividers to separate logical sections within a class (Dependencies, Bindable properties, State, Constructors, Commands, Behaviour, Helpers). Match the existing style exactly.
@@ -133,8 +137,11 @@ For the shared vocabulary, design-it-twice patterns, and deepening guidance, con
 - IPN assumed after creation instead of re-fetched.
 - `ThrowOnUpdate` / `ThrowOnUpload` / exception paths not covered in tests when the new code can throw.
 - Forgetting to dispose `IDisposable` resources (e.g. `HttpClient`, `Bitmap`).
+- A SolidWorks COM reference stored in a field that `DisconnectFromSW` does not release.
 - Missing `RunOnUiThread` wrapper around property sets inside an async method — silently breaks on the STA thread.
 - Using `ConfigureAwait(true)` or omitting `ConfigureAwait` on HTTP awaits in ViewModels.
+- `async void` on a method that is not an event handler — an unhandled throw crashes the SolidWorks host process.
+- An event handler that lets an exception escape or reports failure only to Task Pane status text, instead of showing a `MessageDialog` owned by the SolidWorks window.
 - New properties using `PropertyChanged?.Invoke(...)` directly instead of the `Set<T>` helper.
 - Data-bound `ObservableCollection` updated with `Clear()` + multiple `Add()` instead of in-place updates or a single `Reset` — risks re-entrant WPF layout crashes during host repaint callbacks.
 - Domain terminology violations: `Load` instead of `Fetch`, `sync` instead of `Apply`/`Push`, `part number` instead of `IPN`.
@@ -142,5 +149,6 @@ For the shared vocabulary, design-it-twice patterns, and deepening guidance, con
 - Missing locality: business logic or state duplicated across callers instead of living in a deep module.
 - Hypothetical seams: a new cross-layer dependency with an interface but no `Stub*` test adapter.
 - Tests that bypass the seam and exercise internal helpers rather than the module's public interface.
+- Test code that references SolidWorks interop types or otherwise cannot run on a machine without SolidWorks installed.
 - Live-window tests missing the `HiddenTestWindow` off-screen guard.
 - New modules or seams introduced before the code shows a real need for them (YAGNI / over-engineering).
