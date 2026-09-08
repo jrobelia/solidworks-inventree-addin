@@ -125,7 +125,7 @@ Once the PR for a branch is merged, prune the branch before starting the next ta
 
 ## Code-review diff base
 
-When another skill asks you to run `/code-review`, use the commit *before the work you are reviewing* as the base. Use `origin/main` only when the whole branch is the review target.
+When another skill asks you to run `/review`, use the commit *before the work you are reviewing* as the base. Use `origin/main` only when the whole branch is the review target.
 
 1. Run `git log --oneline` and identify the last commit that is not part of your change.
 2. Use that commit as the fixed point:
