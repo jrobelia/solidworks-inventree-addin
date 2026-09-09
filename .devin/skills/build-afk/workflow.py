@@ -135,7 +135,7 @@ Apply the repo's documented coding standards first, then the Fowler smell baseli
 - Anchor every finding to a `file:line` (or hunk) in the diff.
 - Mark documented-standard breaches as RED; baseline smells as YELLOW or GREEN.
 
-Return **only** a JSON object: `{"report": "<single ## Standards block, or GREEN - No Standards issues detected.>"}`. End the report with a verdict line: `**Ready to merge:** Yes | No | With fixes`. Keep the report under 400 words. No `## Spec` section."""
+Return **only** a JSON object: `{"report": "<single ## Standards block, or GREEN - No Standards issues detected.>"}`. End the report with a verdict line: `**Ready to merge:** Yes | No | With fixes`. Keep the report under 800 words. No `## Spec` section."""
 
 SPEC_REVIEWER_PROMPT = """You are the Spec axis of a two-axis /build-afk review for {{REPO}}.
 
@@ -161,7 +161,7 @@ IMPLEMENTER CLAIMS:
 If the issue references a parent spec, ADR, or PR, read those for context.
 For each finding, quote the spec line that is missing, partial, or mis-implemented, and anchor it to a `file:line` in the diff. Call out scope creep. Do not apply coding-style judgements; those belong in the Standards axis.
 
-Return **only** a JSON object: `{"report": "<single ## Spec block, or GREEN - No Spec issues detected.>"}`. End the report with a verdict line: `**Ready to merge:** Yes | No | With fixes`. Keep the report under 400 words. No `## Standards` section."""
+Return **only** a JSON object: `{"report": "<single ## Spec block, or GREEN - No Spec issues detected.>"}`. End the report with a verdict line: `**Ready to merge:** Yes | No | With fixes`. Keep the report under 800 words. No `## Standards` section."""
 
 ADJUDICATE_PROMPT = """You are the parent adjudicator for a /build-afk review.
 
