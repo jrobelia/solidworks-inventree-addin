@@ -35,19 +35,19 @@ namespace SwInventreeAddin.SolidWorks
             int rowCount = table.RowCount;
             if (rowCount < 2) return new List<SwBomLine>();
 
-            int colIpn       = FindColumn(table, mapping.BomColumnIpn);
-            int colQty       = FindColumn(table, mapping.BomColumnQty);
+            int colIpn = FindColumn(table, mapping.BomColumnIpn);
+            int colQty = FindColumn(table, mapping.BomColumnQty);
             int colReference = FindColumn(table, mapping.BomColumnReference);
-            int colNote      = FindColumn(table, mapping.BomColumnNote);
+            int colNote = FindColumn(table, mapping.BomColumnNote);
 
             var lines = new List<SwBomLine>();
             for (int row = 1; row < rowCount; row++)
             {
                 var line = new SwBomLine
                 {
-                    Ipn       = (colIpn       >= 0 ? table.Text2[row, colIpn, false]       ?? "" : "").Trim(),
+                    Ipn = (colIpn >= 0 ? table.Text2[row, colIpn, false] ?? "" : "").Trim(),
                     Reference = (colReference >= 0 ? table.Text2[row, colReference, false] ?? "" : "").Trim(),
-                    Note      = (colNote      >= 0 ? table.Text2[row, colNote, false]       ?? "" : "").Trim(),
+                    Note = (colNote >= 0 ? table.Text2[row, colNote, false] ?? "" : "").Trim(),
                 };
 
                 if (colQty >= 0 &&
@@ -95,7 +95,7 @@ namespace SwInventreeAddin.SolidWorks
 
         private IBomTableAnnotation? FindBomTableAnnotation(string keyword)
         {
-            var feature    = FindBomFeature(keyword);
+            var feature = FindBomFeature(keyword);
             var bomFeature = feature?.GetSpecificFeature2() as IBomFeature;
             var annotations = (object[]?)bomFeature?.GetTableAnnotations();
             if (annotations?.Length > 0)
@@ -106,7 +106,7 @@ namespace SwInventreeAddin.SolidWorks
         private static int FindColumn(ITableAnnotation table, string? aliasCsv)
         {
             if (string.IsNullOrEmpty(aliasCsv)) return -1;
-            var aliases  = aliasCsv!.Split(',').Select(a => a.Trim()).Where(a => a.Length > 0).ToArray();
+            var aliases = aliasCsv!.Split(',').Select(a => a.Trim()).Where(a => a.Length > 0).ToArray();
             int colCount = table.ColumnCount;
             for (int col = 0; col < colCount; col++)
             {

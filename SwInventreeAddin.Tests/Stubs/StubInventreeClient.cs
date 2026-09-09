@@ -9,18 +9,18 @@ namespace SwInventreeAddin.Tests.Stubs
 {
     public class StubInventreeClient : IInventreeClient
     {
-        public InventreePart? PartToReturn        { get; set; }
-        public string         LastIpnRequested    { get; private set; } = string.Empty;
-        public int            LastPushedPk        { get; private set; }
-        public string         LastPushedRevision  { get; private set; } = string.Empty;
-        public string         LastPushedName      { get; private set; } = string.Empty;
-        public string         LastPushedNotes     { get; private set; } = string.Empty;
-        public string         LastPushedDescription { get; private set; } = string.Empty;
-        public Exception?     ThrowOnUpdate       { get; set; }
-        public int            LastUploadedPk        { get; private set; }
-        public byte[]?        LastUploadedImageData { get; private set; }
-        public Exception?     ThrowOnUpload         { get; set; }
-        public Exception?     ThrowOnGetPartByIpn   { get; set; }
+        public InventreePart? PartToReturn { get; set; }
+        public string LastIpnRequested { get; private set; } = string.Empty;
+        public int LastPushedPk { get; private set; }
+        public string LastPushedRevision { get; private set; } = string.Empty;
+        public string LastPushedName { get; private set; } = string.Empty;
+        public string LastPushedNotes { get; private set; } = string.Empty;
+        public string LastPushedDescription { get; private set; } = string.Empty;
+        public Exception? ThrowOnUpdate { get; set; }
+        public int LastUploadedPk { get; private set; }
+        public byte[]? LastUploadedImageData { get; private set; }
+        public Exception? ThrowOnUpload { get; set; }
+        public Exception? ThrowOnGetPartByIpn { get; set; }
 
         public Task<InventreePart?> GetPartByIpnAsync(string ipn)
         {
@@ -34,7 +34,7 @@ namespace SwInventreeAddin.Tests.Stubs
         public Task UpdatePartRevisionAsync(int pk, string revision)
         {
             if (ThrowOnUpdate != null) throw ThrowOnUpdate;
-            LastPushedPk       = pk;
+            LastPushedPk = pk;
             LastPushedRevision = revision;
             return Task.CompletedTask;
         }
@@ -42,7 +42,7 @@ namespace SwInventreeAddin.Tests.Stubs
         public Task UpdatePartNameAsync(int pk, string name)
         {
             if (ThrowOnUpdate != null) throw ThrowOnUpdate;
-            LastPushedPk   = pk;
+            LastPushedPk = pk;
             LastPushedName = name;
             return Task.CompletedTask;
         }
@@ -50,7 +50,7 @@ namespace SwInventreeAddin.Tests.Stubs
         public Task UpdatePartNotesAsync(int pk, string notes)
         {
             if (ThrowOnUpdate != null) throw ThrowOnUpdate;
-            LastPushedPk    = pk;
+            LastPushedPk = pk;
             LastPushedNotes = notes;
             return Task.CompletedTask;
         }
@@ -58,7 +58,7 @@ namespace SwInventreeAddin.Tests.Stubs
         public Task UpdatePartDescriptionAsync(int pk, string description)
         {
             if (ThrowOnUpdate != null) throw ThrowOnUpdate;
-            LastPushedPk          = pk;
+            LastPushedPk = pk;
             LastPushedDescription = description;
             return Task.CompletedTask;
         }
@@ -66,14 +66,14 @@ namespace SwInventreeAddin.Tests.Stubs
         public Task UploadPartImageAsync(int pk, byte[] pngData)
         {
             if (ThrowOnUpload != null) throw ThrowOnUpload;
-            LastUploadedPk        = pk;
+            LastUploadedPk = pk;
             LastUploadedImageData = pngData;
             return Task.CompletedTask;
         }
 
-        public byte[]?   ThumbnailBytesToReturn { get; set; }
-        public int        DownloadImageCallCount { get; private set; }
-        public Exception? ThrowOnDownload        { get; set; }
+        public byte[]? ThumbnailBytesToReturn { get; set; }
+        public int DownloadImageCallCount { get; private set; }
+        public Exception? ThrowOnDownload { get; set; }
 
         /// <summary>
         /// When true, GetPartByIpnAsync returns a task that completes on the thread pool.
@@ -101,8 +101,8 @@ namespace SwInventreeAddin.Tests.Stubs
 
         public IReadOnlyList<InventreeCategory> CategoriesToReturn { get; set; }
             = new List<InventreeCategory>();
-        public int?  LastGetCategoriesParentId { get; private set; }
-        public bool  ThrowOnGetCategories { get; set; }
+        public int? LastGetCategoriesParentId { get; private set; }
+        public bool ThrowOnGetCategories { get; set; }
 
         public Task<IReadOnlyList<InventreeCategory>> GetCategoriesAsync(int? parentId)
         {
@@ -114,21 +114,21 @@ namespace SwInventreeAddin.Tests.Stubs
 
         // ── CreatePartAsync ────────────────────────────────────────────────────
 
-        public int        PkToReturnOnCreate    { get; set; }
-        public int        LastCreateCategoryPk   { get; private set; }
-        public string     LastCreateName         { get; private set; } = string.Empty;
-        public bool       ThrowOnCreate          { get; set; }
+        public int PkToReturnOnCreate { get; set; }
+        public int LastCreateCategoryPk { get; private set; }
+        public string LastCreateName { get; private set; } = string.Empty;
+        public bool ThrowOnCreate { get; set; }
         public Exception? ThrowOnCreateException { get; set; }
 
-        public string LastCreateIpn       { get; private set; } = string.Empty;
+        public string LastCreateIpn { get; private set; } = string.Empty;
         public PartCreationFlags? LastCreateFlags { get; private set; }
 
         public Task<int> CreatePartAsync(int categoryPk, string name, string? ipn = null, PartCreationFlags? flags = null)
         {
             LastCreateCategoryPk = categoryPk;
-            LastCreateName       = name;
-            LastCreateIpn        = ipn ?? string.Empty;
-            LastCreateFlags      = flags;
+            LastCreateName = name;
+            LastCreateIpn = ipn ?? string.Empty;
+            LastCreateFlags = flags;
             if (ThrowOnCreateException != null)
                 throw ThrowOnCreateException;
             if (ThrowOnCreate)
@@ -138,9 +138,9 @@ namespace SwInventreeAddin.Tests.Stubs
 
         // ── GetPartByPkAsync ───────────────────────────────────────────────────
 
-        public InventreePart? PartByPkToReturn  { get; set; }
-        public int            LastGetPartByPkPk { get; private set; }
-        public bool           ThrowOnGetPartByPk { get; set; }
+        public InventreePart? PartByPkToReturn { get; set; }
+        public int LastGetPartByPkPk { get; private set; }
+        public bool ThrowOnGetPartByPk { get; set; }
 
         // Queue successive return values for polling tests.
         // When the queue runs out, falls back to PartByPkToReturn.
@@ -168,7 +168,7 @@ namespace SwInventreeAddin.Tests.Stubs
         public List<(int Pk, decimal Qty, string Ref, string Note, bool Consumable, bool Optional)> UpdatedBomLines { get; }
             = new List<(int, decimal, string, string, bool, bool)>();
         public IReadOnlyList<InventreePart> PartsByIpnToReturn { get; set; } = new List<InventreePart>();
-        public bool ThrowOnGetBom    { get; set; }
+        public bool ThrowOnGetBom { get; set; }
         public bool ThrowOnCreateBom { get; set; }
         public bool ThrowOnUpdateBom { get; set; }
 
@@ -184,9 +184,12 @@ namespace SwInventreeAddin.Tests.Stubs
             if (ThrowOnCreateBom) throw new HttpRequestException("Stub: CreateBomLine failed");
             CreatedBomLines.Add(new InventreeBomLine
             {
-                SubPartPk  = subPartPk, Quantity  = quantity,
-                Reference  = reference, Note      = note,
-                Consumable = consumable, Optional = optional,
+                SubPartPk = subPartPk,
+                Quantity = quantity,
+                Reference = reference,
+                Note = note,
+                Consumable = consumable,
+                Optional = optional,
             });
             return Task.FromResult(CreatedBomLines.Count);
         }
@@ -214,8 +217,8 @@ namespace SwInventreeAddin.Tests.Stubs
 
         // ── GetPartWebUrl ─────────────────────────────────────────────────────
 
-        public Uri?  PartWebUrlToReturn  { get; set; }
-        public int   LastGetPartWebUrlPk { get; private set; }
+        public Uri? PartWebUrlToReturn { get; set; }
+        public int LastGetPartWebUrlPk { get; private set; }
 
         public Uri? GetPartWebUrl(int pk)
         {

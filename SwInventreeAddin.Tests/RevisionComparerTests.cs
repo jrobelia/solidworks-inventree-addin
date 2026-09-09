@@ -147,12 +147,12 @@ namespace SwInventreeAddin.Tests
 
         // ── Shop schema: A < A1 < A2 < B < B1 < Z < AA ───────────────────────
 
-        [TestCase("A",  "A1", ExpectedResult = RevisionOrder.ItIsNewer)]
+        [TestCase("A", "A1", ExpectedResult = RevisionOrder.ItIsNewer)]
         [TestCase("A1", "A2", ExpectedResult = RevisionOrder.ItIsNewer)]
-        [TestCase("A2", "B",  ExpectedResult = RevisionOrder.ItIsNewer)]
-        [TestCase("B",  "B1", ExpectedResult = RevisionOrder.ItIsNewer)]
-        [TestCase("B1", "Z",  ExpectedResult = RevisionOrder.ItIsNewer)]
-        [TestCase("Z",  "AA", ExpectedResult = RevisionOrder.ItIsNewer)]
+        [TestCase("A2", "B", ExpectedResult = RevisionOrder.ItIsNewer)]
+        [TestCase("B", "B1", ExpectedResult = RevisionOrder.ItIsNewer)]
+        [TestCase("B1", "Z", ExpectedResult = RevisionOrder.ItIsNewer)]
+        [TestCase("Z", "AA", ExpectedResult = RevisionOrder.ItIsNewer)]
         public RevisionOrder ShopSchema_SequenceIsOrdered(string sw, string it)
         {
             return RevisionComparer.Compare(sw, it);

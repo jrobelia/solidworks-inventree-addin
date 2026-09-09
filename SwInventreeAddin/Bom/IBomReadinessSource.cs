@@ -11,22 +11,22 @@ namespace SwInventreeAddin.Bom
     internal interface IBomReadinessSource
     {
         /// <summary>InvenTree PK held in memory from the last Part Sync. 0 if not yet fetched.</summary>
-        int    CurrentInvenTreePk { get; }
+        int CurrentInvenTreePk { get; }
 
         /// <summary>The IPN read from the active SolidWorks Document Property.</summary>
-        string PartNumber         { get; }
+        string PartNumber { get; }
 
         /// <summary>
         /// The InvenTree PK value stamped in this assembly's SolidWorks Document Properties.
         /// Empty if Part Sync has never been run on this document.
         /// </summary>
-        string CurrentPk          { get; }
+        string CurrentPk { get; }
 
         /// <summary>The revision value read from the active SolidWorks Document Property.</summary>
-        string CurrentRevision    { get; }
+        string CurrentRevision { get; }
 
         /// <summary>The revision value fetched from InvenTree during the last Part Sync.</summary>
-        string RevisionPreview    { get; }
+        string RevisionPreview { get; }
 
         /// <summary>
         /// The resolved Property Mapping for the current document, including the BOM column

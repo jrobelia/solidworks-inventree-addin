@@ -16,14 +16,14 @@ namespace SwInventreeAddin.Bom
     {
         private readonly IBomReadinessSource _source;
         private readonly IAssemblyBomService _bomService;
-        private readonly string              _bomKeyword;
+        private readonly string _bomKeyword;
 
         public BomCompareReadinessCheck(
             IBomReadinessSource source,
             IAssemblyBomService bomService,
             string bomKeyword)
         {
-            _source     = source     ?? throw new ArgumentNullException(nameof(source));
+            _source = source ?? throw new ArgumentNullException(nameof(source));
             _bomService = bomService ?? throw new ArgumentNullException(nameof(bomService));
             _bomKeyword = bomKeyword ?? throw new ArgumentNullException(nameof(bomKeyword));
         }
@@ -35,8 +35,8 @@ namespace SwInventreeAddin.Bom
         public async Task<BomCompareReadiness> CheckAsync()
         {
             var partNumber = _source.PartNumber;
-            var swRev      = _source.CurrentRevision?.Trim() ?? string.Empty;
-            var itRev      = _source.RevisionPreview?.Trim() ?? string.Empty;
+            var swRev = _source.CurrentRevision?.Trim() ?? string.Empty;
+            var itRev = _source.RevisionPreview?.Trim() ?? string.Empty;
 
             BomCompareReadiness Result(BomCompareOutcome outcome) =>
                 new BomCompareReadiness(outcome, partNumber, swRev, itRev);
@@ -60,10 +60,10 @@ namespace SwInventreeAddin.Bom
 
             // Re-read rev values after the refresh.
             swRev = _source.CurrentRevision?.Trim() ?? string.Empty;
-            itRev = _source.RevisionPreview?.Trim()  ?? string.Empty;
+            itRev = _source.RevisionPreview?.Trim() ?? string.Empty;
 
             var revOrder = RevisionComparer.Compare(swRev, itRev);
-            var mapping  = _source.CurrentMapping;
+            var mapping = _source.CurrentMapping;
 
             return revOrder switch
             {

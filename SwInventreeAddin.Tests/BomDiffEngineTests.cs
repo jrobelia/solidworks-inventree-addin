@@ -10,14 +10,26 @@ namespace SwInventreeAddin.Tests
     {
         private static SwBomLine SwLine(string ipn, decimal qty = 1, int pk = 0,
             string reference = "", string note = "") =>
-            new SwBomLine { Ipn = ipn, Quantity = qty, SubPartPk = pk,
-                            Reference = reference, Note = note };
+            new SwBomLine
+            {
+                Ipn = ipn,
+                Quantity = qty,
+                SubPartPk = pk,
+                Reference = reference,
+                Note = note
+            };
 
         private static InventreeBomLine ItLine(int subPartPk, decimal qty = 1,
             string ipn = "", string reference = "", string note = "") =>
-            new InventreeBomLine { Pk = subPartPk * 10, SubPartPk = subPartPk,
-                                   Quantity = qty, SubPartIpn = ipn,
-                                   Reference = reference, Note = note };
+            new InventreeBomLine
+            {
+                Pk = subPartPk * 10,
+                SubPartPk = subPartPk,
+                Quantity = qty,
+                SubPartIpn = ipn,
+                Reference = reference,
+                Note = note
+            };
 
         private static Dictionary<string, IReadOnlyList<InventreePart>> NoLookups =>
             new Dictionary<string, IReadOnlyList<InventreePart>>();
@@ -90,7 +102,7 @@ namespace SwInventreeAddin.Tests
         public void Diff_IpnWithZeroResults_IsIpnNotFound()
         {
             var lookups = new Dictionary<string, IReadOnlyList<InventreePart>>
-                { ["MISSING"] = new List<InventreePart>() };
+            { ["MISSING"] = new List<InventreePart>() };
             var result = BomDiffEngine.Diff(
                 new[] { SwLine("MISSING", pk: 0) },
                 new InventreeBomLine[0],

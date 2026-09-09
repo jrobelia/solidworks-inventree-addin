@@ -44,8 +44,8 @@ namespace SwInventreeAddin.Tests
             var result = _provider.GetServerConfig();
 
             Assert.That(result, Is.Not.Null);
-            Assert.That(result!.Url,    Is.EqualTo("http://example.com"));
-            Assert.That(result.ApiKey,  Is.EqualTo("my-api-key"));
+            Assert.That(result!.Url, Is.EqualTo("http://example.com"));
+            Assert.That(result.ApiKey, Is.EqualTo("my-api-key"));
         }
 
         [Test]
@@ -62,8 +62,8 @@ namespace SwInventreeAddin.Tests
         {
             var config = new ServerConfig
             {
-                Url               = "http://example.com",
-                ApiKey            = "key",
+                Url = "http://example.com",
+                ApiKey = "key",
                 MappingSourcePath = @"\\server\share\mapping.json",
             };
 
@@ -90,8 +90,8 @@ namespace SwInventreeAddin.Tests
         {
             var config = new ServerConfig
             {
-                Url                      = "http://example.com",
-                ApiKey                   = "key",
+                Url = "http://example.com",
+                ApiKey = "key",
                 WaitForServerAssignedIpn = false,
             };
 

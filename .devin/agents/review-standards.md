@@ -51,4 +51,4 @@ Map every significant item in the diff against **repo standards first**, then th
 
 ## Completion criterion
 
-A single `## Standards` block that lists every finding, or `GREEN - No Standards issues detected.` if none. End the block with a verdict line: `**Ready to merge:** Yes | No | With fixes`. Under 400 words. No `## Spec` section.
+A single `## Standards` block that lists every finding, or `GREEN - No Standards issues detected.` if none. End the block with a verdict line: `**Ready to merge:** Yes | No | With fixes`. Under 800 words. No `## Spec` section.

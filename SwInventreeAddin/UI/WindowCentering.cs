@@ -15,17 +15,17 @@ namespace SwInventreeAddin.UI
     {
         // ── Constants ─────────────────────────────────────────────────────────
 
-        private const uint SwpNoSize     = 0x0001;
-        private const uint SwpNoZOrder   = 0x0004;
+        private const uint SwpNoSize = 0x0001;
+        private const uint SwpNoZOrder = 0x0004;
         private const uint SwpNoActivate = 0x0010;
 
         // Number of consecutive stable native-rectangle polls before the window is revealed.
         private const int StableTickThreshold = 3;
-        private const int PollingIntervalMs   = 50;
+        private const int PollingIntervalMs = 50;
 
         // Far off-screen so no frame is visible before the centered position is known.
         internal const int HiddenLeft = -32000;
-        internal const int HiddenTop  = -32000;
+        internal const int HiddenTop = -32000;
 
         // ── Native interop ────────────────────────────────────────────────────
 
@@ -62,13 +62,13 @@ namespace SwInventreeAddin.UI
         /// </summary>
         internal static (int left, int top) CalculateCenteredPosition(NativeRect ownerRect, NativeRect dialogRect)
         {
-            int ownerWidth   = ownerRect.Right  - ownerRect.Left;
-            int ownerHeight  = ownerRect.Bottom - ownerRect.Top;
-            int dialogWidth  = dialogRect.Right - dialogRect.Left;
+            int ownerWidth = ownerRect.Right - ownerRect.Left;
+            int ownerHeight = ownerRect.Bottom - ownerRect.Top;
+            int dialogWidth = dialogRect.Right - dialogRect.Left;
             int dialogHeight = dialogRect.Bottom - dialogRect.Top;
 
-            int left = ownerRect.Left + (ownerWidth  - dialogWidth)  / 2;
-            int top  = ownerRect.Top  + (ownerHeight - dialogHeight) / 2;
+            int left = ownerRect.Left + (ownerWidth - dialogWidth) / 2;
+            int top = ownerRect.Top + (ownerHeight - dialogHeight) / 2;
 
             return (left, top);
         }
@@ -117,7 +117,7 @@ namespace SwInventreeAddin.UI
             {
                 window.WindowStartupLocation = WindowStartupLocation.Manual;
                 window.Left = HiddenLeft;
-                window.Top  = HiddenTop;
+                window.Top = HiddenTop;
             }
             catch { /* cosmetic only */ }
 
@@ -139,7 +139,7 @@ namespace SwInventreeAddin.UI
             };
 
             window.SourceInitialized += sourceHandler;
-            window.ContentRendered   += contentHandler;
+            window.ContentRendered += contentHandler;
         }
 
         // ── Private implementation ────────────────────────────────────────────

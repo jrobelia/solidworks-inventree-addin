@@ -22,10 +22,10 @@ namespace SwInventreeAddin.SolidWorks
             if (modelDoc == null) return DocumentType.Unknown;
             return (swDocumentTypes_e)modelDoc.GetType() switch
             {
-                swDocumentTypes_e.swDocPART     => DocumentType.Part,
+                swDocumentTypes_e.swDocPART => DocumentType.Part,
                 swDocumentTypes_e.swDocASSEMBLY => DocumentType.Assembly,
-                swDocumentTypes_e.swDocDRAWING  => DocumentType.Drawing,
-                _                               => DocumentType.Unknown,
+                swDocumentTypes_e.swDocDRAWING => DocumentType.Drawing,
+                _ => DocumentType.Unknown,
             };
         }
 

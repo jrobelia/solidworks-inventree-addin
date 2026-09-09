@@ -17,29 +17,29 @@ namespace SwInventreeAddin.UI
     /// </summary>
     public class TaskPaneControl : UserControl
     {
-        private readonly TaskPaneViewModel             _vm;
-        private IInventreeClient?                      _client;
-        private ICreatePartValidationErrorService      _createPartValidator;
-        private IPropertyMappingProvider?              _mappingProvider;
+        private readonly TaskPaneViewModel _vm;
+        private IInventreeClient? _client;
+        private readonly ICreatePartValidationErrorService _createPartValidator;
+        private IPropertyMappingProvider? _mappingProvider;
 
         public event EventHandler? SettingsRequested;
 
         // -- Constructors ------------------------------------------------------
 
         public TaskPaneControl(
-            IInventreeClient?                   client,
-            IDocumentPropertyService            propertyService,
-            IViewportCaptureService?            viewportService,
-            IPropertyMappingProvider?           mappingProvider,
-            IConfigProvider?                    configProvider,
-            ICreatePartValidationErrorService   createPartValidator)
+            IInventreeClient? client,
+            IDocumentPropertyService propertyService,
+            IViewportCaptureService? viewportService,
+            IPropertyMappingProvider? mappingProvider,
+            IConfigProvider? configProvider,
+            ICreatePartValidationErrorService createPartValidator)
         {
-            _client              = client;
+            _client = client;
             _createPartValidator = createPartValidator;
-            _mappingProvider     = mappingProvider;
+            _mappingProvider = mappingProvider;
 
             _vm = new TaskPaneViewModel(client, propertyService, viewportService, mappingProvider, configProvider, _createPartValidator);
-            _vm.SettingsRequested   += (s, e) => SettingsRequested?.Invoke(this, e);
+            _vm.SettingsRequested += (s, e) => SettingsRequested?.Invoke(this, e);
             _vm.CompareBomRequested += OnCompareBomRequested;
             _vm.ConfirmMissingProperties = missing =>
             {
@@ -57,8 +57,8 @@ namespace SwInventreeAddin.UI
 
             _vm.ConfirmDuplicateIpn = (allParts, matched) =>
             {
-                var nl      = System.Environment.NewLine;
-                var lines   = string.Join(nl, System.Linq.Enumerable.Select(allParts, p =>
+                var nl = System.Environment.NewLine;
+                var lines = string.Join(nl, System.Linq.Enumerable.Select(allParts, p =>
                 {
                     var rev = string.IsNullOrEmpty(p.Revision) ? "(no revision)" : p.Revision;
                     var tag = p.Pk == matched.Pk ? "  \u2190 matches this file" : "";
@@ -77,10 +77,10 @@ namespace SwInventreeAddin.UI
 
             _vm.ConfirmLinkMismatch = (docIpn, docRev, part) =>
             {
-                var nl           = System.Environment.NewLine;
-                var docIpnLabel  = string.IsNullOrEmpty(docIpn)        ? "(blank)" : docIpn;
-                var docRevLabel  = string.IsNullOrEmpty(docRev)        ? "(blank)" : docRev;
-                var partIpnLabel = string.IsNullOrEmpty(part.Ipn)      ? "(blank)" : part.Ipn;
+                var nl = System.Environment.NewLine;
+                var docIpnLabel = string.IsNullOrEmpty(docIpn) ? "(blank)" : docIpn;
+                var docRevLabel = string.IsNullOrEmpty(docRev) ? "(blank)" : docRev;
+                var partIpnLabel = string.IsNullOrEmpty(part.Ipn) ? "(blank)" : part.Ipn;
                 var partRevLabel = string.IsNullOrEmpty(part.Revision) ? "(blank)" : part.Revision;
                 var answer = MessageDialog.ShowOKCancel(
                     SolidWorksWindowHandle.Get(),
@@ -191,32 +191,32 @@ namespace SwInventreeAddin.UI
                         return;
 
                     case BomCompareOutcome.Ambiguous:
-                    {
-                        var swLabel = string.IsNullOrEmpty(readiness.SwRevision) ? "(blank)" : readiness.SwRevision;
-                        var itLabel = string.IsNullOrEmpty(readiness.ItRevision) ? "(blank)" : readiness.ItRevision;
-                        MessageDialog.ShowOK(
-                            SolidWorksWindowHandle.Get(),
-                            $"Revision mismatch (SolidWorks: {swLabel} / InvenTree: {itLabel}).\n\n"
-                            + "The order cannot be determined automatically. Resolve the revision manually before comparing the BOM.",
-                            "BOM Compare \u2014 Revision Ambiguous",
-                            System.Windows.Forms.MessageBoxIcon.Warning);
-                        return;
-                    }
+                        {
+                            var swLabel = string.IsNullOrEmpty(readiness.SwRevision) ? "(blank)" : readiness.SwRevision;
+                            var itLabel = string.IsNullOrEmpty(readiness.ItRevision) ? "(blank)" : readiness.ItRevision;
+                            MessageDialog.ShowOK(
+                                SolidWorksWindowHandle.Get(),
+                                $"Revision mismatch (SolidWorks: {swLabel} / InvenTree: {itLabel}).\n\n"
+                                + "The order cannot be determined automatically. Resolve the revision manually before comparing the BOM.",
+                                "BOM Compare \u2014 Revision Ambiguous",
+                                System.Windows.Forms.MessageBoxIcon.Warning);
+                            return;
+                        }
 
                     case BomCompareOutcome.BomTableMissing:
-                    {
-                        new BomTableMissingDialog(_vm.BomKeyword, SolidWorksWindowHandle.Get()).ShowDialog();
-                        return;
-                    }
+                        {
+                            new BomTableMissingDialog(_vm.BomKeyword, SolidWorksWindowHandle.Get()).ShowDialog();
+                            return;
+                        }
                 }
             }
 
-            int pk      = _vm.CurrentInvenTreePk;
-            var bomVm   = _vm.CreateBomCompareViewModel(mappingResult.Config, pk);
+            int pk = _vm.CurrentInvenTreePk;
+            var bomVm = _vm.CreateBomCompareViewModel(mappingResult.Config, pk);
             if (bomVm == null) return;
 
             var tableName = _vm.GetBomTableName() ?? string.Empty;
-            var window  = new BomCompareWindow(bomVm, _vm.PartNumber, _vm.NamePreview,
+            var window = new BomCompareWindow(bomVm, _vm.PartNumber, _vm.NamePreview,
                                                tableName);
             try
             {
@@ -242,11 +242,11 @@ namespace SwInventreeAddin.UI
         private static void ShowBomColumnAliasesMissingDialog(PropertyMappingConfig mapping)
         {
             var missing = mapping.GetMissingBomCompareAliases();
-            var aliasList  = string.Join(" and ", missing);
-            var valueList  = string.Join(" or ", missing);
-            var verb       = missing.Count == 1 ? "is" : "are";
-            var pronoun    = missing.Count == 1 ? "it is" : "they are";
-            var aliasWord  = missing.Count == 1 ? "Alias" : "Aliases";
+            var aliasList = string.Join(" and ", missing);
+            var valueList = string.Join(" or ", missing);
+            var verb = missing.Count == 1 ? "is" : "are";
+            var pronoun = missing.Count == 1 ? "it is" : "they are";
+            var aliasWord = missing.Count == 1 ? "Alias" : "Aliases";
 
             var message = $"The {aliasList} BOM Column {aliasWord} {verb} blank.\n\n"
                         + $"BOM Compare will not find {valueList} values until {pronoun} set "
@@ -292,9 +292,9 @@ namespace SwInventreeAddin.UI
 
         // -- Delegation to ViewModel -------------------------------------------
 
-        public void LoadPartNumber()                                    => _vm.LoadPartNumber();
-        public void RefreshProperties()                                 => _vm.RefreshCurrentProperties();
-        public void ClearAll()                                          => _vm.ClearAll();
+        public void LoadPartNumber() => _vm.LoadPartNumber();
+        public void RefreshProperties() => _vm.RefreshCurrentProperties();
+        public void ClearAll() => _vm.ClearAll();
         public void OnDocumentPropertyChanged(string name, string value) => _vm.OnDocumentPropertyChanged(name, value);
 
         public void UpdateClient(IInventreeClient? client)

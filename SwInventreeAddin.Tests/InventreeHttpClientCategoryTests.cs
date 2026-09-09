@@ -12,7 +12,7 @@ namespace SwInventreeAddin.Tests
     public class InventreeHttpClientCategoryCreateTests
     {
         private const string BaseUrl = "http://inventree.example.com";
-        private const string ApiKey  = "test-api-key";
+        private const string ApiKey = "test-api-key";
 
         private static InventreeHttpClient CreateClient(StubHttpMessageHandler handler)
         {
@@ -38,11 +38,11 @@ namespace SwInventreeAddin.Tests
         public async Task GetCategoriesAsync_RootLevel_ReturnsTopLevelCategories()
         {
             var handler = new StubHttpMessageHandler(HttpStatusCode.OK, CategoriesJson);
-            var cats    = await CreateClient(handler).GetCategoriesAsync(null);
+            var cats = await CreateClient(handler).GetCategoriesAsync(null);
 
             Assert.That(cats.Count, Is.EqualTo(2));
-            Assert.That(cats[0].Pk,          Is.EqualTo(7));
-            Assert.That(cats[0].Name,        Is.EqualTo("Resistors"));
+            Assert.That(cats[0].Pk, Is.EqualTo(7));
+            Assert.That(cats[0].Name, Is.EqualTo("Resistors"));
             Assert.That(cats[0].HasChildren, Is.True);
             Assert.That(cats[1].HasChildren, Is.False);
         }
@@ -77,7 +77,7 @@ namespace SwInventreeAddin.Tests
                 @"{""pk"":3,""name"":""Root B"",""parent"":null,""subcategories"":0}" +
                 @"]}";
             var handler = new StubHttpMessageHandler(HttpStatusCode.OK, mixedJson);
-            var cats    = await CreateClient(handler).GetCategoriesAsync(null);
+            var cats = await CreateClient(handler).GetCategoriesAsync(null);
 
             Assert.That(cats.Count, Is.EqualTo(2));
             Assert.That(cats.Select(c => c.Pk), Is.EquivalentTo(new[] { 1, 3 }));
@@ -97,7 +97,7 @@ namespace SwInventreeAddin.Tests
         public async Task CreatePartAsync_Success_ReturnsPk()
         {
             var responseJson = @"{""pk"":99,""name"":""New Part""}";
-            var handler      = new StubHttpMessageHandler(HttpStatusCode.OK, responseJson);
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, responseJson);
 
             var pk = await CreateClient(handler).CreatePartAsync(7, "New Part");
 
@@ -108,13 +108,13 @@ namespace SwInventreeAddin.Tests
         public async Task CreatePartAsync_Success_SendsCorrectBodyFields()
         {
             var responseJson = @"{""pk"":99,""name"":""New Part""}";
-            var handler      = new StubHttpMessageHandler(HttpStatusCode.OK, responseJson);
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, responseJson);
 
             await CreateClient(handler).CreatePartAsync(7, "New Part");
 
             using var doc = JsonDocument.Parse(handler.LastRequestBody);
             Assert.That(doc.RootElement.GetProperty("category").GetInt32(), Is.EqualTo(7));
-            Assert.That(doc.RootElement.GetProperty("name").GetString(),    Is.EqualTo("New Part"));
+            Assert.That(doc.RootElement.GetProperty("name").GetString(), Is.EqualTo("New Part"));
         }
 
         [Test]
@@ -129,7 +129,7 @@ namespace SwInventreeAddin.Tests
         public void CreatePartAsync_NonSuccessStatus_ExceptionContainsResponseBody()
         {
             var errorJson = @"{""IPN"": [""Part with this IPN already exists.""]}";
-            var handler   = new StubHttpMessageHandler(HttpStatusCode.BadRequest, errorJson);
+            var handler = new StubHttpMessageHandler(HttpStatusCode.BadRequest, errorJson);
 
             var ex = Assert.ThrowsAsync<HttpRequestException>(() =>
                 CreateClient(handler).CreatePartAsync(7, "New Part", "DUP-001"));
@@ -141,7 +141,7 @@ namespace SwInventreeAddin.Tests
         public async Task CreatePartAsync_WithIpn_SendsIpnInBody()
         {
             var responseJson = @"{""pk"":99,""name"":""New Part""}";
-            var handler      = new StubHttpMessageHandler(HttpStatusCode.OK, responseJson);
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, responseJson);
 
             await CreateClient(handler).CreatePartAsync(7, "New Part", "ABC-001");
 
@@ -156,7 +156,7 @@ namespace SwInventreeAddin.Tests
         public async Task CreatePartAsync_NoIpn_OmitsIpnFromBody()
         {
             var responseJson = @"{""pk"":99,""name"":""New Part""}";
-            var handler      = new StubHttpMessageHandler(HttpStatusCode.OK, responseJson);
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, responseJson);
 
             await CreateClient(handler).CreatePartAsync(7, "New Part");
 
@@ -169,27 +169,27 @@ namespace SwInventreeAddin.Tests
         public async Task CreatePartAsync_WithFlags_SendsAllFlagFieldsInBody()
         {
             var responseJson = @"{""pk"":99,""name"":""New Part""}";
-            var handler      = new StubHttpMessageHandler(HttpStatusCode.OK, responseJson);
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, responseJson);
             var flags = new PartCreationFlags
             {
-                Assembly              = true,
-                Component             = false,
-                Purchaseable          = true,
-                Salable               = false,
-                Trackable             = true,
-                Testable              = false,
+                Assembly = true,
+                Component = false,
+                Purchaseable = true,
+                Salable = false,
+                Trackable = true,
+                Testable = false,
                 CopyCategoryParameters = true,
             };
 
             await CreateClient(handler).CreatePartAsync(7, "New Part", null, flags);
 
             using var doc = JsonDocument.Parse(handler.LastRequestBody);
-            Assert.That(doc.RootElement.GetProperty("assembly").GetBoolean(),                Is.True);
-            Assert.That(doc.RootElement.GetProperty("component").GetBoolean(),               Is.False);
-            Assert.That(doc.RootElement.GetProperty("purchaseable").GetBoolean(),            Is.True);
-            Assert.That(doc.RootElement.GetProperty("salable").GetBoolean(),                 Is.False);
-            Assert.That(doc.RootElement.GetProperty("trackable").GetBoolean(),               Is.True);
-            Assert.That(doc.RootElement.GetProperty("testable").GetBoolean(),                Is.False);
+            Assert.That(doc.RootElement.GetProperty("assembly").GetBoolean(), Is.True);
+            Assert.That(doc.RootElement.GetProperty("component").GetBoolean(), Is.False);
+            Assert.That(doc.RootElement.GetProperty("purchaseable").GetBoolean(), Is.True);
+            Assert.That(doc.RootElement.GetProperty("salable").GetBoolean(), Is.False);
+            Assert.That(doc.RootElement.GetProperty("trackable").GetBoolean(), Is.True);
+            Assert.That(doc.RootElement.GetProperty("testable").GetBoolean(), Is.False);
             Assert.That(doc.RootElement.GetProperty("copy_category_parameters").GetBoolean(), Is.True);
         }
 
@@ -197,7 +197,7 @@ namespace SwInventreeAddin.Tests
         public async Task CreatePartAsync_NoFlags_OmitsFlagFieldsFromBody()
         {
             var responseJson = @"{""pk"":99,""name"":""New Part""}";
-            var handler      = new StubHttpMessageHandler(HttpStatusCode.OK, responseJson);
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, responseJson);
 
             await CreateClient(handler).CreatePartAsync(7, "New Part");
 
@@ -217,13 +217,13 @@ namespace SwInventreeAddin.Tests
         public async Task GetPartByPkAsync_Found_ReturnsPart()
         {
             var handler = new StubHttpMessageHandler(HttpStatusCode.OK, SinglePartDetailJson);
-            var part    = await CreateClient(handler).GetPartByPkAsync(42);
+            var part = await CreateClient(handler).GetPartByPkAsync(42);
 
-            Assert.That(part,          Is.Not.Null);
-            Assert.That(part!.Pk,      Is.EqualTo(42));
-            Assert.That(part.Name,     Is.EqualTo("10K SMD"));
-            Assert.That(part.Ipn,      Is.EqualTo("R-10K"));
-            Assert.That(part.Notes,    Is.EqualTo("0402"));
+            Assert.That(part, Is.Not.Null);
+            Assert.That(part!.Pk, Is.EqualTo(42));
+            Assert.That(part.Name, Is.EqualTo("10K SMD"));
+            Assert.That(part.Ipn, Is.EqualTo("R-10K"));
+            Assert.That(part.Notes, Is.EqualTo("0402"));
             Assert.That(part.Revision, Is.EqualTo("A"));
         }
 
@@ -231,7 +231,7 @@ namespace SwInventreeAddin.Tests
         public async Task GetPartByPkAsync_NotFound_ReturnsNull()
         {
             var handler = new StubHttpMessageHandler(HttpStatusCode.NotFound, "not found");
-            var part    = await CreateClient(handler).GetPartByPkAsync(42);
+            var part = await CreateClient(handler).GetPartByPkAsync(42);
 
             Assert.That(part, Is.Null);
         }

@@ -42,9 +42,9 @@ namespace SwInventreeAddin.Tests
             using var img = MakeImage(1200, 900);
 
             var result = ImagePipeline.Process(img, Rectangle.Empty);
-            var size   = DecodePngSize(result);
+            var size = DecodePngSize(result);
 
-            Assert.That(size.Width,  Is.LessThanOrEqualTo(800));
+            Assert.That(size.Width, Is.LessThanOrEqualTo(800));
             Assert.That(size.Height, Is.LessThanOrEqualTo(800));
         }
 
@@ -54,9 +54,9 @@ namespace SwInventreeAddin.Tests
             using var img = MakeImage(100, 80);
 
             var result = ImagePipeline.Process(img, Rectangle.Empty);
-            var size   = DecodePngSize(result);
+            var size = DecodePngSize(result);
 
-            Assert.That(size.Width,  Is.EqualTo(100));
+            Assert.That(size.Width, Is.EqualTo(100));
             Assert.That(size.Height, Is.EqualTo(80));
         }
 
@@ -67,10 +67,10 @@ namespace SwInventreeAddin.Tests
             var crop = new Rectangle(50, 50, 200, 200);
 
             var result = ImagePipeline.Process(img, crop);
-            var size   = DecodePngSize(result);
+            var size = DecodePngSize(result);
 
             // Cropped to 200x200 -- fits within 800x800 so no resize occurs.
-            Assert.That(size.Width,  Is.EqualTo(200));
+            Assert.That(size.Width, Is.EqualTo(200));
             Assert.That(size.Height, Is.EqualTo(200));
         }
 
@@ -80,10 +80,10 @@ namespace SwInventreeAddin.Tests
             using var img = MakeImage(1600, 800);
 
             var result = ImagePipeline.Process(img, Rectangle.Empty);
-            var size   = DecodePngSize(result);
+            var size = DecodePngSize(result);
 
             // Width capped at 800; height scales to 400.
-            Assert.That(size.Width,  Is.EqualTo(800));
+            Assert.That(size.Width, Is.EqualTo(800));
             Assert.That(size.Height, Is.EqualTo(400));
         }
     }

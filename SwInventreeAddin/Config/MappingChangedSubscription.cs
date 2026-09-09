@@ -11,7 +11,7 @@ namespace SwInventreeAddin.Config
     {
         private readonly IPropertyMappingProvider _provider;
         private readonly Action _callback;
-        private          EventHandler? _handler;
+        private EventHandler? _handler;
 
         /// <summary>
         /// Creates a subscription for <paramref name="provider"/> that will invoke

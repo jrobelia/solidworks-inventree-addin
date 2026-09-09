@@ -25,25 +25,25 @@ namespace SwInventreeAddin.Tests
             string? noteAlias = "Note") =>
             new PropertyMappingConfig
             {
-                SchemaVersion      = PropertyMappingConfig.CurrentSchemaVersion,
-                BomColumnIpn       = ipnAlias,
-                BomColumnQty       = qtyAlias,
+                SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion,
+                BomColumnIpn = ipnAlias,
+                BomColumnQty = qtyAlias,
                 BomColumnReference = referenceAlias,
-                BomColumnNote      = noteAlias,
+                BomColumnNote = noteAlias,
             };
 
         private sealed class StubSource : IBomReadinessSource
         {
-            public int    CurrentInvenTreePk { get; set; }
-            public string PartNumber         { get; set; } = "PART-001";
-            public string CurrentPk          { get; set; } = string.Empty;
-            public string CurrentRevision    { get; set; } = string.Empty;
-            public string RevisionPreview    { get; set; } = string.Empty;
+            public int CurrentInvenTreePk { get; set; }
+            public string PartNumber { get; set; } = "PART-001";
+            public string CurrentPk { get; set; } = string.Empty;
+            public string CurrentRevision { get; set; } = string.Empty;
+            public string RevisionPreview { get; set; } = string.Empty;
             public PropertyMappingConfig CurrentMapping { get; set; } = CreateMapping();
 
-            public bool FetchCalled         { get; private set; }
-            public bool RefreshCalled       { get; private set; }
-            public bool PushRevisionCalled  { get; private set; }
+            public bool FetchCalled { get; private set; }
+            public bool RefreshCalled { get; private set; }
+            public bool PushRevisionCalled { get; private set; }
 
             /// <summary>Side-effect applied when FetchPartAsync is called.</summary>
             public Action? OnFetch { get; set; }
@@ -70,7 +70,7 @@ namespace SwInventreeAddin.Tests
         public async Task CheckAsync_PkInMemory_DoesNotFetch()
         {
             var source = new StubSource { CurrentInvenTreePk = 42, CurrentPk = "42" };
-            var check  = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
+            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
 
             await check.CheckAsync();
 
@@ -81,7 +81,7 @@ namespace SwInventreeAddin.Tests
         public async Task CheckAsync_PkNotInMemory_AutoFetches()
         {
             var source = new StubSource { CurrentInvenTreePk = 0 };
-            var check  = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
+            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
 
             await check.CheckAsync();
 
@@ -92,7 +92,7 @@ namespace SwInventreeAddin.Tests
         public async Task CheckAsync_StillNoPkAfterFetch_ReturnsPkNotFound()
         {
             var source = new StubSource { CurrentInvenTreePk = 0 };
-            var check  = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
+            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
 
@@ -105,7 +105,7 @@ namespace SwInventreeAddin.Tests
             var source = new StubSource
             {
                 CurrentInvenTreePk = 0,
-                CurrentPk          = string.Empty,
+                CurrentPk = string.Empty,
             };
             source.OnFetch = () => source.CurrentInvenTreePk = 99;
             var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
@@ -121,9 +121,9 @@ namespace SwInventreeAddin.Tests
             var source = new StubSource
             {
                 CurrentInvenTreePk = 42,
-                CurrentPk          = "42",
-                CurrentRevision    = "A",
-                RevisionPreview    = "A",
+                CurrentPk = "42",
+                CurrentRevision = "A",
+                RevisionPreview = "A",
             };
             var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
 
@@ -138,9 +138,9 @@ namespace SwInventreeAddin.Tests
             var source = new StubSource
             {
                 CurrentInvenTreePk = 42,
-                CurrentPk          = "42",
-                CurrentRevision    = "A",
-                RevisionPreview    = "B",
+                CurrentPk = "42",
+                CurrentRevision = "A",
+                RevisionPreview = "B",
             };
             var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
 
@@ -155,9 +155,9 @@ namespace SwInventreeAddin.Tests
             var source = new StubSource
             {
                 CurrentInvenTreePk = 42,
-                CurrentPk          = "42",
-                CurrentRevision    = "B",
-                RevisionPreview    = "A",
+                CurrentPk = "42",
+                CurrentRevision = "B",
+                RevisionPreview = "A",
             };
             var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
 
@@ -173,9 +173,9 @@ namespace SwInventreeAddin.Tests
             var source = new StubSource
             {
                 CurrentInvenTreePk = 42,
-                CurrentPk          = "42",
-                CurrentRevision    = "1.0",
-                RevisionPreview    = "A",
+                CurrentPk = "42",
+                CurrentRevision = "1.0",
+                RevisionPreview = "A",
             };
             var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
 
@@ -190,9 +190,9 @@ namespace SwInventreeAddin.Tests
             var source = new StubSource
             {
                 CurrentInvenTreePk = 42,
-                CurrentPk          = "42",
-                CurrentRevision    = "B",
-                RevisionPreview    = "A",
+                CurrentPk = "42",
+                CurrentRevision = "B",
+                RevisionPreview = "A",
             };
             var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
 
@@ -208,9 +208,9 @@ namespace SwInventreeAddin.Tests
             var source = new StubSource
             {
                 CurrentInvenTreePk = 42,
-                CurrentPk          = "42",
-                CurrentRevision    = "A",
-                RevisionPreview    = "A",
+                CurrentPk = "42",
+                CurrentRevision = "A",
+                RevisionPreview = "A",
             };
             var check = new BomCompareReadinessCheck(source, CreateBomService(false), DefaultBomKeyword);
 
@@ -241,10 +241,10 @@ namespace SwInventreeAddin.Tests
             var source = new StubSource
             {
                 CurrentInvenTreePk = 42,
-                CurrentPk          = "42",
-                CurrentRevision    = "A",
-                RevisionPreview    = "A",
-                CurrentMapping     = CreateMapping(ipnAlias: "", qtyAlias: "Qty"),
+                CurrentPk = "42",
+                CurrentRevision = "A",
+                RevisionPreview = "A",
+                CurrentMapping = CreateMapping(ipnAlias: "", qtyAlias: "Qty"),
             };
             var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
 
@@ -259,10 +259,10 @@ namespace SwInventreeAddin.Tests
             var source = new StubSource
             {
                 CurrentInvenTreePk = 42,
-                CurrentPk          = "42",
-                CurrentRevision    = "A",
-                RevisionPreview    = "A",
-                CurrentMapping     = CreateMapping(ipnAlias: "IPN", qtyAlias: ""),
+                CurrentPk = "42",
+                CurrentRevision = "A",
+                RevisionPreview = "A",
+                CurrentMapping = CreateMapping(ipnAlias: "IPN", qtyAlias: ""),
             };
             var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
 
@@ -277,10 +277,10 @@ namespace SwInventreeAddin.Tests
             var source = new StubSource
             {
                 CurrentInvenTreePk = 42,
-                CurrentPk          = "42",
-                CurrentRevision    = "A",
-                RevisionPreview    = "A",
-                CurrentMapping     = CreateMapping(ipnAlias: "", qtyAlias: ""),
+                CurrentPk = "42",
+                CurrentRevision = "A",
+                RevisionPreview = "A",
+                CurrentMapping = CreateMapping(ipnAlias: "", qtyAlias: ""),
             };
             var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
 
@@ -295,10 +295,10 @@ namespace SwInventreeAddin.Tests
             var source = new StubSource
             {
                 CurrentInvenTreePk = 42,
-                CurrentPk          = "42",
-                CurrentRevision    = "A",
-                RevisionPreview    = "A",
-                CurrentMapping     = CreateMapping(),
+                CurrentPk = "42",
+                CurrentRevision = "A",
+                RevisionPreview = "A",
+                CurrentMapping = CreateMapping(),
             };
             var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
 
@@ -313,10 +313,10 @@ namespace SwInventreeAddin.Tests
             var source = new StubSource
             {
                 CurrentInvenTreePk = 42,
-                CurrentPk          = "42",
-                CurrentRevision    = "A",
-                RevisionPreview    = "A",
-                CurrentMapping     = CreateMapping(ipnAlias: "", qtyAlias: ""),
+                CurrentPk = "42",
+                CurrentRevision = "A",
+                RevisionPreview = "A",
+                CurrentMapping = CreateMapping(ipnAlias: "", qtyAlias: ""),
             };
             var check = new BomCompareReadinessCheck(source, CreateBomService(false), DefaultBomKeyword);
 
@@ -331,10 +331,10 @@ namespace SwInventreeAddin.Tests
             var source = new StubSource
             {
                 CurrentInvenTreePk = 42,
-                CurrentPk          = "42",
-                CurrentRevision    = "A",
-                RevisionPreview    = "B",
-                CurrentMapping     = CreateMapping(ipnAlias: "", qtyAlias: ""),
+                CurrentPk = "42",
+                CurrentRevision = "A",
+                RevisionPreview = "B",
+                CurrentMapping = CreateMapping(ipnAlias: "", qtyAlias: ""),
             };
             var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
 
@@ -349,10 +349,10 @@ namespace SwInventreeAddin.Tests
             var source = new StubSource
             {
                 CurrentInvenTreePk = 42,
-                CurrentPk          = "42",
-                CurrentRevision    = "B",
-                RevisionPreview    = "A",
-                CurrentMapping     = CreateMapping(ipnAlias: "", qtyAlias: ""),
+                CurrentPk = "42",
+                CurrentRevision = "B",
+                RevisionPreview = "A",
+                CurrentMapping = CreateMapping(ipnAlias: "", qtyAlias: ""),
             };
             var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
 
@@ -372,7 +372,7 @@ namespace SwInventreeAddin.Tests
         public async Task PushRevisionAsync_DelegatesToSource()
         {
             var source = new StubSource();
-            var check  = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
+            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
 
             await check.PushRevisionAsync();
 

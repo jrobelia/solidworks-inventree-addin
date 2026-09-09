@@ -78,10 +78,10 @@ namespace SwInventreeAddin.UI
 
         // ── Event handlers ────────────────────────────────────────────────────
 
-        private void Ok_Click(object sender, RoutedEventArgs e)     => _viewModel.ClickOk();
+        private void Ok_Click(object sender, RoutedEventArgs e) => _viewModel.ClickOk();
         private void Cancel_Click(object sender, RoutedEventArgs e) => _viewModel.ClickCancel();
-        private void Yes_Click(object sender, RoutedEventArgs e)    => _viewModel.ClickYes();
-        private void No_Click(object sender, RoutedEventArgs e)     => _viewModel.ClickNo();
+        private void Yes_Click(object sender, RoutedEventArgs e) => _viewModel.ClickYes();
+        private void No_Click(object sender, RoutedEventArgs e) => _viewModel.ClickNo();
 
         /// <summary>
         /// The X button closes the window without a click — record the

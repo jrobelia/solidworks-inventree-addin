@@ -26,7 +26,7 @@ namespace SwInventreeAddin.UI
                 using (var stream = new MemoryStream(bytes))
                 {
                     bitmap.BeginInit();
-                    bitmap.CacheOption  = BitmapCacheOption.OnLoad; // decode now; stream can be freed
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad; // decode now; stream can be freed
                     bitmap.StreamSource = stream;
                     bitmap.EndInit();
                 }

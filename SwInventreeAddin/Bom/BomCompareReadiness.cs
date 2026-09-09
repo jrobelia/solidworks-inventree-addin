@@ -47,18 +47,18 @@ namespace SwInventreeAddin.Bom
 
     internal sealed class BomCompareReadiness
     {
-        public BomCompareOutcome Outcome    { get; }
-        public string            PartNumber { get; }
-        public string            SwRevision { get; }
-        public string            ItRevision { get; }
+        public BomCompareOutcome Outcome { get; }
+        public string PartNumber { get; }
+        public string SwRevision { get; }
+        public string ItRevision { get; }
 
         public BomCompareReadiness(
             BomCompareOutcome outcome,
-            string            partNumber,
-            string            swRevision,
-            string            itRevision)
+            string partNumber,
+            string swRevision,
+            string itRevision)
         {
-            Outcome    = outcome;
+            Outcome = outcome;
             PartNumber = partNumber;
             SwRevision = swRevision;
             ItRevision = itRevision;

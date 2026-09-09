@@ -31,7 +31,7 @@ namespace SwInventreeAddin.InvenTree
                     "Server URL must begin with https:// — a plain http:// connection is not secure.");
 
             // Build the token endpoint URL, tolerating a trailing slash or not
-            var baseUri  = new Uri(url.TrimEnd('/') + "/");
+            var baseUri = new Uri(url.TrimEnd('/') + "/");
             var endpoint = new Uri(baseUri, "api/user/token/");
 
             var request = new HttpRequestMessage(HttpMethod.Get, endpoint);

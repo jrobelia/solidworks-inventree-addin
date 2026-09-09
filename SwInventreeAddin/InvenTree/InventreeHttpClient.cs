@@ -25,7 +25,7 @@ namespace SwInventreeAddin.InvenTree
         {
             var parts = await GetPartsByIpnAsync(ipn).ConfigureAwait(false);
             if (parts.Count == 0) return null;
-            if (parts.Count  > 1)
+            if (parts.Count > 1)
                 throw new InvalidOperationException(
                     $"Duplicate IPN '{ipn}': {parts.Count} parts found. Resolve duplicates in InvenTree.");
             return parts[0];
@@ -65,11 +65,11 @@ namespace SwInventreeAddin.InvenTree
                 }
                 parts.Add(new InventreePart
                 {
-                    Pk       = pk,
-                    Ipn      = GetString(el, "IPN"),
-                    Name     = GetString(el, "name"),
+                    Pk = pk,
+                    Ipn = GetString(el, "IPN"),
+                    Name = GetString(el, "name"),
                     Revision = GetString(el, "revision"),
-                    Notes    = GetString(el, "notes"),
+                    Notes = GetString(el, "notes"),
                 });
             }
             return parts;
@@ -93,22 +93,22 @@ namespace SwInventreeAddin.InvenTree
 
             return new InventreePart
             {
-                Pk           = pk,
-                Name         = GetString(detail, "name"),
-                Description  = GetString(detail, "description"),
-                Notes        = GetString(detail, "notes"),
-                Revision     = GetString(detail, "revision"),
-                Ipn          = GetString(detail, "IPN"),
+                Pk = pk,
+                Name = GetString(detail, "name"),
+                Description = GetString(detail, "description"),
+                Notes = GetString(detail, "notes"),
+                Revision = GetString(detail, "revision"),
+                Ipn = GetString(detail, "IPN"),
                 ThumbnailUrl = GetString(detail, "thumbnail") is var t && t.Length > 0 ? t : null,
-                InStock      = GetDecimal(detail, "in_stock"),
-                Ordering     = GetDecimal(detail, "ordering"),
-                Active       = GetBool(detail, "active"),
-                Assembly     = GetBool(detail, "assembly"),
-                Component    = GetBool(detail, "component"),
+                InStock = GetDecimal(detail, "in_stock"),
+                Ordering = GetDecimal(detail, "ordering"),
+                Active = GetBool(detail, "active"),
+                Assembly = GetBool(detail, "assembly"),
+                Component = GetBool(detail, "component"),
                 Purchaseable = GetBool(detail, "purchaseable"),
-                Salable      = GetBool(detail, "salable"),
-                Trackable    = GetBool(detail, "trackable"),
-                Testable     = GetBool(detail, "testable"),
+                Salable = GetBool(detail, "salable"),
+                Trackable = GetBool(detail, "trackable"),
+                Testable = GetBool(detail, "testable"),
             };
         }
 
@@ -151,10 +151,10 @@ namespace SwInventreeAddin.InvenTree
 
                 list.Add(new InventreeCategory
                 {
-                    Pk          = item.TryGetProperty("pk",            out var pkP)   ? pkP.GetInt32()              : 0,
-                    Name        = item.TryGetProperty("name",          out var nameP) ? nameP.GetString() ?? string.Empty : string.Empty,
-                    ParentPk    = parentPk,
-                    HasChildren = item.TryGetProperty("subcategories", out var subP)  && subP.ValueKind == JsonValueKind.Number
+                    Pk = item.TryGetProperty("pk", out var pkP) ? pkP.GetInt32() : 0,
+                    Name = item.TryGetProperty("name", out var nameP) ? nameP.GetString() ?? string.Empty : string.Empty,
+                    ParentPk = parentPk,
+                    HasChildren = item.TryGetProperty("subcategories", out var subP) && subP.ValueKind == JsonValueKind.Number
                                     ? subP.GetInt32() > 0 : false,
                 });
             }
@@ -166,7 +166,7 @@ namespace SwInventreeAddin.InvenTree
             var payloadDict = new System.Collections.Generic.Dictionary<string, object>
             {
                 ["category"] = categoryPk,
-                ["name"]     = name
+                ["name"] = name
             };
             if (!string.IsNullOrWhiteSpace(ipn))
                 // InvenTree's PartSerializer field is "IPN" — a lowercase "ipn"
@@ -175,17 +175,17 @@ namespace SwInventreeAddin.InvenTree
 
             if (flags != null)
             {
-                payloadDict["assembly"]                = flags.Assembly;
-                payloadDict["component"]               = flags.Component;
-                payloadDict["purchaseable"]            = flags.Purchaseable;
-                payloadDict["salable"]                 = flags.Salable;
-                payloadDict["trackable"]               = flags.Trackable;
-                payloadDict["testable"]                = flags.Testable;
+                payloadDict["assembly"] = flags.Assembly;
+                payloadDict["component"] = flags.Component;
+                payloadDict["purchaseable"] = flags.Purchaseable;
+                payloadDict["salable"] = flags.Salable;
+                payloadDict["trackable"] = flags.Trackable;
+                payloadDict["testable"] = flags.Testable;
                 payloadDict["copy_category_parameters"] = flags.CopyCategoryParameters;
             }
 
             var payload = JsonSerializer.Serialize(payloadDict);
-            var body    = new StringContent(payload, System.Text.Encoding.UTF8, "application/json");
+            var body = new StringContent(payload, System.Text.Encoding.UTF8, "application/json");
 
             using var request = new HttpRequestMessage(HttpMethod.Post, "/api/part/")
             {
@@ -237,14 +237,14 @@ namespace SwInventreeAddin.InvenTree
 
                 lines.Add(new InventreeBomLine
                 {
-                    Pk             = GetInt(el, "pk"),
-                    SubPartPk      = GetInt(el, "sub_part"),
-                    Quantity       = GetDecimal(el, "quantity"),
-                    Reference      = GetString(el, "reference"),
-                    Note           = GetString(el, "note"),
-                    Consumable     = GetBool(el, "consumable"),
-                    Optional       = GetBool(el, "optional"),
-                    Validated      = GetBool(el, "validated"),
+                    Pk = GetInt(el, "pk"),
+                    SubPartPk = GetInt(el, "sub_part"),
+                    Quantity = GetDecimal(el, "quantity"),
+                    Reference = GetString(el, "reference"),
+                    Note = GetString(el, "note"),
+                    Consumable = GetBool(el, "consumable"),
+                    Optional = GetBool(el, "optional"),
+                    Validated = GetBool(el, "validated"),
                     HasSubstitutes = hasSubs,
                 });
             }
@@ -272,8 +272,13 @@ namespace SwInventreeAddin.InvenTree
         {
             var body = JsonSerializer.Serialize(new
             {
-                part = assemblyPk, sub_part = subPartPk, quantity,
-                reference, note, consumable, optional,
+                part = assemblyPk,
+                sub_part = subPartPk,
+                quantity,
+                reference,
+                note,
+                consumable,
+                optional,
             });
             using var req = new HttpRequestMessage(HttpMethod.Post, "/api/bom/")
             {
@@ -297,7 +302,11 @@ namespace SwInventreeAddin.InvenTree
         {
             var body = JsonSerializer.Serialize(new
             {
-                quantity, reference, note, consumable, optional,
+                quantity,
+                reference,
+                note,
+                consumable,
+                optional,
                 // substitutes intentionally omitted — PATCH is partial; omitting preserves server value
             });
             using var req = new HttpRequestMessage(new HttpMethod("PATCH"), $"/api/bom/{bomLinePk}/")
@@ -310,9 +319,9 @@ namespace SwInventreeAddin.InvenTree
                     $"InvenTree API returned {(int)response.StatusCode} {response.StatusCode}");
         }
 
-        public Task UpdatePartRevisionAsync(int pk, string revision)    => PatchPartAsync(pk, new { revision });
-        public Task UpdatePartNameAsync(int pk, string name)            => PatchPartAsync(pk, new { name });
-        public Task UpdatePartNotesAsync(int pk, string notes)          => PatchPartAsync(pk, new { notes });
+        public Task UpdatePartRevisionAsync(int pk, string revision) => PatchPartAsync(pk, new { revision });
+        public Task UpdatePartNameAsync(int pk, string name) => PatchPartAsync(pk, new { name });
+        public Task UpdatePartNotesAsync(int pk, string notes) => PatchPartAsync(pk, new { notes });
         public Task UpdatePartDescriptionAsync(int pk, string description) => PatchPartAsync(pk, new { description });
 
         private async Task PatchPartAsync(int pk, object payload)
@@ -358,7 +367,7 @@ namespace SwInventreeAddin.InvenTree
         private static bool GetBool(JsonElement element, string propertyName)
         {
             if (!element.TryGetProperty(propertyName, out var prop)) return false;
-            if (prop.ValueKind == JsonValueKind.True)  return true;
+            if (prop.ValueKind == JsonValueKind.True) return true;
             if (prop.ValueKind == JsonValueKind.False) return false;
             return false;
         }
@@ -427,7 +436,7 @@ namespace SwInventreeAddin.InvenTree
             return new InventreeServerInfo
             {
                 ServerVersion = GetString(root, "version"),
-                ApiVersion    = root.TryGetProperty("apiVersion", out var v) ? v.GetInt32() : 0,
+                ApiVersion = root.TryGetProperty("apiVersion", out var v) ? v.GetInt32() : 0,
             };
         }
 

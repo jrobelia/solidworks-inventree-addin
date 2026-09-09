@@ -72,8 +72,8 @@ namespace SwInventreeAddin.UI
             {
                 StatusSeverity.Success => "BrushStatusSuccess",
                 StatusSeverity.Warning => "BrushStatusWarning",
-                StatusSeverity.Error   => "BrushStatusError",
-                _                      => "BrushStatusNone",
+                StatusSeverity.Error => "BrushStatusError",
+                _ => "BrushStatusNone",
             };
 
             StatusStripe.Background = (Brush)FindResource(brushKey);

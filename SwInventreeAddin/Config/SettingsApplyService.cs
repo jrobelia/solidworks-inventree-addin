@@ -10,14 +10,14 @@ namespace SwInventreeAddin.Config
     /// </summary>
     public class SettingsApplyService : ISettingsApplyService
     {
-        private readonly IConfigProvider          _configProvider;
-        private readonly IInventreeTokenService   _tokenService;
+        private readonly IConfigProvider _configProvider;
+        private readonly IInventreeTokenService _tokenService;
 
         /// <summary>Uses the supplied config and token services.</summary>
         public SettingsApplyService(IConfigProvider configProvider, IInventreeTokenService tokenService)
         {
             _configProvider = configProvider;
-            _tokenService   = tokenService;
+            _tokenService = tokenService;
         }
 
         /// <inheritdoc/>
@@ -37,10 +37,10 @@ namespace SwInventreeAddin.Config
             {
                 _configProvider.SaveServerConfig(new ServerConfig
                 {
-                    Url               = input.Url.Trim(),
-                    ApiKey            = apiKey,
+                    Url = input.Url.Trim(),
+                    ApiKey = apiKey,
                     MappingSourcePath = input.SharedMappingPath,
-                    BomKeyword            = string.IsNullOrWhiteSpace(input.BomKeyword)
+                    BomKeyword = string.IsNullOrWhiteSpace(input.BomKeyword)
                                             ? "inventree"
                                             : input.BomKeyword.Trim(),
                     WaitForServerAssignedIpn = input.WaitForServerAssignedIpn,
@@ -96,7 +96,7 @@ namespace SwInventreeAddin.Config
 
             var username = input.Username.Trim();
             var password = input.Password;
-            var rawKey   = input.RawApiKey.Trim();
+            var rawKey = input.RawApiKey.Trim();
 
             if (!string.IsNullOrWhiteSpace(username) || !string.IsNullOrWhiteSpace(password))
             {

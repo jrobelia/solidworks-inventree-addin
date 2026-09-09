@@ -71,9 +71,9 @@ namespace SwInventreeAddin.Config
         /// <inheritdoc/>
         public void SaveServerConfig(ServerConfig config)
         {
-            var json       = JsonSerializer.Serialize(config);
+            var json = JsonSerializer.Serialize(config);
             var plainBytes = Encoding.UTF8.GetBytes(json);
-            var cipher     = ProtectedData.Protect(plainBytes, null, DataProtectionScope.CurrentUser);
+            var cipher = ProtectedData.Protect(plainBytes, null, DataProtectionScope.CurrentUser);
 
             var dir = Path.GetDirectoryName(_filePath);
             if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))

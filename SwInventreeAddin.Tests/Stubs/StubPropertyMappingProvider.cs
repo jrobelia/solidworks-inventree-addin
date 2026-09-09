@@ -9,16 +9,16 @@ namespace SwInventreeAddin.Tests.Stubs
     /// </summary>
     public class StubPropertyMappingProvider : IPropertyMappingProvider
     {
-        public PropertyMappingConfig Config       { get; set; } = PropertyMappingConfig.WithDefaults();
-        public string                LocalFilePath { get; set; } = string.Empty;
-        public string?               SourceFilePath { get; set; }
-        public bool                  SourceFileExists { get; set; } = true;
-        public MappingHealth         Health        { get; set; } = MappingHealth.Healthy;
-        public string?               Message        { get; set; }
+        public PropertyMappingConfig Config { get; set; } = PropertyMappingConfig.WithDefaults();
+        public string LocalFilePath { get; set; } = string.Empty;
+        public string? SourceFilePath { get; set; }
+        public bool SourceFileExists { get; set; } = true;
+        public MappingHealth Health { get; set; } = MappingHealth.Healthy;
+        public string? Message { get; set; }
 
-        public PropertyMappingConfig? LastSaved        { get; private set; }
+        public PropertyMappingConfig? LastSaved { get; private set; }
 
-        public System.Exception? ThrowOnGet  { get; set; }
+        public System.Exception? ThrowOnGet { get; set; }
         public System.Exception? ThrowOnSave { get; set; }
 
         public event EventHandler? MappingChanged;
@@ -58,7 +58,7 @@ namespace SwInventreeAddin.Tests.Stubs
                 throw ThrowOnSave;
 
             LastSaved = config;
-            Config    = config;
+            Config = config;
             MappingChanged?.Invoke(this, EventArgs.Empty);
         }
     }

@@ -14,16 +14,16 @@ namespace SwInventreeAddin.Tests
     [TestFixture]
     public class BomCompareViewModelTests
     {
-        private StubInventreeClient    _client;
+        private StubInventreeClient _client;
         private StubAssemblyBomService _bomService;
-        private PropertyMappingConfig  _mapping;
+        private PropertyMappingConfig _mapping;
 
         [SetUp]
         public void SetUp()
         {
-            _client     = new StubInventreeClient();
+            _client = new StubInventreeClient();
             _bomService = new StubAssemblyBomService();
-            _mapping    = PropertyMappingConfig.WithDefaults();
+            _mapping = PropertyMappingConfig.WithDefaults();
 
             // Default: assembly part exists and is flagged as Assembly so ApplyAsync guard passes.
             _client.PartByPkToReturn = new InventreePart { Assembly = true };
@@ -47,7 +47,7 @@ namespace SwInventreeAddin.Tests
             var partialMapping = new PropertyMappingConfig
             {
                 SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion,
-                IpnProperty   = "PartNo",
+                IpnProperty = "PartNo",
             };
 
             _mapping = partialMapping;
@@ -104,7 +104,7 @@ namespace SwInventreeAddin.Tests
             var vm = CreateVm();
             await vm.LoadAsync();
 
-            Assert.That(vm.Lines[0].State,    Is.EqualTo(BomDiffState.Match));
+            Assert.That(vm.Lines[0].State, Is.EqualTo(BomDiffState.Match));
             Assert.That(vm.Lines[0].CanCheck, Is.False,
                 "Match rows are never pushable, regardless of Validated");
         }
@@ -131,7 +131,7 @@ namespace SwInventreeAddin.Tests
             var vm = CreateVm();
             await vm.LoadAsync();
 
-            Assert.That(vm.Lines[0].State,    Is.EqualTo(BomDiffState.New));
+            Assert.That(vm.Lines[0].State, Is.EqualTo(BomDiffState.New));
             Assert.That(vm.Lines[0].CanCheck, Is.True);
         }
 
@@ -145,7 +145,7 @@ namespace SwInventreeAddin.Tests
             var vm = CreateVm();
             await vm.LoadAsync();
 
-            Assert.That(vm.Lines[0].SwQty,      Is.EqualTo(string.Empty));
+            Assert.That(vm.Lines[0].SwQty, Is.EqualTo(string.Empty));
             Assert.That(vm.Lines[0].SwReference, Is.EqualTo(string.Empty));
         }
 
@@ -159,12 +159,12 @@ namespace SwInventreeAddin.Tests
             var vm = CreateVm();
             await vm.LoadAsync();
 
-            Assert.That(vm.Lines[0].ItQty,         Is.EqualTo(string.Empty));
-            Assert.That(vm.Lines[0].ItReference,    Is.EqualTo(string.Empty));
-            Assert.That(vm.Lines[0].ItNote,         Is.EqualTo(string.Empty));
-            Assert.That(vm.Lines[0].ItConsumable,   Is.False);
-            Assert.That(vm.Lines[0].ItOptional,     Is.False);
-            Assert.That(vm.Lines[0].ItValidated,    Is.False);
+            Assert.That(vm.Lines[0].ItQty, Is.EqualTo(string.Empty));
+            Assert.That(vm.Lines[0].ItReference, Is.EqualTo(string.Empty));
+            Assert.That(vm.Lines[0].ItNote, Is.EqualTo(string.Empty));
+            Assert.That(vm.Lines[0].ItConsumable, Is.False);
+            Assert.That(vm.Lines[0].ItOptional, Is.False);
+            Assert.That(vm.Lines[0].ItValidated, Is.False);
             Assert.That(vm.Lines[0].HasSubstitutes, Is.False);
         }
 
@@ -212,7 +212,7 @@ namespace SwInventreeAddin.Tests
             vm.Lines[1].IsChecked = false;
             await vm.PushAsync();
 
-            Assert.That(_client.CreatedBomLines.Count,       Is.EqualTo(1));
+            Assert.That(_client.CreatedBomLines.Count, Is.EqualTo(1));
             Assert.That(_client.CreatedBomLines[0].SubPartPk, Is.EqualTo(10));
         }
 
@@ -228,7 +228,7 @@ namespace SwInventreeAddin.Tests
             await vm.PushAsync();
 
             Assert.That(_client.CreatedBomLines[0].Consumable, Is.False);
-            Assert.That(_client.CreatedBomLines[0].Optional,   Is.False);
+            Assert.That(_client.CreatedBomLines[0].Optional, Is.False);
         }
 
         [Test]
@@ -248,9 +248,9 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(_client.UpdatedBomLines.Count, Is.EqualTo(1));
             var call = _client.UpdatedBomLines[0];
-            Assert.That(call.Pk,         Is.EqualTo(5));
+            Assert.That(call.Pk, Is.EqualTo(5));
             Assert.That(call.Consumable, Is.True);
-            Assert.That(call.Optional,   Is.True);
+            Assert.That(call.Optional, Is.True);
         }
 
         [Test]
@@ -376,13 +376,13 @@ namespace SwInventreeAddin.Tests
 
             var vm = CreateVm();
             await vm.LoadAsync();
-            Assert.That(vm.Lines[0].State,    Is.EqualTo(BomDiffState.Conflict));
+            Assert.That(vm.Lines[0].State, Is.EqualTo(BomDiffState.Conflict));
             Assert.That(vm.Lines[0].CanCheck, Is.True, "Conflict row is selectable before push");
 
             vm.Lines[0].IsChecked = true;
             await vm.PushAsync();
 
-            Assert.That(vm.Lines[0].State,    Is.EqualTo(BomDiffState.Match));
+            Assert.That(vm.Lines[0].State, Is.EqualTo(BomDiffState.Match));
             Assert.That(vm.Lines[0].CanCheck, Is.False,
                 "CanCheck must reflect current State — pushed row is no longer selectable");
             Assert.That(vm.Lines[0].IsChecked, Is.False,
@@ -397,13 +397,13 @@ namespace SwInventreeAddin.Tests
 
             var vm = CreateVm();
             await vm.LoadAsync();
-            Assert.That(vm.Lines[0].State,    Is.EqualTo(BomDiffState.New));
+            Assert.That(vm.Lines[0].State, Is.EqualTo(BomDiffState.New));
             Assert.That(vm.Lines[0].CanCheck, Is.True);
 
             vm.Lines[0].IsChecked = true;
             await vm.PushAsync();
 
-            Assert.That(vm.Lines[0].State,    Is.EqualTo(BomDiffState.Match));
+            Assert.That(vm.Lines[0].State, Is.EqualTo(BomDiffState.Match));
             Assert.That(vm.Lines[0].CanCheck, Is.False,
                 "Pushed New row must become unselectable");
             Assert.That(vm.Lines[0].IsChecked, Is.False);
@@ -452,10 +452,10 @@ namespace SwInventreeAddin.Tests
                 var vm = CreateVm();
                 var diffLine = new BomDiffLine
                 {
-                    State       = BomDiffState.New,
-                    SubPartPk   = 10,
-                    DisplayIpn  = "A",
-                    SwLine      = new SwBomLine { Quantity = 1, Reference = string.Empty, Note = string.Empty },
+                    State = BomDiffState.New,
+                    SubPartPk = 10,
+                    DisplayIpn = "A",
+                    SwLine = new SwBomLine { Quantity = 1, Reference = string.Empty, Note = string.Empty },
                 };
                 var line = new BomDiffLineViewModel(diffLine) { IsChecked = true };
                 vm.Lines.Add(line);

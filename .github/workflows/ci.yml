@@ -12,5 +12,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Format verify
+        run: dotnet format "Solidworks Inventree Add-In.sln" --verify-no-changes
+
       - name: Test
         run: dotnet test --configuration Release --verbosity normal --disable-build-servers
+
+      - name: Build installer package
+        shell: pwsh
+        run: |
+          Set-StrictMode -Version Latest
+          .\Installer\Package.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Get-Item "Installer\SwInventreeAddin-*.zip" -ErrorAction SilentlyContinue)) {
+            throw "Installer zip was not produced"
+          }

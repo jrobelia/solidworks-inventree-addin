@@ -17,16 +17,16 @@ namespace SwInventreeAddin.Tests
     [TestFixture]
     public class CreatePartViewModelTests
     {
-        private StubInventreeClient             _client = null!;
-        private StubDocumentPropertyService     _propertyService = null!;
+        private StubInventreeClient _client = null!;
+        private StubDocumentPropertyService _propertyService = null!;
         private StubCreatePartValidationErrorService _validationService = null!;
-        private StubPropertyMappingProvider     _mappingProvider = null!;
+        private StubPropertyMappingProvider _mappingProvider = null!;
         private const string DefaultName = "10K Resistor";
 
         [SetUp]
         public void SetUp()
         {
-            _client          = new StubInventreeClient();
+            _client = new StubInventreeClient();
             _propertyService = new StubDocumentPropertyService();
             _validationService = new StubCreatePartValidationErrorService();
             _mappingProvider = new StubPropertyMappingProvider
@@ -148,9 +148,9 @@ namespace SwInventreeAddin.Tests
         public async Task CreateAsync_DoesNotSetIsLoadingCategories()
         {
             _client.PkToReturnOnCreate = 99;
-            _client.PartByPkToReturn   = new InventreePart
+            _client.PartByPkToReturn = new InventreePart
             {
-                Pk  = 99,
+                Pk = 99,
                 Ipn = "R-NEW-001",
                 Name = "New Resistor",
             };
@@ -183,9 +183,9 @@ namespace SwInventreeAddin.Tests
 
             await vm.LoadChildrenAsync(node);
 
-            Assert.That(node.Children.Count,                   Is.EqualTo(1));
-            Assert.That(node.Children[0]!.Category.Name,       Is.EqualTo("SMD"));
-            Assert.That(node.IsLoading,                        Is.False);
+            Assert.That(node.Children.Count, Is.EqualTo(1));
+            Assert.That(node.Children[0]!.Category.Name, Is.EqualTo("SMD"));
+            Assert.That(node.IsLoading, Is.False);
             Assert.That(changes, Is.EqualTo(1), "LoadChildrenAsync should refresh Children with a single CollectionChanged/Reset.");
         }
 
@@ -210,20 +210,20 @@ namespace SwInventreeAddin.Tests
         {
             const int newPk = 99;
             _client.PkToReturnOnCreate = newPk;
-            _client.PartByPkToReturn   = new InventreePart
+            _client.PartByPkToReturn = new InventreePart
             {
-                Pk   = newPk,
-                Ipn  = "R-NEW-001",
+                Pk = newPk,
+                Ipn = "R-NEW-001",
                 Name = "New Resistor",
             };
-            _propertyService.Seed(_mappingProvider.Config.IpnProperty!,      string.Empty);
+            _propertyService.Seed(_mappingProvider.Config.IpnProperty!, string.Empty);
             _propertyService.Seed(_mappingProvider.Config.NameProperty!, string.Empty);
 
             var vm = CreateVm();
             vm.SelectedCategory = MakeNode(pk: 7);
             await vm.CreateAsync();
 
-            Assert.That(_propertyService.GetCustomProperty(_mappingProvider.Config.IpnProperty!),      Is.EqualTo("R-NEW-001"));
+            Assert.That(_propertyService.GetCustomProperty(_mappingProvider.Config.IpnProperty!), Is.EqualTo("R-NEW-001"));
             Assert.That(_propertyService.GetCustomProperty(_mappingProvider.Config.NameProperty!), Is.EqualTo("New Resistor"));
         }
 
@@ -231,7 +231,7 @@ namespace SwInventreeAddin.Tests
         public async Task CreateAsync_Success_RaisesPartCreatedWithPart()
         {
             _client.PkToReturnOnCreate = 99;
-            _client.PartByPkToReturn   = new InventreePart { Pk = 99, Ipn = "R-NEW-001", Name = "New Resistor" };
+            _client.PartByPkToReturn = new InventreePart { Pk = 99, Ipn = "R-NEW-001", Name = "New Resistor" };
 
             InventreePart? raisedPart = null;
             var vm = CreateVm();
@@ -240,7 +240,7 @@ namespace SwInventreeAddin.Tests
 
             await vm.CreateAsync();
 
-            Assert.That(raisedPart,     Is.Not.Null);
+            Assert.That(raisedPart, Is.Not.Null);
             Assert.That(raisedPart!.Ipn, Is.EqualTo("R-NEW-001"));
         }
 
@@ -255,7 +255,7 @@ namespace SwInventreeAddin.Tests
             await vm.CreateAsync();
 
             Assert.That(vm.StatusText, Does.Contain("Error"));
-            Assert.That(vm.IsBusy,     Is.False);
+            Assert.That(vm.IsBusy, Is.False);
             // Original value must be unchanged
             Assert.That(_propertyService.GetCustomProperty(_mappingProvider.Config.IpnProperty!), Is.EqualTo("ORIGINAL"));
         }
@@ -270,18 +270,18 @@ namespace SwInventreeAddin.Tests
 
             var vm = CreateVm();
             vm.SelectedCategory = MakeNode(pk: 7);
-            vm.IpnEntry         = "DUP-001";
+            vm.IpnEntry = "DUP-001";
             await vm.CreateAsync();
 
             Assert.That(vm.StatusText, Does.Contain("Part with this IPN already exists."));
-            Assert.That(vm.IsBusy,     Is.False);
+            Assert.That(vm.IsBusy, Is.False);
         }
 
         [Test]
         public async Task CreateAsync_RefetchReturnsNull_SetsStatusText_NoDocWrite()
         {
             _client.PkToReturnOnCreate = 99;
-            _client.PartByPkToReturn   = null;   // re-fetch fails
+            _client.PartByPkToReturn = null;   // re-fetch fails
             _propertyService.Seed(_mappingProvider.Config.IpnProperty!, "ORIGINAL");
 
             var vm = CreateVm();
@@ -289,7 +289,7 @@ namespace SwInventreeAddin.Tests
             await vm.CreateAsync();
 
             Assert.That(vm.StatusText, Does.Contain("IPN not yet written"));
-            Assert.That(vm.IsBusy,     Is.False);
+            Assert.That(vm.IsBusy, Is.False);
             Assert.That(_propertyService.GetCustomProperty(_mappingProvider.Config.IpnProperty!), Is.EqualTo("ORIGINAL"));
         }
 
@@ -300,8 +300,8 @@ namespace SwInventreeAddin.Tests
             _client.PkToReturnOnCreate = 99;
             _client.QueuePartByPkResponses(
                 new InventreePart { Pk = 99, Ipn = string.Empty, Name = "New Resistor" },
-                new InventreePart { Pk = 99, Ipn = "R-NEW-001",  Name = "New Resistor" });
-            _propertyService.Seed(_mappingProvider.Config.IpnProperty!,      string.Empty);
+                new InventreePart { Pk = 99, Ipn = "R-NEW-001", Name = "New Resistor" });
+            _propertyService.Seed(_mappingProvider.Config.IpnProperty!, string.Empty);
             _propertyService.Seed(_mappingProvider.Config.NameProperty!, string.Empty);
 
             InventreePart? raisedPart = null;
@@ -353,13 +353,13 @@ namespace SwInventreeAddin.Tests
         public async Task CreateAsync_UserProvidesIpn_PassesIpnToClient()
         {
             _client.PkToReturnOnCreate = 42;
-            _client.PartByPkToReturn   = new InventreePart { Pk = 42, Ipn = "FAB-001", Name = "Custom" };
-            _propertyService.Seed(_mappingProvider.Config.IpnProperty!,      string.Empty);
+            _client.PartByPkToReturn = new InventreePart { Pk = 42, Ipn = "FAB-001", Name = "Custom" };
+            _propertyService.Seed(_mappingProvider.Config.IpnProperty!, string.Empty);
             _propertyService.Seed(_mappingProvider.Config.NameProperty!, string.Empty);
 
             var vm = CreateVm();
             vm.SelectedCategory = MakeNode();
-            vm.IpnEntry         = "FAB-001";
+            vm.IpnEntry = "FAB-001";
             await vm.CreateAsync();
 
             Assert.That(_client.LastCreateIpn, Is.EqualTo("FAB-001"));
@@ -371,13 +371,13 @@ namespace SwInventreeAddin.Tests
             // The server may ignore or overwrite the entered IPN (e.g. an IPN
             // plugin). The user must be told the assigned value differs.
             _client.PkToReturnOnCreate = 42;
-            _client.PartByPkToReturn   = new InventreePart { Pk = 42, Ipn = "R-NEW-001", Name = "Custom" };
-            _propertyService.Seed(_mappingProvider.Config.IpnProperty!,  string.Empty);
+            _client.PartByPkToReturn = new InventreePart { Pk = 42, Ipn = "R-NEW-001", Name = "Custom" };
+            _propertyService.Seed(_mappingProvider.Config.IpnProperty!, string.Empty);
             _propertyService.Seed(_mappingProvider.Config.NameProperty!, string.Empty);
 
             var vm = CreateVm();
             vm.SelectedCategory = MakeNode();
-            vm.IpnEntry         = "FAB-001";
+            vm.IpnEntry = "FAB-001";
             await vm.CreateAsync();
 
             Assert.That(vm.IpnMismatchNotice, Is.Not.Null.And.Not.Empty);
@@ -389,13 +389,13 @@ namespace SwInventreeAddin.Tests
         public async Task CreateAsync_AssignedIpnMatchesEntered_NoMismatchNotice()
         {
             _client.PkToReturnOnCreate = 42;
-            _client.PartByPkToReturn   = new InventreePart { Pk = 42, Ipn = "FAB-001", Name = "Custom" };
-            _propertyService.Seed(_mappingProvider.Config.IpnProperty!,  string.Empty);
+            _client.PartByPkToReturn = new InventreePart { Pk = 42, Ipn = "FAB-001", Name = "Custom" };
+            _propertyService.Seed(_mappingProvider.Config.IpnProperty!, string.Empty);
             _propertyService.Seed(_mappingProvider.Config.NameProperty!, string.Empty);
 
             var vm = CreateVm();
             vm.SelectedCategory = MakeNode();
-            vm.IpnEntry         = "FAB-001";
+            vm.IpnEntry = "FAB-001";
             await vm.CreateAsync();
 
             Assert.That(vm.IpnMismatchNotice, Is.Null);
@@ -405,8 +405,8 @@ namespace SwInventreeAddin.Tests
         public async Task CreateAsync_BlankIpnEntry_NoMismatchNotice()
         {
             _client.PkToReturnOnCreate = 42;
-            _client.PartByPkToReturn   = new InventreePart { Pk = 42, Ipn = "R-NEW-001", Name = "Custom" };
-            _propertyService.Seed(_mappingProvider.Config.IpnProperty!,  string.Empty);
+            _client.PartByPkToReturn = new InventreePart { Pk = 42, Ipn = "R-NEW-001", Name = "Custom" };
+            _propertyService.Seed(_mappingProvider.Config.IpnProperty!, string.Empty);
             _propertyService.Seed(_mappingProvider.Config.NameProperty!, string.Empty);
 
             var vm = CreateVm();
@@ -424,17 +424,17 @@ namespace SwInventreeAddin.Tests
             // Toggle off: poll is skipped even when initial re-fetch returns no IPN.
             const int newPk = 55;
             _client.PkToReturnOnCreate = newPk;
-            _client.PartByPkToReturn   = new InventreePart { Pk = newPk, Ipn = string.Empty, Name = "IPN-less Part" };
+            _client.PartByPkToReturn = new InventreePart { Pk = newPk, Ipn = string.Empty, Name = "IPN-less Part" };
             _propertyService.Seed(_mappingProvider.Config.NameProperty!, string.Empty);
 
             InventreePart? raisedPart = null;
             var vm = CreateVm(waitForServerAssignedIpn: false);
-            vm.PartCreated      += (_, p) => raisedPart = p;
-            vm.SelectedCategory  = MakeNode();
+            vm.PartCreated += (_, p) => raisedPart = p;
+            vm.SelectedCategory = MakeNode();
             await vm.CreateAsync();
 
-            Assert.That(raisedPart,  Is.Not.Null, "PartCreated must fire even with blank IPN");
-            Assert.That(vm.IsBusy,   Is.False);
+            Assert.That(raisedPart, Is.Not.Null, "PartCreated must fire even with blank IPN");
+            Assert.That(vm.IsBusy, Is.False);
             Assert.That(vm.StatusText, Does.Not.Contain("refresh manually"),
                 "refresh-manually message only appears when the poll ran and timed out");
         }
@@ -445,7 +445,7 @@ namespace SwInventreeAddin.Tests
             // After a poll-skipped creation the InvenTree Part PK is written to the SW document.
             const int newPk = 55;
             _client.PkToReturnOnCreate = newPk;
-            _client.PartByPkToReturn   = new InventreePart { Pk = newPk, Ipn = string.Empty, Name = "IPN-less Part" };
+            _client.PartByPkToReturn = new InventreePart { Pk = newPk, Ipn = string.Empty, Name = "IPN-less Part" };
 
             var vm = CreateVm(waitForServerAssignedIpn: false);
             vm.SelectedCategory = MakeNode();
@@ -460,20 +460,20 @@ namespace SwInventreeAddin.Tests
             // When user enters an IPN manually the poll never runs — toggle has no effect.
             const int newPk = 77;
             _client.PkToReturnOnCreate = newPk;
-            _client.PartByPkToReturn   = new InventreePart { Pk = newPk, Ipn = "FAB-123", Name = "Manual Part" };
-            _propertyService.Seed(_mappingProvider.Config.IpnProperty!,      string.Empty);
+            _client.PartByPkToReturn = new InventreePart { Pk = newPk, Ipn = "FAB-123", Name = "Manual Part" };
+            _propertyService.Seed(_mappingProvider.Config.IpnProperty!, string.Empty);
             _propertyService.Seed(_mappingProvider.Config.NameProperty!, string.Empty);
 
             InventreePart? raisedPart = null;
             var vm = CreateVm(waitForServerAssignedIpn: true);
-            vm.PartCreated      += (_, p) => raisedPart = p;
-            vm.SelectedCategory  = MakeNode();
-            vm.IpnEntry          = "FAB-123";
+            vm.PartCreated += (_, p) => raisedPart = p;
+            vm.SelectedCategory = MakeNode();
+            vm.IpnEntry = "FAB-123";
             await vm.CreateAsync();
 
             Assert.That(_client.LastCreateIpn, Is.EqualTo("FAB-123"));
-            Assert.That(raisedPart?.Ipn,        Is.EqualTo("FAB-123"));
-            Assert.That(vm.IsBusy,              Is.False);
+            Assert.That(raisedPart?.Ipn, Is.EqualTo("FAB-123"));
+            Assert.That(vm.IsBusy, Is.False);
         }
 
         [Test]
@@ -490,14 +490,14 @@ namespace SwInventreeAddin.Tests
             var category = MakeNode();
             var vm = CreateVm();
             vm.SelectedCategory = category;
-            vm.IpnEntry         = "DUP-001";
+            vm.IpnEntry = "DUP-001";
             await vm.CreateAsync();
 
             Assert.That(_client.LastCreateCategoryPk, Is.EqualTo(category.Category.Pk),
                 "CreatePartAsync should be called so the server can validate the IPN.");
             Assert.That(_client.LastCreateIpn, Is.EqualTo("DUP-001"));
             Assert.That(vm.IpnErrorText, Does.Contain("Part with this IPN already exists."));
-            Assert.That(vm.StatusText,   Does.Contain("Part with this IPN already exists."));
+            Assert.That(vm.StatusText, Does.Contain("Part with this IPN already exists."));
             Assert.That(_propertyService.GetCustomProperty(_mappingProvider.Config.IpnProperty!), Is.EqualTo("ORIGINAL"));
             Assert.That(vm.IsBusy, Is.False);
         }
@@ -510,10 +510,10 @@ namespace SwInventreeAddin.Tests
             SynchronizationContext.SetSynchronizationContext(uiContext);
             try
             {
-                _client.ForceAsynchronous    = true;
-                _client.PkToReturnOnCreate   = 77;
-                _client.PartByPkToReturn     = new InventreePart { Pk = 77, Ipn = "UNIQUE-001", Name = "Custom" };
-                _propertyService.Seed(_mappingProvider.Config.IpnProperty!,      string.Empty);
+                _client.ForceAsynchronous = true;
+                _client.PkToReturnOnCreate = 77;
+                _client.PartByPkToReturn = new InventreePart { Pk = 77, Ipn = "UNIQUE-001", Name = "Custom" };
+                _propertyService.Seed(_mappingProvider.Config.IpnProperty!, string.Empty);
                 _propertyService.Seed(_mappingProvider.Config.NameProperty!, string.Empty);
 
                 var vm = CreateVm("Custom Part");
@@ -633,10 +633,10 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void WaitForServerAssignedIpn_DefaultsToConstructorArgument()
         {
-            var vmOn  = CreateVm(waitForServerAssignedIpn: true);
+            var vmOn = CreateVm(waitForServerAssignedIpn: true);
             var vmOff = CreateVm(waitForServerAssignedIpn: false);
 
-            Assert.That(vmOn.WaitForServerAssignedIpn,  Is.True);
+            Assert.That(vmOn.WaitForServerAssignedIpn, Is.True);
             Assert.That(vmOff.WaitForServerAssignedIpn, Is.False);
         }
 
@@ -725,16 +725,16 @@ namespace SwInventreeAddin.Tests
 
             InventreePart? raisedPart = null;
             var vm = CreateVm();
-            vm.PartCreated      += (_, p) => raisedPart = p;
-            vm.SelectedCategory  = MakeNode();
-            vm.IpnEntry          = "BAD-IPN";
+            vm.PartCreated += (_, p) => raisedPart = p;
+            vm.SelectedCategory = MakeNode();
+            vm.IpnEntry = "BAD-IPN";
 
             await vm.CreateAsync();
 
             Assert.That(raisedPart, Is.Null);
             Assert.That(vm.IpnErrorText, Does.Contain("IPN does not match required pattern"));
-            Assert.That(vm.StatusText,   Does.Contain("IPN does not match required pattern"));
-            Assert.That(vm.IsBusy,       Is.False);
+            Assert.That(vm.StatusText, Does.Contain("IPN does not match required pattern"));
+            Assert.That(vm.IsBusy, Is.False);
         }
 
         [Test]
@@ -823,7 +823,7 @@ namespace SwInventreeAddin.Tests
         public async Task CreateAsync_SendsAllFlagsToClient()
         {
             _client.PkToReturnOnCreate = 99;
-            _client.PartByPkToReturn   = new InventreePart { Pk = 99, Ipn = "R-NEW-001", Name = "New Resistor" };
+            _client.PartByPkToReturn = new InventreePart { Pk = 99, Ipn = "R-NEW-001", Name = "New Resistor" };
 
             var vm = CreateVm(documentType: DocumentType.Assembly);
             vm.SelectedCategory = MakeNode(pk: 7);
@@ -847,7 +847,7 @@ namespace SwInventreeAddin.Tests
 
         private sealed class PumpingSynchronizationContext : SynchronizationContext
         {
-            private readonly Thread                                                        _uiThread;
+            private readonly Thread _uiThread;
             private readonly ConcurrentQueue<(SendOrPostCallback Callback, object? State)> _queue
                 = new ConcurrentQueue<(SendOrPostCallback, object?)>();
 
