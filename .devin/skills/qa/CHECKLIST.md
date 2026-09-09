@@ -48,15 +48,18 @@ Every test step must have:
 
 Run these at the start of the walk, before the issue-specific groups. Treat them as suggestions the engineer can skip, but the agent should recommend the full set and explain why.
 
-Order them by the risk the diff carries, not the list order below. Use the diff to decide which surface is most likely to break:
+The smoke test should cover the major pieces of add-in functionality the diff touches, not the specific issue acceptance criteria. Trace the changed files and methods back to the user-facing flows they participate in and add one broad smoke test per major flow. If multiple major flows are at risk, run the broadest, most user-facing one first.
 
-- If the diff touches the add-in load path, COM registration, or `TaskPane` / XAML / ViewModel startup: run **The add-in loads** first.
-- If the diff touches `Fetch`, `PartSyncSession`, property mapping, or `Apply`: run **Fetch works on a plain document** first.
-- If the diff touches document identity, `DocumentType`, or `BOM Compare`: run **The Task Pane shows document state** first.
+Use these mappings as a starting point:
 
-If multiple smoke tests are likely to break, start with the one closest to the user's entry point (add-in load first, then document state, then Fetch).
+- Diff touches the add-in load path, COM registration, or `TaskPane` / XAML / ViewModel startup: smoke test the **add-in loads and the Task Pane renders**.
+- Diff touches `TaskPaneViewModel` document identity, `DocumentType`, or `BomSectionVisible`: smoke test **the Task Pane shows document state**.
+- Diff touches `FetchPartAsync`, the InvenTree client fetch methods, or `PartSyncSession` creation: smoke test **Fetch works on a plain document**.
+- Diff touches `BomCompareViewModel`, `IAssemblyBomService`, or the BOM table service: smoke test **BOM Compare for an Assembly with and without a Part Sync session**.
+- Diff touches `CreatePartWindow`, `CreatePartViewModel`, or part creation: smoke test the **Create Part** flow.
+- Diff touches `SettingsWindow`, credentials, or `PropertyMapping`: smoke test opening **Settings** and applying the default **Property Mapping**.
 
-Base list:
+If the diff is narrow and the mappings above do not add meaningful coverage beyond the issue groups, fall back to the base list:
 
 1. The add-in loads — the InvenTree Task Pane appears and renders without error when SolidWorks opens a document.
 2. The Task Pane shows document state — stamped Document Properties appear and commands sit in their expected enabled states.

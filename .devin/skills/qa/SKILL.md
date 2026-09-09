@@ -125,7 +125,7 @@ If the change touches the **Task Pane**, a **dialog**, a **control**, or a **dat
 
 ### Smoke test group
 
-Add a smoke test group at the start of the plan, before the issue-specific groups. Use the risk-ordered smoke tests in [CHECKLIST.md](CHECKLIST.md). Present each as a suggestion the engineer can skip; track skipped steps. This group catches environment and load-path regressions the focused plan may miss.
+Add a smoke test group at the start of the plan, before the issue-specific groups. Derive the smoke tests from the diff: trace the changed files and methods back to the major user-facing flows they participate in and add one broad check per major flow using the mappings in [CHECKLIST.md](CHECKLIST.md). Do not repeat the specific issue acceptance criteria; the issue groups handle those. If the diff is narrow, fall back to the base list in [CHECKLIST.md](CHECKLIST.md). Present each as a suggestion the engineer can skip; track skipped steps. This group catches regressions in the surrounding general behavior the focused plan may miss.
 
 Present the test plan using the **compact format** in [TEST-PLAN.md](TEST-PLAN.md): group titles and step titles only. The full step detail (preconditions, action, expected) belongs in the detailed format and is used during the walk or when the user asks to expand. Print the compact plan in the chat response first, then ask the user to reply with approve/edit/reorder/expand. Do not use `ask_user_question` for long plan approvals — the question dialog can hide the previous chat and make the plan hard to review.
 
@@ -137,7 +137,7 @@ Run the preflight in [PREFLIGHT.md](PREFLIGHT.md) before the GUI test pass. Stop
 
 ### Smoke test pass
 
-Start with the smoke test group from the plan. Order the steps by the risk the diff carries, using the guidance in [CHECKLIST.md](CHECKLIST.md). Present each as a suggestion the engineer can skip; track skips. Smoke test failures are PR-blocking; skipped smoke tests do not block the issue groups.
+Start with the smoke test group from the plan. Order the steps from the broadest, most user-facing flow to the narrowest, using the guidance in [CHECKLIST.md](CHECKLIST.md). Present each as a suggestion the engineer can skip; track skips. Smoke test failures are PR-blocking; skipped smoke tests do not block the issue groups.
 
 ### Severity reminder
 
