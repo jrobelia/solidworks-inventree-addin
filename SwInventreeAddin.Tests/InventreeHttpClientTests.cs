@@ -13,7 +13,7 @@ namespace SwInventreeAddin.Tests
     public class InventreeHttpClientTests
     {
         private const string BaseUrl = "http://inventree.example.com";
-        private const string ApiKey  = "test-api-key";
+        private const string ApiKey = "test-api-key";
 
         private static readonly string ValidSinglePartJson =
             @"[{ ""name"": ""Resistor 10k"", ""notes"": ""SMD 0402"", ""revision"": ""A"", ""IPN"": ""R-10K-0402"" }]";
@@ -100,9 +100,9 @@ namespace SwInventreeAddin.Tests
             await CreateClient(handler).GetPartByIpnAsync("R-10K-0402");
 
             var auth = handler.LastRequest.Headers.Authorization;
-            Assert.That(auth,            Is.Not.Null,           "Authorization header must be present");
-            Assert.That(auth.Scheme,     Is.EqualTo("Token"),   "Scheme must be 'Token'");
-            Assert.That(auth.Parameter,  Is.EqualTo(ApiKey),    "Parameter must equal the api key");
+            Assert.That(auth, Is.Not.Null, "Authorization header must be present");
+            Assert.That(auth.Scheme, Is.EqualTo("Token"), "Scheme must be 'Token'");
+            Assert.That(auth.Parameter, Is.EqualTo(ApiKey), "Parameter must equal the api key");
         }
 
         [Test]
@@ -190,7 +190,7 @@ namespace SwInventreeAddin.Tests
     public class InventreeHttpClientStockFieldTests
     {
         private const string BaseUrl = "http://inventree.example.com";
-        private const string ApiKey  = "test-api-key";
+        private const string ApiKey = "test-api-key";
 
         // List response — just enough to get a PK back
         private const string ListJson = @"[{ ""pk"": 42, ""IPN"": ""R-10K-0402"" }]";
@@ -236,7 +236,7 @@ namespace SwInventreeAddin.Tests
     public class InventreeHttpClientFlagFieldTests
     {
         private const string BaseUrl = "http://inventree.example.com";
-        private const string ApiKey  = "test-api-key";
+        private const string ApiKey = "test-api-key";
 
         private const string ListJson = @"[{ ""pk"": 42, ""IPN"": ""R-10K-0402"" }]";
 
@@ -316,7 +316,7 @@ namespace SwInventreeAddin.Tests
 
         public StubHttpMessageHandler(HttpStatusCode statusCode, string responseBody)
         {
-            _statusCode   = statusCode;
+            _statusCode = statusCode;
             _responseBody = responseBody;
         }
 

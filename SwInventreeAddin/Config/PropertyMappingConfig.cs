@@ -36,10 +36,10 @@ namespace SwInventreeAddin.Config
         public string? PkProperty { get; set; }
 
         // BOM column header mappings (comma-separated aliases, case-insensitive)
-        public string? BomColumnIpn       { get; set; }
-        public string? BomColumnQty       { get; set; }
+        public string? BomColumnIpn { get; set; }
+        public string? BomColumnQty { get; set; }
         public string? BomColumnReference { get; set; }
-        public string? BomColumnNote      { get; set; }
+        public string? BomColumnNote { get; set; }
 
         /// <summary>
         /// Round-trips top-level JSON properties that the current add-in does not recognise.
@@ -56,16 +56,16 @@ namespace SwInventreeAddin.Config
         /// </summary>
         private sealed class StringField
         {
-            public Func<PropertyMappingConfig, string?>    Getter    { get; }
-            public Action<PropertyMappingConfig, string?>  Setter    { get; }
-            public string?                                 DefaultValue { get; }
+            public Func<PropertyMappingConfig, string?> Getter { get; }
+            public Action<PropertyMappingConfig, string?> Setter { get; }
+            public string? DefaultValue { get; }
 
             public StringField(Func<PropertyMappingConfig, string?> getter,
                                Action<PropertyMappingConfig, string?> setter,
                                string? defaultValue)
             {
-                Getter       = getter;
-                Setter       = setter;
+                Getter = getter;
+                Setter = setter;
                 DefaultValue = defaultValue;
             }
         }

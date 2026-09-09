@@ -17,12 +17,12 @@ namespace SwInventreeAddin.UI
     /// </summary>
     internal sealed class PartThumbnailService
     {
-        private readonly IInventreeClient     _client;
+        private readonly IInventreeClient _client;
         private readonly IViewportCaptureService? _viewportService;
 
         public PartThumbnailService(IInventreeClient client, IViewportCaptureService? viewportService)
         {
-            _client          = client          ?? throw new ArgumentNullException(nameof(client));
+            _client = client ?? throw new ArgumentNullException(nameof(client));
             _viewportService = viewportService;
         }
 
@@ -44,13 +44,13 @@ namespace SwInventreeAddin.UI
         /// </returns>
         /// <exception cref="Exception">Thrown on upload failure — caller handles error reporting.</exception>
         public async Task<byte[]?> PushAsync(
-            int                          partPk,
+            int partPk,
             Action<string, StatusSeverity> reportStatus,
-            Image?                       imageOverride = null)
+            Image? imageOverride = null)
         {
-            Image? image    = null;
-            bool   ownImage = false;
-            var    cropRect = Rectangle.Empty;
+            Image? image = null;
+            bool ownImage = false;
+            var cropRect = Rectangle.Empty;
 
             try
             {
@@ -60,7 +60,7 @@ namespace SwInventreeAddin.UI
                 }
                 else if (_viewportService != null)
                 {
-                    image    = _viewportService.CaptureViewportImage();
+                    image = _viewportService.CaptureViewportImage();
                     ownImage = true;
 
                     var cropWindow = new ImageCropWindow(image);

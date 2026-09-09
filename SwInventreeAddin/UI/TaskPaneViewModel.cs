@@ -34,13 +34,13 @@ namespace SwInventreeAddin.UI
 
         // ── Dependencies ──────────────────────────────────────────────────────
 
-        private IInventreeClient?                       _client;
-        private readonly IDocumentPropertyService       _propertyService;
-        private readonly IViewportCaptureService?       _viewportService;
-        private IPropertyMappingProvider?               _mappingProvider;
-        private readonly IConfigProvider?               _configProvider;
-        private ICreatePartValidationErrorService?      _validationService;
-        private MappingChangedSubscription?             _mappingChangedSubscription;
+        private IInventreeClient? _client;
+        private readonly IDocumentPropertyService _propertyService;
+        private readonly IViewportCaptureService? _viewportService;
+        private IPropertyMappingProvider? _mappingProvider;
+        private readonly IConfigProvider? _configProvider;
+        private ICreatePartValidationErrorService? _validationService;
+        private MappingChangedSubscription? _mappingChangedSubscription;
 
         /// <summary>Raised when the user triggers the Settings action.</summary>
         public event EventHandler? SettingsRequested;
@@ -83,20 +83,20 @@ namespace SwInventreeAddin.UI
 
         // ── Bindable properties ───────────────────────────────────────────────
 
-        private string _partNumber         = string.Empty;
-        private string _currentName        = string.Empty;
-        private string _currentNotes       = string.Empty;
-        private string _currentRevision    = string.Empty;
+        private string _partNumber = string.Empty;
+        private string _currentName = string.Empty;
+        private string _currentNotes = string.Empty;
+        private string _currentRevision = string.Empty;
         private string _currentDescription = string.Empty;
-        private string _currentPk          = string.Empty;
-        private string _statusText         = string.Empty;
+        private string _currentPk = string.Empty;
+        private string _statusText = string.Empty;
         private string? _statusToolTip;
-        private bool   _fetchEnabled;
-        private bool   _createPartEnabled;
-        private bool   _isDocumentOpen;
-        private bool   _documentPkPresent;
-        private int    _documentPk;
-        private bool   _propertiesSectionVisible;
+        private bool _fetchEnabled;
+        private bool _createPartEnabled;
+        private bool _isDocumentOpen;
+        private bool _documentPkPresent;
+        private int _documentPk;
+        private bool _propertiesSectionVisible;
         private StatusSeverity _statusSeverity = StatusSeverity.None;
 
         /// <summary>
@@ -120,46 +120,46 @@ namespace SwInventreeAddin.UI
         // ── Preview properties (computed from session) ────────────────────────
 
         /// <summary>Name fetched from InvenTree.</summary>
-        public string NamePreview        => _session?.Part.Name        ?? string.Empty;
+        public string NamePreview => _session?.Part.Name ?? string.Empty;
 
         /// <summary>Notes fetched from InvenTree.</summary>
-        public string NotesPreview       => _session?.Part.Notes       ?? string.Empty;
+        public string NotesPreview => _session?.Part.Notes ?? string.Empty;
 
         /// <summary>Revision fetched from InvenTree (or pushed).</summary>
-        public string RevisionPreview    => _session?.Part.Revision    ?? string.Empty;
+        public string RevisionPreview => _session?.Part.Revision ?? string.Empty;
 
         /// <summary>Description fetched from InvenTree.</summary>
         public string DescriptionPreview => _session?.Part.Description ?? string.Empty;
 
         /// <summary>InvenTree PK as a display string.</summary>
-        public string PkPreview          => _session?.Part.Pk > 0 ? _session!.Part.Pk.ToString() : string.Empty;
+        public string PkPreview => _session?.Part.Pk > 0 ? _session!.Part.Pk.ToString() : string.Empty;
 
         /// <summary>Raw PNG/JPEG bytes of the InvenTree part thumbnail. Null when none fetched.</summary>
-        public byte[]? ThumbnailBytes    => _session?.ThumbnailBytes;
+        public byte[]? ThumbnailBytes => _session?.ThumbnailBytes;
 
         /// <summary>In-stock quantity display string (e.g. "15.5").</summary>
-        public string InStockDisplay     => _session?.Part.InStock.ToString("G29") ?? string.Empty;
+        public string InStockDisplay => _session?.Part.InStock.ToString("G29") ?? string.Empty;
 
         /// <summary>On-order quantity display string (e.g. "100").</summary>
-        public string OrderingDisplay    => _session?.Part.Ordering.ToString("G29") ?? string.Empty;
+        public string OrderingDisplay => _session?.Part.Ordering.ToString("G29") ?? string.Empty;
 
         // ── Flag chips (computed from session) ──────────────────────────────────
 
         /// <summary>"Active: ✓" / "Active: ✗" display text for the Active flag chip.</summary>
-        public string ActiveDisplay       => FormatFlag("Active",       _session?.Part.Active);
-        public bool?  ActiveValue         => _session?.Part.Active;
-        public string AssemblyDisplay     => FormatFlag("Assembly",     _session?.Part.Assembly);
-        public bool?  AssemblyValue       => _session?.Part.Assembly;
-        public string ComponentDisplay    => FormatFlag("Component",    _session?.Part.Component);
-        public bool?  ComponentValue      => _session?.Part.Component;
+        public string ActiveDisplay => FormatFlag("Active", _session?.Part.Active);
+        public bool? ActiveValue => _session?.Part.Active;
+        public string AssemblyDisplay => FormatFlag("Assembly", _session?.Part.Assembly);
+        public bool? AssemblyValue => _session?.Part.Assembly;
+        public string ComponentDisplay => FormatFlag("Component", _session?.Part.Component);
+        public bool? ComponentValue => _session?.Part.Component;
         public string PurchaseableDisplay => FormatFlag("Purchaseable", _session?.Part.Purchaseable);
-        public bool?  PurchaseableValue   => _session?.Part.Purchaseable;
-        public string SalableDisplay      => FormatFlag("Salable",      _session?.Part.Salable);
-        public bool?  SalableValue        => _session?.Part.Salable;
-        public string TrackableDisplay    => FormatFlag("Trackable",    _session?.Part.Trackable);
-        public bool?  TrackableValue      => _session?.Part.Trackable;
-        public string TestableDisplay     => FormatFlag("Testable",     _session?.Part.Testable);
-        public bool?  TestableValue       => _session?.Part.Testable;
+        public bool? PurchaseableValue => _session?.Part.Purchaseable;
+        public string SalableDisplay => FormatFlag("Salable", _session?.Part.Salable);
+        public bool? SalableValue => _session?.Part.Salable;
+        public string TrackableDisplay => FormatFlag("Trackable", _session?.Part.Trackable);
+        public bool? TrackableValue => _session?.Part.Trackable;
+        public string TestableDisplay => FormatFlag("Testable", _session?.Part.Testable);
+        public bool? TestableValue => _session?.Part.Testable;
 
         private static string FormatFlag(string name, bool? value) =>
             value == null ? string.Empty : $"{name}: {(value.Value ? "\u2713" : "\u2717")}";
@@ -167,40 +167,40 @@ namespace SwInventreeAddin.UI
         // ── Enabled / visible flags (computed from session) ───────────────────
 
         /// <summary>True when a part has been fetched and Apply is meaningful.</summary>
-        public bool ApplyEnabled            => _session != null && _mappingResult?.CanUseForPartSync == true;
+        public bool ApplyEnabled => _session != null && _mappingResult?.CanUseForPartSync == true;
 
         /// <summary>True when individual Name apply is available.</summary>
-        public bool ApplyNameEnabled        => _session != null && _mappingResult?.CanUseForPartSync == true;
+        public bool ApplyNameEnabled => _session != null && _mappingResult?.CanUseForPartSync == true;
 
         /// <summary>True when individual Notes apply is available.</summary>
-        public bool ApplyNotesEnabled       => _session != null && _mappingResult?.CanUseForPartSync == true;
+        public bool ApplyNotesEnabled => _session != null && _mappingResult?.CanUseForPartSync == true;
 
         /// <summary>True when individual Description apply is available.</summary>
         public bool ApplyDescriptionEnabled => _session != null && _mappingResult?.CanUseForPartSync == true;
 
         /// <summary>True when a part has been fetched and applying PK to SW doc is meaningful.</summary>
-        public bool ApplyPkEnabled          => _session != null && _mappingResult?.CanUseForPartSync == true;
+        public bool ApplyPkEnabled => _session != null && _mappingResult?.CanUseForPartSync == true;
 
         /// <summary>True when a part has been fetched and pushing Name to InvenTree is meaningful.</summary>
-        public bool PushNameEnabled         => _session != null && _mappingResult?.CanUseForPartSync == true;
+        public bool PushNameEnabled => _session != null && _mappingResult?.CanUseForPartSync == true;
 
         /// <summary>True when a part has been fetched and pushing Notes to InvenTree is meaningful.</summary>
-        public bool PushNotesEnabled        => _session != null && _mappingResult?.CanUseForPartSync == true;
+        public bool PushNotesEnabled => _session != null && _mappingResult?.CanUseForPartSync == true;
 
         /// <summary>True when a part has been fetched and pushing Description to InvenTree is meaningful.</summary>
-        public bool PushDescriptionEnabled  => _session != null && _mappingResult?.CanUseForPartSync == true;
+        public bool PushDescriptionEnabled => _session != null && _mappingResult?.CanUseForPartSync == true;
 
         /// <summary>Controls Push Revision button visibility.</summary>
-        public bool PushRevisionVisible     => _session != null && _mappingResult?.CanUseForPartSync == true;
+        public bool PushRevisionVisible => _session != null && _mappingResult?.CanUseForPartSync == true;
 
         /// <summary>Controls Push Image button visibility.</summary>
-        public bool PushImageVisible        => _session != null && _mappingResult?.CanUseForPartSync == true;
+        public bool PushImageVisible => _session != null && _mappingResult?.CanUseForPartSync == true;
 
         /// <summary>True when the no-image placeholder icon should be shown.</summary>
         public bool ThumbnailPlaceholderVisible => _session != null && (_session.ThumbnailBytes == null || _session.ThumbnailBytes.Length == 0);
 
         /// <summary>True when the InvenTree thumbnail is clickable and links to the part page.</summary>
-        public bool PartLinkEnabled         => _session != null && _session.PartPk > 0;
+        public bool PartLinkEnabled => _session != null && _session.PartPk > 0;
 
         /// <summary>Current SolidWorks document Name / Description value.</summary>
         public string CurrentName
@@ -387,8 +387,8 @@ namespace SwInventreeAddin.UI
         // ── State ─────────────────────────────────────────────────────────────
 
         private PartSyncSession? _session;
-        private MappingResult?   _mappingResult;
-        private bool             _mappingHealthWarningActive;
+        private MappingResult? _mappingResult;
+        private bool _mappingHealthWarningActive;
 
         /// <summary>
         /// UI-thread synchronisation context captured at construction.
@@ -412,27 +412,27 @@ namespace SwInventreeAddin.UI
 
         /// <summary>Three-service constructor (no mapping provider).</summary>
         public TaskPaneViewModel(
-            IInventreeClient?        client,
+            IInventreeClient? client,
             IDocumentPropertyService propertyService,
             IViewportCaptureService? viewportService)
             : this(client, propertyService, viewportService, null, null) { }
 
         /// <summary>Full constructor used by the production add-in.</summary>
         public TaskPaneViewModel(
-            IInventreeClient?                   client,
-            IDocumentPropertyService            propertyService,
-            IViewportCaptureService?            viewportService,
-            IPropertyMappingProvider?           mappingProvider      = null,
-            IConfigProvider?                    configProvider       = null,
-            ICreatePartValidationErrorService?  createPartValidator  = null)
+            IInventreeClient? client,
+            IDocumentPropertyService propertyService,
+            IViewportCaptureService? viewportService,
+            IPropertyMappingProvider? mappingProvider = null,
+            IConfigProvider? configProvider = null,
+            ICreatePartValidationErrorService? createPartValidator = null)
         {
-            _client            = client;
-            _propertyService   = propertyService;
-            _viewportService   = viewportService;
-            _mappingProvider   = mappingProvider;
-            _configProvider    = configProvider;
+            _client = client;
+            _propertyService = propertyService;
+            _viewportService = viewportService;
+            _mappingProvider = mappingProvider;
+            _configProvider = configProvider;
             _validationService = createPartValidator;
-            _uiContext         = SynchronizationContext.Current;
+            _uiContext = SynchronizationContext.Current;
 
             LoadPartNumber();
             AttachMappingProvider();
@@ -490,15 +490,15 @@ namespace SwInventreeAddin.UI
                 return;
             }
 
-            var mapping    = GetMappingOrDefault();
-            var partNo     = GetCustomPropertyOrEmpty(mapping.IpnProperty);
+            var mapping = GetMappingOrDefault();
+            var partNo = GetCustomPropertyOrEmpty(mapping.IpnProperty);
             bool pkPresent = TryReadDocumentPk(mapping, out int pkVal);
 
             // A document switch can leave stale LINKED-by-PK state from the previous part.
             // Re-sync from the current document before deciding which fetch path to use
             // and whether the cached session still belongs here.
             _documentPkPresent = pkPresent;
-            _documentPk        = pkPresent ? pkVal : 0;
+            _documentPk = pkPresent ? pkVal : 0;
 
             if (string.IsNullOrEmpty(partNo))
             {
@@ -506,7 +506,7 @@ namespace SwInventreeAddin.UI
                 {
                     // UNLINKED: no IPN and no PK — reset the panel.
                     ClearAll();
-                    _isDocumentOpen    = true;
+                    _isDocumentOpen = true;
                     CreatePartEnabled = CanCreatePart();
                     if (_client == null)
                         SetStatus("No server configured \u2014 click \u2699 Settings to get started",
@@ -535,10 +535,10 @@ namespace SwInventreeAddin.UI
                 // ClearAll() above wipes the PK link synced at the top of this method —
                 // restore it so this document keeps its LINKED-by-PK state.
                 _documentPkPresent = true;
-                _documentPk        = pkVal;
-                PartNumber         = string.Empty;
-                FetchEnabled       = _client != null && _mappingResult?.CanFetch == true;
-                CreatePartEnabled  = false;
+                _documentPk = pkVal;
+                PartNumber = string.Empty;
+                FetchEnabled = _client != null && _mappingResult?.CanFetch == true;
+                CreatePartEnabled = false;
 
                 if (_session != null)
                     PropertiesSectionVisible = true;
@@ -559,22 +559,22 @@ namespace SwInventreeAddin.UI
                 (_session.Part.Ipn != partNo || _session.Part.Pk != _documentPk))
                 ClearSession();
 
-            _isDocumentOpen          = true;
-            PartNumber               = partNo;
+            _isDocumentOpen = true;
+            PartNumber = partNo;
             PropertiesSectionVisible = true;
             RefreshCurrentProperties();
 
             // Restore FetchEnabled / CreatePartEnabled / status after ClearSession.
             if (_client == null)
             {
-                FetchEnabled      = false;
+                FetchEnabled = false;
                 CreatePartEnabled = false;
                 SetStatus("No server configured \u2014 click \u2699 Settings to get started",
                           StatusSeverity.Warning);
             }
             else
             {
-                FetchEnabled      = _mappingResult?.CanFetch == true;
+                FetchEnabled = _mappingResult?.CanFetch == true;
                 CreatePartEnabled = CanCreatePart();
                 SetStatus(string.Empty, StatusSeverity.None);
             }
@@ -641,9 +641,9 @@ namespace SwInventreeAddin.UI
 
         private bool TryGetPartValueFor(string propertyName, PropertyMappingConfig config, out string? value)
         {
-            if (PropertyNameEquals(config.NameProperty, propertyName))        { value = _session!.Part.Name;        return true; }
-            if (PropertyNameEquals(config.NotesProperty, propertyName))       { value = _session!.Part.Notes;       return true; }
-            if (PropertyNameEquals(config.RevisionProperty, propertyName))    { value = _session!.Part.Revision;    return true; }
+            if (PropertyNameEquals(config.NameProperty, propertyName)) { value = _session!.Part.Name; return true; }
+            if (PropertyNameEquals(config.NotesProperty, propertyName)) { value = _session!.Part.Notes; return true; }
+            if (PropertyNameEquals(config.RevisionProperty, propertyName)) { value = _session!.Part.Revision; return true; }
             if (PropertyNameEquals(config.DescriptionProperty, propertyName)) { value = _session!.Part.Description; return true; }
 
             value = null;
@@ -667,29 +667,29 @@ namespace SwInventreeAddin.UI
         /// <summary>Resets the entire Task Pane. Called when no document is active.</summary>
         public void ClearAll()
         {
-            _isDocumentOpen          = false;
-            _documentPkPresent       = false;
-            _documentPk              = 0;
-            PartNumber               = string.Empty;
-            CurrentName              = string.Empty;
-            CurrentNotes             = string.Empty;
-            CurrentRevision          = string.Empty;
-            CurrentDescription       = string.Empty;
-            CurrentPk                = string.Empty;
+            _isDocumentOpen = false;
+            _documentPkPresent = false;
+            _documentPk = 0;
+            PartNumber = string.Empty;
+            CurrentName = string.Empty;
+            CurrentNotes = string.Empty;
+            CurrentRevision = string.Empty;
+            CurrentDescription = string.Empty;
+            CurrentPk = string.Empty;
             PropertiesSectionVisible = false;
 
             ClearSession();
 
             if (_client == null)
             {
-                FetchEnabled      = false;
+                FetchEnabled = false;
                 CreatePartEnabled = false;
                 SetStatus("No server configured \u2014 click \u2699 Settings to get started",
                           StatusSeverity.Warning);
             }
             else
             {
-                FetchEnabled      = false;
+                FetchEnabled = false;
                 SetStatus("Open a part or assembly in SolidWorks to get started.", StatusSeverity.None);
             }
 
@@ -729,7 +729,7 @@ namespace SwInventreeAddin.UI
             if (!CanCreatePart()) return;
 
             var mapping = GetMappingOrDefault();
-            var name    = GetCustomPropertyOrEmpty(mapping.NameProperty);
+            var name = GetCustomPropertyOrEmpty(mapping.NameProperty);
 
             if (_validationService == null) return;
 
@@ -745,15 +745,15 @@ namespace SwInventreeAddin.UI
                 if (part.Pk > 0)
                 {
                     _documentPkPresent = true;
-                    _documentPk        = part.Pk;
+                    _documentPk = part.Pk;
 
                     var m = GetMappingOrDefault();
                     if (!string.IsNullOrEmpty(m.PkProperty))
                         _propertyService.SetCustomProperty(m.PkProperty!, part.Pk.ToString());
                 }
 
-                PartNumber        = part.Ipn ?? string.Empty;
-                FetchEnabled      = _mappingResult?.CanFetch == true && (_documentPkPresent || !string.IsNullOrEmpty(_partNumber));
+                PartNumber = part.Ipn ?? string.Empty;
+                FetchEnabled = _mappingResult?.CanFetch == true && (_documentPkPresent || !string.IsNullOrEmpty(_partNumber));
                 CreatePartEnabled = CanCreatePart();
 
                 _session = new PartSyncSession(part, _client!, _propertyService, GetMappingOrDefault());
@@ -818,9 +818,9 @@ namespace SwInventreeAddin.UI
                     return;
                 }
 
-                InventreePart? pkPart  = null;
-                byte[]?        pkThumb = null;
-                Exception?     pkError = null;
+                InventreePart? pkPart = null;
+                byte[]? pkThumb = null;
+                Exception? pkError = null;
 
                 try
                 {
@@ -828,7 +828,7 @@ namespace SwInventreeAddin.UI
 
                     if (pkPart != null && !string.IsNullOrEmpty(pkPart.ThumbnailUrl))
                     {
-                        try   { pkThumb = await _client.DownloadImageAsync(pkPart.ThumbnailUrl!).ConfigureAwait(false); }
+                        try { pkThumb = await _client.DownloadImageAsync(pkPart.ThumbnailUrl!).ConfigureAwait(false); }
                         catch { /* silent — placeholder will show */ }
                     }
                 }
@@ -848,7 +848,7 @@ namespace SwInventreeAddin.UI
                         return;
                     }
 
-                    var m      = GetMappingOrDefault();
+                    var m = GetMappingOrDefault();
                     var docIpn = GetCustomPropertyOrEmpty(m.IpnProperty);
                     var docRev = _currentRevision?.Trim() ?? string.Empty;
 
@@ -903,17 +903,17 @@ namespace SwInventreeAddin.UI
                 return;
             }
 
-            IReadOnlyList<InventreePart>? parts      = null;
-            byte[]?                        thumbBytes  = null;
-            Exception?                     fetchError  = null;
+            IReadOnlyList<InventreePart>? parts = null;
+            byte[]? thumbBytes = null;
+            Exception? fetchError = null;
 
-            try   { parts = await _client.GetPartsByIpnAsync(ipn).ConfigureAwait(false); }
+            try { parts = await _client.GetPartsByIpnAsync(ipn).ConfigureAwait(false); }
             catch (Exception ex) { fetchError = ex; }
 
             // Only pre-fetch thumbnail when there is exactly one unambiguous result.
             if (parts?.Count == 1 && !string.IsNullOrEmpty(parts[0].ThumbnailUrl))
             {
-                try   { thumbBytes = await _client.DownloadImageAsync(parts[0].ThumbnailUrl!).ConfigureAwait(false); }
+                try { thumbBytes = await _client.DownloadImageAsync(parts[0].ThumbnailUrl!).ConfigureAwait(false); }
                 catch { /* silent — placeholder will show */ }
             }
 
@@ -932,7 +932,7 @@ namespace SwInventreeAddin.UI
                 }
 
                 InventreePart resolvedPart;
-                byte[]?       resolvedThumb = thumbBytes;
+                byte[]? resolvedThumb = thumbBytes;
 
                 if (parts.Count == 1)
                 {
@@ -941,7 +941,7 @@ namespace SwInventreeAddin.UI
                 else
                 {
                     // Multiple parts share this IPN — resolve by revision.
-                    var swRev   = _currentRevision?.Trim() ?? string.Empty;
+                    var swRev = _currentRevision?.Trim() ?? string.Empty;
                     var matches = new System.Collections.Generic.List<InventreePart>();
                     foreach (var p in parts)
                     {
@@ -972,7 +972,7 @@ namespace SwInventreeAddin.UI
 
                     // Exactly one revision match — confirm with user.
                     if (!ConfirmDuplicateIpn(parts, matches[0])) return;
-                    resolvedPart  = matches[0];
+                    resolvedPart = matches[0];
                     resolvedThumb = null; // thumbnail not pre-fetched on the duplicate path
                 }
 
@@ -1166,11 +1166,11 @@ namespace SwInventreeAddin.UI
         public void RefreshCurrentProperties()
         {
             var mapping = GetMappingOrDefault();
-            CurrentName        = GetCustomPropertyOrEmpty(mapping.NameProperty);
-            CurrentNotes       = GetCustomPropertyOrEmpty(mapping.NotesProperty);
-            CurrentRevision    = GetCustomPropertyOrEmpty(mapping.RevisionProperty);
+            CurrentName = GetCustomPropertyOrEmpty(mapping.NameProperty);
+            CurrentNotes = GetCustomPropertyOrEmpty(mapping.NotesProperty);
+            CurrentRevision = GetCustomPropertyOrEmpty(mapping.RevisionProperty);
             CurrentDescription = GetCustomPropertyOrEmpty(mapping.DescriptionProperty);
-            CurrentPk          = GetCustomPropertyOrEmpty(mapping.PkProperty);
+            CurrentPk = GetCustomPropertyOrEmpty(mapping.PkProperty);
         }
 
         private void ClearSession()
@@ -1327,7 +1327,7 @@ namespace SwInventreeAddin.UI
         /// </summary>
         private void RefreshCommandStates()
         {
-            FetchEnabled      = ShouldEnableFetch();
+            FetchEnabled = ShouldEnableFetch();
             CreatePartEnabled = CanCreatePart();
 
             NotifySessionProperties();
@@ -1336,8 +1336,8 @@ namespace SwInventreeAddin.UI
 
         private void SetStatus(string text, StatusSeverity severity, string? toolTip = null)
         {
-            StatusText     = text;
-            StatusToolTip  = toolTip;
+            StatusText = text;
+            StatusToolTip = toolTip;
             StatusSeverity = severity;
         }
 
@@ -1375,7 +1375,7 @@ namespace SwInventreeAddin.UI
             get
             {
                 // Corrupt settings surface in the Settings window; Compare falls back to the default.
-                try   { return _configProvider?.GetServerConfig()?.BomKeyword ?? "inventree"; }
+                try { return _configProvider?.GetServerConfig()?.BomKeyword ?? "inventree"; }
                 catch { return "inventree"; }
             }
         }

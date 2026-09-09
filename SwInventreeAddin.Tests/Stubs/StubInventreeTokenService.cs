@@ -12,7 +12,7 @@ namespace SwInventreeAddin.Tests.Stubs
 
         public Task<string> GetTokenAsync(string url, string username, string password)
         {
-            LastUrl      = url;
+            LastUrl = url;
             LastUsername = username;
             LastPassword = password;
 

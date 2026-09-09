@@ -27,8 +27,8 @@ namespace SwInventreeAddin.UI
         /// </summary>
         public void Initialise(CreatePartViewModel vm)
         {
-            _vm              = vm;
-            DataContext      = vm;
+            _vm = vm;
+            DataContext = vm;
             PartNameBox.Text = vm.PartName;
 
             // Two-way text binding wired in code so the XAML stays clean.
@@ -50,8 +50,8 @@ namespace SwInventreeAddin.UI
                     {
                         StatusSeverity.Success => "BrushStatusSuccess",
                         StatusSeverity.Warning => "BrushStatusWarning",
-                        StatusSeverity.Error   => "BrushStatusError",
-                        _                      => "BrushStatusNone",
+                        StatusSeverity.Error => "BrushStatusError",
+                        _ => "BrushStatusNone",
                     });
                 }
             };

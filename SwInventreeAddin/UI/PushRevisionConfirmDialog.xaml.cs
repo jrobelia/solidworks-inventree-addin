@@ -20,8 +20,8 @@ namespace SwInventreeAddin.UI
         {
             InitializeComponent();
 
-            MessageText.Text                  = message;
-            IncludeImageCheckBox.IsChecked    = imageCheckedByDefault;
+            MessageText.Text = message;
+            IncludeImageCheckBox.IsChecked = imageCheckedByDefault;
 
             WindowCentering.Attach(this, SolidWorksWindowHandle.Get());
         }

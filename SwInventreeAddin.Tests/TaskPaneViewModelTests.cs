@@ -17,25 +17,25 @@ namespace SwInventreeAddin.Tests
     [TestFixture]
     public class TaskPaneViewModelTests
     {
-        private StubInventreeClient          _client;
-        private StubDocumentPropertyService  _propertyService;
+        private StubInventreeClient _client;
+        private StubDocumentPropertyService _propertyService;
         private ICreatePartValidationErrorService _createPartValidator = null!;
-        private TaskPaneViewModel            _vm;
+        private TaskPaneViewModel _vm;
 
         private static readonly InventreePart SamplePart = new InventreePart
         {
-            Pk          = 42,
-            Name        = "Resistor 10k",
+            Pk = 42,
+            Name = "Resistor 10k",
             Description = "10k ohm 1% 0402",
-            Notes       = "SMD 0402",
-            Revision    = "A",
-            Ipn         = "R-10K-0402",
+            Notes = "SMD 0402",
+            Revision = "A",
+            Ipn = "R-10K-0402",
         };
 
         [SetUp]
         public void SetUp()
         {
-            _client          = new StubInventreeClient();
+            _client = new StubInventreeClient();
             _propertyService = new StubDocumentPropertyService();
             _createPartValidator = new StubCreatePartValidationErrorService();
         }
@@ -49,9 +49,9 @@ namespace SwInventreeAddin.Tests
         }
 
         private TaskPaneViewModel CreateVmWithMapping(
-            string?  ipn          = null,
-            string?  pk           = null,
-            string   schemaVersion = "2",
+            string? ipn = null,
+            string? pk = null,
+            string schemaVersion = "2",
             IInventreeClient? client = null,
             DocumentType? docType = null)
         {
@@ -556,7 +556,7 @@ namespace SwInventreeAddin.Tests
 
             await _vm.PushDescriptionToInvenTreeAsync();
 
-            Assert.That(_client.LastPushedPk,          Is.EqualTo(42));
+            Assert.That(_client.LastPushedPk, Is.EqualTo(42));
             Assert.That(_client.LastPushedDescription, Is.EqualTo("Custom description"));
         }
 
@@ -576,7 +576,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task PushDescription_OnHttpError_StatusText_ShowsError()
         {
-            _client.PartToReturn  = SamplePart;
+            _client.PartToReturn = SamplePart;
             _client.ThrowOnUpdate = new System.Net.Http.HttpRequestException("500");
             CreateVm();
             await _vm.FetchPartAsync();
@@ -608,8 +608,8 @@ namespace SwInventreeAddin.Tests
 
             await _vm.PushRevisionToInventreeAsync();
 
-            Assert.That(_client.LastPushedPk,       Is.EqualTo(42));
-            Assert.That(_client.LastPushedRevision,  Is.EqualTo("C"));
+            Assert.That(_client.LastPushedPk, Is.EqualTo(42));
+            Assert.That(_client.LastPushedRevision, Is.EqualTo("C"));
         }
 
         [Test]
@@ -643,7 +643,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task PushRevision_OnHttpError_StatusText_ShowsError()
         {
-            _client.PartToReturn  = SamplePart;
+            _client.PartToReturn = SamplePart;
             _client.ThrowOnUpdate = new System.Net.Http.HttpRequestException("500");
             CreateVm();
             await _vm.FetchPartAsync();
@@ -738,7 +738,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task PushImage_OnUploadError_StatusText_ShowsError()
         {
-            _client.PartToReturn  = SamplePart;
+            _client.PartToReturn = SamplePart;
             _client.ThrowOnUpload = new System.Net.Http.HttpRequestException("upload failed");
             CreateVm();
             await _vm.FetchPartAsync();
@@ -798,7 +798,7 @@ namespace SwInventreeAddin.Tests
         public void UpdateClient_ToNewClient_UnlinkedDocument_FetchDisabled()
         {
             // UNLINKED: no IPN, no PK — Load Properties should stay disabled.
-            _propertyService.Seed("PartNo",       string.Empty);
+            _propertyService.Seed("PartNo", string.Empty);
             _propertyService.Seed("InvenTree PK", string.Empty);
             _vm = new TaskPaneViewModel(null, _propertyService, null, createPartValidator: _createPartValidator);
 
@@ -825,7 +825,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task CreateBomCompareReadinessCheck_AfterKeywordResaved_UsesLatestKeyword()
         {
-            var bomService     = new StubAssemblyBomService { HasBomTableResult = false };
+            var bomService = new StubAssemblyBomService { HasBomTableResult = false };
             var configProvider = new StubConfigProvider();
             _vm = CreateVmWithConfig(configProvider);
             _vm.UpdateBomState(bomService);
@@ -864,7 +864,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void GetBomTableName_UsesSavedKeyword()
         {
-            var bomService     = new StubAssemblyBomService();
+            var bomService = new StubAssemblyBomService();
             var configProvider = new StubConfigProvider();
             configProvider.Config.BomKeyword = "mycompany";
             _vm = CreateVmWithConfig(configProvider);
@@ -909,7 +909,7 @@ namespace SwInventreeAddin.Tests
             _vm = new TaskPaneViewModel(_client, _propertyService, null, provider, createPartValidator: _createPartValidator);
 
             Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
-            Assert.That(_vm.StatusText,     Does.Contain("out of date"));
+            Assert.That(_vm.StatusText, Does.Contain("out of date"));
         }
 
         [Test]
@@ -923,8 +923,8 @@ namespace SwInventreeAddin.Tests
             _vm = new TaskPaneViewModel(_client, _propertyService, null, provider, createPartValidator: _createPartValidator);
 
             Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
-            Assert.That(_vm.StatusText,     Does.Contain("newer").IgnoreCase);
-            Assert.That(_vm.StatusText,     Does.Contain("add-in").IgnoreCase);
+            Assert.That(_vm.StatusText, Does.Contain("newer").IgnoreCase);
+            Assert.That(_vm.StatusText, Does.Contain("add-in").IgnoreCase);
         }
 
         [Test]
@@ -999,7 +999,7 @@ namespace SwInventreeAddin.Tests
             _vm.UpdateMapping(provider);
 
             Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
-            Assert.That(_vm.StatusText,     Does.Contain("out of date"));
+            Assert.That(_vm.StatusText, Does.Contain("out of date"));
         }
 
         [Test]
@@ -1028,8 +1028,8 @@ namespace SwInventreeAddin.Tests
             _vm.UpdateMapping(provider);
 
             Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
-            Assert.That(_vm.StatusText,     Does.Contain("newer").IgnoreCase);
-            Assert.That(_vm.StatusText,     Does.Contain("add-in").IgnoreCase);
+            Assert.That(_vm.StatusText, Does.Contain("newer").IgnoreCase);
+            Assert.That(_vm.StatusText, Does.Contain("add-in").IgnoreCase);
         }
 
         [Test]
@@ -1043,10 +1043,10 @@ namespace SwInventreeAddin.Tests
 
             _vm.UpdateMapping(provider);
 
-            Assert.That(_vm.FetchEnabled,      Is.False);
+            Assert.That(_vm.FetchEnabled, Is.False);
             Assert.That(_vm.CreatePartEnabled, Is.False);
-            Assert.That(_vm.ApplyEnabled,      Is.False);
-            Assert.That(_vm.BomButtonEnabled,  Is.False);
+            Assert.That(_vm.ApplyEnabled, Is.False);
+            Assert.That(_vm.BomButtonEnabled, Is.False);
         }
 
         [Test]
@@ -1061,7 +1061,7 @@ namespace SwInventreeAddin.Tests
             _vm.UpdateMapping(provider);
 
             Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Error));
-            Assert.That(_vm.StatusText,     Does.Contain("Invalid").IgnoreCase);
+            Assert.That(_vm.StatusText, Does.Contain("Invalid").IgnoreCase);
         }
 
         [Test]
@@ -1075,10 +1075,10 @@ namespace SwInventreeAddin.Tests
 
             _vm.UpdateMapping(provider);
 
-            Assert.That(_vm.FetchEnabled,      Is.False);
+            Assert.That(_vm.FetchEnabled, Is.False);
             Assert.That(_vm.CreatePartEnabled, Is.False);
-            Assert.That(_vm.ApplyEnabled,      Is.False);
-            Assert.That(_vm.BomButtonEnabled,  Is.False);
+            Assert.That(_vm.ApplyEnabled, Is.False);
+            Assert.That(_vm.BomButtonEnabled, Is.False);
         }
 
         [Test]
@@ -1108,13 +1108,13 @@ namespace SwInventreeAddin.Tests
                 Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion }
             });
 
-            Assert.That(_vm.ApplyEnabled,      Is.True);
-            Assert.That(_vm.PushNameEnabled,   Is.True);
-            Assert.That(_vm.PushNotesEnabled,  Is.True);
+            Assert.That(_vm.ApplyEnabled, Is.True);
+            Assert.That(_vm.PushNameEnabled, Is.True);
+            Assert.That(_vm.PushNotesEnabled, Is.True);
             Assert.That(_vm.PushDescriptionEnabled, Is.True);
-            Assert.That(_vm.PushImageVisible,  Is.True);
-            Assert.That(_vm.BomButtonEnabled,  Is.False);
-            Assert.That(_vm.StatusSeverity,    Is.EqualTo(StatusSeverity.None));
+            Assert.That(_vm.PushImageVisible, Is.True);
+            Assert.That(_vm.BomButtonEnabled, Is.False);
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.None));
         }
 
         [Test]
@@ -1141,15 +1141,15 @@ namespace SwInventreeAddin.Tests
         public void UpdateMapping_WhenDocumentOpen_RefreshesCurrentProperties()
         {
             // Arrange: document open with default mapping property names
-            _propertyService.Seed("PartNo",      "R-10K-0402");
+            _propertyService.Seed("PartNo", "R-10K-0402");
             _propertyService.Seed("Description", "Resistor original");
-            _propertyService.Seed("Notes",       "Old notes");
-            _propertyService.Seed("Revision",    "A");
+            _propertyService.Seed("Notes", "Old notes");
+            _propertyService.Seed("Revision", "A");
             _vm = new TaskPaneViewModel(_client, _propertyService, null, createPartValidator: _createPartValidator);
 
             // Seed renamed properties that the new mapping will point to
-            _propertyService.Seed("MyName",     "Resistor remapped");
-            _propertyService.Seed("MyNotes",    "New notes");
+            _propertyService.Seed("MyName", "Resistor remapped");
+            _propertyService.Seed("MyNotes", "New notes");
             _propertyService.Seed("MyRevision", "B");
 
             // Act: switch to a provider with different property names
@@ -1157,18 +1157,18 @@ namespace SwInventreeAddin.Tests
             {
                 Config = new PropertyMappingConfig
                 {
-                    SchemaVersion    = PropertyMappingConfig.CurrentSchemaVersion,
-                    IpnProperty      = "PartNo",
-                    NameProperty     = "MyName",
-                    NotesProperty    = "MyNotes",
+                    SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion,
+                    IpnProperty = "PartNo",
+                    NameProperty = "MyName",
+                    NotesProperty = "MyNotes",
                     RevisionProperty = "MyRevision",
                 }
             };
             _vm.UpdateMapping(remapped);
 
             // Assert: SW property text boxes now reflect the remapped names
-            Assert.That(_vm.CurrentName,     Is.EqualTo("Resistor remapped"));
-            Assert.That(_vm.CurrentNotes,    Is.EqualTo("New notes"));
+            Assert.That(_vm.CurrentName, Is.EqualTo("Resistor remapped"));
+            Assert.That(_vm.CurrentNotes, Is.EqualTo("New notes"));
             Assert.That(_vm.CurrentRevision, Is.EqualTo("B"));
         }
 
@@ -1181,13 +1181,13 @@ namespace SwInventreeAddin.Tests
             {
                 Config = new PropertyMappingConfig
                 {
-                    SchemaVersion    = PropertyMappingConfig.CurrentSchemaVersion,
-                    IpnProperty      = "PartNo",
-                    NameProperty     = "Description",
-                    NotesProperty    = "Notes",
+                    SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion,
+                    IpnProperty = "PartNo",
+                    NameProperty = "Description",
+                    NotesProperty = "Notes",
                     RevisionProperty = "Revision",
                     DescriptionProperty = "Description Long",
-                    PkProperty       = "InvenTree PK"
+                    PkProperty = "InvenTree PK"
                 }
             };
             _propertyService.Seed("PartNo", "R-10K-0402");
@@ -1212,13 +1212,13 @@ namespace SwInventreeAddin.Tests
             {
                 Config = new PropertyMappingConfig
                 {
-                    SchemaVersion    = PropertyMappingConfig.CurrentSchemaVersion,
-                    IpnProperty      = "PartNo",
-                    NameProperty     = "Description",
-                    NotesProperty    = "Notes",
+                    SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion,
+                    IpnProperty = "PartNo",
+                    NameProperty = "Description",
+                    NotesProperty = "Notes",
                     RevisionProperty = "Revision",
                     DescriptionProperty = "Description Long",
-                    PkProperty       = "InvenTree PK"
+                    PkProperty = "InvenTree PK"
                 }
             };
             _propertyService.Seed("PartNo", "R-10K-0402");
@@ -1319,14 +1319,14 @@ namespace SwInventreeAddin.Tests
         {
             _client.PartToReturn = new InventreePart
             {
-                Pk           = 1,
-                Active       = true,
-                Assembly     = true,
-                Component    = false,
+                Pk = 1,
+                Active = true,
+                Assembly = true,
+                Component = false,
                 Purchaseable = true,
-                Salable      = false,
-                Trackable    = true,
-                Testable     = false,
+                Salable = false,
+                Trackable = true,
+                Testable = false,
             };
             CreateVm();
             await _vm.FetchPartAsync();
@@ -1345,14 +1345,14 @@ namespace SwInventreeAddin.Tests
         {
             _client.PartToReturn = new InventreePart
             {
-                Pk           = 1,
-                Active       = true,
-                Assembly     = true,
-                Component    = false,
+                Pk = 1,
+                Active = true,
+                Assembly = true,
+                Component = false,
                 Purchaseable = true,
-                Salable      = false,
-                Trackable    = true,
-                Testable     = false,
+                Salable = false,
+                Trackable = true,
+                Testable = false,
             };
             CreateVm();
             await _vm.FetchPartAsync();
@@ -1402,7 +1402,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void FindMissingProperties_WhenPropertySeeded_ReturnsEmptyList()
         {
-            _propertyService.Seed("PartNo",      "R-10K-0402");
+            _propertyService.Seed("PartNo", "R-10K-0402");
             _propertyService.Seed("Description", "");
             _vm = new TaskPaneViewModel(_client, _propertyService, null, createPartValidator: _createPartValidator);
 
@@ -1660,15 +1660,15 @@ namespace SwInventreeAddin.Tests
     [TestFixture]
     public class DocumentTypeAwarenessTests
     {
-        private StubInventreeClient         _client;
+        private StubInventreeClient _client;
         private StubDocumentPropertyService _propertyService;
         private ICreatePartValidationErrorService _createPartValidator = null!;
-        private TaskPaneViewModel           _vm;
+        private TaskPaneViewModel _vm;
 
         [SetUp]
         public void SetUp()
         {
-            _client          = new StubInventreeClient();
+            _client = new StubInventreeClient();
             _propertyService = new StubDocumentPropertyService();
             _createPartValidator = new StubCreatePartValidationErrorService();
             // Seed a part number so the drawing block is the only thing preventing load
@@ -1694,7 +1694,7 @@ namespace SwInventreeAddin.Tests
             _propertyService.DocumentTypeToReturn = DocumentType.Drawing;
             CreateVm();
 
-            Assert.That(_vm.StatusText,     Does.Contain("Drawings").IgnoreCase);
+            Assert.That(_vm.StatusText, Does.Contain("Drawings").IgnoreCase);
             Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
         }
 
@@ -1744,25 +1744,25 @@ namespace SwInventreeAddin.Tests
     [TestFixture]
     public class BidirectionalPropertyTests
     {
-        private StubInventreeClient         _client;
+        private StubInventreeClient _client;
         private StubDocumentPropertyService _propertyService;
         private ICreatePartValidationErrorService _createPartValidator = null!;
-        private TaskPaneViewModel           _vm;
+        private TaskPaneViewModel _vm;
 
         [SetUp]
         public void SetUp()
         {
-            _client          = new StubInventreeClient();
+            _client = new StubInventreeClient();
             _propertyService = new StubDocumentPropertyService();
             _createPartValidator = new StubCreatePartValidationErrorService();
             _propertyService.Seed("PartNo", "ABC-001");
 
             _client.PartToReturn = new InventreePart
             {
-                Pk       = 42,
-                Ipn      = "ABC-001",
-                Name     = "Widget",
-                Notes    = "Some notes",
+                Pk = 42,
+                Ipn = "ABC-001",
+                Name = "Widget",
+                Notes = "Some notes",
                 Revision = "A"
             };
 
@@ -1836,26 +1836,26 @@ namespace SwInventreeAddin.Tests
     [TestFixture]
     public class ThumbnailTests
     {
-        private StubInventreeClient         _client;
+        private StubInventreeClient _client;
         private StubDocumentPropertyService _propertyService;
         private ICreatePartValidationErrorService _createPartValidator = null!;
-        private TaskPaneViewModel           _vm;
+        private TaskPaneViewModel _vm;
 
         [SetUp]
         public void SetUp()
         {
-            _client          = new StubInventreeClient();
+            _client = new StubInventreeClient();
             _propertyService = new StubDocumentPropertyService();
             _createPartValidator = new StubCreatePartValidationErrorService();
             _propertyService.Seed("PartNo", "TEST-001");
 
             _client.PartToReturn = new InventreePart
             {
-                Pk           = 7,
-                Ipn          = "TEST-001",
-                Name         = "Widget",
-                Notes        = string.Empty,
-                Revision     = "A",
+                Pk = 7,
+                Ipn = "TEST-001",
+                Name = "Widget",
+                Notes = string.Empty,
+                Revision = "A",
                 ThumbnailUrl = "/media/thumbnails/widget.png"
             };
 
@@ -1967,14 +1967,14 @@ namespace SwInventreeAddin.Tests
     [TestFixture]
     public class TaskPaneViewModelCreatePartTests
     {
-        private StubInventreeClient         _client;
+        private StubInventreeClient _client;
         private StubDocumentPropertyService _propertyService;
         private ICreatePartValidationErrorService _createPartValidator = null!;
 
         [SetUp]
         public void SetUp()
         {
-            _client          = new StubInventreeClient();
+            _client = new StubInventreeClient();
             _propertyService = new StubDocumentPropertyService();
             _createPartValidator = new StubCreatePartValidationErrorService();
             // Seed a populated document so LoadPartNumber doesn't immediately ClearAll.
@@ -2072,17 +2072,17 @@ namespace SwInventreeAddin.Tests
         {
             var createdPart = new InventreePart
             {
-                Pk       = 1,
-                Ipn      = "R-NEW-001",
-                Name     = "New Resistor",
-                Notes    = string.Empty,
+                Pk = 1,
+                Ipn = "R-NEW-001",
+                Name = "New Resistor",
+                Notes = string.Empty,
                 Revision = string.Empty,
             };
 
-            _propertyService.Seed("PartNo",      string.Empty);
+            _propertyService.Seed("PartNo", string.Empty);
             _propertyService.Seed("Description", string.Empty);
             _client.PartToReturn = createdPart;   // FetchPartAsync looks up by IPN after create
-            var vm            = CreateVm();
+            var vm = CreateVm();
             bool dialogOpened = false;
 
             vm.OpenCreatePartWindow(createVm =>
@@ -2100,10 +2100,10 @@ namespace SwInventreeAddin.Tests
                 handler?.Invoke(createVm, createdPart);
             });
 
-            Assert.That(dialogOpened,         Is.True);
-            Assert.That(vm.PartNumber,        Is.EqualTo("R-NEW-001"));
-            Assert.That(vm.NamePreview,       Is.EqualTo("New Resistor"));
-            Assert.That(vm.ApplyEnabled,      Is.True);           // fields unlocked via FetchPartAsync
+            Assert.That(dialogOpened, Is.True);
+            Assert.That(vm.PartNumber, Is.EqualTo("R-NEW-001"));
+            Assert.That(vm.NamePreview, Is.EqualTo("New Resistor"));
+            Assert.That(vm.ApplyEnabled, Is.True);           // fields unlocked via FetchPartAsync
             Assert.That(vm.CreatePartEnabled, Is.False);          // IPN now set — Create disabled
             Assert.That(_propertyService.SetCallLog, Does.Contain("InvenTree PK")); // PK written on create
         }
@@ -2182,7 +2182,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void OpenCreatePartWindow_WhenCheckboxToggled_SavesPreference()
         {
-            _propertyService.Seed("PartNo",      string.Empty);
+            _propertyService.Seed("PartNo", string.Empty);
             _propertyService.Seed("Description", string.Empty);
 
             var configProvider = new StubConfigProvider();
@@ -2215,15 +2215,15 @@ namespace SwInventreeAddin.Tests
     [TestFixture]
     public class BomButtonEnabledTests
     {
-        private StubInventreeClient         _client;
+        private StubInventreeClient _client;
         private StubDocumentPropertyService _propertyService;
         private ICreatePartValidationErrorService _createPartValidator = null!;
-        private TaskPaneViewModel           _vm;
+        private TaskPaneViewModel _vm;
 
         [SetUp]
         public void SetUp()
         {
-            _client          = new StubInventreeClient();
+            _client = new StubInventreeClient();
             _propertyService = new StubDocumentPropertyService();
             _createPartValidator = new StubCreatePartValidationErrorService();
         }
@@ -2292,14 +2292,14 @@ namespace SwInventreeAddin.Tests
     [TestFixture]
     public class LinkedByPkStateTests
     {
-        private StubInventreeClient         _client;
+        private StubInventreeClient _client;
         private StubDocumentPropertyService _propertyService;
         private ICreatePartValidationErrorService _createPartValidator = null!;
 
         [SetUp]
         public void SetUp()
         {
-            _client          = new StubInventreeClient();
+            _client = new StubInventreeClient();
             _propertyService = new StubDocumentPropertyService();
             _createPartValidator = new StubCreatePartValidationErrorService();
         }
@@ -2312,7 +2312,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void LoadPartNumber_BlankIpn_BlankPk_FetchDisabled()
         {
-            _propertyService.Seed("PartNo",       string.Empty);
+            _propertyService.Seed("PartNo", string.Empty);
             _propertyService.Seed("InvenTree PK", string.Empty);
 
             var vm = CreateVm();
@@ -2323,7 +2323,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void LoadPartNumber_BlankIpn_BlankPk_CreateEnabled()
         {
-            _propertyService.Seed("PartNo",       string.Empty);
+            _propertyService.Seed("PartNo", string.Empty);
             _propertyService.Seed("InvenTree PK", string.Empty);
 
             var vm = CreateVm();
@@ -2336,7 +2336,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void LoadPartNumber_BlankIpn_PositivePk_FetchEnabled()
         {
-            _propertyService.Seed("PartNo",       string.Empty);
+            _propertyService.Seed("PartNo", string.Empty);
             _propertyService.Seed("InvenTree PK", "42");
 
             var vm = CreateVm();
@@ -2347,7 +2347,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void LoadPartNumber_BlankIpn_PositivePk_CreateDisabled()
         {
-            _propertyService.Seed("PartNo",       string.Empty);
+            _propertyService.Seed("PartNo", string.Empty);
             _propertyService.Seed("InvenTree PK", "42");
 
             var vm = CreateVm();
@@ -2359,12 +2359,12 @@ namespace SwInventreeAddin.Tests
         public void LoadPartNumber_BlankIpn_ZeroPk_NotLinkedByPk()
         {
             // Zero is not a valid PK — should behave as UNLINKED.
-            _propertyService.Seed("PartNo",       string.Empty);
+            _propertyService.Seed("PartNo", string.Empty);
             _propertyService.Seed("InvenTree PK", "0");
 
             var vm = CreateVm();
 
-            Assert.That(vm.FetchEnabled,      Is.False);
+            Assert.That(vm.FetchEnabled, Is.False);
             Assert.That(vm.CreatePartEnabled, Is.True);
         }
 
@@ -2373,7 +2373,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void LoadPartNumber_NonBlankIpn_FetchEnabled()
         {
-            _propertyService.Seed("PartNo",       "TST-001");
+            _propertyService.Seed("PartNo", "TST-001");
             _propertyService.Seed("InvenTree PK", string.Empty);
 
             var vm = CreateVm();
@@ -2384,7 +2384,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void LoadPartNumber_NonBlankIpn_CreateDisabled()
         {
-            _propertyService.Seed("PartNo",       "TST-001");
+            _propertyService.Seed("PartNo", "TST-001");
             _propertyService.Seed("InvenTree PK", string.Empty);
 
             var vm = CreateVm();
@@ -2405,18 +2405,18 @@ namespace SwInventreeAddin.Tests
     [TestFixture]
     public class FetchByPkTests
     {
-        private StubInventreeClient         _client;
+        private StubInventreeClient _client;
         private StubDocumentPropertyService _propertyService;
         private ICreatePartValidationErrorService _createPartValidator = null!;
 
         [SetUp]
         public void SetUp()
         {
-            _client          = new StubInventreeClient();
+            _client = new StubInventreeClient();
             _propertyService = new StubDocumentPropertyService();
             _createPartValidator = new StubCreatePartValidationErrorService();
             // Seed LINKED-by-PK state: blank IPN + PK present
-            _propertyService.Seed("PartNo",       string.Empty);
+            _propertyService.Seed("PartNo", string.Empty);
             _propertyService.Seed("InvenTree PK", "42");
         }
 
@@ -2490,19 +2490,19 @@ namespace SwInventreeAddin.Tests
     [TestFixture]
     public class FetchLinkMismatchTests
     {
-        private StubInventreeClient         _client;
+        private StubInventreeClient _client;
         private StubDocumentPropertyService _propertyService;
         private ICreatePartValidationErrorService _createPartValidator = null!;
 
         [SetUp]
         public void SetUp()
         {
-            _client              = new StubInventreeClient();
-            _propertyService     = new StubDocumentPropertyService();
+            _client = new StubInventreeClient();
+            _propertyService = new StubDocumentPropertyService();
             _createPartValidator = new StubCreatePartValidationErrorService();
             // LINKED-by-PK with a stamped IPN and Revision to verify against.
-            _propertyService.Seed("PartNo",       "DOC-001");
-            _propertyService.Seed("Revision",     "B");
+            _propertyService.Seed("PartNo", "DOC-001");
+            _propertyService.Seed("Revision", "B");
             _propertyService.Seed("InvenTree PK", "42");
         }
 
@@ -2513,7 +2513,7 @@ namespace SwInventreeAddin.Tests
         public async Task FetchPartAsync_LinkMismatch_IpnDiffers_UserConfirms_EntersPopulatedState()
         {
             _client.PartByPkToReturn = new InventreePart
-                { Pk = 42, Ipn = "RENAMED-001", Revision = "B", Name = "Widget" };
+            { Pk = 42, Ipn = "RENAMED-001", Revision = "B", Name = "Widget" };
             var vm = CreateVm();
             (string Ipn, string Rev, InventreePart Part)? seen = null;
             vm.ConfirmLinkMismatch = (ipn, rev, part) => { seen = (ipn, rev, part); return true; };
@@ -2521,8 +2521,8 @@ namespace SwInventreeAddin.Tests
             await vm.FetchPartAsync();
 
             Assert.That(seen, Is.Not.Null);
-            Assert.That(seen!.Value.Ipn,  Is.EqualTo("DOC-001"));
-            Assert.That(seen!.Value.Rev,  Is.EqualTo("B"));
+            Assert.That(seen!.Value.Ipn, Is.EqualTo("DOC-001"));
+            Assert.That(seen!.Value.Rev, Is.EqualTo("B"));
             Assert.That(seen!.Value.Part, Is.SameAs(_client.PartByPkToReturn));
             Assert.That(vm.ApplyEnabled, Is.True);
         }
@@ -2531,16 +2531,16 @@ namespace SwInventreeAddin.Tests
         public async Task FetchPartAsync_LinkMismatch_UserCancels_StaysLinked()
         {
             _client.PartByPkToReturn = new InventreePart
-                { Pk = 42, Ipn = "RENAMED-001", Revision = "B" };
+            { Pk = 42, Ipn = "RENAMED-001", Revision = "B" };
             var vm = CreateVm();
             vm.ConfirmLinkMismatch = (_, __, ___) => false;
 
             await vm.FetchPartAsync();
 
             Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(0));
-            Assert.That(vm.ApplyEnabled,       Is.False);
-            Assert.That(vm.StatusText,         Does.Contain("cancel").IgnoreCase);
-            Assert.That(vm.StatusSeverity,     Is.EqualTo(StatusSeverity.Warning));
+            Assert.That(vm.ApplyEnabled, Is.False);
+            Assert.That(vm.StatusText, Does.Contain("cancel").IgnoreCase);
+            Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
         }
 
         [Test]
@@ -2550,7 +2550,7 @@ namespace SwInventreeAddin.Tests
             // and Cancel must abort before the PK path's IPN write-back runs.
             _propertyService.Seed("PartNo", string.Empty);
             _client.PartByPkToReturn = new InventreePart
-                { Pk = 42, Ipn = "RENAMED-001", Revision = "C" };
+            { Pk = 42, Ipn = "RENAMED-001", Revision = "C" };
             var vm = CreateVm();
             vm.ConfirmLinkMismatch = (_, __, ___) => false;
 
@@ -2564,7 +2564,7 @@ namespace SwInventreeAddin.Tests
         public async Task FetchPartAsync_LinkMismatch_OnlyRevisionDiffers_Prompts()
         {
             _client.PartByPkToReturn = new InventreePart
-                { Pk = 42, Ipn = "DOC-001", Revision = "C" };
+            { Pk = 42, Ipn = "DOC-001", Revision = "C" };
             var vm = CreateVm();
             var prompted = false;
             vm.ConfirmLinkMismatch = (_, __, ___) => { prompted = true; return true; };
@@ -2580,7 +2580,7 @@ namespace SwInventreeAddin.Tests
             // Both sides stamped but RevisionComparer can't order them (Ambiguous:
             // "B" is alpha, "1.2" is dot-numeric) — can't prove agreement, so warn.
             _client.PartByPkToReturn = new InventreePart
-                { Pk = 42, Ipn = "DOC-001", Revision = "1.2" };
+            { Pk = 42, Ipn = "DOC-001", Revision = "1.2" };
             var vm = CreateVm();
             var prompted = false;
             vm.ConfirmLinkMismatch = (_, __, ___) => { prompted = true; return true; };
@@ -2595,14 +2595,14 @@ namespace SwInventreeAddin.Tests
         {
             _propertyService.Seed("Revision", string.Empty);
             _client.PartByPkToReturn = new InventreePart
-                { Pk = 42, Ipn = "DOC-001", Revision = "C" };
+            { Pk = 42, Ipn = "DOC-001", Revision = "C" };
             var vm = CreateVm();
             var prompted = false;
             vm.ConfirmLinkMismatch = (_, __, ___) => { prompted = true; return true; };
 
             await vm.FetchPartAsync();
 
-            Assert.That(prompted,        Is.False);
+            Assert.That(prompted, Is.False);
             Assert.That(vm.ApplyEnabled, Is.True);
         }
 
@@ -2610,14 +2610,14 @@ namespace SwInventreeAddin.Tests
         public async Task FetchPartAsync_PartRevisionBlank_NoPrompt()
         {
             _client.PartByPkToReturn = new InventreePart
-                { Pk = 42, Ipn = "DOC-001", Revision = string.Empty };
+            { Pk = 42, Ipn = "DOC-001", Revision = string.Empty };
             var vm = CreateVm();
             var prompted = false;
             vm.ConfirmLinkMismatch = (_, __, ___) => { prompted = true; return true; };
 
             await vm.FetchPartAsync();
 
-            Assert.That(prompted,        Is.False);
+            Assert.That(prompted, Is.False);
             Assert.That(vm.ApplyEnabled, Is.True);
         }
 
@@ -2626,7 +2626,7 @@ namespace SwInventreeAddin.Tests
         {
             _propertyService.Seed("PartNo", string.Empty);
             _client.PartByPkToReturn = new InventreePart
-                { Pk = 42, Ipn = "RENAMED-001", Revision = "B" };
+            { Pk = 42, Ipn = "RENAMED-001", Revision = "B" };
             var vm = CreateVm();
             var prompted = false;
             vm.ConfirmLinkMismatch = (_, __, ___) => { prompted = true; return true; };
@@ -2642,14 +2642,14 @@ namespace SwInventreeAddin.Tests
         public async Task FetchPartAsync_PartIpnBlank_NoPrompt()
         {
             _client.PartByPkToReturn = new InventreePart
-                { Pk = 42, Ipn = string.Empty, Revision = "B" };
+            { Pk = 42, Ipn = string.Empty, Revision = "B" };
             var vm = CreateVm();
             var prompted = false;
             vm.ConfirmLinkMismatch = (_, __, ___) => { prompted = true; return true; };
 
             await vm.FetchPartAsync();
 
-            Assert.That(prompted,        Is.False);
+            Assert.That(prompted, Is.False);
             Assert.That(vm.ApplyEnabled, Is.True);
         }
 
@@ -2657,14 +2657,14 @@ namespace SwInventreeAddin.Tests
         public async Task FetchPartAsync_AgreeingValues_NoPrompt()
         {
             _client.PartByPkToReturn = new InventreePart
-                { Pk = 42, Ipn = "DOC-001", Revision = "B" };
+            { Pk = 42, Ipn = "DOC-001", Revision = "B" };
             var vm = CreateVm();
             var prompted = false;
             vm.ConfirmLinkMismatch = (_, __, ___) => { prompted = true; return true; };
 
             await vm.FetchPartAsync();
 
-            Assert.That(prompted,        Is.False);
+            Assert.That(prompted, Is.False);
             Assert.That(vm.ApplyEnabled, Is.True);
         }
 
@@ -2675,7 +2675,7 @@ namespace SwInventreeAddin.Tests
             // "b" and "B" are the same revision.
             _propertyService.Seed("Revision", "b");
             _client.PartByPkToReturn = new InventreePart
-                { Pk = 42, Ipn = "DOC-001", Revision = "B" };
+            { Pk = 42, Ipn = "DOC-001", Revision = "B" };
             var vm = CreateVm();
             var prompted = false;
             vm.ConfirmLinkMismatch = (_, __, ___) => { prompted = true; return true; };
@@ -2700,7 +2700,7 @@ namespace SwInventreeAddin.Tests
 
             await vm.FetchPartAsync();
 
-            Assert.That(prompted,               Is.False);
+            Assert.That(prompted, Is.False);
             Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(7));
         }
     }
@@ -2719,20 +2719,20 @@ namespace SwInventreeAddin.Tests
     [TestFixture]
     public class PartCreatedStateTests
     {
-        private StubInventreeClient         _client;
+        private StubInventreeClient _client;
         private StubDocumentPropertyService _propertyService;
         private ICreatePartValidationErrorService _createPartValidator = null!;
 
         [SetUp]
         public void SetUp()
         {
-            _client          = new StubInventreeClient();
+            _client = new StubInventreeClient();
             _propertyService = new StubDocumentPropertyService();
             _createPartValidator = new StubCreatePartValidationErrorService();
 
-            _propertyService.Seed("PartNo",       string.Empty);
+            _propertyService.Seed("PartNo", string.Empty);
             _propertyService.Seed("InvenTree PK", string.Empty);
-            _propertyService.Seed("Description",  "IPN-less Part");
+            _propertyService.Seed("Description", "IPN-less Part");
         }
 
         [Test]
@@ -2740,7 +2740,7 @@ namespace SwInventreeAddin.Tests
         {
             const int newPk = 55;
             _client.PkToReturnOnCreate = newPk;
-            _client.PartByPkToReturn   = new InventreePart { Pk = newPk, Ipn = string.Empty, Name = "IPN-less Part" };
+            _client.PartByPkToReturn = new InventreePart { Pk = newPk, Ipn = string.Empty, Name = "IPN-less Part" };
 
             var vm = new TaskPaneViewModel(_client, _propertyService, null, createPartValidator: _createPartValidator);
 
@@ -2751,11 +2751,11 @@ namespace SwInventreeAddin.Tests
             });
 
             Assert.That(_propertyService.GetCustomProperty("InvenTree PK"), Is.EqualTo(newPk.ToString()));
-            Assert.That(vm.CurrentPk,       Is.EqualTo(newPk.ToString()));
-            Assert.That(vm.PartNumber,      Is.EqualTo(string.Empty));
-            Assert.That(vm.FetchEnabled,    Is.True);
+            Assert.That(vm.CurrentPk, Is.EqualTo(newPk.ToString()));
+            Assert.That(vm.PartNumber, Is.EqualTo(string.Empty));
+            Assert.That(vm.FetchEnabled, Is.True);
             Assert.That(vm.CreatePartEnabled, Is.False);
-            Assert.That(vm.ApplyEnabled,    Is.True);
+            Assert.That(vm.ApplyEnabled, Is.True);
         }
 
         [Test]
@@ -2766,19 +2766,19 @@ namespace SwInventreeAddin.Tests
             // has already closed by then.
             const int newPk = 56;
             _client.PkToReturnOnCreate = newPk;
-            _client.PartByPkToReturn   = new InventreePart { Pk = newPk, Ipn = "R-NEW-001", Name = "IPN-less Part" };
+            _client.PartByPkToReturn = new InventreePart { Pk = newPk, Ipn = "R-NEW-001", Name = "IPN-less Part" };
 
             var vm = new TaskPaneViewModel(_client, _propertyService, null, createPartValidator: _createPartValidator);
 
             vm.OpenCreatePartWindow(createVm =>
             {
                 createVm.SelectedCategory = new CategoryNode(new InventreeCategory { Pk = 1, Name = "Resistors" });
-                createVm.IpnEntry         = "FAB-001";
+                createVm.IpnEntry = "FAB-001";
                 createVm.CreateAsync().GetAwaiter().GetResult();
             });
 
-            Assert.That(vm.StatusText,     Does.Contain("FAB-001"));
-            Assert.That(vm.StatusText,     Does.Contain("R-NEW-001"));
+            Assert.That(vm.StatusText, Does.Contain("FAB-001"));
+            Assert.That(vm.StatusText, Does.Contain("R-NEW-001"));
             Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
         }
 
@@ -2787,18 +2787,18 @@ namespace SwInventreeAddin.Tests
         {
             const int newPk = 57;
             _client.PkToReturnOnCreate = newPk;
-            _client.PartByPkToReturn   = new InventreePart { Pk = newPk, Ipn = "FAB-001", Name = "IPN-less Part" };
+            _client.PartByPkToReturn = new InventreePart { Pk = newPk, Ipn = "FAB-001", Name = "IPN-less Part" };
 
             var vm = new TaskPaneViewModel(_client, _propertyService, null, createPartValidator: _createPartValidator);
 
             vm.OpenCreatePartWindow(createVm =>
             {
                 createVm.SelectedCategory = new CategoryNode(new InventreeCategory { Pk = 1, Name = "Resistors" });
-                createVm.IpnEntry         = "FAB-001";
+                createVm.IpnEntry = "FAB-001";
                 createVm.CreateAsync().GetAwaiter().GetResult();
             });
 
-            Assert.That(vm.StatusText,     Is.EqualTo("Part created in InvenTree."));
+            Assert.That(vm.StatusText, Is.EqualTo("Part created in InvenTree."));
             Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.Success));
         }
 
@@ -2807,7 +2807,7 @@ namespace SwInventreeAddin.Tests
         {
             const int newPk = 55;
             _client.PkToReturnOnCreate = newPk;
-            _client.PartByPkToReturn   = new InventreePart { Pk = newPk, Ipn = string.Empty, Name = "IPN-less Part" };
+            _client.PartByPkToReturn = new InventreePart { Pk = newPk, Ipn = string.Empty, Name = "IPN-less Part" };
 
             var vm = new TaskPaneViewModel(_client, _propertyService, null, createPartValidator: _createPartValidator);
 
@@ -2820,25 +2820,25 @@ namespace SwInventreeAddin.Tests
             // Simulate SolidWorks firing ActiveDocChangeNotify after the dialog closes.
             vm.LoadPartNumber();
 
-            Assert.That(vm.NamePreview,              Is.EqualTo("IPN-less Part"));
-            Assert.That(vm.PropertiesSectionVisible,   Is.True);
-            Assert.That(vm.ApplyEnabled,               Is.True);
-            Assert.That(vm.FetchEnabled,               Is.True);
-            Assert.That(vm.CreatePartEnabled,          Is.False);
+            Assert.That(vm.NamePreview, Is.EqualTo("IPN-less Part"));
+            Assert.That(vm.PropertiesSectionVisible, Is.True);
+            Assert.That(vm.ApplyEnabled, Is.True);
+            Assert.That(vm.FetchEnabled, Is.True);
+            Assert.That(vm.CreatePartEnabled, Is.False);
         }
     }
 
     [TestFixture]
     public class LoadPartNumberRegressionTests
     {
-        private StubInventreeClient         _client;
+        private StubInventreeClient _client;
         private StubDocumentPropertyService _propertyService;
         private ICreatePartValidationErrorService _createPartValidator = null!;
 
         [SetUp]
         public void SetUp()
         {
-            _client          = new StubInventreeClient();
+            _client = new StubInventreeClient();
             _propertyService = new StubDocumentPropertyService();
             _createPartValidator = new StubCreatePartValidationErrorService();
         }
@@ -2847,9 +2847,9 @@ namespace SwInventreeAddin.Tests
         public async Task SwitchingFromLinkedByPkToIpn_FetchesByIpn_NotStalePk()
         {
             // Document 1: blank IPN, PK 42 -> fetched part is loaded
-            _propertyService.Seed("PartNo",       string.Empty);
+            _propertyService.Seed("PartNo", string.Empty);
             _propertyService.Seed("InvenTree PK", "42");
-            _propertyService.Seed("Description",  "Old doc");
+            _propertyService.Seed("Description", "Old doc");
 
             var vm = new TaskPaneViewModel(_client, _propertyService, null, createPartValidator: _createPartValidator);
             _client.PartByPkToReturn = new InventreePart { Pk = 42, Ipn = "OLD-001", Name = "Old Part" };
@@ -2857,9 +2857,9 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.NamePreview, Is.EqualTo("Old Part"));
 
             // Document 2: different IPN, no PK -> should fetch by IPN, not stale PK 42
-            _propertyService.Seed("PartNo",       "NEW-001");
+            _propertyService.Seed("PartNo", "NEW-001");
             _propertyService.Seed("InvenTree PK", string.Empty);
-            _propertyService.Seed("Description",  "New doc");
+            _propertyService.Seed("Description", "New doc");
             vm.LoadPartNumber();
 
             Assert.That(vm.PartNumber, Is.EqualTo("NEW-001"));
@@ -2867,12 +2867,12 @@ namespace SwInventreeAddin.Tests
             Assert.That(_propertyService.GetCustomProperty("InvenTree PK"), Is.Empty);
 
             _client.PartByPkToReturn = new InventreePart { Pk = 999, Ipn = "STALE-001", Name = "Stale Part" };
-            _client.PartToReturn   = new InventreePart { Pk = 99, Ipn = "NEW-001", Name = "New Part" };
+            _client.PartToReturn = new InventreePart { Pk = 99, Ipn = "NEW-001", Name = "New Part" };
 
             await vm.FetchPartAsync();
 
             Assert.That(vm.NamePreview, Is.EqualTo("New Part").And.Not.EqualTo("Stale Part"));
-            Assert.That(vm.PartNumber,  Is.EqualTo("NEW-001"));
+            Assert.That(vm.PartNumber, Is.EqualTo("NEW-001"));
         }
     }
 
@@ -2885,13 +2885,13 @@ namespace SwInventreeAddin.Tests
     [TestFixture]
     public class MidSessionPkStampTests
     {
-        private StubInventreeClient               _client              = null!;
-        private StubDocumentPropertyService       _propertyService     = null!;
+        private StubInventreeClient _client = null!;
+        private StubDocumentPropertyService _propertyService = null!;
         private ICreatePartValidationErrorService _createPartValidator = null!;
 
-        private bool                          _promptShown;
+        private bool _promptShown;
         private IReadOnlyList<InventreePart>? _promptCandidates;
-        private InventreePart?                _promptMatch;
+        private InventreePart? _promptMatch;
 
         private static readonly PropertyMappingConfig Mapping = PropertyMappingConfig.WithDefaults();
 
@@ -2905,12 +2905,12 @@ namespace SwInventreeAddin.Tests
         [SetUp]
         public void SetUp()
         {
-            _client              = new StubInventreeClient();
-            _propertyService     = new StubDocumentPropertyService();
+            _client = new StubInventreeClient();
+            _propertyService = new StubDocumentPropertyService();
             _createPartValidator = new StubCreatePartValidationErrorService();
-            _promptShown         = false;
+            _promptShown = false;
 
-            _propertyService.Seed(Mapping.IpnProperty!,      "PART-001");
+            _propertyService.Seed(Mapping.IpnProperty!, "PART-001");
             _propertyService.Seed(Mapping.RevisionProperty!, "B");
             _client.PartsByIpnToReturn = DuplicateIpnParts;
         }
@@ -2921,9 +2921,9 @@ namespace SwInventreeAddin.Tests
                                            createPartValidator: _createPartValidator);
             vm.ConfirmDuplicateIpn = (all, matched) =>
             {
-                _promptShown      = true;
+                _promptShown = true;
                 _promptCandidates = all;
-                _promptMatch      = matched;
+                _promptMatch = matched;
                 return true;
             };
             return vm;
@@ -2936,9 +2936,9 @@ namespace SwInventreeAddin.Tests
             var vm = CreateVm();
             await vm.FetchPartAsync();
 
-            Assert.That(_promptShown,          Is.True);
-            Assert.That(_promptCandidates,     Has.Count.EqualTo(2));
-            Assert.That(_promptMatch!.Pk,      Is.EqualTo(11));
+            Assert.That(_promptShown, Is.True);
+            Assert.That(_promptCandidates, Has.Count.EqualTo(2));
+            Assert.That(_promptMatch!.Pk, Is.EqualTo(11));
             Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(11));
         }
 
@@ -2954,8 +2954,8 @@ namespace SwInventreeAddin.Tests
             await vm.FetchPartAsync();
 
             Assert.That(_client.LastGetPartByPkPk, Is.EqualTo(11));
-            Assert.That(_promptShown,              Is.False);
-            Assert.That(vm.CurrentInvenTreePk,     Is.EqualTo(11));
+            Assert.That(_promptShown, Is.False);
+            Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(11));
         }
 
         // A PK under a Document Property name the Property Mapping does not map
@@ -3008,7 +3008,7 @@ namespace SwInventreeAddin.Tests
             await vm.FetchPartAsync();
 
             Assert.That(_client.LastGetPartByPkPk, Is.EqualTo(11));
-            Assert.That(_promptShown,              Is.False);
+            Assert.That(_promptShown, Is.False);
         }
 
         // Manual edit in the SW properties window while a session is loaded:
@@ -3030,7 +3030,7 @@ namespace SwInventreeAddin.Tests
             await vm.FetchPartAsync();
 
             Assert.That(_client.LastGetPartByPkPk, Is.EqualTo(11));
-            Assert.That(_promptShown,              Is.False);
+            Assert.That(_promptShown, Is.False);
         }
 
         // Editing the PK to a value that differs from the loaded session takes
@@ -3049,7 +3049,7 @@ namespace SwInventreeAddin.Tests
             await vm.FetchPartAsync();
 
             Assert.That(_client.LastGetPartByPkPk, Is.EqualTo(42));
-            Assert.That(_promptShown,              Is.False);
+            Assert.That(_promptShown, Is.False);
         }
 
         // The PK can also appear after the last LoadPartNumber with no property
@@ -3066,7 +3066,7 @@ namespace SwInventreeAddin.Tests
             await vm.FetchPartAsync();
 
             Assert.That(_client.LastGetPartByPkPk, Is.EqualTo(11));
-            Assert.That(_promptShown,              Is.False);
+            Assert.That(_promptShown, Is.False);
         }
 
         // Switching to another document and back fires LoadPartNumber, which
@@ -3087,7 +3087,7 @@ namespace SwInventreeAddin.Tests
             await vm.FetchPartAsync();
 
             Assert.That(_client.LastGetPartByPkPk, Is.EqualTo(11));
-            Assert.That(_promptShown,              Is.False);
+            Assert.That(_promptShown, Is.False);
         }
 
         // ClearAll() inside the LINKED-by-PK branch wipes the flag the reload
@@ -3097,12 +3097,12 @@ namespace SwInventreeAddin.Tests
         public void LinkedByPk_MappingRefresh_KeepsFetchEnabledAndCreateDisabled()
         {
             _propertyService.Seed(Mapping.IpnProperty!, string.Empty);
-            _propertyService.Seed(Mapping.PkProperty!,  "42");
+            _propertyService.Seed(Mapping.PkProperty!, "42");
             var vm = CreateVm();
 
             vm.UpdateMapping(new StubPropertyMappingProvider { Config = PropertyMappingConfig.WithDefaults() });
 
-            Assert.That(vm.FetchEnabled,      Is.True);
+            Assert.That(vm.FetchEnabled, Is.True);
             Assert.That(vm.CreatePartEnabled, Is.False);
         }
 
@@ -3120,8 +3120,8 @@ namespace SwInventreeAddin.Tests
             await vm.FetchPartAsync();
 
             Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(99));
-            Assert.That(_promptShown,          Is.False);
-            Assert.That(vm.StatusText,         Is.Empty);
+            Assert.That(_promptShown, Is.False);
+            Assert.That(vm.StatusText, Is.Empty);
         }
     }
 }

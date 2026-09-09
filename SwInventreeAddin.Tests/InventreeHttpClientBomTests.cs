@@ -14,7 +14,7 @@ namespace SwInventreeAddin.Tests
     public class InventreeHttpClientBomTests
     {
         private const string BaseUrl = "http://inventree.example.com";
-        private const string ApiKey  = "test-api-key";
+        private const string ApiKey = "test-api-key";
 
         private class SingleStub : HttpMessageHandler
         {
@@ -76,10 +76,10 @@ namespace SwInventreeAddin.Tests
 
             var lines = await client.GetBomAsync(42);
 
-            Assert.That(lines.Count,         Is.EqualTo(1));
-            Assert.That(lines[0].SubPartPk,  Is.EqualTo(10));
-            Assert.That(lines[0].Quantity,   Is.EqualTo(2m));
-            Assert.That(lines[0].Validated,  Is.True);
+            Assert.That(lines.Count, Is.EqualTo(1));
+            Assert.That(lines[0].SubPartPk, Is.EqualTo(10));
+            Assert.That(lines[0].Quantity, Is.EqualTo(2m));
+            Assert.That(lines[0].Validated, Is.True);
         }
 
         [Test]
@@ -164,7 +164,7 @@ namespace SwInventreeAddin.Tests
         public async Task CreateBomLineAsync_ValidResponse_ReturnsPk()
         {
             var json = @"{ ""pk"": 99 }";
-            var pk   = await CreateClient(new SingleStub(HttpStatusCode.OK, json))
+            var pk = await CreateClient(new SingleStub(HttpStatusCode.OK, json))
                 .CreateBomLineAsync(1, 10, 2m, "100", "note", false, true);
             Assert.That(pk, Is.EqualTo(99));
         }
@@ -174,7 +174,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task GetPartsByIpnAsync_SingleResult_ReturnsOneItem()
         {
-            var listJson   = @"{ ""count"": 1, ""results"": [{ ""pk"": 7, ""IPN"": ""ABC"", ""name"": ""P"", ""revision"": """", ""notes"": """" }] }";
+            var listJson = @"{ ""count"": 1, ""results"": [{ ""pk"": 7, ""IPN"": ""ABC"", ""name"": ""P"", ""revision"": """", ""notes"": """" }] }";
             var detailJson = @"{ ""pk"": 7, ""IPN"": ""ABC"", ""name"": ""P"", ""revision"": """", ""notes"": """", ""description"": """", ""in_stock"": 0, ""ordering"": 0, ""active"": true }";
             var parts = await CreateClient(new SequentialStub(
                 (HttpStatusCode.OK, listJson),

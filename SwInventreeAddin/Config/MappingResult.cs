@@ -47,13 +47,13 @@ namespace SwInventreeAddin.Config
                 var tooltip = ToolTip ?? string.Empty;
                 return Health switch
                 {
-                    MappingHealth.Healthy      => MessageOrDefault,
+                    MappingHealth.Healthy => MessageOrDefault,
                     MappingHealth.NeedsUpgrade => $"{EnsureTrailingPunctuation(MessageOrDefault)} {tooltip}",
-                    MappingHealth.NewerSchema  => $"{EnsureTrailingPunctuation(MessageOrDefault)} {tooltip}",
-                    MappingHealth.Invalid      => string.IsNullOrEmpty(Message)
+                    MappingHealth.NewerSchema => $"{EnsureTrailingPunctuation(MessageOrDefault)} {tooltip}",
+                    MappingHealth.Invalid => string.IsNullOrEmpty(Message)
                         ? tooltip
                         : $"{GetDefaultMessage(Health)} {EnsureTrailingPunctuation(Message!)} {InvalidMappingHelp}",
-                    _                          => MessageOrDefault,
+                    _ => MessageOrDefault,
                 };
             }
         }
@@ -98,10 +98,10 @@ namespace SwInventreeAddin.Config
         public static string GetDefaultMessage(MappingHealth health) =>
             health switch
             {
-                MappingHealth.Healthy     => "The Property Mapping file is up to date and valid.",
+                MappingHealth.Healthy => "The Property Mapping file is up to date and valid.",
                 MappingHealth.NeedsUpgrade => "The Property Mapping Schema is out of date.",
                 MappingHealth.NewerSchema => "The Property Mapping Schema is newer than this add-in.",
-                _                         => "The Property Mapping file is invalid.",
+                _ => "The Property Mapping file is invalid.",
             };
 
         /// <summary>
@@ -116,11 +116,11 @@ namespace SwInventreeAddin.Config
         public string? ToolTip =>
             Health switch
             {
-                MappingHealth.Healthy      => null,
+                MappingHealth.Healthy => null,
                 MappingHealth.NeedsUpgrade => "Edit the Property Mapping and save to enable Part Sync.",
-                MappingHealth.NewerSchema  => "Upgrade the add-in to enable Part Sync.",
-                MappingHealth.Invalid      => $"{MessageOrDefault} {InvalidMappingHelp}",
-                _                          => null,
+                MappingHealth.NewerSchema => "Upgrade the add-in to enable Part Sync.",
+                MappingHealth.Invalid => $"{MessageOrDefault} {InvalidMappingHelp}",
+                _ => null,
             };
     }
 }

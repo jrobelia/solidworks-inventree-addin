@@ -11,38 +11,38 @@ namespace SwInventreeAddin.Tests
     [TestFixture]
     public class PartSyncSessionTests
     {
-        private StubInventreeClient         _client;
+        private StubInventreeClient _client;
         private StubDocumentPropertyService _propertyService;
-        private PropertyMappingConfig       _mapping;
+        private PropertyMappingConfig _mapping;
 
         private static readonly InventreePart SamplePart = new InventreePart
         {
-            Pk          = 7,
-            Name        = "Resistor 10k",
+            Pk = 7,
+            Name = "Resistor 10k",
             Description = "10k ohm 1% 0402",
-            Notes       = "SMD 0402",
-            Revision    = "B",
-            Ipn         = "R-10K-0402",
+            Notes = "SMD 0402",
+            Revision = "B",
+            Ipn = "R-10K-0402",
         };
 
         [SetUp]
         public void SetUp()
         {
-            _client          = new StubInventreeClient();
+            _client = new StubInventreeClient();
             _propertyService = new StubDocumentPropertyService();
-            _mapping         = PropertyMappingConfig.WithDefaults();
+            _mapping = PropertyMappingConfig.WithDefaults();
         }
 
         private PartSyncSession CreateSession(byte[]? thumbnailBytes = null) =>
             new PartSyncSession(
                 new InventreePart
                 {
-                    Pk          = SamplePart.Pk,
-                    Name        = SamplePart.Name,
+                    Pk = SamplePart.Pk,
+                    Name = SamplePart.Name,
                     Description = SamplePart.Description,
-                    Notes       = SamplePart.Notes,
-                    Revision    = SamplePart.Revision,
-                    Ipn         = SamplePart.Ipn,
+                    Notes = SamplePart.Notes,
+                    Revision = SamplePart.Revision,
+                    Ipn = SamplePart.Ipn,
                 },
                 _client,
                 _propertyService,
@@ -70,7 +70,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void Constructor_ThumbnailBytes_IsSetWhenProvided()
         {
-            var bytes   = new byte[] { 1, 2, 3 };
+            var bytes = new byte[] { 1, 2, 3 };
             var session = CreateSession(thumbnailBytes: bytes);
 
             Assert.That(session.ThumbnailBytes, Is.EqualTo(bytes));
@@ -268,8 +268,8 @@ namespace SwInventreeAddin.Tests
 
             await session.PushNameAsync();
 
-            Assert.That(_client.LastPushedPk,   Is.EqualTo(SamplePart.Pk));
-            Assert.That(_client.LastPushedName,  Is.EqualTo("Updated Name"));
+            Assert.That(_client.LastPushedPk, Is.EqualTo(SamplePart.Pk));
+            Assert.That(_client.LastPushedName, Is.EqualTo("Updated Name"));
         }
 
         [Test]
@@ -302,8 +302,8 @@ namespace SwInventreeAddin.Tests
 
             await session.PushNotesAsync();
 
-            Assert.That(_client.LastPushedPk,    Is.EqualTo(SamplePart.Pk));
-            Assert.That(_client.LastPushedNotes,  Is.EqualTo("Updated Notes"));
+            Assert.That(_client.LastPushedPk, Is.EqualTo(SamplePart.Pk));
+            Assert.That(_client.LastPushedNotes, Is.EqualTo("Updated Notes"));
         }
 
         [Test]
@@ -336,8 +336,8 @@ namespace SwInventreeAddin.Tests
 
             await session.PushDescriptionAsync();
 
-            Assert.That(_client.LastPushedPk,          Is.EqualTo(SamplePart.Pk));
-            Assert.That(_client.LastPushedDescription,  Is.EqualTo("Updated Description"));
+            Assert.That(_client.LastPushedPk, Is.EqualTo(SamplePart.Pk));
+            Assert.That(_client.LastPushedDescription, Is.EqualTo("Updated Description"));
         }
 
         [Test]
@@ -370,8 +370,8 @@ namespace SwInventreeAddin.Tests
 
             await session.PushRevisionAsync();
 
-            Assert.That(_client.LastPushedPk,       Is.EqualTo(SamplePart.Pk));
-            Assert.That(_client.LastPushedRevision,  Is.EqualTo("C"));
+            Assert.That(_client.LastPushedPk, Is.EqualTo(SamplePart.Pk));
+            Assert.That(_client.LastPushedRevision, Is.EqualTo("C"));
         }
 
         [Test]
@@ -399,7 +399,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void SetThumbnail_UpdatesThumbnailBytes()
         {
-            var session  = CreateSession();
+            var session = CreateSession();
             var newBytes = new byte[] { 9, 8, 7 };
 
             session.SetThumbnail(newBytes);
@@ -411,8 +411,8 @@ namespace SwInventreeAddin.Tests
         public void SetThumbnail_ReplacesExistingThumbnailBytes()
         {
             var original = new byte[] { 1, 2, 3 };
-            var session  = CreateSession(thumbnailBytes: original);
-            var updated  = new byte[] { 4, 5, 6 };
+            var session = CreateSession(thumbnailBytes: original);
+            var updated = new byte[] { 4, 5, 6 };
 
             session.SetThumbnail(updated);
 

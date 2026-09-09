@@ -13,21 +13,21 @@ namespace SwInventreeAddin.Tests
     [TestFixture]
     public class PropertyMappingProviderTests
     {
-        private string _localPath  = null!;
+        private string _localPath = null!;
         private string _sourcePath = null!;
 
         [SetUp]
         public void SetUp()
         {
-            var tmp    = Path.GetTempPath();
-            _localPath  = Path.Combine(tmp, $"mapping_local_{Guid.NewGuid():N}.json");
+            var tmp = Path.GetTempPath();
+            _localPath = Path.Combine(tmp, $"mapping_local_{Guid.NewGuid():N}.json");
             _sourcePath = Path.Combine(tmp, $"mapping_source_{Guid.NewGuid():N}.json");
         }
 
         [TearDown]
         public void TearDown()
         {
-            if (File.Exists(_localPath))  File.Delete(_localPath);
+            if (File.Exists(_localPath)) File.Delete(_localPath);
             if (File.Exists(_sourcePath)) File.Delete(_sourcePath);
         }
 
@@ -40,11 +40,11 @@ namespace SwInventreeAddin.Tests
 
             var result = provider.GetMappingResult();
 
-            Assert.That(result.Config.IpnProperty,      Is.EqualTo("PartNo"));
-            Assert.That(result.Config.NameProperty,      Is.EqualTo("Description"));
-            Assert.That(result.Config.NotesProperty,     Is.EqualTo("Notes"));
-            Assert.That(result.Config.RevisionProperty,  Is.EqualTo("Revision"));
-            Assert.That(File.Exists(_localPath),  Is.True,
+            Assert.That(result.Config.IpnProperty, Is.EqualTo("PartNo"));
+            Assert.That(result.Config.NameProperty, Is.EqualTo("Description"));
+            Assert.That(result.Config.NotesProperty, Is.EqualTo("Notes"));
+            Assert.That(result.Config.RevisionProperty, Is.EqualTo("Revision"));
+            Assert.That(File.Exists(_localPath), Is.True,
                 "First-run should have written defaults to local path.");
 
             // Verify the written file round-trips: second call fetches from local file.
@@ -76,7 +76,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void GetMappingResult_SourceConfiguredAndLocalExists_SourceTakesPrecedence()
         {
-            WriteJson(_localPath,  new PropertyMappingConfig { IpnProperty = "LocalIPN"  });
+            WriteJson(_localPath, new PropertyMappingConfig { IpnProperty = "LocalIPN" });
             WriteJson(_sourcePath, new PropertyMappingConfig { IpnProperty = "SourceIPN" });
 
             var result = new PropertyMappingProvider(_localPath, _sourcePath).GetMappingResult();
@@ -210,8 +210,8 @@ namespace SwInventreeAddin.Tests
             provider.SaveMapping(new PropertyMappingConfig { IpnProperty = "XPN" });
             var fetched = provider.GetMappingResult().Config;
 
-            Assert.That(File.Exists(_localPath),  Is.True);
-            Assert.That(fetched.IpnProperty,      Is.EqualTo("XPN"));
+            Assert.That(File.Exists(_localPath), Is.True);
+            Assert.That(fetched.IpnProperty, Is.EqualTo("XPN"));
         }
 
         [Test]
@@ -264,7 +264,7 @@ namespace SwInventreeAddin.Tests
         public void SaveMapping_WritesToSourceWhenSourceFileExists()
         {
             WriteJson(_sourcePath, new PropertyMappingConfig { IpnProperty = "SourceIPN" });
-            WriteJson(_localPath,  new PropertyMappingConfig { IpnProperty = "LocalIPN" });
+            WriteJson(_localPath, new PropertyMappingConfig { IpnProperty = "LocalIPN" });
 
             var provider = new PropertyMappingProvider(_localPath, _sourcePath);
             provider.SaveMapping(new PropertyMappingConfig { IpnProperty = "SavedToSource" });
@@ -301,10 +301,10 @@ namespace SwInventreeAddin.Tests
             File.WriteAllText(_localPath, v1Json);
             var result = new PropertyMappingProvider(_localPath, null).GetMappingResult();
             Assert.That(result.Health, Is.EqualTo(MappingHealth.NeedsUpgrade));
-            Assert.That(result.Config.BomColumnIpn,       Is.Null);
-            Assert.That(result.Config.BomColumnQty,       Is.Null);
+            Assert.That(result.Config.BomColumnIpn, Is.Null);
+            Assert.That(result.Config.BomColumnQty, Is.Null);
             Assert.That(result.Config.BomColumnReference, Is.Null);
-            Assert.That(result.Config.BomColumnNote,      Is.Null);
+            Assert.That(result.Config.BomColumnNote, Is.Null);
         }
 
         [Test]
@@ -554,7 +554,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void GetMappingResult_SourceTakesPrecedenceForHealth_ReturnsNeedsUpgrade()
         {
-            WriteJson(_localPath,  new PropertyMappingConfig { SchemaVersion = "3", IpnProperty = "LocalIPN"  });
+            WriteJson(_localPath, new PropertyMappingConfig { SchemaVersion = "3", IpnProperty = "LocalIPN" });
             WriteJson(_sourcePath, new PropertyMappingConfig { SchemaVersion = "1", IpnProperty = "SourceIPN" });
 
             var result = new PropertyMappingProvider(_localPath, _sourcePath).GetMappingResult();
@@ -575,7 +575,7 @@ namespace SwInventreeAddin.Tests
             }");
 
             var provider = new PropertyMappingProvider(_localPath, null);
-            var result   = provider.GetMappingResult();
+            var result = provider.GetMappingResult();
 
             Assert.That(result.Health, Is.EqualTo(MappingHealth.Healthy));
             Assert.That(result.Config.ExtensionData.ContainsKey("UnknownFutureKey"), Is.True);
@@ -594,8 +594,8 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void SaveMapping_RaisesMappingChanged()
         {
-            var provider    = new PropertyMappingProvider(_localPath, null);
-            var raised      = false;
+            var provider = new PropertyMappingProvider(_localPath, null);
+            var raised = false;
             provider.MappingChanged += (s, e) => raised = true;
 
             provider.SaveMapping(new PropertyMappingConfig { IpnProperty = "PartNo" });

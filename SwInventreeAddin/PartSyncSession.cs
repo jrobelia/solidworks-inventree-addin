@@ -14,9 +14,9 @@ namespace SwInventreeAddin
     {
         // ── Dependencies ──────────────────────────────────────────────────────
 
-        private readonly IInventreeClient          _client;
-        private readonly IDocumentPropertyService  _propertyService;
-        private readonly PropertyMappingConfig     _mapping;
+        private readonly IInventreeClient _client;
+        private readonly IDocumentPropertyService _propertyService;
+        private readonly PropertyMappingConfig _mapping;
 
         // ── State ─────────────────────────────────────────────────────────────
 
@@ -32,17 +32,17 @@ namespace SwInventreeAddin
         // ── Constructor ───────────────────────────────────────────────────────
 
         public PartSyncSession(
-            InventreePart             part,
-            IInventreeClient          client,
-            IDocumentPropertyService  propertyService,
-            PropertyMappingConfig     mapping,
-            byte[]?                   thumbnailBytes = null)
+            InventreePart part,
+            IInventreeClient client,
+            IDocumentPropertyService propertyService,
+            PropertyMappingConfig mapping,
+            byte[]? thumbnailBytes = null)
         {
-            Part             = part;
-            _client          = client;
+            Part = part;
+            _client = client;
             _propertyService = propertyService;
-            _mapping         = mapping;
-            ThumbnailBytes   = thumbnailBytes;
+            _mapping = mapping;
+            ThumbnailBytes = thumbnailBytes;
         }
 
         // ── Apply (InvenTree → SolidWorks) ────────────────────────────────────

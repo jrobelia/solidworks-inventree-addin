@@ -30,7 +30,7 @@ namespace SwInventreeAddin.UI
                     System.Windows.Forms.MessageBoxIcon.Question) == MessageDialogResult.Yes;
 
             DataContext = _vm;
-            AssemblyIpn.Text  = assemblyIpn;
+            AssemblyIpn.Text = assemblyIpn;
             AssemblyName.Text = partName;
 
             BomTableName.Text = string.IsNullOrEmpty(bomTableName) ? "" : $"BOM Table: {bomTableName}";
@@ -105,14 +105,14 @@ namespace SwInventreeAddin.UI
             if (cols.Count < 10) return;
 
             double left = cols[0].ActualWidth + cols[1].ActualWidth + cols[2].ActualWidth;
-            double sw   = cols[3].ActualWidth + cols[4].ActualWidth + cols[5].ActualWidth;
-            double it   = cols[6].ActualWidth + cols[7].ActualWidth + cols[8].ActualWidth + cols[9].ActualWidth;
+            double sw = cols[3].ActualWidth + cols[4].ActualWidth + cols[5].ActualWidth;
+            double it = cols[6].ActualWidth + cols[7].ActualWidth + cols[8].ActualWidth + cols[9].ActualWidth;
 
             if (left <= 0 || sw <= 0 || it <= 0) return;
 
             GhColLeft.Width = new GridLength(left);
-            GhColSw.Width   = new GridLength(sw);
-            GhColIt.Width   = new GridLength(it);
+            GhColSw.Width = new GridLength(sw);
+            GhColIt.Width = new GridLength(it);
 
             double swInventreeBoundary = left + sw;
             GroupHeaderGrid.Width = swInventreeBoundary + it;

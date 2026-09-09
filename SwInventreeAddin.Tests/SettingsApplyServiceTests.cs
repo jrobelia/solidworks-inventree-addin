@@ -21,7 +21,7 @@ namespace SwInventreeAddin.Tests
                 ThrowOnSave = new InvalidOperationException("save failed"),
             };
             var tokenService = new StubInventreeTokenService { TokenToReturn = "token" };
-            var service      = new SettingsApplyService(configProvider, tokenService);
+            var service = new SettingsApplyService(configProvider, tokenService);
 
             var ex = Assert.ThrowsAsync<SettingsApplyException>(
                 () => service.ApplyAsync(CreateInput()));
@@ -33,8 +33,8 @@ namespace SwInventreeAddin.Tests
         public async Task ApplyAsync_WhenTokenResolutionFails_ThrowsSettingsApplyException()
         {
             var configProvider = new StubConfigProvider("https://example.com", "key");
-            var tokenService   = new StubInventreeTokenService(); // configured to fail
-            var service        = new SettingsApplyService(configProvider, tokenService);
+            var tokenService = new StubInventreeTokenService(); // configured to fail
+            var service = new SettingsApplyService(configProvider, tokenService);
 
             var input = CreateInput();
             input.Username = "user";
@@ -50,8 +50,8 @@ namespace SwInventreeAddin.Tests
         public async Task ApplyAsync_WhenTokenSucceeds_SavesConfigWithResolvedToken()
         {
             var configProvider = new StubConfigProvider("https://example.com", "key");
-            var tokenService   = new StubInventreeTokenService { TokenToReturn = "resolved-token" };
-            var service        = new SettingsApplyService(configProvider, tokenService);
+            var tokenService = new StubInventreeTokenService { TokenToReturn = "resolved-token" };
+            var service = new SettingsApplyService(configProvider, tokenService);
 
             var input = CreateInput();
             input.Username = "user";
@@ -67,8 +67,8 @@ namespace SwInventreeAddin.Tests
         public async Task ApplyAsync_WhenRawApiKeyProvided_SavesConfigWithoutCallingTokenService()
         {
             var configProvider = new StubConfigProvider("https://example.com", "key");
-            var tokenService   = new StubInventreeTokenService { TokenToReturn = "should-not-be-used" };
-            var service        = new SettingsApplyService(configProvider, tokenService);
+            var tokenService = new StubInventreeTokenService { TokenToReturn = "should-not-be-used" };
+            var service = new SettingsApplyService(configProvider, tokenService);
 
             var input = CreateInput();
             input.RawApiKey = "raw-key";
@@ -84,8 +84,8 @@ namespace SwInventreeAddin.Tests
         public async Task ApplyAsync_WhenUrlIsHttp_ThrowsSettingsApplyException()
         {
             var configProvider = new StubConfigProvider("http://example.com", "key");
-            var tokenService   = new StubInventreeTokenService { TokenToReturn = "token" };
-            var service        = new SettingsApplyService(configProvider, tokenService);
+            var tokenService = new StubInventreeTokenService { TokenToReturn = "token" };
+            var service = new SettingsApplyService(configProvider, tokenService);
 
             var input = CreateInput();
             input.Url = "http://example.com";
@@ -100,8 +100,8 @@ namespace SwInventreeAddin.Tests
         public async Task TestConnectionAsync_WhenServerReturnsOk_Completes()
         {
             var configProvider = new StubConfigProvider("https://example.com", "key");
-            var tokenService   = new StubInventreeTokenService { TokenToReturn = "token" };
-            var service        = new SettingsApplyService(configProvider, tokenService);
+            var tokenService = new StubInventreeTokenService { TokenToReturn = "token" };
+            var service = new SettingsApplyService(configProvider, tokenService);
 
             var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "[]");
             using var client = new HttpClient(handler) { BaseAddress = new Uri("https://example.com/") };
@@ -113,8 +113,8 @@ namespace SwInventreeAddin.Tests
         public void TestConnectionAsync_WhenServerReturnsError_ThrowsInvalidOperationException()
         {
             var configProvider = new StubConfigProvider("https://example.com", "key");
-            var tokenService   = new StubInventreeTokenService { TokenToReturn = "token" };
-            var service        = new SettingsApplyService(configProvider, tokenService);
+            var tokenService = new StubInventreeTokenService { TokenToReturn = "token" };
+            var service = new SettingsApplyService(configProvider, tokenService);
 
             var handler = new StubHttpMessageHandler(HttpStatusCode.Unauthorized, "Unauthorized");
             using var client = new HttpClient(handler) { BaseAddress = new Uri("https://example.com/") };
@@ -129,8 +129,8 @@ namespace SwInventreeAddin.Tests
         public void TestConnectionAsync_WhenHttpRequestThrows_ThrowsInvalidOperationException()
         {
             var configProvider = new StubConfigProvider("https://example.com", "key");
-            var tokenService   = new StubInventreeTokenService { TokenToReturn = "token" };
-            var service        = new SettingsApplyService(configProvider, tokenService);
+            var tokenService = new StubInventreeTokenService { TokenToReturn = "token" };
+            var service = new SettingsApplyService(configProvider, tokenService);
 
             var handler = new FailingHttpMessageHandler(new HttpRequestException("connection refused"));
             using var client = new HttpClient(handler) { BaseAddress = new Uri("https://example.com/") };
@@ -145,10 +145,10 @@ namespace SwInventreeAddin.Tests
         {
             return new SettingsApplyInput
             {
-                Url                   = "https://example.com",
-                RawApiKey             = "api-key",
-                SharedMappingPath     = null,
-                BomKeyword            = "inventree",
+                Url = "https://example.com",
+                RawApiKey = "api-key",
+                SharedMappingPath = null,
+                BomKeyword = "inventree",
                 WaitForServerAssignedIpn = true,
             };
         }

@@ -47,7 +47,7 @@ namespace SwInventreeAddin.AddIn
 
                 // Strip the version/culture info to get just the DLL name
                 var assemblyName = new AssemblyName(args.Name).Name + ".dll";
-                var fullPath     = Path.Combine(addinDir, assemblyName);
+                var fullPath = Path.Combine(addinDir, assemblyName);
 
                 return File.Exists(fullPath)
                     ? Assembly.LoadFrom(fullPath)
@@ -55,8 +55,8 @@ namespace SwInventreeAddin.AddIn
             };
         }
 
-        private const string AddinGuid        = "A1B2C3D4-E5F6-7890-ABCD-EF1234567890";
-        private const string AddinTitle       = "InvenTree";
+        private const string AddinGuid = "A1B2C3D4-E5F6-7890-ABCD-EF1234567890";
+        private const string AddinTitle = "InvenTree";
         private const string AddinDescription = "Imports part data from InvenTree into SolidWorks custom properties";
 
         /// <summary>
@@ -70,8 +70,8 @@ namespace SwInventreeAddin.AddIn
             using (var hklm = Registry.LocalMachine.CreateSubKey(
                 $@"SOFTWARE\SolidWorks\Addins\{{{AddinGuid}}}"))
             {
-                hklm.SetValue(null,          0);               // 0 = don't force load at startup
-                hklm.SetValue("Title",       AddinTitle);
+                hklm.SetValue(null, 0);               // 0 = don't force load at startup
+                hklm.SetValue("Title", AddinTitle);
                 hklm.SetValue("Description", AddinDescription);
             }
 
@@ -96,15 +96,15 @@ namespace SwInventreeAddin.AddIn
                 $@"Software\SolidWorks\Addins\{{{AddinGuid}}}", throwOnMissingSubKey: false);
         }
 
-        private ISldWorks?               _swApp;
-        private SldWorks?               _swEvents;   // concrete class needed to subscribe to COM events
-        private PartDoc?                _partDocEvents;
-        private AssemblyDoc?            _assemblyDocEvents;
-        private bool                    _hasActiveDoc;  // tracks whether a document was open on last check
-        private TaskPaneControl?        _taskPaneControl;
-        private ITaskpaneView?          _taskPaneView;
+        private ISldWorks? _swApp;
+        private SldWorks? _swEvents;   // concrete class needed to subscribe to COM events
+        private PartDoc? _partDocEvents;
+        private AssemblyDoc? _assemblyDocEvents;
+        private bool _hasActiveDoc;  // tracks whether a document was open on last check
+        private TaskPaneControl? _taskPaneControl;
+        private ITaskpaneView? _taskPaneView;
         private System.Net.Http.HttpClient? _httpClient;
-        private int                     _addinCookie;
+        private int _addinCookie;
         private EncryptedConfigProvider? _configProvider;
         private IPropertyMappingProvider? _mappingProvider;
 
@@ -112,7 +112,7 @@ namespace SwInventreeAddin.AddIn
         {
             try
             {
-                _swApp       = (ISldWorks)thisSW;
+                _swApp = (ISldWorks)thisSW;
                 _addinCookie = cookie;
 
                 // Capture the SolidWorks main window handle for reliable WPF dialog parenting.
@@ -129,20 +129,20 @@ namespace SwInventreeAddin.AddIn
                 // Tell SolidWorks our cookie so it can track us
                 _swApp.SetAddinCallbackInfo2(0, this, cookie);
 
-                var configProvider  = new EncryptedConfigProvider();
-                _configProvider     = configProvider;
-                var config          = configProvider.GetServerConfig();
+                var configProvider = new EncryptedConfigProvider();
+                _configProvider = configProvider;
+                var config = configProvider.GetServerConfig();
 
                 IInventreeClient? inventreeClient = null;
                 if (config != null)
                 {
-                    _httpClient             = new System.Net.Http.HttpClient();
+                    _httpClient = new System.Net.Http.HttpClient();
                     _httpClient.BaseAddress = new System.Uri(config.Url);
                     inventreeClient = new InventreeHttpClient(_httpClient, config.ApiKey);
                 }
 
-                var propertyService  = new SwDocumentPropertyService(_swApp);
-                var viewportService  = new SwViewportCaptureService(_swApp);
+                var propertyService = new SwDocumentPropertyService(_swApp);
+                var viewportService = new SwViewportCaptureService(_swApp);
 
                 _mappingProvider = new PropertyMappingProvider(config?.MappingSourcePath);
 
@@ -158,8 +158,8 @@ namespace SwInventreeAddin.AddIn
                 // OnIdleNotify detects when the last document is closed (ActiveDoc becomes null).
                 _swEvents = (SldWorks)thisSW;
                 _swEvents.ActiveDocChangeNotify += OnActiveDocChange;
-                _swEvents.DocumentLoadNotify2   += OnDocumentLoad;
-                _swEvents.OnIdleNotify          += OnIdle;
+                _swEvents.DocumentLoadNotify2 += OnDocumentLoad;
+                _swEvents.OnIdleNotify += OnIdle;
 
                 var iconPath = System.IO.Path.Combine(
                     System.IO.Path.GetDirectoryName(
@@ -187,8 +187,8 @@ namespace SwInventreeAddin.AddIn
             if (_swEvents != null)
             {
                 _swEvents.ActiveDocChangeNotify -= OnActiveDocChange;
-                _swEvents.DocumentLoadNotify2   -= OnDocumentLoad;
-                _swEvents.OnIdleNotify          -= OnIdle;
+                _swEvents.DocumentLoadNotify2 -= OnDocumentLoad;
+                _swEvents.OnIdleNotify -= OnIdle;
                 _swEvents = null;
             }
 
@@ -261,14 +261,14 @@ namespace SwInventreeAddin.AddIn
                 if (doc is PartDoc part)
                 {
                     _partDocEvents = part;
-                    _partDocEvents.AddCustomPropertyNotify    += OnDocCustomPropertyAdd;
+                    _partDocEvents.AddCustomPropertyNotify += OnDocCustomPropertyAdd;
                     _partDocEvents.ChangeCustomPropertyNotify += OnDocCustomPropertyChange;
                     _partDocEvents.DeleteCustomPropertyNotify += OnDocCustomPropertyDelete;
                 }
                 else if (doc is AssemblyDoc asm)
                 {
                     _assemblyDocEvents = asm;
-                    _assemblyDocEvents.AddCustomPropertyNotify    += OnDocCustomPropertyAdd;
+                    _assemblyDocEvents.AddCustomPropertyNotify += OnDocCustomPropertyAdd;
                     _assemblyDocEvents.ChangeCustomPropertyNotify += OnDocCustomPropertyChange;
                     _assemblyDocEvents.DeleteCustomPropertyNotify += OnDocCustomPropertyDelete;
                 }
@@ -284,7 +284,7 @@ namespace SwInventreeAddin.AddIn
         {
             if (_partDocEvents != null)
             {
-                _partDocEvents.AddCustomPropertyNotify    -= OnDocCustomPropertyAdd;
+                _partDocEvents.AddCustomPropertyNotify -= OnDocCustomPropertyAdd;
                 _partDocEvents.ChangeCustomPropertyNotify -= OnDocCustomPropertyChange;
                 _partDocEvents.DeleteCustomPropertyNotify -= OnDocCustomPropertyDelete;
                 _partDocEvents = null;
@@ -292,7 +292,7 @@ namespace SwInventreeAddin.AddIn
 
             if (_assemblyDocEvents != null)
             {
-                _assemblyDocEvents.AddCustomPropertyNotify    -= OnDocCustomPropertyAdd;
+                _assemblyDocEvents.AddCustomPropertyNotify -= OnDocCustomPropertyAdd;
                 _assemblyDocEvents.ChangeCustomPropertyNotify -= OnDocCustomPropertyChange;
                 _assemblyDocEvents.DeleteCustomPropertyNotify -= OnDocCustomPropertyDelete;
                 _assemblyDocEvents = null;
@@ -300,17 +300,18 @@ namespace SwInventreeAddin.AddIn
         }
 
         private int OnDocCustomPropertyAdd(string propName, string configuration, string value, int valueType)
-            { _taskPaneControl?.OnDocumentPropertyChanged(propName, value); return 0; }
+        { _taskPaneControl?.OnDocumentPropertyChanged(propName, value); return 0; }
 
         private int OnDocCustomPropertyChange(string propName, string configuration, string oldValue, string newValue, int valueType)
-            { _taskPaneControl?.OnDocumentPropertyChanged(propName, newValue); return 0; }
+        { _taskPaneControl?.OnDocumentPropertyChanged(propName, newValue); return 0; }
 
         private int OnDocCustomPropertyDelete(string propName, string configuration, string value, int valueType)
-            { _taskPaneControl?.LoadPartNumber(); return 0; }
+        { _taskPaneControl?.LoadPartNumber(); return 0; }
 
         private void OnDocCustomPropertyChanged() => _taskPaneControl?.LoadPartNumber();
 
-        private void OnSettingsRequested(object sender, EventArgs e)        {
+        private void OnSettingsRequested(object sender, EventArgs e)
+        {
             if (_configProvider == null || _mappingProvider == null)
             {
                 System.Diagnostics.Trace.WriteLine("[SwInventreeAddin] OnSettingsRequested: provider not initialised — settings dialog suppressed.");
@@ -319,9 +320,9 @@ namespace SwInventreeAddin.AddIn
 
             using (var settingsHttpClient = new System.Net.Http.HttpClient())
             {
-                var tokenService    = new InventreeTokenService(settingsHttpClient);
+                var tokenService = new InventreeTokenService(settingsHttpClient);
                 var settingsService = new SettingsApplyService(_configProvider, tokenService);
-                var mappingFactory  = new PropertyMappingProviderFactory();
+                var mappingFactory = new PropertyMappingProviderFactory();
                 var form = new SettingsWindow(
                     _configProvider,
                     _mappingProvider,
@@ -331,7 +332,7 @@ namespace SwInventreeAddin.AddIn
                 var settingsApplied = false;
                 form.MappingApplied += (_, provider) =>
                 {
-                    settingsApplied  = true;
+                    settingsApplied = true;
                     _mappingProvider = provider;
                     _taskPaneControl?.UpdateMapping(provider);
                 };
@@ -346,7 +347,7 @@ namespace SwInventreeAddin.AddIn
                 if (newConfig == null) return;
 
                 _httpClient?.Dispose();
-                _httpClient             = new System.Net.Http.HttpClient();
+                _httpClient = new System.Net.Http.HttpClient();
                 _httpClient.BaseAddress = new System.Uri(newConfig.Url);
                 var newClient = new InventreeHttpClient(_httpClient, newConfig.ApiKey);
                 _taskPaneControl?.UpdateClient(newClient);

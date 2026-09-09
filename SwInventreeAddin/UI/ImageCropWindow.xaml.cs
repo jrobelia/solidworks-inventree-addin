@@ -19,8 +19,8 @@ namespace SwInventreeAddin.UI
     /// </summary>
     public partial class ImageCropWindow : Window
     {
-        private readonly GdiImage       _sourceImage;
-        private readonly CropGeometry  _geo;
+        private readonly GdiImage _sourceImage;
+        private readonly CropGeometry _geo;
 
         /// <summary>The crop rectangle chosen by the user (Empty = full image).</summary>
         public Rectangle CropRectangle => _geo.CropRectangle;
@@ -28,7 +28,7 @@ namespace SwInventreeAddin.UI
         public ImageCropWindow(GdiImage sourceImage)
         {
             _sourceImage = sourceImage ?? throw new ArgumentNullException(nameof(sourceImage));
-            _geo         = new CropGeometry(sourceImage.Width, sourceImage.Height);
+            _geo = new CropGeometry(sourceImage.Width, sourceImage.Height);
 
             InitializeComponent();
 
@@ -36,13 +36,13 @@ namespace SwInventreeAddin.UI
             SourceImage.Source = ToWpfBitmap(sourceImage);
 
             // Keep SquareLock in sync with checkbox
-            SquareLockCheck.Checked   += (s, e) => _geo.SquareLock = true;
+            SquareLockCheck.Checked += (s, e) => _geo.SquareLock = true;
             SquareLockCheck.Unchecked += (s, e) => _geo.SquareLock = false;
 
             // Restore saved size (width/height only) so CenterOwner uses the user's preferred size.
             if (CropWindowBounds.TryLoad(out var b))
             {
-                Width  = b[2];
+                Width = b[2];
                 Height = b[3];
             }
 
@@ -133,7 +133,7 @@ namespace SwInventreeAddin.UI
             // Crop border
             Canvas.SetLeft(CropBorder, x1);
             Canvas.SetTop(CropBorder, y1);
-            CropBorder.Width  = Math.Max(0, x2 - x1);
+            CropBorder.Width = Math.Max(0, x2 - x1);
             CropBorder.Height = Math.Max(0, y2 - y1);
             CropBorder.Visibility = Visibility.Visible;
         }
@@ -177,7 +177,7 @@ namespace SwInventreeAddin.UI
                 ms.Position = 0;
                 var bi = new BitmapImage();
                 bi.BeginInit();
-                bi.CacheOption  = BitmapCacheOption.OnLoad;
+                bi.CacheOption = BitmapCacheOption.OnLoad;
                 bi.StreamSource = ms;
                 bi.EndInit();
                 bi.Freeze();

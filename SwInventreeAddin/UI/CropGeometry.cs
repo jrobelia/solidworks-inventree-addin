@@ -13,14 +13,14 @@ namespace SwInventreeAddin.UI
         private readonly int _imageHeight;
 
         // Drag state
-        private Point     _dragStart;
-        private Point     _dragEnd;
-        private bool      _isDragging;
-        private bool      _hasCrop;
+        private Point _dragStart;
+        private Point _dragEnd;
+        private bool _isDragging;
+        private bool _hasCrop;
 
         // Move state
-        private bool      _isMoving;
-        private Point     _moveOrigin;
+        private bool _isMoving;
+        private Point _moveOrigin;
         private Rectangle _rectAtMoveStart;
 
         /// <summary>The crop rectangle in image coordinates (Empty = full image).</summary>
@@ -40,7 +40,7 @@ namespace SwInventreeAddin.UI
 
         public CropGeometry(int imageWidth, int imageHeight)
         {
-            _imageWidth  = imageWidth;
+            _imageWidth = imageWidth;
             _imageHeight = imageHeight;
         }
 
@@ -51,18 +51,18 @@ namespace SwInventreeAddin.UI
         {
             if (_hasCrop && CropRectangle.Contains(imagePoint))
             {
-                _isMoving        = true;
-                _isDragging      = false;
-                _moveOrigin      = imagePoint;
+                _isMoving = true;
+                _isDragging = false;
+                _moveOrigin = imagePoint;
                 _rectAtMoveStart = CropRectangle;
             }
             else
             {
-                _isMoving   = false;
+                _isMoving = false;
                 _isDragging = true;
-                _hasCrop    = false;
-                _dragStart  = imagePoint;
-                _dragEnd    = imagePoint;
+                _hasCrop = false;
+                _dragStart = imagePoint;
+                _dragEnd = imagePoint;
             }
         }
 
@@ -77,9 +77,9 @@ namespace SwInventreeAddin.UI
 
             if (_isMoving)
             {
-                int dx   = imagePoint.X - _moveOrigin.X;
-                int dy   = imagePoint.Y - _moveOrigin.Y;
-                int newX = Math.Max(0, Math.Min(_rectAtMoveStart.X + dx, _imageWidth  - _rectAtMoveStart.Width));
+                int dx = imagePoint.X - _moveOrigin.X;
+                int dy = imagePoint.Y - _moveOrigin.Y;
+                int newX = Math.Max(0, Math.Min(_rectAtMoveStart.X + dx, _imageWidth - _rectAtMoveStart.Width));
                 int newY = Math.Max(0, Math.Min(_rectAtMoveStart.Y + dy, _imageHeight - _rectAtMoveStart.Height));
                 CropRectangle = new Rectangle(newX, newY, _rectAtMoveStart.Width, _rectAtMoveStart.Height);
                 return true;
@@ -114,10 +114,10 @@ namespace SwInventreeAddin.UI
         public void SimulateDrag(Point imageStart, Point imageEnd)
         {
             _isDragging = true;
-            _isMoving   = false;
-            _hasCrop    = false;
-            _dragStart  = imageStart;
-            _dragEnd    = ApplySquareLock(imageStart, imageEnd);
+            _isMoving = false;
+            _hasCrop = false;
+            _dragStart = imageStart;
+            _dragEnd = ApplySquareLock(imageStart, imageEnd);
             CommitDrag();
         }
 
@@ -135,13 +135,13 @@ namespace SwInventreeAddin.UI
         public Point DisplayToImage(Point displayPoint, double displayWidth, double displayHeight)
         {
             double scale = Math.Min(displayWidth / _imageWidth, displayHeight / _imageHeight);
-            double offX  = (displayWidth  - _imageWidth  * scale) / 2.0;
-            double offY  = (displayHeight - _imageHeight * scale) / 2.0;
+            double offX = (displayWidth - _imageWidth * scale) / 2.0;
+            double offY = (displayHeight - _imageHeight * scale) / 2.0;
 
             int imgX = (int)((displayPoint.X - offX) / scale);
             int imgY = (int)((displayPoint.Y - offY) / scale);
 
-            imgX = Math.Max(0, Math.Min(imgX, _imageWidth  - 1));
+            imgX = Math.Max(0, Math.Min(imgX, _imageWidth - 1));
             imgY = Math.Max(0, Math.Min(imgY, _imageHeight - 1));
 
             return new Point(imgX, imgY);
@@ -151,8 +151,8 @@ namespace SwInventreeAddin.UI
         public Point ImageToDisplay(Point imagePoint, double displayWidth, double displayHeight)
         {
             double scale = Math.Min(displayWidth / _imageWidth, displayHeight / _imageHeight);
-            double offX  = (displayWidth  - _imageWidth  * scale) / 2.0;
-            double offY  = (displayHeight - _imageHeight * scale) / 2.0;
+            double offX = (displayWidth - _imageWidth * scale) / 2.0;
+            double offY = (displayHeight - _imageHeight * scale) / 2.0;
 
             return new Point(
                 (int)(imagePoint.X * scale + offX),
@@ -165,8 +165,8 @@ namespace SwInventreeAddin.UI
         {
             if (!SquareLock) return end;
 
-            int dx   = end.X - start.X;
-            int dy   = end.Y - start.Y;
+            int dx = end.X - start.X;
+            int dy = end.Y - start.Y;
             int size = Math.Max(Math.Abs(dx), Math.Abs(dy));
             return new Point(
                 start.X + (dx >= 0 ? size : -size),
@@ -178,12 +178,12 @@ namespace SwInventreeAddin.UI
             var rect = MakeRect(_dragStart, _dragEnd);
             if (rect.Width > 5 && rect.Height > 5)
             {
-                _hasCrop      = true;
+                _hasCrop = true;
                 CropRectangle = rect;
             }
             else
             {
-                _hasCrop      = false;
+                _hasCrop = false;
                 CropRectangle = Rectangle.Empty;
             }
         }

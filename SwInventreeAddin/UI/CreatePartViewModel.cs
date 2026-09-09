@@ -30,11 +30,11 @@ namespace SwInventreeAddin.UI
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
 
-        private readonly IInventreeClient                   _client;
-        private readonly IDocumentPropertyService           _propertyService;
-        private readonly ICreatePartValidationErrorService  _validationService;
-        private readonly IPropertyMappingProvider?          _mappingProvider;
-        private readonly int                                _ipnPollDelayMs;
+        private readonly IInventreeClient _client;
+        private readonly IDocumentPropertyService _propertyService;
+        private readonly ICreatePartValidationErrorService _validationService;
+        private readonly IPropertyMappingProvider? _mappingProvider;
+        private readonly int _ipnPollDelayMs;
 
         // ── Bindable properties ───────────────────────────────────────────────
 
@@ -61,7 +61,7 @@ namespace SwInventreeAddin.UI
                     Set(ref _ipnErrorText, string.Empty, nameof(IpnErrorText));
 
                 var wasBlank = string.IsNullOrWhiteSpace(_ipnEntry);
-                var isBlank  = string.IsNullOrWhiteSpace(value);
+                var isBlank = string.IsNullOrWhiteSpace(value);
 
                 Set(ref _ipnEntry, value);
                 Set(ref _isWaitForServerIpnEnabled, isBlank, nameof(IsWaitForServerIpnEnabled));
@@ -238,26 +238,26 @@ namespace SwInventreeAddin.UI
         // ── Constructor ───────────────────────────────────────────────────────
 
         public CreatePartViewModel(
-            IInventreeClient                   client,
-            IDocumentPropertyService           propertyService,
-            ICreatePartValidationErrorService  validationService,
-            string                             initialName,
-            IPropertyMappingProvider?          mappingProvider            = null,
-            int                                ipnPollDelayMs             = 500,
-            bool                               waitForServerAssignedIpn   = false,
-            DocumentType                       documentType               = DocumentType.Unknown)
+            IInventreeClient client,
+            IDocumentPropertyService propertyService,
+            ICreatePartValidationErrorService validationService,
+            string initialName,
+            IPropertyMappingProvider? mappingProvider = null,
+            int ipnPollDelayMs = 500,
+            bool waitForServerAssignedIpn = false,
+            DocumentType documentType = DocumentType.Unknown)
         {
-            _client                             = client;
-            _propertyService                    = propertyService;
-            _validationService                  = validationService;
-            _mappingProvider                    = mappingProvider;
-            _ipnPollDelayMs                     = ipnPollDelayMs;
-            _waitForServerAssignedIpn           = waitForServerAssignedIpn;
+            _client = client;
+            _propertyService = propertyService;
+            _validationService = validationService;
+            _mappingProvider = mappingProvider;
+            _ipnPollDelayMs = ipnPollDelayMs;
+            _waitForServerAssignedIpn = waitForServerAssignedIpn;
             _waitForServerAssignedIpnRemembered = waitForServerAssignedIpn;
-            PartName                            = initialName;
+            PartName = initialName;
 
             // Seed the type flags from the SolidWorks document type, but keep both editable.
-            Assembly  = documentType == DocumentType.Assembly;
+            Assembly = documentType == DocumentType.Assembly;
             Component = documentType == DocumentType.Part || documentType == DocumentType.Assembly;
         }
 
@@ -270,14 +270,14 @@ namespace SwInventreeAddin.UI
 
         private void SetStatus(string text, StatusSeverity severity)
         {
-            StatusText    = text;
+            StatusText = text;
             StatusSeverity = severity;
         }
 
         /// <summary>Loads top-level categories into RootCategories.</summary>
         public async Task LoadRootCategoriesAsync()
         {
-            IsBusy             = true;
+            IsBusy = true;
             IsLoadingCategories = true;
             SetStatus("Loading categories\u2026", StatusSeverity.None);
 
@@ -298,7 +298,7 @@ namespace SwInventreeAddin.UI
             {
                 RunOnUiThread(() =>
                 {
-                    IsBusy             = false;
+                    IsBusy = false;
                     IsLoadingCategories = false;
                 });
             }
@@ -345,7 +345,7 @@ namespace SwInventreeAddin.UI
         {
             if (!CanCreate()) return;
 
-            IsBusy      = true;
+            IsBusy = true;
             IpnErrorText = string.Empty;
             IpnMismatchNotice = null;
 
@@ -359,26 +359,26 @@ namespace SwInventreeAddin.UI
                     {
                         // The base message is source-independent; the caller can inspect Message for the detail.
                         SetStatus(MappingResult.GetDefaultMessage(mappingResult.Health), StatusSeverity.Warning);
-                        IsBusy     = false;
+                        IsBusy = false;
                     });
                     return;
                 }
 
-                var categoryPk  = _selectedCategory!.Category.Pk;
+                var categoryPk = _selectedCategory!.Category.Pk;
                 var ipnToSubmit = string.IsNullOrWhiteSpace(_ipnEntry) ? null : _ipnEntry.Trim();
 
                 RunOnUiThread(() => SetStatus("Creating part\u2026", StatusSeverity.None));
                 var flags = new PartCreationFlags
                 {
-                    Assembly              = _assembly,
-                    Component             = _component,
-                    Purchaseable          = _purchaseable,
-                    Salable               = _salable,
-                    Trackable             = _trackable,
-                    Testable              = _testable,
+                    Assembly = _assembly,
+                    Component = _component,
+                    Purchaseable = _purchaseable,
+                    Salable = _salable,
+                    Trackable = _trackable,
+                    Testable = _testable,
                     CopyCategoryParameters = _copyCategoryParameters,
                 };
-                var pk          = await _client.CreatePartAsync(categoryPk, _partName, ipnToSubmit, flags)
+                var pk = await _client.CreatePartAsync(categoryPk, _partName, ipnToSubmit, flags)
                                                .ConfigureAwait(false);
 
                 RunOnUiThread(() => SetStatus("Fetching new part\u2026", StatusSeverity.None));
@@ -390,7 +390,7 @@ namespace SwInventreeAddin.UI
                     RunOnUiThread(() =>
                     {
                         SetStatus("Part created but re-fetch failed. IPN not yet written.", StatusSeverity.Warning);
-                        IsBusy     = false;
+                        IsBusy = false;
                     });
                     return;
                 }
@@ -411,7 +411,7 @@ namespace SwInventreeAddin.UI
                     }
                 }
 
-                var ipn  = part?.Ipn  ?? string.Empty;
+                var ipn = part?.Ipn ?? string.Empty;
                 var name = part?.Name ?? string.Empty;
 
                 var mapping = mappingResult?.Config ?? PropertyMappingConfig.WithDefaults();

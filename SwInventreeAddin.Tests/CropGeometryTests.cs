@@ -76,9 +76,9 @@ namespace SwInventreeAddin.Tests
             _geo.OnMouseUp(new Point(500, 500));
 
             var rect = _geo.CropRectangle;
-            Assert.That(rect.Right,  Is.LessThanOrEqualTo(400));
+            Assert.That(rect.Right, Is.LessThanOrEqualTo(400));
             Assert.That(rect.Bottom, Is.LessThanOrEqualTo(300));
-            Assert.That(rect.Size,   Is.EqualTo(originalSize), "Move should not change size");
+            Assert.That(rect.Size, Is.EqualTo(originalSize), "Move should not change size");
         }
 
         [Test]
@@ -93,9 +93,9 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void ImageToDisplay_RoundTrips()
         {
-            var orig    = new Point(100, 75);
+            var orig = new Point(100, 75);
             var display = _geo.ImageToDisplay(orig, 800, 600);
-            var back    = _geo.DisplayToImage(display, 800, 600);
+            var back = _geo.DisplayToImage(display, 800, 600);
 
             Assert.That(back, Is.EqualTo(orig));
         }

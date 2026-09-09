@@ -20,12 +20,12 @@ namespace SwInventreeAddin.UI
         { if (Equals(f, v)) return; f = v; PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n)); }
 
         public BomDiffLine DiffLine { get; }
-        public BomDiffState State   => DiffLine.State;
+        public BomDiffState State => DiffLine.State;
         // Computed from the current State so it stays correct after PushAsync mutates
         // DiffLine.State to Match. Select All / Select New / Select Conflicts and the
         // PushEnabled predicate all filter on this, so a pushed row drops out of every
         // selection path as soon as its state changes.
-        public bool CanCheck        => State == BomDiffState.New || State == BomDiffState.Conflict;
+        public bool CanCheck => State == BomDiffState.New || State == BomDiffState.Conflict;
 
         private bool _isChecked;
         public bool IsChecked
@@ -36,32 +36,32 @@ namespace SwInventreeAddin.UI
 
         public string StateLabel => State switch
         {
-            BomDiffState.Match         => "Match",
-            BomDiffState.Conflict      => "Conflict",
-            BomDiffState.New           => "New",
+            BomDiffState.Match => "Match",
+            BomDiffState.Conflict => "Conflict",
+            BomDiffState.New => "New",
             BomDiffState.InvenTreeOnly => "Inv Only",
-            BomDiffState.NoIpn         => "No IPN",
-            BomDiffState.IpnNotFound   => "Not Found",
-            BomDiffState.Ambiguous     => "Ambiguous",
-            _                          => string.Empty,
+            BomDiffState.NoIpn => "No IPN",
+            BomDiffState.IpnNotFound => "Not Found",
+            BomDiffState.Ambiguous => "Ambiguous",
+            _ => string.Empty,
         };
 
-        public string DisplayIpn    => DiffLine.DisplayIpn;
-        public string SwQty         => DiffLine.SwLine != null ? DiffLine.SwLine.Quantity.ToString("G29") : string.Empty;
-        public string SwReference   => DiffLine.SwLine?.Reference ?? string.Empty;
-        public string SwNote        => DiffLine.SwLine?.Note      ?? string.Empty;
-        public string ItQty         => DiffLine.ItLine != null ? DiffLine.ItLine.Quantity.ToString("G29") : string.Empty;
-        public string ItReference   => DiffLine.ItLine?.Reference      ?? string.Empty;
-        public string ItNote        => DiffLine.ItLine?.Note           ?? string.Empty;
-        public bool   ItConsumable  => DiffLine.ItLine?.Consumable     ?? false;
-        public bool   ItOptional    => DiffLine.ItLine?.Optional       ?? false;
-        public bool   ItValidated   => DiffLine.ItLine?.Validated      ?? false;
-        public bool   HasSubstitutes => DiffLine.ItLine?.HasSubstitutes ?? false;
+        public string DisplayIpn => DiffLine.DisplayIpn;
+        public string SwQty => DiffLine.SwLine != null ? DiffLine.SwLine.Quantity.ToString("G29") : string.Empty;
+        public string SwReference => DiffLine.SwLine?.Reference ?? string.Empty;
+        public string SwNote => DiffLine.SwLine?.Note ?? string.Empty;
+        public string ItQty => DiffLine.ItLine != null ? DiffLine.ItLine.Quantity.ToString("G29") : string.Empty;
+        public string ItReference => DiffLine.ItLine?.Reference ?? string.Empty;
+        public string ItNote => DiffLine.ItLine?.Note ?? string.Empty;
+        public bool ItConsumable => DiffLine.ItLine?.Consumable ?? false;
+        public bool ItOptional => DiffLine.ItLine?.Optional ?? false;
+        public bool ItValidated => DiffLine.ItLine?.Validated ?? false;
+        public bool HasSubstitutes => DiffLine.ItLine?.HasSubstitutes ?? false;
         public string HasSubstitutesLabel => HasSubstitutes ? "Yes" : "\u2014";
         // Per-cell conflict flags — true only on Conflict rows where that specific field differs.
-        public bool QtyConflict       => State == BomDiffState.Conflict && SwQty       != ItQty;
+        public bool QtyConflict => State == BomDiffState.Conflict && SwQty != ItQty;
         public bool ReferenceConflict => State == BomDiffState.Conflict && SwReference != ItReference;
-        public bool NoteConflict      => State == BomDiffState.Conflict && SwNote      != ItNote;
+        public bool NoteConflict => State == BomDiffState.Conflict && SwNote != ItNote;
         public bool IsProblemState => State == BomDiffState.NoIpn
                                    || State == BomDiffState.IpnNotFound
                                    || State == BomDiffState.Ambiguous;
@@ -89,22 +89,22 @@ namespace SwInventreeAddin.UI
 
         // ── Dependencies ─────────────────────────────────────────────────────
 
-        private readonly IInventreeClient      _client;
-        private readonly IAssemblyBomService   _bomService;
+        private readonly IInventreeClient _client;
+        private readonly IAssemblyBomService _bomService;
         private readonly PropertyMappingConfig _mapping;
-        private readonly int                   _assemblyPk;
-        private readonly string                _bomKeyword;
+        private readonly int _assemblyPk;
+        private readonly string _bomKeyword;
         private readonly SynchronizationContext? _uiContext;
 
         // ── State ────────────────────────────────────────────────────────────
 
-        private string _statusText    = string.Empty;
-        private bool   _isPushing;
-        private string _sortColumn    = string.Empty;
-        private bool   _sortAscending = true;
+        private string _statusText = string.Empty;
+        private bool _isPushing;
+        private string _sortColumn = string.Empty;
+        private bool _sortAscending = true;
 
-        public string StatusText    { get => _statusText;    set => Set(ref _statusText,    value); }
-        public bool   IsPushing
+        public string StatusText { get => _statusText; set => Set(ref _statusText, value); }
+        public bool IsPushing
         {
             get => _isPushing;
             set
@@ -113,8 +113,8 @@ namespace SwInventreeAddin.UI
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PushEnabled)));
             }
         }
-        public string SortColumn    { get => _sortColumn;    set => Set(ref _sortColumn,    value); }
-        public bool   SortAscending { get => _sortAscending; set => Set(ref _sortAscending, value); }
+        public string SortColumn { get => _sortColumn; set => Set(ref _sortColumn, value); }
+        public bool SortAscending { get => _sortAscending; set => Set(ref _sortAscending, value); }
 
         public bool PushEnabled =>
             !IsPushing && Lines.Any(l => l.CanCheck && l.IsChecked);
@@ -129,18 +129,18 @@ namespace SwInventreeAddin.UI
         // ── Constructors ─────────────────────────────────────────────────────
 
         public BomCompareViewModel(
-            IInventreeClient      client,
-            IAssemblyBomService   bomService,
+            IInventreeClient client,
+            IAssemblyBomService bomService,
             PropertyMappingConfig mapping,
-            int                   assemblyPk,
-            string                bomKeyword = "inventree")
+            int assemblyPk,
+            string bomKeyword = "inventree")
         {
-            _client     = client;
+            _client = client;
             _bomService = bomService;
-            _mapping    = mapping;
+            _mapping = mapping;
             _assemblyPk = assemblyPk;
             _bomKeyword = bomKeyword;
-            _uiContext  = SynchronizationContext.Current;
+            _uiContext = SynchronizationContext.Current;
         }
 
         // ── Behaviour ────────────────────────────────────────────────────────
@@ -151,7 +151,7 @@ namespace SwInventreeAddin.UI
             var swLines = _bomService.GetBomLines(_bomKeyword, _mapping);
             var (itLines, lookup) = await Task.Run(async () =>
             {
-                var itTask  = _client.GetBomAsync(_assemblyPk);
+                var itTask = _client.GetBomAsync(_assemblyPk);
                 var lupTask = BuildIpnLookupAsync(swLines);
                 await Task.WhenAll(itTask, lupTask).ConfigureAwait(false);
                 return (itTask.Result, lupTask.Result);
@@ -174,7 +174,7 @@ namespace SwInventreeAddin.UI
                 .Select(l => l.DiffLine)
                 .ToList();
 
-            int newCount    = toProcess.Count(l => l.State == BomDiffState.New);
+            int newCount = toProcess.Count(l => l.State == BomDiffState.New);
             int updateCount = toProcess.Count(l => l.State == BomDiffState.Conflict);
 
             // Clear any stale result and let the user know the button was pressed.
@@ -197,7 +197,7 @@ namespace SwInventreeAddin.UI
 
             RunOnUiThread(() => IsPushing = true);
             int created = 0, updated = 0, failed = 0;
-            var failedIpns   = new List<string>();
+            var failedIpns = new List<string>();
             var succeededVms = new List<BomDiffLineViewModel>();
 
             // Build a lookup so we can update the ViewModel in-place on success.
@@ -246,26 +246,26 @@ namespace SwInventreeAddin.UI
                         // New line: create a stub ItLine from the values we just pushed.
                         vm.DiffLine.ItLine = new InventreeBomLine
                         {
-                            Pk         = vm.DiffLine.NewBomLinePk,
-                            SubPartPk  = vm.DiffLine.SubPartPk,
+                            Pk = vm.DiffLine.NewBomLinePk,
+                            SubPartPk = vm.DiffLine.SubPartPk,
                             SubPartIpn = vm.DiffLine.DisplayIpn,
-                            Quantity   = sw.Quantity,
-                            Reference  = sw.Reference,
-                            Note       = sw.Note,
+                            Quantity = sw.Quantity,
+                            Reference = sw.Reference,
+                            Note = sw.Note,
                         };
                     }
                     else
                     {
                         // Conflict: update the IT fields to match what we pushed.
-                        vm.DiffLine.ItLine.Quantity  = sw.Quantity;
+                        vm.DiffLine.ItLine.Quantity = sw.Quantity;
                         vm.DiffLine.ItLine.Reference = sw.Reference;
-                        vm.DiffLine.ItLine.Note      = sw.Note;
+                        vm.DiffLine.ItLine.Note = sw.Note;
                     }
 
                     // Clear the checkbox before flipping State to Match: the IsChecked setter
                     // guards on CanCheck, which is derived from State. Once State == Match the
                     // guard would silently swallow the clear and leave the row visibly checked.
-                    vm.IsChecked      = false;
+                    vm.IsChecked = false;
                     vm.DiffLine.State = BomDiffState.Match;
                     vm.NotifyStateChanged();
                 }
@@ -276,7 +276,7 @@ namespace SwInventreeAddin.UI
                 var parts = new List<string>();
                 if (created > 0) parts.Add($"{created} created");
                 if (updated > 0) parts.Add($"{updated} updated");
-                if (failed  > 0) parts.Add($"{failed} failed ({string.Join(", ", failedIpns)})");
+                if (failed > 0) parts.Add($"{failed} failed ({string.Join(", ", failedIpns)})");
                 StatusText = parts.Count > 0 ? string.Join(", ", parts) : "No changes pushed";
             });
 
@@ -288,7 +288,7 @@ namespace SwInventreeAddin.UI
                 SortAscending = !SortAscending;
             else
             {
-                SortColumn    = columnName;
+                SortColumn = columnName;
                 SortAscending = true;
             }
             ApplySort();
@@ -305,7 +305,7 @@ namespace SwInventreeAddin.UI
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            var tasks   = toFetch.Select(ipn => _client.GetPartsByIpnAsync(ipn).ContinueWith(
+            var tasks = toFetch.Select(ipn => _client.GetPartsByIpnAsync(ipn).ContinueWith(
                 t => (ipn, parts: t.Result), TaskContinuationOptions.ExecuteSynchronously));
             var results = await Task.WhenAll(tasks).ConfigureAwait(false);
 
@@ -338,21 +338,21 @@ namespace SwInventreeAddin.UI
 
             Func<BomDiffLineViewModel, string> key = SortColumn switch
             {
-                "State"  => l => l.StateLabel,
-                "IPN"    => l => l.DisplayIpn,
-                "SwQty"  => l => l.SwQty,
-                "SwRef"  => l => l.SwReference,
+                "State" => l => l.StateLabel,
+                "IPN" => l => l.DisplayIpn,
+                "SwQty" => l => l.SwQty,
+                "SwRef" => l => l.SwReference,
                 "SwNote" => l => l.SwNote,
-                "ItQty"  => l => l.ItQty,
-                "ItRef"  => l => l.ItReference,
+                "ItQty" => l => l.ItQty,
+                "ItRef" => l => l.ItReference,
                 "ItNote" => l => l.ItNote,
-                "Cons"   => l => l.ItConsumable.ToString(),
-                "Opt"    => l => l.ItOptional.ToString(),
-                _        => l => l.DisplayIpn,
+                "Cons" => l => l.ItConsumable.ToString(),
+                "Opt" => l => l.ItOptional.ToString(),
+                _ => l => l.DisplayIpn,
             };
 
-            var normal   = Lines.Where(l => !l.IsProblemState).ToList();
-            var problems = Lines.Where(l =>  l.IsProblemState).ToList();
+            var normal = Lines.Where(l => !l.IsProblemState).ToList();
+            var problems = Lines.Where(l => l.IsProblemState).ToList();
 
             var sorted = SortAscending
                 ? normal.OrderBy(key, StringComparer.OrdinalIgnoreCase).ToList()

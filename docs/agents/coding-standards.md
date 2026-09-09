@@ -24,7 +24,7 @@ The `dotnet build` commands below produce the SolidWorks-facing `bin\Debug\net48
 Build: `dotnet build "SwInventreeAddin/SwInventreeAddin.csproj" --disable-build-servers` — builds just the add-in project.
 Solution build: `dotnet build "Solidworks Inventree Add-In.sln" --disable-build-servers` — builds the full solution, including the test project.
 
-Check: (none — no separate lint step)
+Check: `dotnet format "Solidworks Inventree Add-In.sln" --verify-no-changes` — enforces the root `.editorconfig`; CI runs it on every push. `Microsoft.CodeAnalysis.NetAnalyzers` warnings surface inside `dotnet test` / `dotnet build`.
 
 Notes:
 - All commands above use `--disable-build-servers` and `UseSharedCompilation=false` in `Directory.Build.props` to stop long-running `dotnet` and `VBCSCompiler` processes from holding file locks.
@@ -123,7 +123,7 @@ For the shared vocabulary, design-it-twice patterns, and deepening guidance, con
 - **`Set<T>` for all `INotifyPropertyChanged` properties.** Use the `Set(ref _field, value)` helper rather than calling `PropertyChanged` directly. Computed properties (no backing field) fire `PropertyChanged` explicitly from the setters of their dependencies.
 - **Batch data-bound collection updates.** When updating a data-bound `ObservableCollection`, update items in place or raise a single `Reset` notification rather than calling `Clear()` followed by multiple `Add()` calls. Each `Clear`/`Add` raises a separate `CollectionChanged` event and triggers a WPF layout pass; during a host repaint callback (e.g. a SolidWorks view notification), re-entrant layout can crash the host process.
 - **Section separator comments.** Use `// ── Section name ─────` dividers to separate logical sections within a class (Dependencies, Bindable properties, State, Constructors, Commands, Behaviour, Helpers). Match the existing style exactly.
-- **Column-aligned field declarations.** Private field blocks align types and names vertically with spaces (not tabs). Match the surrounding alignment when adding new fields.
+- **No column-aligned declarations.** `dotnet format` enforces single-space layout — do not hand-align columns; the verify step in CI rejects it.
 - **Domain terminology.** Use terms from `CONTEXT.md`: IPN (not part number), Fetch (not load/pull), Apply (InvenTree → SW), Push (SW → InvenTree), Task Pane (not sidebar/panel). Use these in identifiers, comments, and status strings.
 
 ---

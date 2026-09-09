@@ -40,12 +40,12 @@ namespace SwInventreeAddin.UI
         // ── Dependencies and original state ────────────────────────────────────
 
         private readonly IPropertyMappingProvider _provider;
-        private          PropertyMappingConfig    _original;
-        private          PropertyMappingConfig    _draft;
-        private readonly MappingResult            _result;
+        private PropertyMappingConfig _original;
+        private PropertyMappingConfig _draft;
+        private readonly MappingResult _result;
 
-        private          string?                    _errorMessage;
-        private          string?                    _warningMessage;
+        private string? _errorMessage;
+        private string? _warningMessage;
 
         // ── Defaults ───────────────────────────────────────────────────────────
 
@@ -62,9 +62,9 @@ namespace SwInventreeAddin.UI
         public MappingEditorViewModel(IPropertyMappingProvider provider)
         {
             _provider = provider;
-            _result   = _provider.GetMappingResult();
+            _result = _provider.GetMappingResult();
             _original = _result.Config.Clone();
-            _draft    = _original.Clone();
+            _draft = _original.Clone();
             UpdateBomAliasWarning();
         }
 
@@ -72,14 +72,14 @@ namespace SwInventreeAddin.UI
 
         public string IpnProperty
         {
-            get => _draft.IpnProperty         ?? string.Empty;
-            set => SetDraftString(v => _draft.IpnProperty         = v, () => _draft.IpnProperty,         value);
+            get => _draft.IpnProperty ?? string.Empty;
+            set => SetDraftString(v => _draft.IpnProperty = v, () => _draft.IpnProperty, value);
         }
 
         public string NameProperty
         {
-            get => _draft.NameProperty        ?? string.Empty;
-            set => SetDraftString(v => _draft.NameProperty        = v, () => _draft.NameProperty,        value);
+            get => _draft.NameProperty ?? string.Empty;
+            set => SetDraftString(v => _draft.NameProperty = v, () => _draft.NameProperty, value);
         }
 
         public string DescriptionProperty
@@ -90,25 +90,25 @@ namespace SwInventreeAddin.UI
 
         public string RevisionProperty
         {
-            get => _draft.RevisionProperty    ?? string.Empty;
-            set => SetDraftString(v => _draft.RevisionProperty    = v, () => _draft.RevisionProperty,    value);
+            get => _draft.RevisionProperty ?? string.Empty;
+            set => SetDraftString(v => _draft.RevisionProperty = v, () => _draft.RevisionProperty, value);
         }
 
         public string NotesProperty
         {
-            get => _draft.NotesProperty       ?? string.Empty;
-            set => SetDraftString(v => _draft.NotesProperty       = v, () => _draft.NotesProperty,       value);
+            get => _draft.NotesProperty ?? string.Empty;
+            set => SetDraftString(v => _draft.NotesProperty = v, () => _draft.NotesProperty, value);
         }
 
         public string PkProperty
         {
-            get => _draft.PkProperty          ?? string.Empty;
-            set => SetDraftString(v => _draft.PkProperty          = v, () => _draft.PkProperty,          value);
+            get => _draft.PkProperty ?? string.Empty;
+            set => SetDraftString(v => _draft.PkProperty = v, () => _draft.PkProperty, value);
         }
 
         public string BomColumnIpn
         {
-            get => _draft.BomColumnIpn        ?? string.Empty;
+            get => _draft.BomColumnIpn ?? string.Empty;
             set
             {
                 SetDraftString(v => _draft.BomColumnIpn = v, () => _draft.BomColumnIpn, value);
@@ -118,7 +118,7 @@ namespace SwInventreeAddin.UI
 
         public string BomColumnQty
         {
-            get => _draft.BomColumnQty        ?? string.Empty;
+            get => _draft.BomColumnQty ?? string.Empty;
             set
             {
                 SetDraftString(v => _draft.BomColumnQty = v, () => _draft.BomColumnQty, value);
@@ -128,27 +128,27 @@ namespace SwInventreeAddin.UI
 
         public string BomColumnReference
         {
-            get => _draft.BomColumnReference  ?? string.Empty;
-            set => SetDraftString(v => _draft.BomColumnReference  = v, () => _draft.BomColumnReference,  value);
+            get => _draft.BomColumnReference ?? string.Empty;
+            set => SetDraftString(v => _draft.BomColumnReference = v, () => _draft.BomColumnReference, value);
         }
 
         public string BomColumnNote
         {
-            get => _draft.BomColumnNote       ?? string.Empty;
-            set => SetDraftString(v => _draft.BomColumnNote       = v, () => _draft.BomColumnNote,       value);
+            get => _draft.BomColumnNote ?? string.Empty;
+            set => SetDraftString(v => _draft.BomColumnNote = v, () => _draft.BomColumnNote, value);
         }
 
-        public string IpnPlaceholder         => DefaultConfig().IpnProperty!;
-        public string NamePlaceholder        => DefaultConfig().NameProperty!;
+        public string IpnPlaceholder => DefaultConfig().IpnProperty!;
+        public string NamePlaceholder => DefaultConfig().NameProperty!;
         public string DescriptionPlaceholder => DefaultConfig().DescriptionProperty!;
-        public string RevisionPlaceholder    => DefaultConfig().RevisionProperty!;
-        public string NotesPlaceholder       => DefaultConfig().NotesProperty!;
-        public string PkPlaceholder          => DefaultConfig().PkProperty!;
+        public string RevisionPlaceholder => DefaultConfig().RevisionProperty!;
+        public string NotesPlaceholder => DefaultConfig().NotesProperty!;
+        public string PkPlaceholder => DefaultConfig().PkProperty!;
 
-        public string BomColumnIpnPlaceholder       => DefaultConfig().BomColumnIpn!;
-        public string BomColumnQtyPlaceholder       => DefaultConfig().BomColumnQty!;
+        public string BomColumnIpnPlaceholder => DefaultConfig().BomColumnIpn!;
+        public string BomColumnQtyPlaceholder => DefaultConfig().BomColumnQty!;
         public string BomColumnReferencePlaceholder => DefaultConfig().BomColumnReference!;
-        public string BomColumnNotePlaceholder      => DefaultConfig().BomColumnNote!;
+        public string BomColumnNotePlaceholder => DefaultConfig().BomColumnNote!;
 
         public string? ErrorMessage
         {
@@ -207,7 +207,7 @@ namespace SwInventreeAddin.UI
             {
                 _provider.SaveMapping(draft);
                 _original = draft.Clone();
-                _draft    = _original.Clone();
+                _draft = _original.Clone();
                 UpdateBomAliasWarning();
                 return true;
             }
@@ -301,8 +301,8 @@ namespace SwInventreeAddin.UI
 
             var aliasList = string.Join(" and ", missing);
             var valueList = string.Join(" or ", missing);
-            var verb      = missing.Count == 1 ? "is" : "are";
-            var pronoun   = missing.Count == 1 ? "it is" : "they are";
+            var verb = missing.Count == 1 ? "is" : "are";
+            var pronoun = missing.Count == 1 ? "it is" : "they are";
             var aliasWord = missing.Count == 1 ? "Alias" : "Aliases";
 
             return $"The {aliasList} BOM Column {aliasWord} {verb} blank. "

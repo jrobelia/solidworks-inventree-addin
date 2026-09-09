@@ -13,17 +13,17 @@ namespace SwInventreeAddin.UI
     /// </summary>
     public partial class SettingsWindow : Window
     {
-        private readonly IConfigProvider            _configProvider;
-        private readonly ISettingsApplyService      _settingsApplyService;
-        private readonly IVersionInfo               _versionInfo;
-        private readonly IMappingProviderFactory    _mappingProviderFactory;
-        private          IPropertyMappingProvider   _mappingProvider;
+        private readonly IConfigProvider _configProvider;
+        private readonly ISettingsApplyService _settingsApplyService;
+        private readonly IVersionInfo _versionInfo;
+        private readonly IMappingProviderFactory _mappingProviderFactory;
+        private IPropertyMappingProvider _mappingProvider;
 
         private (string Url, string ApiKey, string Username, string Password,
                  string SharedPath, string BomKeyword, bool UseLocalMapping) _savedSnapshot;
-        private          bool                       _savedWaitForServerAssignedIpn = true;
-        private          MappingChangedSubscription? _mappingChangedSubscription;
-        private          string?                    _mappingStatusDetail;
+        private readonly bool _savedWaitForServerAssignedIpn = true;
+        private MappingChangedSubscription? _mappingChangedSubscription;
+        private string? _mappingStatusDetail;
 
         /// <summary>
         /// Raised after Apply successfully saves settings, so the caller can update
@@ -37,23 +37,23 @@ namespace SwInventreeAddin.UI
                                 ISettingsApplyService settingsApplyService,
                                 IMappingProviderFactory mappingProviderFactory)
         {
-            _configProvider         = configProvider;
-            _mappingProvider        = mappingProvider;
-            _versionInfo            = versionInfo;
-            _settingsApplyService   = settingsApplyService;
+            _configProvider = configProvider;
+            _mappingProvider = mappingProvider;
+            _versionInfo = versionInfo;
+            _settingsApplyService = settingsApplyService;
             _mappingProviderFactory = mappingProviderFactory;
-            DataContext             = _versionInfo;
+            DataContext = _versionInfo;
 
             InitializeComponent();
 
-            UrlBox.TextChanged          += (_, __) => RefreshButtonStates();
-            UsernameBox.TextChanged     += (_, __) => RefreshButtonStates();
+            UrlBox.TextChanged += (_, __) => RefreshButtonStates();
+            UsernameBox.TextChanged += (_, __) => RefreshButtonStates();
             PasswordBox.PasswordChanged += (_, __) => RefreshButtonStates();
-            ApiBox.TextChanged          += (_, __) => RefreshButtonStates();
-            SharedPathBox.TextChanged   += (_, __) => RefreshButtonStates();
-            BomKeywordBox.TextChanged   += (_, __) => RefreshButtonStates();
-            LocalRadio.Checked          += (_, __) => RefreshButtonStates();
-            SharedRadio.Checked         += (_, __) => RefreshButtonStates();
+            ApiBox.TextChanged += (_, __) => RefreshButtonStates();
+            SharedPathBox.TextChanged += (_, __) => RefreshButtonStates();
+            BomKeywordBox.TextChanged += (_, __) => RefreshButtonStates();
+            LocalRadio.Checked += (_, __) => RefreshButtonStates();
+            SharedRadio.Checked += (_, __) => RefreshButtonStates();
 
             WindowCentering.Attach(this, SolidWorksWindowHandle.Get());
 
@@ -63,7 +63,7 @@ namespace SwInventreeAddin.UI
                 var config = _configProvider.GetServerConfig();
                 if (config != null)
                 {
-                    UrlBox.Text = config.Url    ?? string.Empty;
+                    UrlBox.Text = config.Url ?? string.Empty;
                     ApiBox.Text = config.ApiKey ?? string.Empty;
 
                     if (!string.IsNullOrEmpty(config.MappingSourcePath))
@@ -95,9 +95,9 @@ namespace SwInventreeAddin.UI
 
         private void RefreshButtonStates()
         {
-            bool isDirty          = CaptureSnapshot() != _savedSnapshot;
+            bool isDirty = CaptureSnapshot() != _savedSnapshot;
             ApplyButton.IsEnabled = isDirty;
-            SaveButton.IsEnabled  = isDirty;
+            SaveButton.IsEnabled = isDirty;
             CancelButtonText.Text = isDirty ? "Cancel" : "Close";
         }
 
@@ -129,9 +129,9 @@ namespace SwInventreeAddin.UI
         {
             var dlg = new OpenFileDialog
             {
-                Title            = "Select shared mapping file",
-                Filter           = "JSON files (*.json)|*.json|All files (*.*)|*.*",
-                CheckFileExists  = true,
+                Title = "Select shared mapping file",
+                Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+                CheckFileExists = true,
             };
 
             if (!string.IsNullOrEmpty(SharedPathBox.Text))
@@ -168,20 +168,20 @@ namespace SwInventreeAddin.UI
                 var config = TryGetConfig();
                 bool hasSharedPath = config != null && !string.IsNullOrEmpty(config.MappingSourcePath);
                 SharedRadio.IsChecked = hasSharedPath;
-                LocalRadio.IsChecked  = !hasSharedPath;
+                LocalRadio.IsChecked = !hasSharedPath;
 
                 var stripeSeverity = result.Health switch
                 {
-                    MappingHealth.Healthy      => StatusSeverity.Success,
+                    MappingHealth.Healthy => StatusSeverity.Success,
                     MappingHealth.NeedsUpgrade => StatusSeverity.Warning,
-                    MappingHealth.NewerSchema  => StatusSeverity.Warning,
-                    _                          => StatusSeverity.Error,
+                    MappingHealth.NewerSchema => StatusSeverity.Warning,
+                    _ => StatusSeverity.Error,
                 };
 
                 MappingStatusStripe.Background = StatusSeverityToBrush(this, stripeSeverity);
-                _mappingStatusDetail           = result.FullStatusMessage;
-                MappingStatusText.Text         = _mappingStatusDetail;
-                MappingStatusText.ToolTip      = _mappingStatusDetail;
+                _mappingStatusDetail = result.FullStatusMessage;
+                MappingStatusText.Text = _mappingStatusDetail;
+                MappingStatusText.ToolTip = _mappingStatusDetail;
                 return true;
             }
             catch (InvalidOperationException ex)
@@ -208,17 +208,17 @@ namespace SwInventreeAddin.UI
                                            PropertyMappingConfig.WithDefaults(),
                                            detail);
 
-            EditMappingsButton.IsEnabled   = false;
+            EditMappingsButton.IsEnabled = false;
             MappingStatusStripe.Background = StatusSeverityToBrush(this, StatusSeverity.Error);
-            _mappingStatusDetail           = result.FullStatusMessage;
-            MappingStatusText.Text         = _mappingStatusDetail;
-            MappingStatusText.ToolTip      = _mappingStatusDetail;
+            _mappingStatusDetail = result.FullStatusMessage;
+            MappingStatusText.Text = _mappingStatusDetail;
+            MappingStatusText.ToolTip = _mappingStatusDetail;
             return false;
         }
 
         private ServerConfig? TryGetConfig()
         {
-            try   { return _configProvider.GetServerConfig(); }
+            try { return _configProvider.GetServerConfig(); }
             catch { return null; }
         }
 
@@ -235,12 +235,12 @@ namespace SwInventreeAddin.UI
 
             return new SettingsApplyInput
             {
-                Url                   = UrlBox.Text.Trim(),
-                Username              = UsernameBox.Text.Trim(),
-                Password              = PasswordBox.Password,
-                RawApiKey             = ApiBox.Text.Trim(),
-                SharedMappingPath        = sharedPath,
-                BomKeyword               = BomKeywordBox.Text,
+                Url = UrlBox.Text.Trim(),
+                Username = UsernameBox.Text.Trim(),
+                Password = PasswordBox.Password,
+                RawApiKey = ApiBox.Text.Trim(),
+                SharedMappingPath = sharedPath,
+                BomKeyword = BomKeywordBox.Text,
                 WaitForServerAssignedIpn = _savedWaitForServerAssignedIpn,
             };
         }
@@ -287,7 +287,7 @@ namespace SwInventreeAddin.UI
                 var previousProvider = _mappingProvider;
                 _mappingProvider = _mappingProviderFactory.Create(input.SharedMappingPath);
 
-                bool mappingOk   = this.Dispatcher.Invoke(() => RefreshMappingStatus());
+                bool mappingOk = this.Dispatcher.Invoke(() => RefreshMappingStatus());
 
                 this.Dispatcher.Invoke(() =>
                 {
@@ -393,14 +393,14 @@ namespace SwInventreeAddin.UI
             {
                 StatusSeverity.Success => "BrushStatusSuccess",
                 StatusSeverity.Warning => "BrushStatusWarning",
-                StatusSeverity.Error   => "BrushStatusError",
-                _                      => "BrushStatusNone",
+                StatusSeverity.Error => "BrushStatusError",
+                _ => "BrushStatusNone",
             });
 
         private void SetStatusBar(System.Windows.Controls.TextBox textBox, System.Windows.Controls.Border stripe,
                                   string text, StatusSeverity severity)
         {
-            textBox.Text    = text;
+            textBox.Text = text;
             textBox.ToolTip = string.IsNullOrEmpty(text) ? null : text;
             stripe.Background = StatusSeverityToBrush(this, severity);
         }

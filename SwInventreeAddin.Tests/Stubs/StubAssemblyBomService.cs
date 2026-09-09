@@ -8,9 +8,9 @@ namespace SwInventreeAddin.Tests.Stubs
 {
     public class StubAssemblyBomService : IAssemblyBomService
     {
-        public bool HasBomTableResult        { get; set; } = true;
+        public bool HasBomTableResult { get; set; } = true;
         public List<SwBomLine> LinesToReturn { get; set; } = new List<SwBomLine>();
-        public bool ThrowOnGetBomLines       { get; set; }
+        public bool ThrowOnGetBomLines { get; set; }
         public PropertyMappingConfig? ReceivedMapping { get; private set; }
         public string? LastKeywordUsed { get; private set; }
 

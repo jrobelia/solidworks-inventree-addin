@@ -31,9 +31,24 @@ Process tickets in frontier order.
 
 See `docs/agents/pr-conventions.md` for branch naming, PR body sections, draft-PR rules, and the milestone-branch auto-close rule.
 
-## Agent verification
+## Format and test commands
 
 Run the agent verification command from `docs/agents/coding-standards.md` `## Build & Test Commands`.
+
+`dotnet format` runs before the first commit and again before the PR. Before the first commit it targets uncommitted changed C# files:
+
+```powershell
+$files = (git diff --name-only --diff-filter=AM HEAD) + (git ls-files --others --exclude-standard) |
+         Where-Object { $_ -like '*.cs' }
+if ($files) {
+    $include = foreach ($f in $files) { "--include"; $f }
+    dotnet format "Solidworks Inventree Add-In.sln" @include
+}
+```
+
+Before the PR, run the same command with the branch's changed C# files as the `--include` list (`git diff --name-only <PARENT_BRANCH>...HEAD -- *.cs`). If `dotnet format` changed any files, re-run the agent verification command and commit the result before pushing.
+
+If `dotnet format` is not available, continue and note it in the PR.
 
 ## Review calls
 

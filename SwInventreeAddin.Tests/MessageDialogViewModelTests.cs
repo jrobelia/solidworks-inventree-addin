@@ -170,12 +170,12 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        [TestCase(MessageBoxIcon.Warning,     MessageDialogIconKind.Warning)]
-        [TestCase(MessageBoxIcon.Error,       MessageDialogIconKind.Error)]
-        [TestCase(MessageBoxIcon.Stop,        MessageDialogIconKind.Error)]
-        [TestCase(MessageBoxIcon.Question,    MessageDialogIconKind.Question)]
+        [TestCase(MessageBoxIcon.Warning, MessageDialogIconKind.Warning)]
+        [TestCase(MessageBoxIcon.Error, MessageDialogIconKind.Error)]
+        [TestCase(MessageBoxIcon.Stop, MessageDialogIconKind.Error)]
+        [TestCase(MessageBoxIcon.Question, MessageDialogIconKind.Question)]
         [TestCase(MessageBoxIcon.Information, MessageDialogIconKind.Information)]
-        [TestCase(MessageBoxIcon.None,        MessageDialogIconKind.None)]
+        [TestCase(MessageBoxIcon.None, MessageDialogIconKind.None)]
         public void IconKind_MapsFromMessageBoxIcon(MessageBoxIcon icon, MessageDialogIconKind expected)
         {
             var vm = CreateVm(icon: icon);

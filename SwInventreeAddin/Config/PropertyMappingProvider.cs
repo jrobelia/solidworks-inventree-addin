@@ -21,7 +21,7 @@ namespace SwInventreeAddin.Config
     /// </summary>
     public class PropertyMappingProvider : IPropertyMappingProvider
     {
-        private readonly string  _localPath;
+        private readonly string _localPath;
         private readonly string? _sourcePath;
         private readonly JsonSerializerOptions _saveOptions;
         private MappingHealth? _lastHealth;
@@ -33,7 +33,7 @@ namespace SwInventreeAddin.Config
         /// <summary>Explicit paths — used by tests to avoid touching APPDATA.</summary>
         public PropertyMappingProvider(string localPath, string? sourcePath)
         {
-            _localPath  = localPath;
+            _localPath = localPath;
             _sourcePath = sourcePath;
             _saveOptions = new JsonSerializerOptions
             {
@@ -69,9 +69,9 @@ namespace SwInventreeAddin.Config
         /// <inheritdoc/>
         public MappingResult GetMappingResult()
         {
-            var result   = ReadMappingResult();
+            var result = ReadMappingResult();
             var previous = _lastHealth;
-            _lastHealth  = result.Health;
+            _lastHealth = result.Health;
 
             if (previous.HasValue && previous.Value != result.Health)
                 MappingChanged?.Invoke(this, EventArgs.Empty);
@@ -182,7 +182,7 @@ namespace SwInventreeAddin.Config
 
             try
             {
-                var json   = File.ReadAllText(path, Encoding.UTF8);
+                var json = File.ReadAllText(path, Encoding.UTF8);
                 var config = JsonSerializer.Deserialize<PropertyMappingConfig>(json)
                     ?? new PropertyMappingConfig();
 
@@ -247,7 +247,7 @@ namespace SwInventreeAddin.Config
 
         private static int? CompareSchemaVersions(string? fileVersion, string currentVersion)
         {
-            var fileVer    = TryParseSchemaVersion(fileVersion);
+            var fileVer = TryParseSchemaVersion(fileVersion);
             var currentVer = TryParseSchemaVersion(currentVersion);
 
             if (fileVer == null || currentVer == null)
@@ -296,12 +296,12 @@ namespace SwInventreeAddin.Config
                 roles.Add(role);
             }
 
-            Add(config.IpnProperty,        "IPN");
-            Add(config.NameProperty,       "Name");
-            Add(config.NotesProperty,      "Notes");
-            Add(config.RevisionProperty,   "Revision");
-            Add(config.DescriptionProperty,"Description");
-            Add(config.PkProperty,         "InvenTree Part PK");
+            Add(config.IpnProperty, "IPN");
+            Add(config.NameProperty, "Name");
+            Add(config.NotesProperty, "Notes");
+            Add(config.RevisionProperty, "Revision");
+            Add(config.DescriptionProperty, "Description");
+            Add(config.PkProperty, "InvenTree Part PK");
 
             foreach (var kvp in map)
             {

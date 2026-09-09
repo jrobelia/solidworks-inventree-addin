@@ -30,18 +30,18 @@ namespace SwInventreeAddin.Tests
                 Config = new PropertyMappingConfig
                 {
                     SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion,
-                    IpnProperty   = "MyIPN",
-                    NameProperty  = "MyName",
-                    BomColumnIpn  = "IPN, PartNo",
+                    IpnProperty = "MyIPN",
+                    NameProperty = "MyName",
+                    BomColumnIpn = "IPN, PartNo",
                 }
             };
 
             var vm = CreateVm(provider);
 
-            Assert.That(vm.IpnProperty,       Is.EqualTo("MyIPN"));
-            Assert.That(vm.NameProperty,      Is.EqualTo("MyName"));
-            Assert.That(vm.BomColumnIpn,      Is.EqualTo("IPN, PartNo"));
-            Assert.That(vm.BomColumnQty,      Is.EqualTo(string.Empty));
+            Assert.That(vm.IpnProperty, Is.EqualTo("MyIPN"));
+            Assert.That(vm.NameProperty, Is.EqualTo("MyName"));
+            Assert.That(vm.BomColumnIpn, Is.EqualTo("IPN, PartNo"));
+            Assert.That(vm.BomColumnQty, Is.EqualTo(string.Empty));
             Assert.That(vm.BomColumnIpnPlaceholder, Is.EqualTo("IPN, Part IPN, Internal Part Number, Part Number"));
         }
 
@@ -53,26 +53,26 @@ namespace SwInventreeAddin.Tests
                 Config = new PropertyMappingConfig
                 {
                     SchemaVersion = "2",
-                    IpnProperty   = "PartNo",
-                    NameProperty  = "Description",
+                    IpnProperty = "PartNo",
+                    NameProperty = "Description",
                     NotesProperty = "Notes",
                     RevisionProperty = "Revision",
                     DescriptionProperty = "Description Long",
-                    PkProperty    = "InvenTree PK",
+                    PkProperty = "InvenTree PK",
                 }
             };
 
             var vm = CreateVm(provider);
 
-            Assert.That(vm.BomColumnIpn,        Is.EqualTo(string.Empty));
-            Assert.That(vm.BomColumnQty,        Is.EqualTo(string.Empty));
-            Assert.That(vm.BomColumnReference,  Is.EqualTo(string.Empty));
-            Assert.That(vm.BomColumnNote,       Is.EqualTo(string.Empty));
+            Assert.That(vm.BomColumnIpn, Is.EqualTo(string.Empty));
+            Assert.That(vm.BomColumnQty, Is.EqualTo(string.Empty));
+            Assert.That(vm.BomColumnReference, Is.EqualTo(string.Empty));
+            Assert.That(vm.BomColumnNote, Is.EqualTo(string.Empty));
 
-            Assert.That(vm.BomColumnIpnPlaceholder,       Is.EqualTo("IPN, Part IPN, Internal Part Number, Part Number"));
-            Assert.That(vm.BomColumnQtyPlaceholder,       Is.EqualTo("Qty, Quantity"));
+            Assert.That(vm.BomColumnIpnPlaceholder, Is.EqualTo("IPN, Part IPN, Internal Part Number, Part Number"));
+            Assert.That(vm.BomColumnQtyPlaceholder, Is.EqualTo("Qty, Quantity"));
             Assert.That(vm.BomColumnReferencePlaceholder, Is.EqualTo("Reference"));
-            Assert.That(vm.BomColumnNotePlaceholder,      Is.EqualTo("Note, Notes"));
+            Assert.That(vm.BomColumnNotePlaceholder, Is.EqualTo("Note, Notes"));
         }
 
         // ── Draft and revert ───────────────────────────────────────────────────
@@ -383,8 +383,8 @@ namespace SwInventreeAddin.Tests
         {
             var provider = ValidProvider();
             var vm = CreateVm(provider);
-            vm.BomColumnIpn  = "IPN";
-            vm.BomColumnQty  = "IPN";
+            vm.BomColumnIpn = "IPN";
+            vm.BomColumnQty = "IPN";
 
             var saved = vm.Save();
 
@@ -414,22 +414,22 @@ namespace SwInventreeAddin.Tests
         public void Save_PreservesUnknownTopLevelJsonKeys()
         {
             var futureDoc = JsonDocument.Parse("\"future-value\"");
-            var intDoc    = JsonDocument.Parse("42");
+            var intDoc = JsonDocument.Parse("42");
 
             var provider = new StubPropertyMappingProvider
             {
                 Config = new PropertyMappingConfig
                 {
-                    SchemaVersion       = PropertyMappingConfig.CurrentSchemaVersion,
-                    IpnProperty         = "PartNo",
-                    BomColumnIpn        = "IPN",
-                    BomColumnQty        = "Qty",
-                    BomColumnReference  = "Reference",
-                    BomColumnNote       = "Note",
-                    ExtensionData       = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase)
+                    SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion,
+                    IpnProperty = "PartNo",
+                    BomColumnIpn = "IPN",
+                    BomColumnQty = "Qty",
+                    BomColumnReference = "Reference",
+                    BomColumnNote = "Note",
+                    ExtensionData = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase)
                     {
                         ["UnknownFutureKey"] = futureDoc.RootElement,
-                        ["AnotherUnknown"]   = intDoc.RootElement,
+                        ["AnotherUnknown"] = intDoc.RootElement,
                     }
                 }
             };

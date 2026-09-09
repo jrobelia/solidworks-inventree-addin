@@ -35,7 +35,7 @@ namespace SwInventreeAddin.Tests
     [TestFixture]
     public class InventreeTokenServiceTests
     {
-        private const string BaseUrl  = "https://inventree.example.com";
+        private const string BaseUrl = "https://inventree.example.com";
         private const string Username = "engineer";
         private const string Password = "correct-password";
 

@@ -107,9 +107,9 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task ApplySettingsAsync_WhenSuccessful_SetsAppliedStatusAndFiresMappingApplied()
         {
-            var applyService    = new StubSettingsApplyService();
+            var applyService = new StubSettingsApplyService();
             var mappingProvider = new StubPropertyMappingProvider();
-            var window          = CreateWindow(applyService: applyService, mappingProvider: mappingProvider);
+            var window = CreateWindow(applyService: applyService, mappingProvider: mappingProvider);
 
             IPropertyMappingProvider? firedProvider = null;
             window.MappingApplied += (s, e) => firedProvider = e;
@@ -396,7 +396,7 @@ namespace SwInventreeAddin.Tests
         {
             var element = System.Windows.LogicalTreeHelper.FindLogicalNode(window, name);
             var textBlock = element as TextBlock;
-            var textBox   = element as TextBox;
+            var textBox = element as TextBox;
             Assert.That(textBlock ?? (object?)textBox, Is.Not.Null, $"Could not find TextBlock or TextBox named '{name}'.");
             return textBlock?.Text ?? textBox?.Text ?? string.Empty;
         }
@@ -415,15 +415,15 @@ namespace SwInventreeAddin.Tests
             IMappingProviderFactory? mappingProviderFactory = null,
             IConfigProvider? configProvider = null)
         {
-            mappingProvider        ??= new StubPropertyMappingProvider();
-            applyService           ??= new StubSettingsApplyService();
+            mappingProvider ??= new StubPropertyMappingProvider();
+            applyService ??= new StubSettingsApplyService();
             mappingProviderFactory ??= new StubMappingProviderFactory
             {
                 Factory = _ => mappingProvider,
             };
-            configProvider         ??= new StubConfigProvider("https://example.com", "stub-key");
+            configProvider ??= new StubConfigProvider("https://example.com", "stub-key");
 
-            var versionInfo    = new StubVersionInfo();
+            var versionInfo = new StubVersionInfo();
 
             return new SettingsWindow(
                 configProvider,

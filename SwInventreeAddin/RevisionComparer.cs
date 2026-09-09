@@ -117,7 +117,7 @@ namespace SwInventreeAddin
         private static bool TryParseAlpha(string s, out string letters, out int number)
         {
             letters = string.Empty;
-            number  = 0;
+            number = 0;
             var m = AlphaNumeric.Match(s);
             if (!m.Success) return false;
             letters = m.Groups[1].Value.ToUpperInvariant();

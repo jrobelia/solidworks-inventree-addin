@@ -52,16 +52,16 @@ namespace SwInventreeAddin.UI
             {
                 StatusSeverity.Success => "BrushStatusSuccess",
                 StatusSeverity.Warning => "BrushStatusWarning",
-                StatusSeverity.Error   => "BrushStatusError",
-                _                      => "BrushStatusNone",
+                StatusSeverity.Error => "BrushStatusError",
+                _ => "BrushStatusNone",
             };
 
             var iconGlyph = _vm.StatusSeverity switch
             {
                 StatusSeverity.Success => "\uE73E",
                 StatusSeverity.Warning => "\uE7BA",
-                StatusSeverity.Error   => "\uE783",
-                _                      => "",
+                StatusSeverity.Error => "\uE783",
+                _ => "",
             };
 
             var brush = (Brush)FindResource(brushKey);
@@ -69,7 +69,7 @@ namespace SwInventreeAddin.UI
 
             if (StatusIcon != null)
             {
-                StatusIcon.Text       = iconGlyph;
+                StatusIcon.Text = iconGlyph;
                 StatusIcon.Foreground = brush;
                 StatusIcon.Visibility = iconGlyph.Length > 0
                     ? Visibility.Visible

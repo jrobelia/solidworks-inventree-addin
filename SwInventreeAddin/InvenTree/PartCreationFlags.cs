@@ -7,12 +7,12 @@ namespace SwInventreeAddin.InvenTree
     /// </summary>
     public class PartCreationFlags
     {
-        public bool Assembly                   { get; set; }
-        public bool Component                  { get; set; }
-        public bool Purchaseable               { get; set; }
-        public bool Salable                    { get; set; }
-        public bool Trackable                  { get; set; }
-        public bool Testable                   { get; set; }
-        public bool CopyCategoryParameters     { get; set; }
+        public bool Assembly { get; set; }
+        public bool Component { get; set; }
+        public bool Purchaseable { get; set; }
+        public bool Salable { get; set; }
+        public bool Trackable { get; set; }
+        public bool Testable { get; set; }
+        public bool CopyCategoryParameters { get; set; }
     }
 }

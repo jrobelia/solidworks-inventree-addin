@@ -27,10 +27,10 @@ namespace SwInventreeAddin.UI
         /// <summary>True when an icon should be shown next to the message.</summary>
         public bool IsIconVisible => IconKind != MessageDialogIconKind.None;
 
-        public bool IsOkVisible     { get; }
+        public bool IsOkVisible { get; }
         public bool IsCancelVisible { get; }
-        public bool IsYesVisible    { get; }
-        public bool IsNoVisible     { get; }
+        public bool IsYesVisible { get; }
+        public bool IsNoVisible { get; }
 
         // ── State ─────────────────────────────────────────────────────────────
 
@@ -57,7 +57,7 @@ namespace SwInventreeAddin.UI
             System.Windows.Forms.MessageBoxButtons buttons,
             System.Windows.Forms.MessageBoxIcon icon)
         {
-            Title   = title   ?? throw new ArgumentNullException(nameof(title));
+            Title = title ?? throw new ArgumentNullException(nameof(title));
             Message = message ?? throw new ArgumentNullException(nameof(message));
 
             // Only the button sets the MessageDialog helpers can produce are
@@ -85,16 +85,16 @@ namespace SwInventreeAddin.UI
         // ── Commands ──────────────────────────────────────────────────────────
 
         /// <summary>Records Ok and asks the window to close.</summary>
-        public void ClickOk()     => SetResultAndClose(MessageDialogResult.Ok);
+        public void ClickOk() => SetResultAndClose(MessageDialogResult.Ok);
 
         /// <summary>Records Cancel and asks the window to close.</summary>
         public void ClickCancel() => SetResultAndClose(MessageDialogResult.Cancel);
 
         /// <summary>Records Yes and asks the window to close.</summary>
-        public void ClickYes()    => SetResultAndClose(MessageDialogResult.Yes);
+        public void ClickYes() => SetResultAndClose(MessageDialogResult.Yes);
 
         /// <summary>Records No and asks the window to close.</summary>
-        public void ClickNo()     => SetResultAndClose(MessageDialogResult.No);
+        public void ClickNo() => SetResultAndClose(MessageDialogResult.No);
 
         /// <summary>
         /// Records the result a window close (X button or Esc) should produce —
@@ -108,8 +108,8 @@ namespace SwInventreeAddin.UI
                 return;
 
             Result = IsCancelVisible ? MessageDialogResult.Cancel
-                   : IsNoVisible     ? MessageDialogResult.No
-                   :                   MessageDialogResult.Ok;
+                   : IsNoVisible ? MessageDialogResult.No
+                   : MessageDialogResult.Ok;
         }
 
         // ── Helpers ───────────────────────────────────────────────────────────
