@@ -1,6 +1,6 @@
 ---
 name: qa
-description: Verify the current branch through the SolidWorks InvenTree Add-In GUI.
+description: Verify the current branch through the SolidWorks InvenTree Add-In GUI, starting with a risk-ordered smoke test the engineer can skip.
 disable-model-invocation: true
 ---
 
@@ -123,6 +123,10 @@ Include at least one edge case per feature area. See [CHECKLIST.md](CHECKLIST.md
 
 If the change touches the **Task Pane**, a **dialog**, a **control**, or a **data-bound property**, add a GUI functionality group using the categories and example in the GUI functionality testing section of [TEST-PLAN.md](TEST-PLAN.md).
 
+### Smoke test group
+
+Add a smoke test group at the start of the plan, before the issue-specific groups. Use the risk-ordered smoke tests in [CHECKLIST.md](CHECKLIST.md). Present each as a suggestion the engineer can skip; track skipped steps. This group catches environment and load-path regressions the focused plan may miss.
+
 Present the test plan using the **compact format** in [TEST-PLAN.md](TEST-PLAN.md): group titles and step titles only. The full step detail (preconditions, action, expected) belongs in the detailed format and is used during the walk or when the user asks to expand. Print the compact plan in the chat response first, then ask the user to reply with approve/edit/reorder/expand. Do not use `ask_user_question` for long plan approvals — the question dialog can hide the previous chat and make the plan hard to review.
 
 ## 4. Preflight
@@ -131,9 +135,13 @@ Run the preflight in [PREFLIGHT.md](PREFLIGHT.md) before the GUI test pass. Stop
 
 ## 5. Walk the steps
 
+### Smoke test pass
+
+Start with the smoke test group from the plan. Order the steps by the risk the diff carries, using the guidance in [CHECKLIST.md](CHECKLIST.md). Present each as a suggestion the engineer can skip; track skips. Smoke test failures are PR-blocking; skipped smoke tests do not block the issue groups.
+
 ### Severity reminder
 
-Before presenting the first step, print the Severity Guide table from [CHECKLIST.md](CHECKLIST.md) as a reminder of what each issue level means. Ask the user to confirm they are ready to begin testing.
+After the smoke test, before presenting the first issue step, print the Severity Guide table from [CHECKLIST.md](CHECKLIST.md) as a reminder of what each issue level means. Ask the user to confirm they are ready to continue testing.
 
 ### Present one step at a time
 

@@ -44,9 +44,19 @@ Every test step must have:
 | Skipping error paths | Miss critical bugs | Include empty IPN, not-found, and offline behavior |
 | Source-file references in issues | Go stale after refactors | Describe the symptom in domain terms from `CONTEXT.md` |
 
-## Smoke tail
+## Smoke test
 
-Run these on every pass, regardless of the diff:
+Run these at the start of the walk, before the issue-specific groups. Treat them as suggestions the engineer can skip, but the agent should recommend the full set and explain why.
+
+Order them by the risk the diff carries, not the list order below. Use the diff to decide which surface is most likely to break:
+
+- If the diff touches the add-in load path, COM registration, or `TaskPane` / XAML / ViewModel startup: run **The add-in loads** first.
+- If the diff touches `Fetch`, `PartSyncSession`, property mapping, or `Apply`: run **Fetch works on a plain document** first.
+- If the diff touches document identity, `DocumentType`, or `BOM Compare`: run **The Task Pane shows document state** first.
+
+If multiple smoke tests are likely to break, start with the one closest to the user's entry point (add-in load first, then document state, then Fetch).
+
+Base list:
 
 1. The add-in loads — the InvenTree Task Pane appears and renders without error when SolidWorks opens a document.
 2. The Task Pane shows document state — stamped Document Properties appear and commands sit in their expected enabled states.
