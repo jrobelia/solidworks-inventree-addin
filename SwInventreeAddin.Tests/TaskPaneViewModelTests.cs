@@ -1526,6 +1526,80 @@ namespace SwInventreeAddin.Tests
             Assert.That(_vm.CurrentInvenTreePk, Is.EqualTo(0));
         }
 
+        [Test]
+        public async Task FetchPartAsync_DuplicateIpn_OneRevMatch_ThumbnailUrl_DownloadsAndSetsThumbnail()
+        {
+            var matched = new InventreePart
+            {
+                Pk = 11,
+                Ipn = "PART-001",
+                Revision = "B",
+                Name = "Panel",
+                ThumbnailUrl = "/media/panel.png",
+            };
+            _client.PartsByIpnToReturn = new System.Collections.Generic.List<InventreePart>
+            {
+                new InventreePart { Pk = 10, Ipn = "PART-001", Revision = "A" },
+                matched,
+            };
+            _client.ThumbnailBytesToReturn = new byte[] { 1, 2, 3 };
+            _propertyService.Seed("Revision", "B");
+            CreateVm("PART-001");
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.ThumbnailBytes, Is.EqualTo(new byte[] { 1, 2, 3 }));
+            Assert.That(_client.DownloadImageCallCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public async Task FetchPartAsync_DuplicateIpn_OneRevMatch_NoThumbnailUrl_ThumbnailBytesNull()
+        {
+            var matched = new InventreePart
+            {
+                Pk = 11,
+                Ipn = "PART-001",
+                Revision = "B",
+                Name = "Panel",
+            };
+            _client.PartsByIpnToReturn = new System.Collections.Generic.List<InventreePart>
+            {
+                new InventreePart { Pk = 10, Ipn = "PART-001", Revision = "A" },
+                matched,
+            };
+            _propertyService.Seed("Revision", "B");
+            CreateVm("PART-001");
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.ThumbnailBytes, Is.Null);
+        }
+
+        [Test]
+        public async Task FetchPartAsync_DuplicateIpn_OneRevMatch_DownloadFails_ThumbnailBytesNullAndNoException()
+        {
+            var matched = new InventreePart
+            {
+                Pk = 11,
+                Ipn = "PART-001",
+                Revision = "B",
+                Name = "Panel",
+                ThumbnailUrl = "/media/panel.png",
+            };
+            _client.PartsByIpnToReturn = new System.Collections.Generic.List<InventreePart>
+            {
+                new InventreePart { Pk = 10, Ipn = "PART-001", Revision = "A" },
+                matched,
+            };
+            _client.ThumbnailBytesToReturn = new byte[] { 1, 2, 3 };
+            _client.ThrowOnDownload = new System.Net.Http.HttpRequestException("network error");
+            _propertyService.Seed("Revision", "B");
+            CreateVm("PART-001");
+
+            Assert.DoesNotThrowAsync(async () => await _vm.FetchPartAsync());
+            Assert.That(_vm.ThumbnailBytes, Is.Null);
+        }
+
         // ── Part link from thumbnail ───────────────────────────────────────────
 
         [Test]
@@ -2204,7 +2278,7 @@ namespace SwInventreeAddin.Tests
     }
 }
 
-// ── BOM button enabled tests ────────────────────────────────────────────────────
+// ── BOM visibility tests ────────────────────────────────────────────────────
 namespace SwInventreeAddin.Tests
 {
     using System.Collections.Generic;
@@ -2213,7 +2287,7 @@ namespace SwInventreeAddin.Tests
     using SwInventreeAddin.SolidWorks;
 
     [TestFixture]
-    public class BomButtonEnabledTests
+    public class BomVisibilityTests
     {
         private StubInventreeClient _client;
         private StubDocumentPropertyService _propertyService;
@@ -2234,7 +2308,7 @@ namespace SwInventreeAddin.Tests
             _vm = new TaskPaneViewModel(_client, _propertyService, null, createPartValidator: _createPartValidator);
         }
 
-        // ── BOM button enabled ─────────────────────────────────────────────────
+        // ── BOM visibility ─────────────────────────────────────────────────
 
         [Test]
         public void BomButtonEnabled_AssemblyWithNoSession_IsFalse()
@@ -2279,6 +2353,66 @@ namespace SwInventreeAddin.Tests
             await _vm.FetchPartAsync();
 
             Assert.That(raised, Does.Contain("BomButtonEnabled"));
+        }
+
+        // ── BOM section visible ────────────────────────────────────────────────
+
+        [Test]
+        public void BomSectionVisible_AssemblyWithNoSession_IsFalse()
+        {
+            _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            CreateVm("ASSY-001");
+
+            Assert.That(_vm.BomSectionVisible, Is.False);
+        }
+
+        [Test]
+        public async Task BomSectionVisible_AssemblyAfterFetch_IsTrue()
+        {
+            _client.PartToReturn = new InventreePart { Pk = 1, Ipn = "ASSY-001" };
+            _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            CreateVm("ASSY-001");
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.BomSectionVisible, Is.True);
+        }
+
+        [Test]
+        public void BomSectionVisible_PartDocument_IsFalse()
+        {
+            // StubDocumentPropertyService defaults to DocumentType.Part
+            CreateVm("R-10K-0402");
+
+            Assert.That(_vm.BomSectionVisible, Is.False);
+        }
+
+        [Test]
+        public async Task BomSectionVisible_AfterFetch_RaisesPropertyChanged()
+        {
+            _client.PartToReturn = new InventreePart { Pk = 1, Ipn = "ASSY-001" };
+            _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            CreateVm("ASSY-001");
+
+            var raised = new List<string>();
+            _vm.PropertyChanged += (s, e) => raised.Add(e.PropertyName);
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(raised, Does.Contain("BomSectionVisible"));
+        }
+
+        [Test]
+        public async Task BomSectionVisible_AfterClearAll_ForAssembly_IsFalse()
+        {
+            _client.PartToReturn = new InventreePart { Pk = 1, Ipn = "ASSY-001" };
+            _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            CreateVm("ASSY-001");
+            await _vm.FetchPartAsync();
+
+            _vm.ClearAll();
+
+            Assert.That(_vm.BomSectionVisible, Is.False);
         }
     }
 }
