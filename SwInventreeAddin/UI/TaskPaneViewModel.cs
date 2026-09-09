@@ -912,14 +912,11 @@ namespace SwInventreeAddin.UI
 
             // Only pre-fetch thumbnail when there is exactly one unambiguous result.
             if (parts?.Count == 1 && !string.IsNullOrEmpty(parts[0].ThumbnailUrl))
-            {
-                try { thumbBytes = await _client.DownloadImageAsync(parts[0].ThumbnailUrl!).ConfigureAwait(false); }
-                catch { /* silent — placeholder will show */ }
-            }
+                thumbBytes = await TryDownloadThumbnailAsync(parts[0].ThumbnailUrl).ConfigureAwait(false);
 
             InventreePart? resolvedPart = null;
             byte[]? resolvedThumb = null;
-            bool needsDownload = false;
+            bool needsThumbnailDownload = false;
 
             RunOnUiThread(() =>
             {
@@ -975,17 +972,14 @@ namespace SwInventreeAddin.UI
                 // Exactly one revision match — confirm with user.
                 if (!ConfirmDuplicateIpn(parts, matches[0])) return;
                 resolvedPart = matches[0];
-                needsDownload = true;
+                needsThumbnailDownload = true;
             });
 
             if (resolvedPart == null)
                 return;
 
-            if (needsDownload && !string.IsNullOrEmpty(resolvedPart.ThumbnailUrl))
-            {
-                try { resolvedThumb = await _client.DownloadImageAsync(resolvedPart.ThumbnailUrl!).ConfigureAwait(false); }
-                catch { /* silent — placeholder will show */ }
-            }
+            if (needsThumbnailDownload)
+                resolvedThumb = await TryDownloadThumbnailAsync(resolvedPart.ThumbnailUrl).ConfigureAwait(false);
 
             RunOnUiThread(() =>
             {
@@ -1373,6 +1367,19 @@ namespace SwInventreeAddin.UI
                 _uiContext.Send(_ => action(), null);
             else
                 action();
+        }
+
+        /// <summary>
+        /// Downloads the thumbnail at <paramref name="url"/> off the UI thread.
+        /// Returns null when the URL is blank or the download fails.
+        /// </summary>
+        private async Task<byte[]?> TryDownloadThumbnailAsync(string? url)
+        {
+            if (string.IsNullOrEmpty(url)) return null;
+
+            try { return await _client!.DownloadImageAsync(url!).ConfigureAwait(false); }
+            catch { /* silent — placeholder will show */ }
+            return null;
         }
 
         // ── BOM Compare state ─────────────────────────────────────────────────
