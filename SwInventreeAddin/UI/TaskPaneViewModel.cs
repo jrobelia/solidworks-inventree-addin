@@ -1214,8 +1214,7 @@ namespace SwInventreeAddin.UI
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DescriptionMatch)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PkMatch)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CurrentInvenTreePk)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(BomSectionVisible)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(BomButtonEnabled)));
+            NotifyBomVisibility();
             NotifyFlagDisplays();
         }
 

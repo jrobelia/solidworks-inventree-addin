@@ -2278,7 +2278,7 @@ namespace SwInventreeAddin.Tests
     }
 }
 
-// ── BOM button enabled tests ────────────────────────────────────────────────────
+// ── BOM visibility tests ────────────────────────────────────────────────────
 namespace SwInventreeAddin.Tests
 {
     using System.Collections.Generic;
@@ -2287,7 +2287,7 @@ namespace SwInventreeAddin.Tests
     using SwInventreeAddin.SolidWorks;
 
     [TestFixture]
-    public class BomButtonEnabledTests
+    public class BomVisibilityTests
     {
         private StubInventreeClient _client;
         private StubDocumentPropertyService _propertyService;
@@ -2308,7 +2308,7 @@ namespace SwInventreeAddin.Tests
             _vm = new TaskPaneViewModel(_client, _propertyService, null, createPartValidator: _createPartValidator);
         }
 
-        // ── BOM button enabled ─────────────────────────────────────────────────
+        // ── BOM visibility ─────────────────────────────────────────────────
 
         [Test]
         public void BomButtonEnabled_AssemblyWithNoSession_IsFalse()
