@@ -548,6 +548,277 @@ namespace SwInventreeAddin.Tests
             Assert.That(statusBar.Visibility, Is.EqualTo(Visibility.Visible));
         }
 
+        // ── Credential mode switcher (#212) ───────────────────────────────────
+
+        [Test]
+        public void ModeButtons_WhenCredentialFormExpanded_AreInsideTheForm()
+        {
+            var window = CreateWindow();
+
+            Click(window, "EditConnectionButton");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(IsInsideCredentialForm(window, "AccountModeButton"), Is.True,
+                            "AccountModeButton should live inside the credential form.");
+                Assert.That(IsInsideCredentialForm(window, "ApiKeyModeButton"), Is.True,
+                            "ApiKeyModeButton should live inside the credential form.");
+            });
+        }
+
+        [Test]
+        public void ModeButtons_WhenCredentialFormExpanded_AreBothVisible()
+        {
+            var window = CreateWindow();
+
+            Click(window, "EditConnectionButton");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetButton(window, "AccountModeButton").Visibility, Is.EqualTo(Visibility.Visible),
+                            "AccountModeButton visibility");
+                Assert.That(GetButton(window, "ApiKeyModeButton").Visibility, Is.EqualTo(Visibility.Visible),
+                            "ApiKeyModeButton visibility");
+            });
+        }
+
+        [Test]
+        public void Constructor_WithNoSavedApiKey_ShowsAccountForm()
+        {
+            var window = CreateWindow(configProvider: new StubConfigProvider("https://example.com", string.Empty));
+
+            Assert.That(GetPanel(window, "AccountFormPanel").Visibility, Is.EqualTo(Visibility.Visible));
+        }
+
+        [Test]
+        public void Constructor_WithNoSavedApiKey_HidesApiKeyForm()
+        {
+            var window = CreateWindow(configProvider: new StubConfigProvider("https://example.com", string.Empty));
+
+            Assert.That(GetPanel(window, "ApiKeyFormPanel").Visibility, Is.EqualTo(Visibility.Collapsed));
+        }
+
+        [Test]
+        public void ApiKeyMode_WhenClicked_ShowsApiKeyFormAndHidesAccountForm()
+        {
+            var window = CreateWindow(configProvider: new StubConfigProvider("https://example.com", string.Empty));
+
+            Click(window, "ApiKeyModeButton");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetPanel(window, "ApiKeyFormPanel").Visibility, Is.EqualTo(Visibility.Visible),
+                            "ApiKeyFormPanel visibility");
+                Assert.That(GetPanel(window, "AccountFormPanel").Visibility, Is.EqualTo(Visibility.Collapsed),
+                            "AccountFormPanel visibility");
+            });
+        }
+
+        [Test]
+        public void ApiKeyMode_WhenClicked_MarksApiKeyButtonAsActive()
+        {
+            var window = CreateWindow(configProvider: new StubConfigProvider("https://example.com", string.Empty));
+
+            Click(window, "ApiKeyModeButton");
+
+            Assert.That(GetButton(window, "ApiKeyModeButton").Style,
+                        Is.SameAs(window.TryFindResource("PrimaryButtonStyle")));
+        }
+
+        [Test]
+        public void ApiKeyMode_WhenClicked_MarksAccountButtonAsInactive()
+        {
+            var window = CreateWindow(configProvider: new StubConfigProvider("https://example.com", string.Empty));
+
+            Click(window, "ApiKeyModeButton");
+
+            Assert.That(GetButton(window, "AccountModeButton").Style,
+                        Is.SameAs(window.TryFindResource("SecondaryButtonStyle")));
+        }
+
+        [Test]
+        public void AccountMode_WhenClickedAfterApiKeyMode_ShowsAccountFormAgain()
+        {
+            var window = CreateWindow(configProvider: new StubConfigProvider("https://example.com", string.Empty));
+
+            Click(window, "ApiKeyModeButton");
+            Click(window, "AccountModeButton");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetPanel(window, "AccountFormPanel").Visibility, Is.EqualTo(Visibility.Visible),
+                            "AccountFormPanel visibility");
+                Assert.That(GetPanel(window, "ApiKeyFormPanel").Visibility, Is.EqualTo(Visibility.Collapsed),
+                            "ApiKeyFormPanel visibility");
+            });
+        }
+
+        [Test]
+        public void AccountMode_WhenClicked_MarksAccountButtonAsActive()
+        {
+            var window = CreateWindow();
+
+            Click(window, "AccountModeButton");
+
+            Assert.That(GetButton(window, "AccountModeButton").Style,
+                        Is.SameAs(window.TryFindResource("PrimaryButtonStyle")));
+        }
+
+        // ── Masked API key (#212) ─────────────────────────────────────────────
+
+        [Test]
+        public void Constructor_WithSavedApiKey_PreselectsApiKeyMode()
+        {
+            var window = CreateWindow(
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            Assert.That(GetPanel(window, "ApiKeyFormPanel").Visibility, Is.EqualTo(Visibility.Visible));
+        }
+
+        [Test]
+        public void Constructor_WithSavedApiKey_PopulatesMaskedApiKeyField()
+        {
+            var window = CreateWindow(
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            Assert.That(GetPasswordBox(window, "ApiKeyMaskedBox").Password, Is.EqualTo("saved-key"));
+        }
+
+        [Test]
+        public void Constructor_WithSavedApiKey_KeepsApiKeyMasked()
+        {
+            var window = CreateWindow(
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetPasswordBox(window, "ApiKeyMaskedBox").Visibility, Is.EqualTo(Visibility.Visible),
+                            "ApiKeyMaskedBox visibility");
+                Assert.That(GetTextBox(window, "ApiBox")!.Visibility, Is.EqualTo(Visibility.Collapsed),
+                            "ApiBox visibility");
+            });
+        }
+
+        [Test]
+        public void ShowApiKey_WhenClicked_RevealsApiKeyInPlainField()
+        {
+            var window = CreateWindow(
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            Click(window, "ShowApiKeyButton");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetTextBox(window, "ApiBox")!.Visibility, Is.EqualTo(Visibility.Visible),
+                            "ApiBox visibility");
+                Assert.That(GetPasswordBox(window, "ApiKeyMaskedBox").Visibility, Is.EqualTo(Visibility.Collapsed),
+                            "ApiKeyMaskedBox visibility");
+            });
+        }
+
+        [Test]
+        public void ShowApiKey_WhenClicked_ShowsTheSavedKeyInThePlainField()
+        {
+            var window = CreateWindow(
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            Click(window, "ShowApiKeyButton");
+
+            Assert.That(GetTextBox(window, "ApiBox")!.Text, Is.EqualTo("saved-key"));
+        }
+
+        [Test]
+        public void ShowApiKey_WhenClicked_ShowsHideLabel()
+        {
+            var window = CreateWindow();
+
+            Click(window, "ShowApiKeyButton");
+
+            Assert.That(GetText(window, "ShowApiKeyButtonText"), Is.EqualTo("Hide"));
+        }
+
+        [Test]
+        public void ShowApiKey_WhenClickedTwice_MasksTheApiKeyAgain()
+        {
+            var window = CreateWindow();
+
+            Click(window, "ShowApiKeyButton");
+            Click(window, "ShowApiKeyButton");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetPasswordBox(window, "ApiKeyMaskedBox").Visibility, Is.EqualTo(Visibility.Visible),
+                            "ApiKeyMaskedBox visibility");
+                Assert.That(GetTextBox(window, "ApiBox")!.Visibility, Is.EqualTo(Visibility.Collapsed),
+                            "ApiBox visibility");
+            });
+        }
+
+        [Test]
+        public void ShowApiKey_WhenClickedTwice_RestoresShowLabel()
+        {
+            var window = CreateWindow();
+
+            Click(window, "ShowApiKeyButton");
+            Click(window, "ShowApiKeyButton");
+
+            Assert.That(GetText(window, "ShowApiKeyButtonText"), Is.EqualTo("Show"));
+        }
+
+        [Test]
+        public void ShowApiKey_AfterEditingMaskedField_RevealsTheEditedKey()
+        {
+            var window = CreateWindow();
+            GetPasswordBox(window, "ApiKeyMaskedBox").Password = "typed-key";
+
+            Click(window, "ShowApiKeyButton");
+
+            Assert.That(GetTextBox(window, "ApiBox")!.Text, Is.EqualTo("typed-key"));
+        }
+
+        [Test]
+        public async Task ApplySettingsAsync_InApiKeyMode_SendsTheMaskedKeyToTheService()
+        {
+            var applyService = new StubSettingsApplyService();
+            var window = CreateWindow(
+                applyService: applyService,
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            await window.ApplySettingsAsync();
+
+            Assert.That(applyService.LastInput!.RawApiKey, Is.EqualTo("saved-key"));
+        }
+
+        [Test]
+        public async Task ApplySettingsAsync_InAccountMode_SendsThePasswordToTheService()
+        {
+            var applyService = new StubSettingsApplyService();
+            var window = CreateWindow(
+                applyService: applyService,
+                configProvider: new StubConfigProvider("https://inventree.example.com", string.Empty));
+
+            GetTextBox(window, "UsernameBox")!.Text = "engineer";
+            GetPasswordBox(window, "PasswordBox").Password = "s3cret";
+
+            await window.ApplySettingsAsync();
+
+            Assert.That(applyService.LastInput!.Password, Is.EqualTo("s3cret"));
+        }
+
+        [Test]
+        public async Task ApplySettingsAsync_InAccountMode_ClearsThePasswordBox()
+        {
+            var window = CreateWindow(
+                configProvider: new StubConfigProvider("https://inventree.example.com", string.Empty));
+
+            GetTextBox(window, "UsernameBox")!.Text = "engineer";
+            GetPasswordBox(window, "PasswordBox").Password = "s3cret";
+
+            await window.ApplySettingsAsync();
+
+            Assert.That(GetPasswordBox(window, "PasswordBox").Password, Is.Empty);
+        }
+
         // ── Helpers ───────────────────────────────────────────────────────────
 
         private static ScrollViewer GetCredentialForm(Window window)
@@ -583,6 +854,20 @@ namespace SwInventreeAddin.Tests
             var textBox = element as TextBox;
             Assert.That(textBlock ?? (object?)textBox, Is.Not.Null, $"Could not find TextBlock or TextBox named '{name}'.");
             return textBlock?.Text ?? textBox?.Text ?? string.Empty;
+        }
+
+        private static Panel GetPanel(Window window, string name)
+        {
+            var element = LogicalTreeHelper.FindLogicalNode(window, name) as Panel;
+            Assert.That(element, Is.Not.Null, $"Could not find Panel named '{name}'.");
+            return element!;
+        }
+
+        private static PasswordBox GetPasswordBox(Window window, string name)
+        {
+            var element = LogicalTreeHelper.FindLogicalNode(window, name) as PasswordBox;
+            Assert.That(element, Is.Not.Null, $"Could not find PasswordBox named '{name}'.");
+            return element!;
         }
 
         private static Button GetButton(Window window, string name)

@@ -85,29 +85,72 @@
                     <TextBlock Text="Server URL" Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,4" />
                     <TextBox x:Name="UrlBox" Style="{StaticResource SWFieldStyle}" Height="28" />
 
-                    <TextBlock Text="Username" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
-                    <TextBox x:Name="UsernameBox" Style="{StaticResource SWFieldStyle}" Height="28" />
+                    <!-- Mode switcher: stacked, full-width. The active mode's button gets the
+                         primary style; only that mode's form is visible below (#212). -->
+                    <Button x:Name="AccountModeButton"
+                            Margin="0,10,0,0"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            Height="28"
+                            Click="AccountMode_Click">
+                        <TextBlock Text="Sign in with InvenTree account" VerticalAlignment="Center" />
+                    </Button>
+                    <Button x:Name="ApiKeyModeButton"
+                            Margin="0,6,0,0"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            Height="28"
+                            Click="ApiKeyMode_Click">
+                        <TextBlock Text="Paste API key" VerticalAlignment="Center" />
+                    </Button>
 
-                    <TextBlock Text="Password" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
-                    <PasswordBox x:Name="PasswordBox" Height="28"
-                                 Style="{StaticResource SWPasswordBoxStyle}" />
+                    <!-- Account sign-in form -->
+                    <StackPanel x:Name="AccountFormPanel" Margin="0,4,0,0">
+                        <TextBlock Text="Username" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
+                        <TextBox x:Name="UsernameBox" Style="{StaticResource SWFieldStyle}" Height="28" />
 
-                    <!-- Advanced expander: raw API key -->
-                    <Expander x:Name="AdvancedExpander"
-                              Header="Advanced — paste API key directly"
-                              Margin="0,10,0,0"
-                              Foreground="{StaticResource BrushSubtle}"
-                              FontSize="{StaticResource FontSizeBody}">
-                        <StackPanel Margin="0,6,0,0">
-                            <TextBlock Text="API Key" Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,4" />
-                            <TextBox x:Name="ApiBox" Style="{StaticResource SWFieldStyle}" Height="28" />
-                            <TextBlock Margin="0,4,0,0"
-                                       FontSize="{StaticResource FontSizeBody}"
-                                       Foreground="{StaticResource BrushSubtle}"
-                                       TextWrapping="Wrap"
-                                       Text="Leave username and password blank to use this key directly." />
-                        </StackPanel>
-                    </Expander>
+                        <TextBlock Text="Password" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
+                        <PasswordBox x:Name="PasswordBox" Height="28"
+                                     Style="{StaticResource SWPasswordBoxStyle}" />
+                    </StackPanel>
+
+                    <!-- API key form: masked by default, revealed by the Show toggle -->
+                    <StackPanel x:Name="ApiKeyFormPanel" Margin="0,4,0,0">
+                        <TextBlock Text="API Key" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="8" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <PasswordBox x:Name="ApiKeyMaskedBox"
+                                         Grid.Column="0"
+                                         Height="28"
+                                         Style="{StaticResource SWPasswordBoxStyle}" />
+                            <TextBox x:Name="ApiBox"
+                                     Grid.Column="0"
+                                     Style="{StaticResource SWFieldStyle}"
+                                     Height="28" />
+                            <Button x:Name="ShowApiKeyButton"
+                                    Grid.Column="2"
+                                    Style="{StaticResource SecondaryButtonStyle}"
+                                    Width="80" Margin="0"
+                                    VerticalAlignment="Center"
+                                    Click="ShowApiKey_Click">
+                                <StackPanel Orientation="Horizontal">
+                                    <!-- Label is set by RenderCredentialForm() during initialization. -->
+                                    <TextBlock x:Name="ShowApiKeyButtonText" VerticalAlignment="Center" />
+                                    <TextBlock Text="&#xE7B3;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                               VerticalAlignment="Center" Margin="6,0,0,0" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                        <TextBlock Margin="0,4,0,0"
+                                   FontSize="{StaticResource FontSizeBody}"
+                                   Foreground="{StaticResource BrushSubtle}"
+                                   TextWrapping="Wrap"
+                                   Text="The key is saved encrypted on this machine and never shown on the status card." />
+                    </StackPanel>
 
                 </StackPanel>
             </ScrollViewer>

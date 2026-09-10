@@ -141,6 +141,22 @@ namespace SwInventreeAddin.Tests
             Assert.That(ex!.Message, Does.Contain("Could not reach"));
         }
 
+        [Test]
+        public void ApplyAsync_WithNoCredentials_ThrowsMessageNamingTheApiKeyMode()
+        {
+            var configProvider = new StubConfigProvider("https://example.com", "key");
+            var tokenService = new StubInventreeTokenService { TokenToReturn = "token" };
+            var service = new SettingsApplyService(configProvider, tokenService);
+
+            var input = CreateInput();
+            input.RawApiKey = string.Empty;
+
+            var ex = Assert.ThrowsAsync<SettingsApplyException>(
+                () => service.ApplyAsync(input));
+
+            Assert.That(ex!.Message, Does.Contain("API key").And.Not.Contain("Advanced"));
+        }
+
         private static SettingsApplyInput CreateInput()
         {
             return new SettingsApplyInput
