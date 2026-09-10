@@ -58,22 +58,21 @@ namespace SwInventreeAddin.UI
             WindowCentering.Attach(this, SolidWorksWindowHandle.Get());
 
             // Pre-fill server credentials
-            try
+            var savedConfig = TryGetConfig();
+            if (savedConfig != null)
             {
-                var config = _configProvider.GetServerConfig();
-                if (config != null)
-                {
-                    UrlBox.Text = config.Url ?? string.Empty;
-                    ApiBox.Text = config.ApiKey ?? string.Empty;
+                UrlBox.Text = savedConfig.Url ?? string.Empty;
+                ApiBox.Text = savedConfig.ApiKey ?? string.Empty;
 
-                    if (!string.IsNullOrEmpty(config.MappingSourcePath))
-                        SharedPathBox.Text = config.MappingSourcePath;
+                if (!string.IsNullOrEmpty(savedConfig.MappingSourcePath))
+                    SharedPathBox.Text = savedConfig.MappingSourcePath;
 
-                    BomKeywordBox.Text = config.BomKeyword ?? "inventree";
-                    _savedWaitForServerAssignedIpn = config.WaitForServerAssignedIpn;
-                }
+                BomKeywordBox.Text = savedConfig.BomKeyword ?? "inventree";
+                _savedWaitForServerAssignedIpn = savedConfig.WaitForServerAssignedIpn;
             }
-            catch { /* corrupt settings — user can re-enter */ }
+
+            RefreshConnectionCard(savedConfig);
+            SetCredentialFormExpanded(false);
 
             // Show local path (read-only, copyable)
             LocalPathBox.Text = _mappingProvider.LocalFilePath;
@@ -99,6 +98,31 @@ namespace SwInventreeAddin.UI
             ApplyButton.IsEnabled = isDirty;
             SaveButton.IsEnabled = isDirty;
             CancelButtonText.Text = isDirty ? "Cancel" : "Close";
+        }
+
+        // ── Connection status card ─────────────────────────────────────────────
+
+        // The card is the default view of the server section: it reports what is saved
+        // and which server it points at. The card itself never shows the API key (ADR-0022).
+        private void RefreshConnectionCard(ServerConfig? config)
+        {
+            var status = ServerConnectionStatus.From(config);
+
+            ConnectionCardText.Text = status.Message;
+            ConnectionCardUrl.Text = status.ServerUrl;
+            ConnectionCardUrl.ToolTip = status.HasServerUrl ? status.ServerUrl : null;
+            ConnectionCardUrl.Visibility = status.HasServerUrl ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        // ── Edit connection disclosure ─────────────────────────────────────────
+
+        private void EditConnection_Click(object sender, RoutedEventArgs e) =>
+            SetCredentialFormExpanded(CredentialFormScroll.Visibility != Visibility.Visible);
+
+        private void SetCredentialFormExpanded(bool expanded)
+        {
+            CredentialFormScroll.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+            EditConnectionButtonText.Text = expanded ? "Hide connection" : "Edit connection";
         }
 
         // ── Radio button handlers ──────────────────────────────────────────────
@@ -313,6 +337,7 @@ namespace SwInventreeAddin.UI
                 this.Dispatcher.Invoke(() =>
                 {
                     MappingApplied?.Invoke(this, _mappingProvider);
+                    RefreshConnectionCard(TryGetConfig());
                     _savedSnapshot = CaptureSnapshot();
                     RefreshButtonStates();
                     SetActionStatus("\u2713  Settings applied.", StatusSeverity.Success);
