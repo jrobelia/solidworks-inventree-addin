@@ -32,32 +32,84 @@
                        FontWeight="SemiBold"
                        Foreground="{StaticResource BrushForeground}" />
 
-            <TextBlock Text="Server URL" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
-            <TextBox x:Name="UrlBox" Style="{StaticResource SWFieldStyle}" Height="28" />
+            <!-- Read-only status card: what is saved, without revealing the API key -->
+            <Border x:Name="ConnectionCard"
+                    Margin="0,8,0,0"
+                    Padding="10,8"
+                    Background="{StaticResource BrushSectionHeader}"
+                    BorderBrush="{StaticResource BrushBorder}"
+                    BorderThickness="1">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock x:Name="ConnectionCardText"
+                                   TextWrapping="Wrap"
+                                   Foreground="{StaticResource BrushForeground}" />
+                        <TextBlock x:Name="ConnectionCardUrl"
+                                   Margin="0,2,0,0"
+                                   TextTrimming="CharacterEllipsis"
+                                   Foreground="{StaticResource BrushSubtle}" />
+                    </StackPanel>
+                    <Button x:Name="EditConnectionButton"
+                            Grid.Column="2"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Width="140" Margin="0"
+                            VerticalAlignment="Center"
+                            Click="EditConnection_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="EditConnectionButtonText"
+                                       Text="Edit connection" VerticalAlignment="Center" />
+                            <TextBlock Text="&#xE70F;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                       VerticalAlignment="Center" Margin="6,0,0,0" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </Border>
 
-            <TextBlock Text="Username" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
-            <TextBox x:Name="UsernameBox" Style="{StaticResource SWFieldStyle}" Height="28" />
+            <!-- Credential form: collapsed until Edit connection is clicked. The MaxHeight
+                 keeps the expanded dialog inside a small monitor; Test Connection and its
+                 status bar stay outside this panel so they work while it is collapsed (#211). -->
+            <ScrollViewer x:Name="CredentialFormScroll"
+                          Visibility="Collapsed"
+                          MaxHeight="260"
+                          Margin="0,10,0,0"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="0,0,4,0">
 
-            <TextBlock Text="Password" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
-            <PasswordBox x:Name="PasswordBox" Height="28"
-                         Style="{StaticResource SWPasswordBoxStyle}" />
+                    <TextBlock Text="Server URL" Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,4" />
+                    <TextBox x:Name="UrlBox" Style="{StaticResource SWFieldStyle}" Height="28" />
 
-            <!-- Advanced expander: raw API key -->
-            <Expander x:Name="AdvancedExpander"
-                      Header="Advanced — paste API key directly"
-                      Margin="0,10,0,0"
-                      Foreground="{StaticResource BrushSubtle}"
-                      FontSize="{StaticResource FontSizeBody}">
-                <StackPanel Margin="0,6,0,0">
-                    <TextBlock Text="API Key" Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,4" />
-                    <TextBox x:Name="ApiBox" Style="{StaticResource SWFieldStyle}" Height="28" />
-                    <TextBlock Margin="0,4,0,0"
-                               FontSize="{StaticResource FontSizeBody}"
-                               Foreground="{StaticResource BrushSubtle}"
-                               TextWrapping="Wrap"
-                               Text="Leave username and password blank to use this key directly." />
+                    <TextBlock Text="Username" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
+                    <TextBox x:Name="UsernameBox" Style="{StaticResource SWFieldStyle}" Height="28" />
+
+                    <TextBlock Text="Password" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
+                    <PasswordBox x:Name="PasswordBox" Height="28"
+                                 Style="{StaticResource SWPasswordBoxStyle}" />
+
+                    <!-- Advanced expander: raw API key -->
+                    <Expander x:Name="AdvancedExpander"
+                              Header="Advanced — paste API key directly"
+                              Margin="0,10,0,0"
+                              Foreground="{StaticResource BrushSubtle}"
+                              FontSize="{StaticResource FontSizeBody}">
+                        <StackPanel Margin="0,6,0,0">
+                            <TextBlock Text="API Key" Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,4" />
+                            <TextBox x:Name="ApiBox" Style="{StaticResource SWFieldStyle}" Height="28" />
+                            <TextBlock Margin="0,4,0,0"
+                                       FontSize="{StaticResource FontSizeBody}"
+                                       Foreground="{StaticResource BrushSubtle}"
+                                       TextWrapping="Wrap"
+                                       Text="Leave username and password blank to use this key directly." />
+                        </StackPanel>
+                    </Expander>
+
                 </StackPanel>
-            </Expander>
+            </ScrollViewer>
 
             <!-- Test Connection + connection status bar -->
             <Grid Margin="0,16,0,0">
@@ -84,7 +136,8 @@
                                  Style="{StaticResource StatusBarTextStyle}" />
                     </Grid>
                 </Border>
-                <Button Grid.Column="2"
+                <Button x:Name="TestConnectionButton"
+                        Grid.Column="2"
                         Style="{StaticResource SecondaryButtonStyle}"
                         Width="140" Margin="0"
                         VerticalAlignment="Center"

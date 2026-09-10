@@ -390,7 +390,191 @@ namespace SwInventreeAddin.Tests
             Assert.That(button.IsEnabled, Is.False);
         }
 
+        // ── Connection status card ────────────────────────────────────────────
+
+        [Test]
+        public void Constructor_WithSavedServerConfig_ShowsApiKeySavedOnStatusCard()
+        {
+            var window = CreateWindow(
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            Assert.That(GetText(window, "ConnectionCardText"),
+                        Is.EqualTo("Server connection configured \u2014 API key saved"));
+        }
+
+        [Test]
+        public void Constructor_WithSavedServerConfig_ShowsServerUrlOnStatusCard()
+        {
+            var window = CreateWindow(
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            Assert.That(GetText(window, "ConnectionCardUrl"), Is.EqualTo("https://inventree.example.com"));
+        }
+
+        [Test]
+        public void Constructor_WithNoSavedServerConfig_ShowsNoServerSettingsSaved()
+        {
+            var window = CreateWindow(configProvider: StubConfigProvider.WithNoSavedConfig());
+
+            Assert.That(GetText(window, "ConnectionCardText"), Is.EqualTo("No server settings saved"));
+        }
+
+        [Test]
+        public void Constructor_WithNoSavedServerConfig_HidesServerUrlOnStatusCard()
+        {
+            var window = CreateWindow(configProvider: StubConfigProvider.WithNoSavedConfig());
+            var url = (TextBlock)LogicalTreeHelper.FindLogicalNode(window, "ConnectionCardUrl")!;
+
+            Assert.That(url.Visibility, Is.EqualTo(Visibility.Collapsed));
+        }
+
+        [Test]
+        public void ConnectionCardText_DoesNotRevealSavedApiKey()
+        {
+            var window = CreateWindow(
+                configProvider: new StubConfigProvider("https://inventree.example.com", "super-secret-key"));
+
+            Assert.That(GetText(window, "ConnectionCardText"), Does.Not.Contain("super-secret-key"));
+        }
+
+        // ── Edit connection disclosure ────────────────────────────────────────
+
+        [Test]
+        public void Constructor_ByDefault_CollapsesCredentialForm()
+        {
+            var window = CreateWindow();
+
+            Assert.That(GetCredentialForm(window).Visibility, Is.EqualTo(Visibility.Collapsed));
+        }
+
+        [Test]
+        public void Constructor_ByDefault_ShowsEditConnectionLabel()
+        {
+            var window = CreateWindow();
+
+            Assert.That(GetText(window, "EditConnectionButtonText"), Is.EqualTo("Edit connection"));
+        }
+
+        [Test]
+        public void EditConnection_WhenClicked_ExpandsCredentialForm()
+        {
+            var window = CreateWindow();
+
+            Click(window, "EditConnectionButton");
+
+            Assert.That(GetCredentialForm(window).Visibility, Is.EqualTo(Visibility.Visible));
+        }
+
+        [Test]
+        public void EditConnection_WhenClicked_ShowsCollapseLabel()
+        {
+            var window = CreateWindow();
+
+            Click(window, "EditConnectionButton");
+
+            Assert.That(GetText(window, "EditConnectionButtonText"), Is.EqualTo("Hide connection"));
+        }
+
+        [Test]
+        public void EditConnection_WhenClickedTwice_CollapsesCredentialFormAgain()
+        {
+            var window = CreateWindow();
+
+            Click(window, "EditConnectionButton");
+            Click(window, "EditConnectionButton");
+
+            Assert.That(GetCredentialForm(window).Visibility, Is.EqualTo(Visibility.Collapsed));
+        }
+
+        [Test]
+        public void EditConnection_WhenClickedTwice_RestoresEditConnectionLabel()
+        {
+            var window = CreateWindow();
+
+            Click(window, "EditConnectionButton");
+            Click(window, "EditConnectionButton");
+
+            Assert.That(GetText(window, "EditConnectionButtonText"), Is.EqualTo("Edit connection"));
+        }
+
+        [Test]
+        public void CredentialForm_IsScrollViewerWithBoundedMaxHeight()
+        {
+            var window = CreateWindow();
+
+            Assert.That(GetCredentialForm(window).MaxHeight, Is.LessThan(double.PositiveInfinity));
+        }
+
+        [Test]
+        public void CredentialForm_ContainsServerUrlField()
+        {
+            var window = CreateWindow();
+
+            Assert.That(IsInsideCredentialForm(window, "UrlBox"), Is.True);
+        }
+
+        // The Test Connection button and its status bar stay usable while the
+        // credential form is collapsed, so they live outside the ScrollViewer (#211).
+        [Test]
+        public void TestConnectionButton_WhenCredentialFormCollapsed_StaysVisible()
+        {
+            var window = CreateWindow();
+
+            Assert.That(GetButton(window, "TestConnectionButton").Visibility, Is.EqualTo(Visibility.Visible));
+        }
+
+        [Test]
+        public void TestConnectionButton_IsOutsideCollapsibleCredentialForm()
+        {
+            var window = CreateWindow();
+
+            Assert.That(IsInsideCredentialForm(window, "TestConnectionButton"), Is.False);
+        }
+
+        [Test]
+        public void ConnectionStatusBar_IsOutsideCollapsibleCredentialForm()
+        {
+            var window = CreateWindow();
+
+            Assert.That(IsInsideCredentialForm(window, "ConnectionStatusBar"), Is.False);
+        }
+
+        [Test]
+        public void ConnectionStatusBar_WhenCredentialFormCollapsed_StaysVisible()
+        {
+            var window = CreateWindow();
+            var statusBar = (Border)LogicalTreeHelper.FindLogicalNode(window, "ConnectionStatusBar")!;
+
+            Assert.That(statusBar.Visibility, Is.EqualTo(Visibility.Visible));
+        }
+
         // ── Helpers ───────────────────────────────────────────────────────────
+
+        private static ScrollViewer GetCredentialForm(Window window)
+        {
+            var element = LogicalTreeHelper.FindLogicalNode(window, "CredentialFormScroll") as ScrollViewer;
+            Assert.That(element, Is.Not.Null, "Could not find ScrollViewer named 'CredentialFormScroll'.");
+            return element!;
+        }
+
+        private static bool IsInsideCredentialForm(Window window, string name)
+        {
+            var element = LogicalTreeHelper.FindLogicalNode(window, name) as DependencyObject;
+            Assert.That(element, Is.Not.Null, $"Could not find element named '{name}'.");
+
+            var form = GetCredentialForm(window);
+            for (var parent = LogicalTreeHelper.GetParent(element!); parent != null;
+                 parent = LogicalTreeHelper.GetParent(parent))
+            {
+                if (ReferenceEquals(parent, form)) return true;
+            }
+
+            return false;
+        }
+
+        private static void Click(Window window, string name) =>
+            GetButton(window, name).RaiseEvent(
+                new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
 
         private static string GetText(Window window, string name)
         {
