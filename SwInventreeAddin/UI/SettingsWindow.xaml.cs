@@ -20,8 +20,11 @@ namespace SwInventreeAddin.UI
         private IPropertyMappingProvider _mappingProvider;
 
         private (string Url, string ApiKey, string Username, string Password,
-                 string SharedPath, string BomKeyword, bool UseLocalMapping) _savedSnapshot;
+                 string SharedPath, string BomKeyword, bool UseLocalMapping,
+                 CredentialEntryMode Mode) _savedSnapshot;
         private readonly bool _savedWaitForServerAssignedIpn = true;
+        private readonly CredentialEditorState _credentialState;
+        private bool _suppressApiKeySync;
         private MappingChangedSubscription? _mappingChangedSubscription;
         private string? _mappingStatusDetail;
 
@@ -49,7 +52,8 @@ namespace SwInventreeAddin.UI
             UrlBox.TextChanged += (_, __) => RefreshButtonStates();
             UsernameBox.TextChanged += (_, __) => RefreshButtonStates();
             PasswordBox.PasswordChanged += (_, __) => RefreshButtonStates();
-            ApiBox.TextChanged += (_, __) => RefreshButtonStates();
+            ApiBox.TextChanged += (_, __) => OnApiKeyEdited(ApiBox.Text);
+            ApiKeyMaskedBox.PasswordChanged += (_, __) => OnApiKeyEdited(ApiKeyMaskedBox.Password);
             SharedPathBox.TextChanged += (_, __) => RefreshButtonStates();
             BomKeywordBox.TextChanged += (_, __) => RefreshButtonStates();
             LocalRadio.Checked += (_, __) => RefreshButtonStates();
@@ -59,10 +63,11 @@ namespace SwInventreeAddin.UI
 
             // Pre-fill server credentials
             var savedConfig = TryGetConfig();
+            _credentialState = CredentialEditorState.For(savedConfig);
+
             if (savedConfig != null)
             {
                 UrlBox.Text = savedConfig.Url ?? string.Empty;
-                ApiBox.Text = savedConfig.ApiKey ?? string.Empty;
 
                 if (!string.IsNullOrEmpty(savedConfig.MappingSourcePath))
                     SharedPathBox.Text = savedConfig.MappingSourcePath;
@@ -73,6 +78,7 @@ namespace SwInventreeAddin.UI
 
             RefreshConnectionCard(savedConfig);
             SetCredentialFormExpanded(false);
+            RenderCredentialForm();
 
             // Show local path (read-only, copyable)
             LocalPathBox.Text = _mappingProvider.LocalFilePath;
@@ -88,9 +94,10 @@ namespace SwInventreeAddin.UI
 
         // ── Dirty-state tracking ───────────────────────────────────────────────
 
-        private (string, string, string, string, string, string, bool) CaptureSnapshot() =>
-            (UrlBox.Text.Trim(), ApiBox.Text.Trim(), UsernameBox.Text.Trim(), PasswordBox.Password,
-             SharedPathBox.Text.Trim(), BomKeywordBox.Text.Trim(), LocalRadio.IsChecked == true);
+        private (string, string, string, string, string, string, bool, CredentialEntryMode) CaptureSnapshot() =>
+            (UrlBox.Text.Trim(), _credentialState.ApiKey.Trim(), UsernameBox.Text.Trim(), PasswordBox.Password,
+             SharedPathBox.Text.Trim(), BomKeywordBox.Text.Trim(), LocalRadio.IsChecked == true,
+             _credentialState.Mode);
 
         private void RefreshButtonStates()
         {
@@ -123,6 +130,76 @@ namespace SwInventreeAddin.UI
         {
             CredentialFormScroll.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
             EditConnectionButtonText.Text = expanded ? "Hide connection" : "Edit connection";
+        }
+
+        // ── Credential mode switcher and masked API key ────────────────────────
+
+        private void AccountMode_Click(object sender, RoutedEventArgs e) =>
+            SelectCredentialMode(CredentialEntryMode.Account);
+
+        private void ApiKeyMode_Click(object sender, RoutedEventArgs e) =>
+            SelectCredentialMode(CredentialEntryMode.ApiKey);
+
+        private void ShowApiKey_Click(object sender, RoutedEventArgs e)
+        {
+            _credentialState.ToggleApiKeyReveal();
+            RenderCredentialForm();
+        }
+
+        private void SelectCredentialMode(CredentialEntryMode mode)
+        {
+            _credentialState.SelectMode(mode);
+            RenderCredentialForm();
+            RefreshButtonStates();
+        }
+
+        // Renders the credential editor state: exactly one mode form is visible, the active
+        // mode's button carries the primary style, and the API key shows in the masked or the
+        // plain field (ADR-0022).
+        private void RenderCredentialForm()
+        {
+            bool accountMode = _credentialState.Mode == CredentialEntryMode.Account;
+
+            AccountFormPanel.Visibility = accountMode ? Visibility.Visible : Visibility.Collapsed;
+            ApiKeyFormPanel.Visibility = accountMode ? Visibility.Collapsed : Visibility.Visible;
+
+            AccountModeButton.Style = ModeButtonStyle(isActive: accountMode);
+            ApiKeyModeButton.Style = ModeButtonStyle(isActive: !accountMode);
+
+            bool revealed = _credentialState.IsApiKeyRevealed;
+            ApiBox.Visibility = revealed ? Visibility.Visible : Visibility.Collapsed;
+            ApiKeyMaskedBox.Visibility = revealed ? Visibility.Collapsed : Visibility.Visible;
+            ShowApiKeyButtonText.Text = revealed ? "Hide" : "Show";
+
+            WriteApiKeyToFields(_credentialState.ApiKey);
+        }
+
+        private Style ModeButtonStyle(bool isActive) =>
+            (Style)FindResource(isActive ? "PrimaryButtonStyle" : "SecondaryButtonStyle");
+
+        private void OnApiKeyEdited(string value)
+        {
+            if (_suppressApiKeySync) return;
+
+            _credentialState.ApiKey = value;
+            WriteApiKeyToFields(value);
+            RefreshButtonStates();
+        }
+
+        // Both fields hold the key so revealing or masking it never loses an edit. The flag
+        // stops the change events they raise from re-entering OnApiKeyEdited.
+        private void WriteApiKeyToFields(string value)
+        {
+            _suppressApiKeySync = true;
+            try
+            {
+                if (ApiBox.Text != value) ApiBox.Text = value;
+                if (ApiKeyMaskedBox.Password != value) ApiKeyMaskedBox.Password = value;
+            }
+            finally
+            {
+                _suppressApiKeySync = false;
+            }
         }
 
         // ── Radio button handlers ──────────────────────────────────────────────
@@ -257,12 +334,14 @@ namespace SwInventreeAddin.UI
                 ? (string.IsNullOrWhiteSpace(SharedPathBox.Text) ? null : SharedPathBox.Text.Trim())
                 : null;
 
+            bool accountMode = _credentialState.Mode == CredentialEntryMode.Account;
+
             return new SettingsApplyInput
             {
                 Url = UrlBox.Text.Trim(),
-                Username = UsernameBox.Text.Trim(),
-                Password = PasswordBox.Password,
-                RawApiKey = ApiBox.Text.Trim(),
+                Username = accountMode ? UsernameBox.Text.Trim() : string.Empty,
+                Password = accountMode ? PasswordBox.Password : string.Empty,
+                RawApiKey = accountMode ? string.Empty : _credentialState.ApiKey.Trim(),
                 SharedMappingPath = sharedPath,
                 BomKeyword = BomKeywordBox.Text,
                 WaitForServerAssignedIpn = _savedWaitForServerAssignedIpn,
@@ -305,6 +384,10 @@ namespace SwInventreeAddin.UI
                 this.Dispatcher.Invoke(() => SetActionStatus(ex.Message, StatusSeverity.Error));
                 return false;
             }
+
+            // The service has resolved a token from the password, so it must not linger on screen.
+            if (!string.IsNullOrEmpty(input.Password))
+                this.Dispatcher.Invoke(() => PasswordBox.Clear());
 
             try
             {
