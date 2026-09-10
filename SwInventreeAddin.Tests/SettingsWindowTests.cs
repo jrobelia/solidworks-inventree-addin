@@ -557,8 +557,13 @@ namespace SwInventreeAddin.Tests
 
             Click(window, "EditConnectionButton");
 
-            Assert.That(IsInsideCredentialForm(window, "AccountModeButton")
-                        && IsInsideCredentialForm(window, "ApiKeyModeButton"), Is.True);
+            Assert.Multiple(() =>
+            {
+                Assert.That(IsInsideCredentialForm(window, "AccountModeButton"), Is.True,
+                            "AccountModeButton should live inside the credential form.");
+                Assert.That(IsInsideCredentialForm(window, "ApiKeyModeButton"), Is.True,
+                            "ApiKeyModeButton should live inside the credential form.");
+            });
         }
 
         [Test]
@@ -568,8 +573,13 @@ namespace SwInventreeAddin.Tests
 
             Click(window, "EditConnectionButton");
 
-            Assert.That(GetButton(window, "AccountModeButton").Visibility == Visibility.Visible
-                        && GetButton(window, "ApiKeyModeButton").Visibility == Visibility.Visible, Is.True);
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetButton(window, "AccountModeButton").Visibility, Is.EqualTo(Visibility.Visible),
+                            "AccountModeButton visibility");
+                Assert.That(GetButton(window, "ApiKeyModeButton").Visibility, Is.EqualTo(Visibility.Visible),
+                            "ApiKeyModeButton visibility");
+            });
         }
 
         [Test]
@@ -595,8 +605,13 @@ namespace SwInventreeAddin.Tests
 
             Click(window, "ApiKeyModeButton");
 
-            Assert.That(GetPanel(window, "ApiKeyFormPanel").Visibility == Visibility.Visible
-                        && GetPanel(window, "AccountFormPanel").Visibility == Visibility.Collapsed, Is.True);
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetPanel(window, "ApiKeyFormPanel").Visibility, Is.EqualTo(Visibility.Visible),
+                            "ApiKeyFormPanel visibility");
+                Assert.That(GetPanel(window, "AccountFormPanel").Visibility, Is.EqualTo(Visibility.Collapsed),
+                            "AccountFormPanel visibility");
+            });
         }
 
         [Test]
@@ -629,8 +644,13 @@ namespace SwInventreeAddin.Tests
             Click(window, "ApiKeyModeButton");
             Click(window, "AccountModeButton");
 
-            Assert.That(GetPanel(window, "AccountFormPanel").Visibility == Visibility.Visible
-                        && GetPanel(window, "ApiKeyFormPanel").Visibility == Visibility.Collapsed, Is.True);
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetPanel(window, "AccountFormPanel").Visibility, Is.EqualTo(Visibility.Visible),
+                            "AccountFormPanel visibility");
+                Assert.That(GetPanel(window, "ApiKeyFormPanel").Visibility, Is.EqualTo(Visibility.Collapsed),
+                            "ApiKeyFormPanel visibility");
+            });
         }
 
         [Test]
@@ -670,8 +690,13 @@ namespace SwInventreeAddin.Tests
             var window = CreateWindow(
                 configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
 
-            Assert.That(GetPasswordBox(window, "ApiKeyMaskedBox").Visibility == Visibility.Visible
-                        && GetTextBox(window, "ApiBox")!.Visibility == Visibility.Collapsed, Is.True);
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetPasswordBox(window, "ApiKeyMaskedBox").Visibility, Is.EqualTo(Visibility.Visible),
+                            "ApiKeyMaskedBox visibility");
+                Assert.That(GetTextBox(window, "ApiBox")!.Visibility, Is.EqualTo(Visibility.Collapsed),
+                            "ApiBox visibility");
+            });
         }
 
         [Test]
@@ -682,8 +707,13 @@ namespace SwInventreeAddin.Tests
 
             Click(window, "ShowApiKeyButton");
 
-            Assert.That(GetTextBox(window, "ApiBox")!.Visibility == Visibility.Visible
-                        && GetPasswordBox(window, "ApiKeyMaskedBox").Visibility == Visibility.Collapsed, Is.True);
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetTextBox(window, "ApiBox")!.Visibility, Is.EqualTo(Visibility.Visible),
+                            "ApiBox visibility");
+                Assert.That(GetPasswordBox(window, "ApiKeyMaskedBox").Visibility, Is.EqualTo(Visibility.Collapsed),
+                            "ApiKeyMaskedBox visibility");
+            });
         }
 
         [Test]
@@ -715,8 +745,13 @@ namespace SwInventreeAddin.Tests
             Click(window, "ShowApiKeyButton");
             Click(window, "ShowApiKeyButton");
 
-            Assert.That(GetPasswordBox(window, "ApiKeyMaskedBox").Visibility == Visibility.Visible
-                        && GetTextBox(window, "ApiBox")!.Visibility == Visibility.Collapsed, Is.True);
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetPasswordBox(window, "ApiKeyMaskedBox").Visibility, Is.EqualTo(Visibility.Visible),
+                            "ApiKeyMaskedBox visibility");
+                Assert.That(GetTextBox(window, "ApiBox")!.Visibility, Is.EqualTo(Visibility.Collapsed),
+                            "ApiBox visibility");
+            });
         }
 
         [Test]

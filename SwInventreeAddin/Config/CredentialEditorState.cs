@@ -31,7 +31,7 @@ namespace SwInventreeAddin.Config
         /// <see cref="CredentialEntryMode.ApiKey"/> and populates the field; anything else
         /// starts on <see cref="CredentialEntryMode.Account"/>. The key always starts masked.
         /// </summary>
-        public static CredentialEditorState For(ServerConfig? config)
+        public static CredentialEditorState FromSavedConfig(ServerConfig? config)
         {
             string savedKey = (config?.ApiKey ?? string.Empty).Trim();
 

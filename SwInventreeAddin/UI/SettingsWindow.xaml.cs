@@ -19,9 +19,7 @@ namespace SwInventreeAddin.UI
         private readonly IMappingProviderFactory _mappingProviderFactory;
         private IPropertyMappingProvider _mappingProvider;
 
-        private (string Url, string ApiKey, string Username, string Password,
-                 string SharedPath, string BomKeyword, bool UseLocalMapping,
-                 CredentialEntryMode Mode) _savedSnapshot;
+        private SettingsSnapshot _savedSnapshot;
         private readonly bool _savedWaitForServerAssignedIpn = true;
         private readonly CredentialEditorState _credentialState;
         private bool _suppressApiKeySync;
@@ -63,7 +61,7 @@ namespace SwInventreeAddin.UI
 
             // Pre-fill server credentials
             var savedConfig = TryGetConfig();
-            _credentialState = CredentialEditorState.For(savedConfig);
+            _credentialState = CredentialEditorState.FromSavedConfig(savedConfig);
 
             if (savedConfig != null)
             {
@@ -94,14 +92,20 @@ namespace SwInventreeAddin.UI
 
         // ── Dirty-state tracking ───────────────────────────────────────────────
 
-        private (string, string, string, string, string, string, bool, CredentialEntryMode) CaptureSnapshot() =>
-            (UrlBox.Text.Trim(), _credentialState.ApiKey.Trim(), UsernameBox.Text.Trim(), PasswordBox.Password,
-             SharedPathBox.Text.Trim(), BomKeywordBox.Text.Trim(), LocalRadio.IsChecked == true,
-             _credentialState.Mode);
+        private SettingsSnapshot CaptureSnapshot() =>
+            new SettingsSnapshot(
+                url: UrlBox.Text.Trim(),
+                apiKey: _credentialState.ApiKey.Trim(),
+                username: UsernameBox.Text.Trim(),
+                password: PasswordBox.Password,
+                sharedPath: SharedPathBox.Text.Trim(),
+                bomKeyword: BomKeywordBox.Text.Trim(),
+                useLocalMapping: LocalRadio.IsChecked == true,
+                mode: _credentialState.Mode);
 
         private void RefreshButtonStates()
         {
-            bool isDirty = CaptureSnapshot() != _savedSnapshot;
+            bool isDirty = !CaptureSnapshot().Equals(_savedSnapshot);
             ApplyButton.IsEnabled = isDirty;
             SaveButton.IsEnabled = isDirty;
             CancelButtonText.Text = isDirty ? "Cancel" : "Close";
@@ -153,9 +157,7 @@ namespace SwInventreeAddin.UI
             RefreshButtonStates();
         }
 
-        // Renders the credential editor state: exactly one mode form is visible, the active
-        // mode's button carries the primary style, and the API key shows in the masked or the
-        // plain field (ADR-0022).
+        // The API key is masked by default, so the visible field follows the reveal flag (ADR-0022).
         private void RenderCredentialForm()
         {
             bool accountMode = _credentialState.Mode == CredentialEntryMode.Account;
