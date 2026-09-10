@@ -8,13 +8,13 @@ namespace SwInventreeAddin.Config
     public class ServerConnectionStatus
     {
         /// <summary>Shown when no server settings have been saved yet.</summary>
-        public const string NoSettingsMessage = "No server settings saved";
+        private const string NoSettingsMessage = "No server settings saved";
 
         /// <summary>Shown when a server URL and an API key are both saved.</summary>
-        public const string ConfiguredWithApiKeyMessage = "Server connection configured \u2014 API key saved";
+        private const string ConfiguredWithApiKeyMessage = "Server connection configured \u2014 API key saved";
 
         /// <summary>Shown when a server URL is saved but no API key is stored with it.</summary>
-        public const string ConfiguredWithoutApiKeyMessage = "Server connection configured \u2014 no API key saved";
+        private const string ConfiguredWithoutApiKeyMessage = "Server connection configured \u2014 no API key saved";
 
         private ServerConnectionStatus(string message, string serverUrl)
         {

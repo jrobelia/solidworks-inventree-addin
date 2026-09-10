@@ -58,23 +58,18 @@ namespace SwInventreeAddin.UI
             WindowCentering.Attach(this, SolidWorksWindowHandle.Get());
 
             // Pre-fill server credentials
-            ServerConfig? savedConfig = null;
-            try
+            var savedConfig = TryGetConfig();
+            if (savedConfig != null)
             {
-                savedConfig = _configProvider.GetServerConfig();
-                if (savedConfig != null)
-                {
-                    UrlBox.Text = savedConfig.Url ?? string.Empty;
-                    ApiBox.Text = savedConfig.ApiKey ?? string.Empty;
+                UrlBox.Text = savedConfig.Url ?? string.Empty;
+                ApiBox.Text = savedConfig.ApiKey ?? string.Empty;
 
-                    if (!string.IsNullOrEmpty(savedConfig.MappingSourcePath))
-                        SharedPathBox.Text = savedConfig.MappingSourcePath;
+                if (!string.IsNullOrEmpty(savedConfig.MappingSourcePath))
+                    SharedPathBox.Text = savedConfig.MappingSourcePath;
 
-                    BomKeywordBox.Text = savedConfig.BomKeyword ?? "inventree";
-                    _savedWaitForServerAssignedIpn = savedConfig.WaitForServerAssignedIpn;
-                }
+                BomKeywordBox.Text = savedConfig.BomKeyword ?? "inventree";
+                _savedWaitForServerAssignedIpn = savedConfig.WaitForServerAssignedIpn;
             }
-            catch { /* corrupt settings — user can re-enter */ }
 
             RefreshConnectionCard(savedConfig);
             SetCredentialFormExpanded(false);
