@@ -58,24 +58,26 @@ namespace SwInventreeAddin.UI
             WindowCentering.Attach(this, SolidWorksWindowHandle.Get());
 
             // Pre-fill server credentials
+            ServerConfig? savedConfig = null;
             try
             {
-                var config = _configProvider.GetServerConfig();
-                if (config != null)
+                savedConfig = _configProvider.GetServerConfig();
+                if (savedConfig != null)
                 {
-                    UrlBox.Text = config.Url ?? string.Empty;
-                    ApiBox.Text = config.ApiKey ?? string.Empty;
+                    UrlBox.Text = savedConfig.Url ?? string.Empty;
+                    ApiBox.Text = savedConfig.ApiKey ?? string.Empty;
 
-                    if (!string.IsNullOrEmpty(config.MappingSourcePath))
-                        SharedPathBox.Text = config.MappingSourcePath;
+                    if (!string.IsNullOrEmpty(savedConfig.MappingSourcePath))
+                        SharedPathBox.Text = savedConfig.MappingSourcePath;
 
-                    BomKeywordBox.Text = config.BomKeyword ?? "inventree";
-                    _savedWaitForServerAssignedIpn = config.WaitForServerAssignedIpn;
+                    BomKeywordBox.Text = savedConfig.BomKeyword ?? "inventree";
+                    _savedWaitForServerAssignedIpn = savedConfig.WaitForServerAssignedIpn;
                 }
             }
             catch { /* corrupt settings — user can re-enter */ }
 
-            RefreshConnectionCard();
+            RefreshConnectionCard(savedConfig);
+            SetCredentialFormExpanded(false);
 
             // Show local path (read-only, copyable)
             LocalPathBox.Text = _mappingProvider.LocalFilePath;
@@ -106,10 +108,10 @@ namespace SwInventreeAddin.UI
         // ── Connection status card ─────────────────────────────────────────────
 
         // The card is the default view of the server section: it reports what is saved
-        // and which server it points at, without revealing the API key (ADR-0022).
-        private void RefreshConnectionCard()
+        // and which server it points at. The card itself never shows the API key (ADR-0022).
+        private void RefreshConnectionCard(ServerConfig? config)
         {
-            var status = ServerConnectionStatus.From(TryGetConfig());
+            var status = ServerConnectionStatus.From(config);
 
             ConnectionCardText.Text = status.Message;
             ConnectionCardUrl.Text = status.ServerUrl;
@@ -340,7 +342,7 @@ namespace SwInventreeAddin.UI
                 this.Dispatcher.Invoke(() =>
                 {
                     MappingApplied?.Invoke(this, _mappingProvider);
-                    RefreshConnectionCard();
+                    RefreshConnectionCard(TryGetConfig());
                     _savedSnapshot = CaptureSnapshot();
                     RefreshButtonStates();
                     SetActionStatus("\u2713  Settings applied.", StatusSeverity.Success);
