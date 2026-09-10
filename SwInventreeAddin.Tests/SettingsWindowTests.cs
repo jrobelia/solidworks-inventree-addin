@@ -390,7 +390,130 @@ namespace SwInventreeAddin.Tests
             Assert.That(button.IsEnabled, Is.False);
         }
 
+        // ── Connection status card and Edit connection disclosure ─────────────
+
+        [Test]
+        public void Constructor_WithSavedServerConfig_ShowsConfiguredStatusMessage()
+        {
+            var window = CreateWindow(configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            Assert.That(GetText(window, "ConnectionCardText"),
+                        Is.EqualTo("Server connection configured \u2014 API key saved"));
+        }
+
+        [Test]
+        public void Constructor_WithSavedServerConfig_ShowsServerUrlOnStatusCard()
+        {
+            var window = CreateWindow(configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            Assert.That(GetText(window, "ConnectionCardUrl"), Is.EqualTo("https://inventree.example.com"));
+        }
+
+        [Test]
+        public void Constructor_WithSavedUrlButNoApiKey_ShowsNoApiKeySavedMessage()
+        {
+            var window = CreateWindow(configProvider: new StubConfigProvider("https://inventree.example.com", string.Empty));
+
+            Assert.That(GetText(window, "ConnectionCardText"),
+                        Is.EqualTo("Server connection configured \u2014 no API key saved"));
+        }
+
+        [Test]
+        public void Constructor_WithNoSavedServerConfig_ShowsNoServerSettingsSaved()
+        {
+            var window = CreateWindow(configProvider: StubConfigProvider.WithNoSavedConfig());
+
+            Assert.That(GetText(window, "ConnectionCardText"), Is.EqualTo("No server settings saved"));
+        }
+
+        [Test]
+        public void Constructor_WithNoSavedServerConfig_HidesServerUrlOnStatusCard()
+        {
+            var window = CreateWindow(configProvider: StubConfigProvider.WithNoSavedConfig());
+
+            var url = (TextBlock)System.Windows.LogicalTreeHelper.FindLogicalNode(window, "ConnectionCardUrl")!;
+            Assert.That(url.Visibility, Is.EqualTo(Visibility.Collapsed));
+        }
+
+        [Test]
+        public void Constructor_ByDefault_HidesCredentialForm()
+        {
+            var window = CreateWindow();
+
+            Assert.That(GetCredentialForm(window).Visibility, Is.EqualTo(Visibility.Collapsed));
+        }
+
+        [Test]
+        public void EditConnectionButton_WhenClicked_ShowsCredentialForm()
+        {
+            var window = CreateWindow();
+
+            Click(window, "EditConnectionButton");
+
+            Assert.That(GetCredentialForm(window).Visibility, Is.EqualTo(Visibility.Visible));
+        }
+
+        [Test]
+        public void EditConnectionButton_WhenClicked_ShowsCollapseLabel()
+        {
+            var window = CreateWindow();
+
+            Click(window, "EditConnectionButton");
+
+            Assert.That(GetText(window, "EditConnectionButtonText"), Is.EqualTo("Hide connection"));
+        }
+
+        [Test]
+        public void EditConnectionButton_WhenClickedTwice_HidesCredentialFormAgain()
+        {
+            var window = CreateWindow();
+
+            Click(window, "EditConnectionButton");
+            Click(window, "EditConnectionButton");
+
+            Assert.That(GetCredentialForm(window).Visibility, Is.EqualTo(Visibility.Collapsed));
+        }
+
+        [Test]
+        public void EditConnectionButton_WhenClickedTwice_RestoresEditLabel()
+        {
+            var window = CreateWindow();
+
+            Click(window, "EditConnectionButton");
+            Click(window, "EditConnectionButton");
+
+            Assert.That(GetText(window, "EditConnectionButtonText"), Is.EqualTo("Edit connection"));
+        }
+
+        [Test]
+        public void CredentialForm_IsScrollViewer()
+        {
+            var window = CreateWindow();
+
+            Assert.That(System.Windows.LogicalTreeHelper.FindLogicalNode(window, "CredentialFormScroll"),
+                        Is.InstanceOf<ScrollViewer>());
+        }
+
+        [Test]
+        public void CredentialForm_HasBoundedMaxHeight()
+        {
+            var window = CreateWindow();
+
+            Assert.That(GetCredentialForm(window).MaxHeight, Is.LessThan(double.PositiveInfinity));
+        }
+
         // ── Helpers ───────────────────────────────────────────────────────────
+
+        private static ScrollViewer GetCredentialForm(Window window)
+        {
+            var element = System.Windows.LogicalTreeHelper.FindLogicalNode(window, "CredentialFormScroll") as ScrollViewer;
+            Assert.That(element, Is.Not.Null, "Could not find ScrollViewer named 'CredentialFormScroll'.");
+            return element!;
+        }
+
+        private static void Click(Window window, string name) =>
+            GetButton(window, name).RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+
 
         private static string GetText(Window window, string name)
         {

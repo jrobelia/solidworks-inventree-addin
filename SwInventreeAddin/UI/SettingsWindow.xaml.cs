@@ -75,6 +75,8 @@ namespace SwInventreeAddin.UI
             }
             catch { /* corrupt settings — user can re-enter */ }
 
+            RefreshConnectionCard();
+
             // Show local path (read-only, copyable)
             LocalPathBox.Text = _mappingProvider.LocalFilePath;
 
@@ -99,6 +101,38 @@ namespace SwInventreeAddin.UI
             ApplyButton.IsEnabled = isDirty;
             SaveButton.IsEnabled = isDirty;
             CancelButtonText.Text = isDirty ? "Cancel" : "Close";
+        }
+
+        // ── Connection status card ─────────────────────────────────────────────
+
+        // The card is the default view of the server section: it says whether server
+        // settings are saved and which server they point at, without revealing the key.
+        private void RefreshConnectionCard()
+        {
+            var config = TryGetConfig();
+            string url = config?.Url ?? string.Empty;
+            bool hasUrl = !string.IsNullOrWhiteSpace(url);
+            bool hasApiKey = !string.IsNullOrWhiteSpace(config?.ApiKey);
+
+            ConnectionCardText.Text =
+                !hasUrl ? "No server settings saved"
+                : hasApiKey ? "Server connection configured \u2014 API key saved"
+                : "Server connection configured \u2014 no API key saved";
+
+            ConnectionCardUrl.Text = hasUrl ? url : string.Empty;
+            ConnectionCardUrl.ToolTip = hasUrl ? url : null;
+            ConnectionCardUrl.Visibility = hasUrl ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        // ── Edit connection disclosure ─────────────────────────────────────────
+
+        private void EditConnection_Click(object sender, RoutedEventArgs e) =>
+            SetCredentialFormExpanded(CredentialFormScroll.Visibility != Visibility.Visible);
+
+        private void SetCredentialFormExpanded(bool expanded)
+        {
+            CredentialFormScroll.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+            EditConnectionButtonText.Text = expanded ? "Hide connection" : "Edit connection";
         }
 
         // ── Radio button handlers ──────────────────────────────────────────────
@@ -313,6 +347,7 @@ namespace SwInventreeAddin.UI
                 this.Dispatcher.Invoke(() =>
                 {
                     MappingApplied?.Invoke(this, _mappingProvider);
+                    RefreshConnectionCard();
                     _savedSnapshot = CaptureSnapshot();
                     RefreshButtonStates();
                     SetActionStatus("\u2713  Settings applied.", StatusSeverity.Success);
