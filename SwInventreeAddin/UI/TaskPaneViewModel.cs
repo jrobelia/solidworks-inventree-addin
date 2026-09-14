@@ -336,6 +336,7 @@ namespace SwInventreeAddin.UI
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RevisionMatch)));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DescriptionMatch)));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PkMatch)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(BomSectionVisible)));
             }
         }
 

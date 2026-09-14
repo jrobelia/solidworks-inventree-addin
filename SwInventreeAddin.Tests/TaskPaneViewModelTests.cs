@@ -42,9 +42,9 @@ namespace SwInventreeAddin.Tests
 
         private static PropertyMappingConfig DefaultMapping => PropertyMappingConfig.WithDefaults();
 
-        private void CreateVm(string seedPartNo = "R-10K-0402")
+        private void CreateVm(string seedIpn = "R-10K-0402")
         {
-            _propertyService.Seed(DefaultMapping.IpnProperty!, seedPartNo);
+            _propertyService.Seed(DefaultMapping.IpnProperty!, seedIpn);
             _vm = new TaskPaneViewModel(_client, _propertyService, null, createPartValidator: _createPartValidator);
         }
 
@@ -2302,11 +2302,13 @@ namespace SwInventreeAddin.Tests
             _createPartValidator = new StubCreatePartValidationErrorService();
         }
 
-        private void CreateVm(string seedPartNo = "ASSY-001", string? pk = null)
+        private static PropertyMappingConfig DefaultMapping => PropertyMappingConfig.WithDefaults();
+
+        private void CreateVm(string seedIpn = "ASSY-001", string? pk = null)
         {
-            _propertyService.Seed("PartNo", seedPartNo);
+            _propertyService.Seed(DefaultMapping.IpnProperty!, seedIpn);
             if (pk != null)
-                _propertyService.Seed("InvenTree PK", pk);
+                _propertyService.Seed(DefaultMapping.PkProperty!, pk);
             _vm = new TaskPaneViewModel(_client, _propertyService, null, createPartValidator: _createPartValidator);
         }
 
@@ -2383,8 +2385,7 @@ namespace SwInventreeAddin.Tests
             // Consistent with the sibling sections: a PK-only link leaves
             // PropertiesSectionVisible false, so BOM Compare stays hidden too.
             _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
-            _propertyService.Seed("InvenTree PK", "42");
-            CreateVm(string.Empty);
+            CreateVm(seedIpn: string.Empty, pk: "42");
 
             Assert.That(_vm.BomSectionVisible, Is.False);
         }
