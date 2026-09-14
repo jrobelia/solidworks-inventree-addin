@@ -3335,6 +3335,25 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.CreatePartEnabled, Is.False);
         }
 
+        // #224: a Settings Apply must re-sync the panel against the active
+        // document — a PK stamped after the last LoadPartNumber, with the
+        // property event missed, still picks up the LINKED-by-PK state.
+        [Test]
+        public void PkStampedAfterLoad_SettingsApplyResyncsPanel()
+        {
+            _propertyService.Seed(Mapping.IpnProperty!, string.Empty); // doc starts unlinked
+            var vm = CreateVm();
+            Assert.That(vm.PropertiesSectionVisible, Is.False);
+
+            _propertyService.Seed(Mapping.PkProperty!, "42");
+            vm.UpdateMapping(new StubPropertyMappingProvider { Config = PropertyMappingConfig.WithDefaults() });
+
+            Assert.That(vm.PropertiesSectionVisible, Is.True);
+            Assert.That(vm.CurrentPk, Is.EqualTo("42"));
+            Assert.That(vm.FetchEnabled, Is.True);
+            Assert.That(vm.ApplyEnabled, Is.False);
+        }
+
         // The Option-B gap documented by #186: on the PK path the fetched part's
         // IPN and Revision are never compared to the document — a stale PK is
         // followed silently. Characterizes current behavior, not a target.

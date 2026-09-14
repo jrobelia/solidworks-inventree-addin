@@ -1242,16 +1242,30 @@ namespace SwInventreeAddin.UI
         /// <summary>
         /// Updates the mapping provider reference and re-checks the schema version.
         /// Called after settings are saved with a new MappingSourcePath.
+        /// With no Part Sync session loaded, re-runs the document load so a link
+        /// stamped since the last refresh — e.g. an IPN or InvenTree Part PK added
+        /// while the property notification was missed — is picked up on Apply
+        /// instead of needing a document switch. With a session loaded, keeps the
+        /// light refresh so Apply does not drop it.
         /// </summary>
         public void UpdateMapping(IPropertyMappingProvider provider)
         {
             DetachMappingProvider();
             _mappingProvider = provider;
-            RefreshMappingResult();
-            RefreshStatus();
-            RefreshCommandStates();
-            if (_propertiesSectionVisible)
-                RefreshCurrentProperties();
+
+            if (_session == null)
+            {
+                LoadPartNumber();
+            }
+            else
+            {
+                RefreshMappingResult();
+                RefreshStatus();
+                RefreshCommandStates();
+                if (_propertiesSectionVisible)
+                    RefreshCurrentProperties();
+            }
+
             AttachMappingProvider();
         }
 
@@ -1265,6 +1279,12 @@ namespace SwInventreeAddin.UI
         {
             RunOnUiThread(() =>
             {
+                if (_session == null)
+                {
+                    LoadPartNumber();
+                    return;
+                }
+
                 RefreshMappingResult();
                 if (_propertiesSectionVisible)
                     RefreshCurrentProperties();
