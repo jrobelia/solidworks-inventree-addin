@@ -1,11 +1,11 @@
 ---
 name: review
-description: "Two-axis code review (Standards + Spec) over a committed diff from a fixed REVIEW_BASE, followed by an adjudicated fix-and-reverify loop. Invoke when /build or /fix reaches its review step, or when asked to 'run /review' on a committed branch, PR, or diff against a spec."
+description: "Two-axis code review (Standards + Spec) over a committed diff from a fixed REVIEW_BASE, followed by an adjudicated fix-and-reverify loop. Invoke when /build-hitl or /fix reaches its review step, or when asked to 'run /review' on a committed branch, PR, or diff against a spec."
 ---
 
 # /review
 
-The shared two-axis review seam. `/build` and `/fix` call it so the review-and-fix rules live in one place; it also runs standalone on any diff.
+The shared two-axis review seam. `/build-hitl`, `/build-afk`, and `/fix` call it so the review-and-fix rules live in one place; it also runs standalone on any diff.
 
 ## Interface
 
@@ -13,7 +13,7 @@ Inputs the caller supplies:
 
 - `REVIEW_BASE` — the git ref the diff is measured from (SHA, branch, or tag). Required.
 - `SPEC_SOURCE` — what the diff is judged against: an issue number (`#N`), spec text, or a file path. Pass `none` only when no spec exists. Required.
-- `AXES` — `both` (default) or `spec`. `spec` runs only the Spec axis; `/build`'s per-ticket check uses it.
+- `AXES` — `both` (default) or `spec`. `spec` runs only the Spec axis; `/build-hitl`'s per-ticket check uses it.
 
 Outputs the caller consumes:
 

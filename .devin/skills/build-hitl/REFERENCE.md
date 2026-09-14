@@ -1,10 +1,10 @@
-# Build reference
+# `/build-hitl` reference
 
 ## Skills to invoke
 
 - `/tdd` — red-green loop and seams.
 - `/codebase-design` — shared deep-module vocabulary and design-it-twice / deepening patterns; `docs/agents/coding-standards.md` `## Module Design` is the local source of truth and points here.
-- `/review` — the shared two-axis (Standards / Spec) review-and-fix loop; `/build` calls it for the per-ticket spec check and the final review.
+- `/review` — the shared two-axis (Standards / Spec) review-and-fix loop; `/build-hitl` calls it for the per-ticket spec check and the final review.
 
 ## Context pointers
 
@@ -17,7 +17,7 @@ Reach each pointer only when its branch fires.
 
 ## Inputs and issue hierarchy
 
-`/build` needs a parent spec and a **task graph** of child tickets. The **frontier** is the set of unblocked child tickets. See `docs/agents/issue-tracker.md` for how to resolve the graph and order the frontier.
+`/build-hitl` needs a parent spec and a **task graph** of child tickets. The **frontier** is the set of unblocked child tickets. See `docs/agents/issue-tracker.md` for how to resolve the graph and order the frontier.
 
 For every issue read as a parent or child, fetch the full body and **all comments** per `docs/agents/issue-tracker.md` `## Comments are part of the spec`.
 
@@ -52,13 +52,13 @@ If `dotnet format` is not available, continue and note it in the PR.
 
 ## Review calls
 
-The exact `/review` call parameters are in `SKILL.md` step 6 (per-ticket spec check) and step 8 (final review). `/build` supplies the scope and acts on `REVIEW_STATUS` per `/review`'s output contract.
+The exact `/review` call parameters are in `SKILL.md` step 6 (per-ticket spec check) and step 8 (final review). `/build-hitl` supplies the scope and acts on `REVIEW_STATUS` per `/review`'s output contract.
 
 ## Examples
 
 ### Single ticket
 
-**User:** `/build #51`
+**User:** `/build-hitl #51`
 
 - Issue `#51` is the child ticket.
 - Create `build/issue-51` from `PARENT_BRANCH`.
@@ -68,7 +68,7 @@ The exact `/review` call parameters are in `SKILL.md` step 6 (per-ticket spec ch
 
 ### Parent spec
 
-**User:** `/build spec #44` or `/build spec #44 with #45 #46 #47`
+**User:** `/build-hitl spec #44` or `/build-hitl spec #44 with #45 #46 #47`
 
 - Issue `#44` is the parent spec.
 - If the user did not list children, find child issues whose bodies have `## Parent` referencing `#44`; otherwise use the explicit children.

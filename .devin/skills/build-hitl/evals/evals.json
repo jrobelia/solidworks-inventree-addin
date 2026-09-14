@@ -1,0 +1,29 @@
+{
+  "skill_name": "build-hitl",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Run /build-hitl #51 where #51 is a single child ticket. Walk through the loop: identify the ticket, create the branch, and state how the review step runs.",
+      "expected_output": "Agent creates build/issue-51, runs /tdd, and for the final review invokes /review via the skill tool with REVIEW_BASE=PRE_BUILD_SHA and SPEC_SOURCE=the spec/issue body. /review runs an adjudicated two-pass review-and-fix loop and returns REVIEW_STATUS plus the full REVIEW_NOTES; the build-hitl skill does not do an inline two-axis dispatch.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Run /build-hitl spec #44 with #45 #46 #47. After ticket #45 commits, what happens before #46 starts? State the exact /review call.",
+      "expected_output": "Agent calls /review with REVIEW_BASE=PRE_TICKET_SHA, SPEC_SOURCE=#45's ticket body, AXES=spec, and resolves returned spec gaps before starting #46.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "At the end of a /build-hitl run, /review returns REVIEW_STATUS=escalated because a RED spec gap became follow-up issue #200. What does /build-hitl do next?",
+      "expected_output": "Agent keeps the PR in draft, records the blocking follow-up and the full final REVIEW_NOTES verbatim in the PR body, and stops for the user rather than proceeding.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "/review returns REVIEW_STATUS=capped after two passes on a stubborn finding. What does /build-hitl do?",
+      "expected_output": "Agent stops and asks the user because the two-pass review loop is capped — it does not loop a third pass or silently proceed.",
+      "files": []
+    }
+  ]
+}

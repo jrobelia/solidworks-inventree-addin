@@ -1,19 +1,21 @@
 ---
-name: build-afk
-description: "Unattended Dynamic Workflow that turns ready-for-agent GitHub issues into reviewed, test-passing, draft PRs on a shared Windows Cloud VM. Invoke with /build-afk or whenever the user wants a batch build/test/review/PR loop with no manual handoff."
+name: build-afk-cloud
+description: "RETIRED — each run burned through the available Cloud credits too fast. Unattended Dynamic Workflow that turned ready-for-agent GitHub issues into reviewed, test-passing, draft PRs on a shared Windows Cloud VM. Superseded by the local /build-afk skill (spec #197). Kept for reference only; do not invoke."
 disable-model-invocation: true
 triggers: ["user"]
 ---
 
-# `/build-afk`
+# `/build-afk-cloud` (retired)
+
+> **Retired.** Unusable in practice — each run burns through the available Cloud credits too quickly. Superseded by the local `/build-afk-cloud` skill being built under spec #197. Kept for reference only.
 
 Run a Dynamic Workflow that implements `ready-for-agent` issues in isolated git worktrees on the same Windows Cloud VM, then opens draft PRs. Human `/qa` remains the merge gate.
 
-`/build-afk` is a headless version of `/build`: it skips the interactive seam confirmations and review escalations, and it bills as a single Cloud session by using `vm_mode="shared"` children.
+`/build-afk-cloud` was a headless version of `/build-hitl`: it skips the interactive seam confirmations and review escalations, and it bills as a single Cloud session by using `vm_mode="shared"` children.
 
 ## When to use
 
-- The user says `/build-afk`, `/build-afk #41 #52`, or `/build-afk --all`.
+- The user says `/build-afk-cloud`, `/build-afk #41 #52`, or `/build-afk --all`.
 - The user wants to batch-process `ready-for-agent` issues unattended on the Windows Cloud blueprint.
 - The user explicitly asks for an unattended Cloud build/test/review/PR loop.
 
@@ -25,7 +27,7 @@ Run a Dynamic Workflow that implements `ready-for-agent` issues in isolated git 
 
 ## Input
 
-`/build-afk` accepts one of:
+`/build-afk-cloud` accepts one of:
 
 1. No arguments — scan open `ready-for-agent` issues, print the proposed batch, and **stop for user confirmation**.
 2. `--all` — process every open `ready-for-agent` issue. Use `--max N` to limit the batch.

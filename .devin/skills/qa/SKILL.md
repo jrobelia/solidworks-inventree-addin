@@ -6,9 +6,9 @@ disable-model-invocation: true
 
 # QA
 
-Human-in-the-loop verification for the SolidWorks InvenTree Add-In. QA sits after `/build` and is the final step before merge:
+Human-in-the-loop verification for the SolidWorks InvenTree Add-In. QA sits after `/build-hitl` or `/build-afk` and is the final step before merge:
 
-`grill-with-docs → to-spec → to-tickets → build → qa`
+`grill-with-docs → to-spec → to-tickets → build-hitl | build-afk → qa`
 
 QA orients from the current branch, proposes Test Groups, builds a GUI-focused test plan, runs the preflight, walks the user through each step, labels verified issues, files failures, and hands off to the `git` skill for merge when QA passes.
 
