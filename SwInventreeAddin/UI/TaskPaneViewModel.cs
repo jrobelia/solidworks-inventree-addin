@@ -106,9 +106,6 @@ namespace SwInventreeAddin.UI
         /// </summary>
         private DocumentType _currentDocumentType = DocumentType.Unknown;
 
-        /// <summary>The document type recorded on the previous document switch.</summary>
-        private DocumentType _lastDocumentType = DocumentType.Unknown;
-
         /// <summary>User-editable IPN entry box.</summary>
         public string PartNumber
         {
@@ -314,9 +311,9 @@ namespace SwInventreeAddin.UI
             && _mappingResult?.CanFetch == true
             && (_documentPkPresent || !string.IsNullOrEmpty(_partNumber));
 
-        /// <summary>True when an assembly is open and a Part Sync session is active — shows the BOM section.</summary>
+        /// <summary>True when an assembly is open and the linked-data sections are showing — the Compare BOM button stays disabled until a Part Sync session exists.</summary>
         public bool BomSectionVisible =>
-            _isDocumentOpen && _currentDocumentType == DocumentType.Assembly && _session != null;
+            _isDocumentOpen && _currentDocumentType == DocumentType.Assembly && _propertiesSectionVisible;
 
         /// <summary>True when BOM compare button should be enabled.</summary>
         public bool BomButtonEnabled =>
@@ -470,20 +467,10 @@ namespace SwInventreeAddin.UI
         /// <summary>
         /// Reads the IPN from the open document and prepares
         /// the panel for the user to fetch from InvenTree.
-        /// Drops the Part Sync session when the document type changes so a stale
-        /// session cannot satisfy the new document's visibility gates.
         /// </summary>
         public void LoadPartNumber()
         {
             _currentDocumentType = _propertyService.GetDocumentType();
-
-            // A Part Sync session belongs to the document type it was created for.
-            // Drop a stale session when the type changes so a Part's session cannot
-            // satisfy an Assembly's BOM visibility gate.
-            if (_currentDocumentType != _lastDocumentType && _session != null)
-                ClearSession();
-            _lastDocumentType = _currentDocumentType;
-
             RefreshMappingResult();
 
             if (_currentDocumentType == DocumentType.Drawing)

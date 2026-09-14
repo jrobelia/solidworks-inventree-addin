@@ -2360,10 +2360,31 @@ namespace SwInventreeAddin.Tests
         // ── BOM section visible ────────────────────────────────────────────────
 
         [Test]
-        public void BomSectionVisible_AssemblyWithNoSession_IsFalse()
+        public void BomSectionVisible_UnlinkedAssembly_IsFalse()
+        {
+            _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            CreateVm(string.Empty);
+
+            Assert.That(_vm.BomSectionVisible, Is.False);
+        }
+
+        [Test]
+        public void BomSectionVisible_LinkedAssembly_IsTrue()
         {
             _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
             CreateVm("ASSY-001");
+
+            Assert.That(_vm.BomSectionVisible, Is.True);
+        }
+
+        [Test]
+        public void BomSectionVisible_LinkedByPkOnlyAssembly_IsFalse()
+        {
+            // Consistent with the sibling sections: a PK-only link leaves
+            // PropertiesSectionVisible false, so BOM Compare stays hidden too.
+            _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            _propertyService.Seed("InvenTree PK", "42");
+            CreateVm(string.Empty);
 
             Assert.That(_vm.BomSectionVisible, Is.False);
         }
@@ -2418,8 +2439,11 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public async Task BomSectionVisible_AssemblyWithPkMatchingPreviousPartSession_IsFalse()
+        public async Task BomSectionVisible_AssemblyInheritingSessionForSamePart_IsTrue()
         {
+            // A session fetched for a Part survives the switch to an Assembly
+            // stamped with the same IPN/PK — the session belongs to the
+            // InvenTree part, so the Assembly is POPULATED, not LINKED.
             _client.PartByPkToReturn = new InventreePart { Pk = 1, Ipn = "SHARED-001" };
             _propertyService.DocumentTypeToReturn = DocumentType.Part;
             CreateVm("SHARED-001", pk: "1");
@@ -2428,7 +2452,7 @@ namespace SwInventreeAddin.Tests
             _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
             _vm.LoadPartNumber();
 
-            Assert.That(_vm.BomSectionVisible, Is.False);
+            Assert.That(_vm.BomSectionVisible, Is.True);
         }
     }
 }
