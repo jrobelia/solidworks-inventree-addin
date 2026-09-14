@@ -2302,9 +2302,11 @@ namespace SwInventreeAddin.Tests
             _createPartValidator = new StubCreatePartValidationErrorService();
         }
 
-        private void CreateVm(string seedPartNo = "ASSY-001")
+        private void CreateVm(string seedPartNo = "ASSY-001", string? pk = null)
         {
             _propertyService.Seed("PartNo", seedPartNo);
+            if (pk != null)
+                _propertyService.Seed("InvenTree PK", pk);
             _vm = new TaskPaneViewModel(_client, _propertyService, null, createPartValidator: _createPartValidator);
         }
 
@@ -2420,9 +2422,7 @@ namespace SwInventreeAddin.Tests
         {
             _client.PartByPkToReturn = new InventreePart { Pk = 1, Ipn = "SHARED-001" };
             _propertyService.DocumentTypeToReturn = DocumentType.Part;
-            _propertyService.Seed("PartNo", "SHARED-001");
-            _propertyService.Seed("InvenTree PK", "1");
-            _vm = new TaskPaneViewModel(_client, _propertyService, null, createPartValidator: _createPartValidator);
+            CreateVm("SHARED-001", pk: "1");
             await _vm.FetchPartAsync();
 
             _propertyService.DocumentTypeToReturn = DocumentType.Assembly;

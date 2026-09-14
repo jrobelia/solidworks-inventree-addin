@@ -106,7 +106,7 @@ namespace SwInventreeAddin.UI
         /// </summary>
         private DocumentType _currentDocumentType = DocumentType.Unknown;
 
-        /// <summary>The document type seen by the previous LoadPartNumber call.</summary>
+        /// <summary>The document type recorded on the previous document switch.</summary>
         private DocumentType _lastDocumentType = DocumentType.Unknown;
 
         /// <summary>User-editable IPN entry box.</summary>
@@ -470,6 +470,8 @@ namespace SwInventreeAddin.UI
         /// <summary>
         /// Reads the IPN from the open document and prepares
         /// the panel for the user to fetch from InvenTree.
+        /// Drops the Part Sync session when the document type changes so a stale
+        /// session cannot satisfy the new document's visibility gates.
         /// </summary>
         public void LoadPartNumber()
         {
