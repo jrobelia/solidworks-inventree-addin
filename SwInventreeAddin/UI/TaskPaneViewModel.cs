@@ -543,8 +543,8 @@ namespace SwInventreeAddin.UI
                 // A PK-only document is LINKED the same as an IPN-bearing one:
                 // show the linked-data sections greyed, with the stamped PK
                 // visible so the user can see what Fetch will pull.
-                RefreshCurrentProperties();
                 PropertiesSectionVisible = true;
+                RefreshCurrentProperties();
 
                 if (_client == null)
                     SetStatus("No server configured \u2014 click \u2699 Settings to get started",

@@ -2386,6 +2386,14 @@ namespace SwInventreeAddin.Tests
             CreateVm(seedIpn: string.Empty, pk: "42");
 
             Assert.That(_vm.BomSectionVisible, Is.True);
+        }
+
+        [Test]
+        public void BomButtonEnabled_LinkedByPkOnlyAssembly_IsFalse()
+        {
+            _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            CreateVm(seedIpn: string.Empty, pk: "42");
+
             Assert.That(_vm.BomButtonEnabled, Is.False);
         }
 
@@ -2426,7 +2434,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void LinkedByPkOnly_FetchEnabled_WritePathsDisabled()
+        public void LinkedByPkOnly_FetchEnabled_ApplyAndApplyPkDisabled()
         {
             _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
             CreateVm(seedIpn: string.Empty, pk: "42");
