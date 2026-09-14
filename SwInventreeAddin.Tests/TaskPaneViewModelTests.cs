@@ -2380,14 +2380,60 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void BomSectionVisible_LinkedByPkOnlyAssembly_IsFalse()
+        public void BomSectionVisible_LinkedByPkOnlyAssembly_IsTrue()
         {
-            // Consistent with the sibling sections: a PK-only link leaves
-            // PropertiesSectionVisible false, so BOM Compare stays hidden too.
             _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
             CreateVm(seedIpn: string.Empty, pk: "42");
 
+            Assert.That(_vm.BomSectionVisible, Is.True);
+            Assert.That(_vm.BomButtonEnabled, Is.False);
+        }
+
+        [Test]
+        public void BomSectionVisible_LinkedByPkOnlyPart_IsFalse()
+        {
+            // StubDocumentPropertyService defaults to DocumentType.Part
+            CreateVm(seedIpn: string.Empty, pk: "42");
+
             Assert.That(_vm.BomSectionVisible, Is.False);
+        }
+
+        // ── PK-only linked state (#222) ────────────────────────────────────
+
+        [Test]
+        public void PropertiesSectionVisible_LinkedByPkOnlyPart_IsTrue()
+        {
+            CreateVm(seedIpn: string.Empty, pk: "42");
+
+            Assert.That(_vm.PropertiesSectionVisible, Is.True);
+        }
+
+        [Test]
+        public void PropertiesSectionVisible_LinkedByPkOnlyAssembly_IsTrue()
+        {
+            _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            CreateVm(seedIpn: string.Empty, pk: "42");
+
+            Assert.That(_vm.PropertiesSectionVisible, Is.True);
+        }
+
+        [Test]
+        public void CurrentPk_LinkedByPkOnly_ShowsStampedPk()
+        {
+            CreateVm(seedIpn: string.Empty, pk: "42");
+
+            Assert.That(_vm.CurrentPk, Is.EqualTo("42"));
+        }
+
+        [Test]
+        public void LinkedByPkOnly_FetchEnabled_WritePathsDisabled()
+        {
+            _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            CreateVm(seedIpn: string.Empty, pk: "42");
+
+            Assert.That(_vm.FetchEnabled, Is.True);
+            Assert.That(_vm.ApplyEnabled, Is.False);
+            Assert.That(_vm.ApplyPkEnabled, Is.False);
         }
 
         [Test]
