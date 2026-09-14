@@ -2414,6 +2414,22 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(_vm.BomSectionVisible, Is.False);
         }
+
+        [Test]
+        public async Task BomSectionVisible_AssemblyWithPkMatchingPreviousPartSession_IsFalse()
+        {
+            _client.PartByPkToReturn = new InventreePart { Pk = 1, Ipn = "SHARED-001" };
+            _propertyService.DocumentTypeToReturn = DocumentType.Part;
+            _propertyService.Seed("PartNo", "SHARED-001");
+            _propertyService.Seed("InvenTree PK", "1");
+            _vm = new TaskPaneViewModel(_client, _propertyService, null, createPartValidator: _createPartValidator);
+            await _vm.FetchPartAsync();
+
+            _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            _vm.LoadPartNumber();
+
+            Assert.That(_vm.BomSectionVisible, Is.False);
+        }
     }
 }
 

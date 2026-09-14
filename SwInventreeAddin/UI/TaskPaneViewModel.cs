@@ -106,6 +106,9 @@ namespace SwInventreeAddin.UI
         /// </summary>
         private DocumentType _currentDocumentType = DocumentType.Unknown;
 
+        /// <summary>The document type seen by the previous LoadPartNumber call.</summary>
+        private DocumentType _lastDocumentType = DocumentType.Unknown;
+
         /// <summary>User-editable IPN entry box.</summary>
         public string PartNumber
         {
@@ -471,6 +474,14 @@ namespace SwInventreeAddin.UI
         public void LoadPartNumber()
         {
             _currentDocumentType = _propertyService.GetDocumentType();
+
+            // A Part Sync session belongs to the document type it was created for.
+            // Drop a stale session when the type changes so a Part's session cannot
+            // satisfy an Assembly's BOM visibility gate.
+            if (_currentDocumentType != _lastDocumentType && _session != null)
+                ClearSession();
+            _lastDocumentType = _currentDocumentType;
+
             RefreshMappingResult();
 
             if (_currentDocumentType == DocumentType.Drawing)
