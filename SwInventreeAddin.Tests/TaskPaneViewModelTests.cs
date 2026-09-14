@@ -3335,11 +3335,11 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.CreatePartEnabled, Is.False);
         }
 
-        // #224: a Settings Apply must re-sync the panel against the active
-        // document — a PK stamped after the last LoadPartNumber, with the
-        // property event missed, still picks up the LINKED-by-PK state.
+        // #224: a Settings Apply must re-read the document identity — a PK
+        // stamped after the last LoadPartNumber, with the property event
+        // missed, still picks up the LINKED-by-PK state.
         [Test]
-        public void PkStampedAfterLoad_SettingsApplyResyncsPanel()
+        public void PkStampedAfterLoadPartNumber_SettingsApplyRefreshesPanel()
         {
             _propertyService.Seed(Mapping.IpnProperty!, string.Empty); // doc starts unlinked
             var vm = CreateVm();
@@ -3352,6 +3352,44 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.CurrentPk, Is.EqualTo("42"));
             Assert.That(vm.FetchEnabled, Is.True);
             Assert.That(vm.ApplyEnabled, Is.False);
+        }
+
+        // #224 IPN twin: an IPN stamped after the last LoadPartNumber is
+        // picked up on Settings Apply the same way.
+        [Test]
+        public void IpnStampedAfterLoadPartNumber_SettingsApplyRefreshesPanel()
+        {
+            _propertyService.Seed(Mapping.IpnProperty!, string.Empty); // doc starts unlinked
+            var vm = CreateVm();
+            Assert.That(vm.PropertiesSectionVisible, Is.False);
+
+            _propertyService.Seed(Mapping.IpnProperty!, "PART-001");
+            vm.UpdateMapping(new StubPropertyMappingProvider { Config = PropertyMappingConfig.WithDefaults() });
+
+            Assert.That(vm.PropertiesSectionVisible, Is.True);
+            Assert.That(vm.PartNumber, Is.EqualTo("PART-001"));
+            Assert.That(vm.FetchEnabled, Is.True);
+            Assert.That(vm.ApplyEnabled, Is.False);
+        }
+
+        // #224: the mapping-changed path has the same staleness gap — a
+        // mapping-editor SaveMapping or external file edit on a document whose
+        // link was stamped after the last LoadPartNumber must also re-read
+        // document identity when no session is loaded.
+        [Test]
+        public void MappingChanged_NoSession_PicksUpStampedPk()
+        {
+            _propertyService.Seed(Mapping.IpnProperty!, string.Empty); // doc starts unlinked
+            var provider = new StubPropertyMappingProvider { Config = PropertyMappingConfig.WithDefaults() };
+            var vm = new TaskPaneViewModel(_client, _propertyService, null, provider,
+                                           createPartValidator: _createPartValidator);
+            Assert.That(vm.PropertiesSectionVisible, Is.False);
+
+            _propertyService.Seed(Mapping.PkProperty!, "42");
+            provider.RaiseMappingChanged();
+
+            Assert.That(vm.PropertiesSectionVisible, Is.True);
+            Assert.That(vm.CurrentPk, Is.EqualTo("42"));
         }
 
         // The Option-B gap documented by #186: on the PK path the fetched part's

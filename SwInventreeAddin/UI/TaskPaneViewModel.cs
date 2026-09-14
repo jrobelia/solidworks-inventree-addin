@@ -1242,29 +1242,14 @@ namespace SwInventreeAddin.UI
         /// <summary>
         /// Updates the mapping provider reference and re-checks the schema version.
         /// Called after settings are saved with a new MappingSourcePath.
-        /// With no Part Sync session loaded, re-runs the document load so a link
-        /// stamped since the last refresh — e.g. an IPN or InvenTree Part PK added
-        /// while the property notification was missed — is picked up on Apply
-        /// instead of needing a document switch. With a session loaded, keeps the
-        /// light refresh so Apply does not drop it.
         /// </summary>
         public void UpdateMapping(IPropertyMappingProvider provider)
         {
             DetachMappingProvider();
             _mappingProvider = provider;
 
-            if (_session == null)
-            {
-                LoadPartNumber();
-            }
-            else
-            {
-                RefreshMappingResult();
-                RefreshStatus();
-                RefreshCommandStates();
-                if (_propertiesSectionVisible)
-                    RefreshCurrentProperties();
-            }
+            if (!TryLoadPartNumberWhenNoSession())
+                RefreshPreservingSession();
 
             AttachMappingProvider();
         }
@@ -1279,18 +1264,41 @@ namespace SwInventreeAddin.UI
         {
             RunOnUiThread(() =>
             {
-                if (_session == null)
-                {
-                    LoadPartNumber();
+                if (TryLoadPartNumberWhenNoSession())
                     return;
-                }
-
-                RefreshMappingResult();
-                if (_propertiesSectionVisible)
-                    RefreshCurrentProperties();
-                RefreshCommandStates();
-                RefreshStatus();
+                RefreshPreservingSession();
             });
+        }
+
+        /// <summary>
+        /// Light refresh used when a Part Sync session is loaded: re-checks
+        /// mapping health, status, command states, and — when the linked
+        /// sections are visible — the document's current property values.
+        /// Does not re-read document identity, so the session is preserved.
+        /// </summary>
+        private void RefreshPreservingSession()
+        {
+            RefreshMappingResult();
+            RefreshStatus();
+            RefreshCommandStates();
+            if (_propertiesSectionVisible)
+                RefreshCurrentProperties();
+        }
+
+        /// <summary>
+        /// Re-runs <see cref="LoadPartNumber"/> when no Part Sync session is
+        /// loaded, so a link stamped since the last load — e.g. an IPN or
+        /// InvenTree Part PK added while the property notification was missed —
+        /// is picked up without a document switch. Returns false when a session
+        /// is loaded so the caller keeps its lighter refresh and does not drop
+        /// the session.
+        /// </summary>
+        private bool TryLoadPartNumberWhenNoSession()
+        {
+            if (_session != null)
+                return false;
+            LoadPartNumber();
+            return true;
         }
 
         private MappingResult GetMappingResultOrDefault() =>
