@@ -10,6 +10,8 @@ Every intake shape resolves to a confirmed finite set plus a merge topology, pre
 
 The prior-work check below runs for every intake shape, not just spec intake.
 
+Two intake shapes are out of scope and route to `/build-hitl` instead: tickets tracked as local files (`.scratch/<feature>/issues/` — the resolver assumes GitHub issue numbers, so a spec whose children aren't GitHub issues stops at resolution rather than failing mid-run) and expand–contract sequences whose intermediate tickets are intentionally not green alone — the per-ticket green gate can't defer greenness to an integrate ticket.
+
 ## Prior-work check
 
 During resolution, for each child ticket:
@@ -27,7 +29,7 @@ Each finding gets a disposition at the batch gate:
 
 - The dispatch contract is profile + filled task template → structured status JSON. Templates: `IMPLEMENTER_TASK.md` (implementers), `DESIGNER_TASK.md` (designer). Fill every `{{slot}}`.
 - Profiles: `build-implementer` (`swe-2-high`, rounds 1–3), `build-implementer-max` (`swe-2-max`, rounds 4–5), `build-designer` (`swe-2-high`, read-only), `review-spec` (`swe-2-max`).
-- Subagents get five tools — `read`, `edit`, `exec`, `grep`, `find_file_by_name` — and `edit` cannot create files. New files go through `exec` heredoc or `git apply`; `IMPLEMENTER_TASK.md` `## Tool reality` carries this for the implementer. `skill` and `ask_user_question` are unreachable inside a subagent — every context pointer is a file to read, and a question is a `BLOCKED`.
+- Subagents get five tools — `read`, `edit`, `exec`, `grep`, `glob` (exposed as `find_file_by_name`) — and `edit` cannot create files. New files go through `exec` heredoc or `git apply`; `IMPLEMENTER_TASK.md` `## Tool reality` carries this for the implementer. `skill` and `ask_user_question` are unreachable inside a subagent — every context pointer is a file to read, and a question is a `BLOCKED`.
 - Foreground is the default. A backgrounded subagent auto-denies ungranted tools: pre-approve `exec` in-session before fanning out, and cap background implementers at 2. When a denial stalls a background subagent, foreground it from the subagent panel (`f` on the running entry) or resume it — resume always runs foreground.
 - `resume` a subagent (`resume` param with its agent id) for fix-ladder rounds 1–3 and for merge-conflict rebases — it always runs foreground, so previously denied grants can be approved inline.
 - The implementer's status JSON routes the loop: `COMPLETE`/`COMPLETE_WITH_CONCERNS` → merge; `BLOCKED` → record `blocked_kind` (`context` | `capability` | `size` | `ambiguity`), mark its dependents blocked-by-predecessor (`context`), continue with unblocked tickets. Persist the implementer's full report under `reports/` and reference it by path.
@@ -36,7 +38,7 @@ Each finding gets a disposition at the batch gate:
 
 `.scratch/build-afk/<run>/` — `<run>` is the batch slug (e.g. `spec-208-213-214`):
 
-- `STATUS.json` — machine-readable state: batch branch, `PRE_BUILD_SHA`, per-ticket `{status, branch, commit, fix_round, blocked_kind}`.
+- `STATUS.json` — machine-readable state: batch branch, `PRE_BUILD_SHA`, per-ticket `{phase, status, branch, worktree, commit, fix_round, blocked_kind}`.
 - `PROGRESS.md` — the ledger. First line names the spec. `Task <N>: complete` per merged ticket. A trailing `Task <N>: fix round <R>` line means resume mid-ladder at round `R+1`.
 - `seams/<ticket>.md` — designer output, persisted verbatim.
 - `reports/` — implementer reports, raw reviewer output (`<N>-review-<round>.md`), adjudication rulings, `run-retro.md`.

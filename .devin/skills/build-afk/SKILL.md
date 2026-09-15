@@ -52,7 +52,7 @@ Do not move to the next step until the **Done when** criterion for the current s
 
 ## Queue and wave branches
 
-In **queue** mode there is no batch branch. Each ticket traverses step 4's dispatch on its own `build/issue-<N>`: the per-ticket and final reviews collapse into one `AXES=both` `/review` on `PARENT...build/issue-<N>` (the fix ladder and adjudication apply unchanged), `dotnet test` runs on the ticket branch, and the ticket's own draft PR is its closeout — step 5's batch review and step 6's single-PR finalization do not exist for a queue ticket.
+In **queue** mode there is no batch branch. Each ticket traverses step 4's dispatch on its own `build/issue-<N>`: the per-ticket and final reviews collapse into one `AXES=both` `/review` on `PARENT...build/issue-<N>` (the fix ladder and adjudication apply unchanged), `dotnet test` runs on the ticket branch, and the ticket's own draft PR is its closeout — step 5's batch review does not exist, but step 6's closeout applies per PR: pushed-branch checks green (the end-of-run gate), the body finalized with `REVIEW_NOTES`, and the `/qa` handoff per ticket.
 
 In **wave** mode each wave traverses steps 2–6 as its own unit: the wave's tickets stand in for the batch, the final review's `SPEC_SOURCE` is the wave's ticket bodies and comments, and coherence inside the wave picks batch or queue topology per `REFERENCE.md` `## Inputs and merge topology`.
 
