@@ -21,12 +21,15 @@ namespace SwInventreeAddin.Config
         }
 
         /// <inheritdoc/>
-        public async Task ApplyAsync(SettingsApplyInput input)
+        public async Task ApplyAsync(SettingsApplyInput input, HttpClient client)
         {
+            if (client == null)
+                throw new ArgumentNullException(nameof(client));
+
             string apiKey;
             try
             {
-                apiKey = await ResolveApiKeyAsync(input).ConfigureAwait(false);
+                apiKey = await ResolveAndProbeAsync(input, client).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -58,6 +61,31 @@ namespace SwInventreeAddin.Config
             if (client == null)
                 throw new ArgumentNullException(nameof(client));
 
+            await ResolveAndProbeAsync(input, client).ConfigureAwait(false);
+        }
+
+        /// <inheritdoc/>
+        public Task RemoveServerConfigAsync()
+        {
+            try
+            {
+                _configProvider.DeleteServerConfig();
+            }
+            catch (Exception ex)
+            {
+                throw RemoveError(ex);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        // ── Private helpers ───────────────────────────────────────────────────
+
+        // Apply and Test Connection share the same resolve-and-probe path so an
+        // untested key can never be persisted: the probe result is the gate, and
+        // ApplyAsync alone decides whether a passing probe leads to a save.
+        private async Task<string> ResolveAndProbeAsync(SettingsApplyInput input, HttpClient client)
+        {
             string apiKey = await ResolveApiKeyAsync(input).ConfigureAwait(false);
 
             client.BaseAddress = new Uri(input.Url.Trim());
@@ -76,12 +104,17 @@ namespace SwInventreeAddin.Config
                     ex);
             }
 
-            if (!response.IsSuccessStatusCode)
-                throw new InvalidOperationException(
-                    $"Server responded: {(int)response.StatusCode} {response.ReasonPhrase}");
-        }
+            // HttpResponseMessage is IDisposable — on net48 an undisposed response
+            // holds the connection until GC.
+            using (response)
+            {
+                if (!response.IsSuccessStatusCode)
+                    throw new InvalidOperationException(
+                        $"Server responded: {(int)response.StatusCode} {response.ReasonPhrase}");
 
-        // ── Private helpers ───────────────────────────────────────────────────
+                return apiKey;
+            }
+        }
 
         private async Task<string> ResolveApiKeyAsync(SettingsApplyInput input)
         {
@@ -111,10 +144,13 @@ namespace SwInventreeAddin.Config
                 return rawKey;
 
             throw new InvalidOperationException(
-                "Enter a username and password, or expand Advanced and paste an API key.");
+                "Enter a username and password, or choose API key and paste a key.");
         }
 
         private static SettingsApplyException ConfigError(Exception ex)
             => new SettingsApplyException($"Failed to save server settings: {ex.Message}", ex);
+
+        private static SettingsApplyException RemoveError(Exception ex)
+            => new SettingsApplyException($"Failed to remove server settings: {ex.Message}", ex);
     }
 }

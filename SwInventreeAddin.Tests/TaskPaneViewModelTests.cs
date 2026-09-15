@@ -835,7 +835,7 @@ namespace SwInventreeAddin.Tests
             await first!.CheckAsync();
             Assert.That(bomService.LastKeywordUsed, Is.EqualTo("inventree"));
 
-            configProvider.Config.BomKeyword = "mycompany";
+            configProvider.Config!.BomKeyword = "mycompany";
 
             var second = _vm.CreateBomCompareReadinessCheck();
             Assert.That(second, Is.Not.Null);
@@ -855,7 +855,7 @@ namespace SwInventreeAddin.Tests
         public void BomKeyword_SavedKeyword_ReturnsSavedKeyword()
         {
             var configProvider = new StubConfigProvider();
-            configProvider.Config.BomKeyword = "mycompany";
+            configProvider.Config!.BomKeyword = "mycompany";
             _vm = CreateVmWithConfig(configProvider);
 
             Assert.That(_vm.BomKeyword, Is.EqualTo("mycompany"));
@@ -866,7 +866,7 @@ namespace SwInventreeAddin.Tests
         {
             var bomService = new StubAssemblyBomService();
             var configProvider = new StubConfigProvider();
-            configProvider.Config.BomKeyword = "mycompany";
+            configProvider.Config!.BomKeyword = "mycompany";
             _vm = CreateVmWithConfig(configProvider);
             _vm.UpdateBomState(bomService);
 
