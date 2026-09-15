@@ -2,7 +2,7 @@
 
 ## Inputs and issue hierarchy
 
-The input is a parent spec. Find child issues whose bodies contain `## Parent` referencing it, per `docs/agents/issue-tracker.md` `## Parent and child issues`. Resolve each child's `## Blocked by` links into the task graph; the **frontier** is the set of unblocked children. Read every body's full text and **all comments** — comments are part of the spec. Explicit children from the maintainer override discovery. Cap the batch at 3–5 tickets.
+The input is a parent spec. Find child issues whose bodies contain `## Parent` referencing it, per `docs/agents/issue-tracker.md` `## Parent and child issues`. Resolve each child's `## Blocked by` links into the task graph; the **frontier** is the set of unblocked children. Read every body's full text and **all comments** — comments are part of the spec. Cap the batch at 3–5 tickets.
 
 ## Prior-work check
 

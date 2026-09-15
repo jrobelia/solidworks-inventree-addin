@@ -11,7 +11,7 @@ triggers: ["user"]
 
 ## Inputs
 
-`/build-afk` takes a parent spec, with or without explicit child tickets. Other intake shapes — explicit issue lists, label/milestone queries, queue and wave topologies — are #223.
+`/build-afk` takes a parent spec. Other intake shapes — explicit issue lists, label/milestone queries, queue and wave topologies — are #223.
 
 ## Guardrails
 
