@@ -1,7 +1,7 @@
 ---
 name: review-spec
 description: "Spec-axis reviewer for the shared /review seam. Fetches the diff and commit list from REVIEW_BASE, then reviews them against a pasted spec. Returns a structured ## Spec findings block with spec quotes."
-model: swe-1-7
+model: swe-2-max
 allowed-tools:
   - read
   - grep

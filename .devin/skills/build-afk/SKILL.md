@@ -1,120 +1,59 @@
 ---
 name: build-afk
-description: "Unattended Dynamic Workflow that turns ready-for-agent GitHub issues into reviewed, test-passing, draft PRs on a shared Windows Cloud VM. Invoke with /build-afk or whenever the user wants a batch build/test/review/PR loop with no manual handoff."
+description: "Autonomous build of reviewed, test-passing draft PRs from a parent spec (batched children), an explicit issue list (queued per-ticket PRs), or a label/milestone query (dependency-layered waves): consolidated seam gate, serial worktree implementers, five-round fix ladder. Invoke with /build-afk."
 disable-model-invocation: true
 triggers: ["user"]
 ---
 
 # `/build-afk`
 
-Run a Dynamic Workflow that implements `ready-for-agent` issues in isolated git worktrees on the same Windows Cloud VM, then opens draft PRs. Human `/qa` remains the merge gate.
+`grill-with-docs → to-spec → to-tickets → build-hitl | build-afk → qa`
 
-`/build-afk` is a headless version of `/build`: it skips the interactive seam confirmations and review escalations, and it bills as a single Cloud session by using `vm_mode="shared"` children.
+## Inputs
 
-## When to use
-
-- The user says `/build-afk`, `/build-afk #41 #52`, or `/build-afk --all`.
-- The user wants to batch-process `ready-for-agent` issues unattended on the Windows Cloud blueprint.
-- The user explicitly asks for an unattended Cloud build/test/review/PR loop.
+`/build-afk` takes a parent spec, an explicit issue list, or a label/milestone query. Every shape resolves to a confirmed finite set plus a merge topology — batch, queue, or waves — before the batch gate; open-ended pulls are rejected. `REFERENCE.md` `## Inputs and merge topology` owns the resolution rules.
 
 ## Guardrails
 
-- The current branch must be a feature or milestone branch. If it is `main` or `master`, stop and ask the user to check out a feature/milestone branch first.
-- `GITHUB_TOKEN` with `repo` scope must be available in the environment. If it is missing, fail fast with a clear message.
-- Do not merge PRs. The handoff is to `/qa`.
+- If `run_subagent`/`read_subagent` are unavailable (subagents disabled or admin-set to None), stop and route to `/build-hitl` — this skill is an orchestrator and cannot run without dispatch.
+- Profiles and skills snapshot at session start. A session that authored or edited `.devin/agents/` profiles cannot reliably dispatch them — after installing or changing profiles, run `/build-afk` in a fresh session.
+- Two planned interruptions only: the batch gate (step 1) and the seam gate (step 3). Beyond those, stop for the maintainer only on irreversible or destructive operations, security-sensitive actions, side effects outside the worktrees (the push, the PR), or a spec so broken every path forward is a guess. Everything else is ruled on and recorded.
+- Dispatch is serial and foreground by default. Once session tool grants exist it may fan out to at most 2 background implementers — a backgrounded subagent auto-denies every tool it is not pre-granted, so pre-approve `exec` first. Interrupting the session parks subagents rather than killing them; they resume on the next message.
+- The batch cap is 3–5 tickets, inherited from `/build-hitl`. Spec and list intake larger than that asks the maintainer to split; query intake partitions into waves instead — the cap is a wave size, not a run limit.
 
-## Input
+## Loop
 
-`/build-afk` accepts one of:
+Do not move to the next step until the **Done when** criterion for the current step is met.
 
-1. No arguments — scan open `ready-for-agent` issues, print the proposed batch, and **stop for user confirmation**.
-2. `--all` — process every open `ready-for-agent` issue. Use `--max N` to limit the batch.
-3. `--max N` — limit the batch size when used with `--all` or explicit numbers.
-4. `#N #M ...` — explicit issue numbers.
-5. `spec #N` — process all open child issues whose body contains `## Parent` followed by `#N`.
-6. `spec #N with #M #P` — process only the listed children of spec `#N`.
+1. **Resolve the batch and hold the batch gate.** Resolve the intake shape to its finite set and merge topology per `REFERENCE.md` `## Inputs and merge topology`; read every ticket — body and all comments per `docs/agents/issue-tracker.md` `## Comments are part of the spec`. Compute the frontier. Run the prior-work check per `REFERENCE.md` `## Prior-work check`. Present the resolved set, its topology, and each ticket's prior-work disposition (satisfied / adopt / rebuild) to the maintainer once.
+   **Done when:** the task graph, the frontier, the topology, and every prior-work disposition are resolved, and the maintainer has confirmed the batch.
 
-With no arguments, the orchestrator lists all matching `ready-for-agent` issues and stops for confirmation. Do not start the workflow until the user confirms or re-invokes with explicit numbers, `--all`, or `--max`.
+2. **Set up the run.** Verify `git status --short` is clean — stop for the maintainer to commit or stash otherwise. Capture `PARENT_BRANCH` and `PRE_BUILD_SHA`. Create the batch branch per `docs/agents/pr-conventions.md` `## Branch names` (or check out the adopted base). Initialise `.scratch/build-afk/<run>/` per `REFERENCE.md` `## Run state`.
+   **Done when:** the batch branch is checked out on a clean tree and the run directory exists with `STATUS.json` and `PROGRESS.md` initialised. Queue mode skips the batch branch — each ticket gets `build/issue-<N>` from `PARENT_BRANCH`.
 
-## Pre-flight
+3. **Design pass and seam gate.** Dispatch one `build-designer` per ticket (at most 2 concurrent) with `DESIGNER_TASK.md` filled. Persist each returned declaration verbatim to `seams/<ticket>.md`. Routine seams auto-approve. Collect every `architectural` proposal — new top-level module, changed consumed interface, ADR contradiction, ambiguous deletion test, or two equal candidates — into one consolidated seam gate for the maintainer: the last planned interruption before implementation. Apply `docs/agents/coding-standards.md` `## Module Design` when classifying; `/codebase-design` is reachable here in root.
+   **Done when:** every ticket has a persisted `seams/<ticket>.md`, and the maintainer has ruled on every architectural proposal in a single gate.
 
-1. Capture the parent branch:
-   ```powershell
-   git branch --show-current
-   ```
-   Store as `PARENT_BRANCH`. If it is `main` or `master`, stop and ask the user to check out a feature/milestone branch.
+4. **Implement → merge → review, one ticket at a time.** Pick the riskiest unblocked ticket first (architectural seam, integration point, unknowns), ties by issue order. For each ticket, per `REFERENCE.md` `## Dispatch mechanics` and `## Per-ticket review`:
+   - Cut a worktree under `.worktrees/` on the ticket's run-plan branch: `afk/<ticket>` cut from batch HEAD (or the adopted base) in a batch, so dependents see their blockers' merged code; `build/issue-<N>` in a queue, cut from `PARENT_BRANCH` — or from a blocking sibling's `build/issue-<M>` when a `## Blocked by` edge exists.
+   - Fill `IMPLEMENTER_TASK.md` and dispatch `build-implementer` in the foreground.
+   - `COMPLETE` / `COMPLETE_WITH_CONCERNS` → merge `afk/<ticket>` into the batch branch. Merges happen in ticket order; under background fan-out a later finisher still waits for its predecessors. Conflicts resume the implementer in the foreground to rebase. Then run `dotnet test` on the batch branch — cross-ticket regressions and uncommitted drift surface here, not on the runner; a red run routes into the fix ladder rather than proceeding to the next ticket.
+   - Per-ticket review: `review-spec` on the merged diff with `IMPLEMENTER CLAIMS`, then the five-round fix ladder — rounds 1–3 resume the implementer, rounds 4–5 dispatch a fresh `build-implementer-max`. Adjudicate each open finding against `docs/agents/coding-standards.md`'s own tests; park contested or non-load-bearing findings with a written ruling in `reports/`; minor findings never enter the ladder and park for the final review.
+   - `BLOCKED` → record the `blocked_kind`; mark its dependents blocked-by-predecessor (`context`); continue with unblocked tickets.
+   - Queue tickets skip the merge and collapse both reviews into one `AXES=both` `/review` on their own diff — the queue branch rules are under `## Queue and wave branches` below.
+   - After the first merge, open the draft PR per `docs/agents/pr-conventions.md`; push each subsequent merge to it for visibility.
+   **Done when:** every ticket is merged, blocked, or parked — each with its review, fix rounds, and rulings persisted — and `dotnet test` is green on the batch branch.
 
-2. Verify `GITHUB_TOKEN`:
-   ```powershell
-   if (-not $env:GITHUB_TOKEN) { throw "GITHUB_TOKEN is missing" }
-   ```
+5. **Final review.** Run `/review` with `REVIEW_BASE` = `PRE_BUILD_SHA`, `SPEC_SOURCE` = the parent spec (body and comments), `AXES=both`. Fixes dispatch back through an implementer. Act on `REVIEW_STATUS` per `/review`'s output contract.
+   **Done when:** `REVIEW_STATUS` is `clean`, `resolved`, or `deferred`, or the maintainer has been consulted on `escalated`/`capped`.
 
-3. Resolve the issue list.
-   - For no args: list open `ready-for-agent` issues and stop for user confirmation.
-   - For `--all`/`--max`: fetch open `ready-for-agent` issues with body, comments, and labels, limit to `max` if provided, and continue.
-   - For explicit numbers: fetch each issue body, **all comments**, and labels.
-   - For `spec #N`: fetch the spec body, **all comments**, and labels; copy them into `parent_spec_body` and `parent_spec_comments` in `PLAN.json`. Then find children with `## Parent #N`; order children by resolving `## Blocked by` references (blockers first).
+6. **Close out.** Confirm the pushed branch's checks are green on the self-hosted runner — Release-config tests, installer package, clean checkout; CI is the end-of-run gate, not a per-merge loop. Finalize the draft PR body per `docs/agents/pr-conventions.md` `## PR body` with the full `REVIEW_NOTES` under `### Review notes`. Remove the `.worktrees/` worktrees and delete the `afk/<ticket>` branches once the PR is open — stale `afk/` branches false-positive the prior-work check on later runs. Dispatch the run retro per `REFERENCE.md` `## Run retro`. Deliver the run summary with the PR link and the top retro candidates, then hand off to `/qa`.
+   **Done when:** checks are green, the draft PR body is complete, worktrees removed and `afk/` branches deleted, `reports/run-retro.md` is persisted, and the summary is delivered.
 
-4. Fetch the full body, **all comments**, and labels for every remaining issue per `docs/agents/issue-tracker.md` `## Comments are part of the spec`. Render all comments as a markdown block in the issue's `comments` field.
+## Queue and wave branches
 
-5. Inline triage the `PLAN.json` deterministically:
-   - `parent_branch` exists and is not `main`/`master`.
-   - `GITHUB_TOKEN` is set.
-   - `max`, if present, is a positive integer.
-   - `issues` is a non-empty list and each issue has `number`, `title`, `body`, `comments` (rendered markdown of all issue comments), `branch`, `parent_branch`, and `target_branch`.
-   - No `lite` triage child is spawned.
+In **queue** mode there is no batch branch. Each ticket traverses step 4's dispatch on its own `build/issue-<N>`: the per-ticket and final reviews collapse into one `AXES=both` `/review` on `PARENT...build/issue-<N>` (the fix ladder and adjudication apply unchanged), `dotnet test` runs on the ticket branch, and the ticket's own draft PR is its closeout — step 5's batch review does not exist, but step 6's closeout applies per PR: pushed-branch checks green (the end-of-run gate), the body finalized with `REVIEW_NOTES`, and the `/qa` handoff per ticket.
 
-6. Detect hard-bug signals. If the issue title, body, comments, or labels contain phrases like `intermittent`, `flaky`, `race`, `no deterministic repro`, `root cause unknown`, or `performance regression`, the child agent invokes `/diagnosing-bugs` first. It can return: a fix + regression test (proceed), a missing or shallow seam (return `BLOCKED` with `blocked_kind: context`), or no tight red-capable loop (return `BLOCKED` with `blocked_kind: context`). Routine `ready-for-agent` bugs proceed through the normal TDD/review pipeline.
+In **wave** mode each wave traverses steps 2–6 as its own unit: the wave's tickets stand in for the batch, the final review's `SPEC_SOURCE` is the wave's ticket bodies and comments, and coherence inside the wave picks batch or queue topology per `REFERENCE.md` `## Inputs and merge topology`.
 
-## Plan and branch naming
-
-For each issue, decide if the batch is **chained** or **independent**. Branch names follow `docs/agents/pr-conventions.md` `## Branch names`; see `build-afk/REFERENCE.md` for the worktree and PR-base table.
-
-- **Chained** when the user invoked `spec #N` and the children have `## Blocked by` ordering, or when the user explicitly requested chained PRs. Each child PR targets the previous child's branch. Add `parent_spec` to `PLAN.json` so the final stack agent can name the series. `parent_spec_body` must contain the spec body and `parent_spec_comments` must contain all spec comments.
-- **Independent** by default. Each PR targets `PARENT_BRANCH`.
-
-See `REFERENCE.md` for the full `PLAN.json`, child output, and `RESULTS.json` schemas.
-
-## Run the Dynamic Workflow
-
-1. Create a per-run directory that will not collide with other sessions:
-   ```powershell
-   $runDir = "C:\devin\worktrees\build-afk-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
-   New-Item -ItemType Directory -Path $runDir -Force
-   ```
-
-2. Copy the skill's `workflow.py`, `CHILD_PROMPT.md`, `WPF_HARNESS.md`, and the two reviewer profiles `.devin/agents/review-standards.md` and `.devin/agents/review-spec.md` into `$runDir`.
-
-3. Write `PLAN.json` into `$runDir`. See `REFERENCE.md` for the schema; set `agent_mode` if your Devin environment supports `swe-1.7-standard` or another mode, otherwise `normal` is used. For `chained` plans, copy the parent spec's full issue body into `parent_spec_body` — the workflow validates it and the final-review phase diffs the whole chain against it.
-
-4. Call `run_workflow` with the copied script, substituting the absolute path for `$runDir`:
-   ```text
-   run_workflow(script_path="C:\devin\worktrees\build-afk-YYYYMMDD-HHMMSS\workflow.py", timeout_secs=<seconds>)
-   ```
-   Use a generous timeout for the full batch (e.g., 4 hours for 3-5 issues). The workflow processes tickets sequentially.
-
-5. Wait for completion with `get_workflow_output(run_id=...)` and read `RESULTS.json` from `$runDir`.
-
-6. Roll up a short final report to the user:
-   - Ticket number, branch, PR number/URL, status
-   - Test and review summaries
-   - Any blocked tickets and reasons
-   - Stack status for chained specs
-
-## After the workflow
-
-The handoff is to `/qa`:
-
-```
-/build-afk finished. Draft PRs are open. Run /qa on each branch before merging.
-```
-
-Do not merge PRs.
-
-## Files in this skill
-
-- `workflow.py` — parent orchestrator that validates the plan, dispatches build/review/fix/final-review/stack agents, and writes `RESULTS.json`.
-- `CHILD_PROMPT.md` — prompt template for each build agent.
-- `WPF_HARNESS.md` — step-by-step WPF smoke-harness instructions copied into each run.
-- `evals/test_workflow.py` — pytest module for the workflow's helpers and dispatch gating; run `python -m pytest evals/test_workflow.py` from the skill directory. Not part of the packaged skill.
-- `REFERENCE.md` — branch naming, JSON schemas, PR body template, two-axis review flow, adjudication rubric, model mode, final-review and stacked-PR guidance, and fallback behaviour.
+See [`REFERENCE.md`](REFERENCE.md) for intake resolution, the prior-work check, dispatch mechanics, run state, the per-ticket review and fix ladder, the run retro, and an example.

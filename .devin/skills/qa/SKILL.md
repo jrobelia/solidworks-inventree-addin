@@ -1,14 +1,14 @@
 ---
 name: qa
-description: Verify the current branch through the SolidWorks InvenTree Add-In GUI.
+description: Verify the current branch through the SolidWorks InvenTree Add-In GUI, starting with a risk-ordered smoke test the engineer can skip.
 disable-model-invocation: true
 ---
 
 # QA
 
-Human-in-the-loop verification for the SolidWorks InvenTree Add-In. QA sits after `/build` and is the final step before merge:
+Human-in-the-loop verification for the SolidWorks InvenTree Add-In. QA sits after `/build-hitl` or `/build-afk` and is the final step before merge:
 
-`grill-with-docs → to-spec → to-tickets → build → qa`
+`grill-with-docs → to-spec → to-tickets → build-hitl | build-afk → qa`
 
 QA orients from the current branch, proposes Test Groups, builds a GUI-focused test plan, runs the preflight, walks the user through each step, labels verified issues, files failures, and hands off to the `git` skill for merge when QA passes.
 
@@ -123,6 +123,10 @@ Include at least one edge case per feature area. See [CHECKLIST.md](CHECKLIST.md
 
 If the change touches the **Task Pane**, a **dialog**, a **control**, or a **data-bound property**, add a GUI functionality group using the categories and example in the GUI functionality testing section of [TEST-PLAN.md](TEST-PLAN.md).
 
+### Smoke test group
+
+Add a smoke test group at the start of the plan, before the issue-specific groups. Derive the smoke tests from the diff: trace the changed files and methods back to the major user-facing flows they participate in and add one broad check per major flow using the mappings in [CHECKLIST.md](CHECKLIST.md). Do not repeat the specific issue acceptance criteria; the issue groups handle those. If the diff is narrow, fall back to the base list in [CHECKLIST.md](CHECKLIST.md). Present each as a suggestion the engineer can skip; track skipped steps. This group catches regressions in the surrounding general behavior the focused plan may miss.
+
 Present the test plan using the **compact format** in [TEST-PLAN.md](TEST-PLAN.md): group titles and step titles only. The full step detail (preconditions, action, expected) belongs in the detailed format and is used during the walk or when the user asks to expand. Print the compact plan in the chat response first, then ask the user to reply with approve/edit/reorder/expand. Do not use `ask_user_question` for long plan approvals — the question dialog can hide the previous chat and make the plan hard to review.
 
 ## 4. Preflight
@@ -131,9 +135,13 @@ Run the preflight in [PREFLIGHT.md](PREFLIGHT.md) before the GUI test pass. Stop
 
 ## 5. Walk the steps
 
+### Smoke test pass
+
+Start with the smoke test group from the plan. Order the steps from the broadest, most user-facing flow to the narrowest, using the guidance in [CHECKLIST.md](CHECKLIST.md). Present each as a suggestion the engineer can skip; track skips. Smoke test failures are PR-blocking; skipped smoke tests do not block the issue groups.
+
 ### Severity reminder
 
-Before presenting the first step, print the Severity Guide table from [CHECKLIST.md](CHECKLIST.md) as a reminder of what each issue level means. Ask the user to confirm they are ready to begin testing.
+After the smoke test, before presenting the first issue step, print the Severity Guide table from [CHECKLIST.md](CHECKLIST.md) as a reminder of what each issue level means. Ask the user to confirm they are ready to continue testing.
 
 ### Present one step at a time
 

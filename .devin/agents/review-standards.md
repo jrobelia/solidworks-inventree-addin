@@ -1,7 +1,7 @@
 ---
 name: review-standards
 description: "Standards-axis reviewer for the shared /review seam. Fetches the diff and commit list from REVIEW_BASE, reads docs/agents/coding-standards.md, and applies the Fowler smell baseline. Returns a structured ## Standards findings block."
-model: swe-1-7
+model: swe-2-max
 allowed-tools:
   - read
   - grep

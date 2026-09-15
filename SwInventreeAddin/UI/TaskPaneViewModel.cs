@@ -311,9 +311,9 @@ namespace SwInventreeAddin.UI
             && _mappingResult?.CanFetch == true
             && (_documentPkPresent || !string.IsNullOrEmpty(_partNumber));
 
-        /// <summary>True when an assembly is open — shows the BOM section.</summary>
+        /// <summary>True when an assembly is open and the linked-data sections are showing — the Compare BOM button stays disabled until a Part Sync session exists.</summary>
         public bool BomSectionVisible =>
-            _isDocumentOpen && _currentDocumentType == DocumentType.Assembly;
+            _isDocumentOpen && _currentDocumentType == DocumentType.Assembly && _propertiesSectionVisible;
 
         /// <summary>True when BOM compare button should be enabled.</summary>
         public bool BomButtonEnabled =>
@@ -336,6 +336,7 @@ namespace SwInventreeAddin.UI
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RevisionMatch)));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DescriptionMatch)));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PkMatch)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(BomSectionVisible)));
             }
         }
 
@@ -527,7 +528,6 @@ namespace SwInventreeAddin.UI
                 }
                 else
                 {
-                    RefreshCurrentProperties();
                     NotifySessionProperties();
                 }
 
@@ -540,8 +540,11 @@ namespace SwInventreeAddin.UI
                 FetchEnabled = _client != null && _mappingResult?.CanFetch == true;
                 CreatePartEnabled = false;
 
-                if (_session != null)
-                    PropertiesSectionVisible = true;
+                // A PK-only document is LINKED the same as an IPN-bearing one:
+                // show the linked-data sections greyed, with the stamped PK
+                // visible so the user can see what Fetch will pull.
+                PropertiesSectionVisible = true;
+                RefreshCurrentProperties();
 
                 if (_client == null)
                     SetStatus("No server configured \u2014 click \u2699 Settings to get started",
@@ -912,10 +915,11 @@ namespace SwInventreeAddin.UI
 
             // Only pre-fetch thumbnail when there is exactly one unambiguous result.
             if (parts?.Count == 1 && !string.IsNullOrEmpty(parts[0].ThumbnailUrl))
-            {
-                try { thumbBytes = await _client.DownloadImageAsync(parts[0].ThumbnailUrl!).ConfigureAwait(false); }
-                catch { /* silent — placeholder will show */ }
-            }
+                thumbBytes = await TryDownloadThumbnailAsync(parts[0].ThumbnailUrl).ConfigureAwait(false);
+
+            InventreePart? resolvedPart = null;
+            byte[]? resolvedThumb = null;
+            bool needsThumbnailDownload = false;
 
             RunOnUiThread(() =>
             {
@@ -931,52 +935,58 @@ namespace SwInventreeAddin.UI
                     return;
                 }
 
-                InventreePart resolvedPart;
-                byte[]? resolvedThumb = thumbBytes;
-
                 if (parts.Count == 1)
                 {
                     resolvedPart = parts[0];
+                    resolvedThumb = thumbBytes;
+                    return;
                 }
-                else
+
+                // Multiple parts share this IPN — resolve by revision.
+                var swRev = _currentRevision?.Trim() ?? string.Empty;
+                var matches = new System.Collections.Generic.List<InventreePart>();
+                foreach (var p in parts)
                 {
-                    // Multiple parts share this IPN — resolve by revision.
-                    var swRev = _currentRevision?.Trim() ?? string.Empty;
-                    var matches = new System.Collections.Generic.List<InventreePart>();
-                    foreach (var p in parts)
-                    {
-                        if (RevisionComparer.Compare(swRev, p.Revision?.Trim() ?? string.Empty)
-                            == RevisionOrder.Equal)
-                            matches.Add(p);
-                    }
-
-                    if (matches.Count == 0)
-                    {
-                        var revLabel = string.IsNullOrEmpty(swRev) ? "(blank)" : swRev;
-                        SetStatus(
-                            $"{parts.Count} parts share IPN \u2018{ipn}\u2019 but none match "
-                            + $"SW revision {revLabel}. Resolve in InvenTree.",
-                            StatusSeverity.Error);
-                        return;
-                    }
-
-                    if (matches.Count > 1)
-                    {
-                        var revLabel = string.IsNullOrEmpty(swRev) ? "(blank)" : swRev;
-                        SetStatus(
-                            $"{parts.Count} parts share IPN \u2018{ipn}\u2019 and revision {revLabel}. "
-                            + "Resolve duplicates in InvenTree.",
-                            StatusSeverity.Error);
-                        return;
-                    }
-
-                    // Exactly one revision match — confirm with user.
-                    if (!ConfirmDuplicateIpn(parts, matches[0])) return;
-                    resolvedPart = matches[0];
-                    resolvedThumb = null; // thumbnail not pre-fetched on the duplicate path
+                    if (RevisionComparer.Compare(swRev, p.Revision?.Trim() ?? string.Empty)
+                        == RevisionOrder.Equal)
+                        matches.Add(p);
                 }
 
-                _session = new PartSyncSession(resolvedPart, _client!, _propertyService, GetMappingOrDefault(), resolvedThumb);
+                if (matches.Count == 0)
+                {
+                    var revLabel = string.IsNullOrEmpty(swRev) ? "(blank)" : swRev;
+                    SetStatus(
+                        $"{parts.Count} parts share IPN \u2018{ipn}\u2019 but none match "
+                        + $"SW revision {revLabel}. Resolve in InvenTree.",
+                        StatusSeverity.Error);
+                    return;
+                }
+
+                if (matches.Count > 1)
+                {
+                    var revLabel = string.IsNullOrEmpty(swRev) ? "(blank)" : swRev;
+                    SetStatus(
+                        $"{parts.Count} parts share IPN \u2018{ipn}\u2019 and revision {revLabel}. "
+                        + "Resolve duplicates in InvenTree.",
+                        StatusSeverity.Error);
+                    return;
+                }
+
+                // Exactly one revision match — confirm with user.
+                if (!ConfirmDuplicateIpn(parts, matches[0])) return;
+                resolvedPart = matches[0];
+                needsThumbnailDownload = true;
+            });
+
+            if (resolvedPart == null)
+                return;
+
+            if (needsThumbnailDownload)
+                resolvedThumb = await TryDownloadThumbnailAsync(resolvedPart.ThumbnailUrl).ConfigureAwait(false);
+
+            RunOnUiThread(() =>
+            {
+                _session = new PartSyncSession(resolvedPart!, _client!, _propertyService, GetMappingOrDefault(), resolvedThumb);
                 PropertiesSectionVisible = true;
                 RefreshCurrentProperties();
                 NotifySessionProperties();
@@ -1207,7 +1217,7 @@ namespace SwInventreeAddin.UI
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DescriptionMatch)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PkMatch)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CurrentInvenTreePk)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(BomButtonEnabled)));
+            NotifyBomVisibility();
             NotifyFlagDisplays();
         }
 
@@ -1237,11 +1247,10 @@ namespace SwInventreeAddin.UI
         {
             DetachMappingProvider();
             _mappingProvider = provider;
-            RefreshMappingResult();
-            RefreshStatus();
-            RefreshCommandStates();
-            if (_propertiesSectionVisible)
-                RefreshCurrentProperties();
+
+            if (!TryLoadPartNumberWhenNoSession())
+                RefreshPreservingSession();
+
             AttachMappingProvider();
         }
 
@@ -1255,12 +1264,41 @@ namespace SwInventreeAddin.UI
         {
             RunOnUiThread(() =>
             {
-                RefreshMappingResult();
-                if (_propertiesSectionVisible)
-                    RefreshCurrentProperties();
-                RefreshCommandStates();
-                RefreshStatus();
+                if (TryLoadPartNumberWhenNoSession())
+                    return;
+                RefreshPreservingSession();
             });
+        }
+
+        /// <summary>
+        /// Light refresh used when a Part Sync session is loaded: re-checks
+        /// mapping health, status, command states, and — when the linked
+        /// sections are visible — the document's current property values.
+        /// Does not re-read document identity, so the session is preserved.
+        /// </summary>
+        private void RefreshPreservingSession()
+        {
+            RefreshMappingResult();
+            RefreshStatus();
+            RefreshCommandStates();
+            if (_propertiesSectionVisible)
+                RefreshCurrentProperties();
+        }
+
+        /// <summary>
+        /// Re-runs <see cref="LoadPartNumber"/> when no Part Sync session is
+        /// loaded, so a link stamped since the last load — e.g. an IPN or
+        /// InvenTree Part PK added while the property notification was missed —
+        /// is picked up without a document switch. Returns false when a session
+        /// is loaded so the caller keeps its lighter refresh and does not drop
+        /// the session.
+        /// </summary>
+        private bool TryLoadPartNumberWhenNoSession()
+        {
+            if (_session != null)
+                return false;
+            LoadPartNumber();
+            return true;
         }
 
         private MappingResult GetMappingResultOrDefault() =>
@@ -1359,6 +1397,19 @@ namespace SwInventreeAddin.UI
                 _uiContext.Send(_ => action(), null);
             else
                 action();
+        }
+
+        /// <summary>
+        /// Downloads the thumbnail at <paramref name="url"/> off the UI thread.
+        /// Returns null when the URL is blank or the download fails.
+        /// </summary>
+        private async Task<byte[]?> TryDownloadThumbnailAsync(string? url)
+        {
+            if (string.IsNullOrEmpty(url)) return null;
+
+            try { return await _client!.DownloadImageAsync(url!).ConfigureAwait(false); }
+            catch { /* silent — placeholder will show */ }
+            return null;
         }
 
         // ── BOM Compare state ─────────────────────────────────────────────────
