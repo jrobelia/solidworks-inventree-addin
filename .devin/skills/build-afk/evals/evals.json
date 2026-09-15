@@ -23,6 +23,7 @@
         "the routine declaration is persisted to seams/901.md and auto-approved without interrupting the maintainer",
         "the architectural proposal waits for the consolidated gate rather than interrupting per ticket",
         "both candidates are presented under the same seam declaration for the maintainer to choose",
+        "a consumed-interface change whose shape the ticket or ADR fixes verbatim flags routine with an 'interface change' annotation and rides as a notice, not a ruling request",
         "classification applies coding-standards.md ## Module Design criteria; /codebase-design may be invoked in the root session only"
       ]
     },
