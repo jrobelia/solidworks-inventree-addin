@@ -82,7 +82,7 @@ Your granted toolset is `read`, `edit`, `exec`, `grep`, `glob` (shown in your fu
    git add -A && git commit -m "<summary> (#{{ticket}}{{parent_ref}})"
    ```
 
-   `{{parent_ref}}` is `, part of #<spec>` in a batch run, empty in a queue run. Never push, never open a PR — the orchestrator owns the merge, the push, and the PR.
+   `{{parent_ref}}` is `, part of #<spec>` in a batch run, empty in a queue run. Never push, never open a PR — the orchestrator owns the merge, the push, and the PR. If you are resumed for a fix round after your branch already merged into the batch branch, the fix lands as a new commit — never amend or rebase the merged tip.
 
 ## Report
 

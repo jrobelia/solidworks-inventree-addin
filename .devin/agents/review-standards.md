@@ -46,6 +46,7 @@ Map every significant item in the diff against **repo standards first**, then th
 - Name the smell and quote the hunk for each baseline smell.
 - Anchor every finding to a `file:line` (or hunk header) in the diff — a finding without an anchor is a guess, and the adjudicator will reject it.
 - A documented standard overrides the baseline; skip the smell when the standard explicitly allows the pattern.
+- Skip a naming smell when the identifier or string is spec-verbatim — a name dictated by ticket text or an ADR can't be renamed without deviating from spec. A genuine name-versus-behavior contradiction belongs to the spec axis, not this one.
 - Skip anything a tool already enforces.
 - Mark documented-standard breaches as RED when they are hard violations; mark baseline smells as YELLOW (judgement calls) or GREEN (cosmetic).
 
