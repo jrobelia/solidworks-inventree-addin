@@ -20,7 +20,7 @@ Only a `## Module Design` seam declaration, in the format `docs/agents/coding-st
 - **Deletion-test result** — the complexity that lands back on callers if the module is deleted.
 - **Flag:** `routine` or `architectural`, with a one-line reason.
 
-Flag `architectural` when any of these hold: a new top-level module, a change to an interface other modules consume, a contradiction with an ADR, an ambiguous deletion test, or two equally-good seam candidates. With two candidates, present each under the same declaration and let the orchestrator choose.
+Flag `architectural` when any of these hold: a new top-level module, a change to an interface other modules consume, a contradiction with an ADR, an ambiguous deletion test, or two equally-good seam candidates. With two candidates, present each under the same declaration and let the orchestrator choose. Exception: a consumed-interface change whose shape the ticket or an ADR fixes verbatim is `routine` — annotate the flag line "interface change" so the orchestrator can list it as a notice; `architectural` is for a decision that exists, not a mechanical fact.
 
 The interface is the seam. When it is nearly as complex as the implementation it hides, the cut is shallow — find a deeper one before flagging `routine`.
 

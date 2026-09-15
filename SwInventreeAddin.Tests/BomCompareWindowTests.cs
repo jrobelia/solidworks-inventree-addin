@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Interop;
@@ -17,18 +16,6 @@ namespace SwInventreeAddin.Tests
     [NonParallelizable]
     public class BomCompareWindowTests
     {
-        [DllImport("user32.dll")]
-        private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct RECT
-        {
-            public int Left;
-            public int Top;
-            public int Right;
-            public int Bottom;
-        }
-
         private SynchronizationContext? _previousContext;
 
         [SetUp]
@@ -76,9 +63,9 @@ namespace SwInventreeAddin.Tests
                 {
                     timer.Stop();
 
-                    _ = GetWindowRect(form.Handle, out var ownerRect);
+                    var ownerRect = HiddenTestWindow.GetRect(form.Handle);
                     var helper = new WindowInteropHelper(dialog);
-                    _ = GetWindowRect(helper.Handle, out var dialogRect);
+                    var dialogRect = HiddenTestWindow.GetRect(helper.Handle);
 
                     var ownerCenterX = ownerRect.Left + (ownerRect.Right - ownerRect.Left) / 2;
                     var ownerCenterY = ownerRect.Top + (ownerRect.Bottom - ownerRect.Top) / 2;
@@ -96,7 +83,7 @@ namespace SwInventreeAddin.Tests
                     try
                     {
                         Assert.That(
-                            HiddenTestWindow.IsOnScreen(dialogRect.Left, dialogRect.Top, dialogRect.Right, dialogRect.Bottom),
+                            HiddenTestWindow.IsOnScreen(dialogRect),
                             Is.False, "Test dialog must stay off every monitor");
                         Assert.That(dx, Is.LessThan(5), $"Dialog is horizontally off by {dx} pixels");
                         Assert.That(dy, Is.LessThan(5), $"Dialog is vertically off by {dy} pixels");
