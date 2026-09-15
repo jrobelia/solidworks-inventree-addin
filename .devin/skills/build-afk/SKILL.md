@@ -19,7 +19,7 @@ triggers: ["user"]
 - Profiles and skills snapshot at session start. A session that authored or edited `.devin/agents/` profiles cannot reliably dispatch them — after installing or changing profiles, run `/build-afk` in a fresh session.
 - Two planned interruptions only: the batch gate (step 1) and the seam gate (step 3). Beyond those, stop for the maintainer only on irreversible or destructive operations, security-sensitive actions, side effects outside the worktrees (the push, the PR), or a spec so broken every path forward is a guess. Everything else is ruled on and recorded.
 - Dispatch is serial and foreground by default. Once session tool grants exist it may fan out to at most 2 background implementers — a backgrounded subagent auto-denies every tool it is not pre-granted, so pre-approve `exec` first. Interrupting the session parks subagents rather than killing them; they resume on the next message.
-- The batch cap is 3–5 tickets, inherited from `/build-hitl`. If more are found, ask the maintainer to split the work.
+- The batch cap is 3–5 tickets, inherited from `/build-hitl`. Spec and list intake larger than that asks the maintainer to split; query intake partitions into waves instead — the cap is a wave size, not a run limit.
 
 ## Loop
 
@@ -35,12 +35,12 @@ Do not move to the next step until the **Done when** criterion for the current s
    **Done when:** every ticket has a persisted `seams/<ticket>.md`, and the maintainer has ruled on every architectural proposal in a single gate.
 
 4. **Implement → merge → review, one ticket at a time.** Pick the riskiest unblocked ticket first (architectural seam, integration point, unknowns), ties by issue order. For each ticket, per `REFERENCE.md` `## Dispatch mechanics` and `## Per-ticket review`:
-   - Cut a worktree under `.worktrees/` on the ticket's run-plan branch — `afk/<ticket>` from batch HEAD (or the adopted base) in a batch, `build/issue-<N>` from `PARENT_BRANCH` in a queue — so dependents see their blockers' merged code.
+   - Cut a worktree under `.worktrees/` on the ticket's run-plan branch: `afk/<ticket>` cut from batch HEAD (or the adopted base) in a batch, so dependents see their blockers' merged code; `build/issue-<N>` in a queue, cut from `PARENT_BRANCH` — or from a blocking sibling's `build/issue-<M>` when a `## Blocked by` edge exists.
    - Fill `IMPLEMENTER_TASK.md` and dispatch `build-implementer` in the foreground.
    - `COMPLETE` / `COMPLETE_WITH_CONCERNS` → merge `afk/<ticket>` into the batch branch. Merges happen in ticket order; under background fan-out a later finisher still waits for its predecessors. Conflicts resume the implementer in the foreground to rebase. Then run `dotnet test` on the batch branch — cross-ticket regressions and uncommitted drift surface here, not on the runner.
    - Per-ticket review: `review-spec` on the merged diff with `IMPLEMENTER CLAIMS`, then the five-round fix ladder — rounds 1–3 resume the implementer, rounds 4–5 dispatch a fresh `build-implementer-max`. Adjudicate each open finding against `docs/agents/coding-standards.md`'s own tests; park contested or non-load-bearing findings with a written ruling in `reports/`; minor findings never enter the ladder and park for the final review.
    - `BLOCKED` → record the `blocked_kind`; mark its dependents blocked-by-predecessor (`context`); continue with unblocked tickets.
-   - Queue tickets skip the merge: there is no batch branch, per-ticket and final reviews collapse into one `AXES=both` `/review` on `PARENT...build/issue-<N>`, and the ticket gets its own draft PR.
+   - Queue tickets skip the merge and collapse both reviews into one `AXES=both` `/review` on their own diff — the queue branch rules are under `## Queue and wave branches` below.
    - After the first merge, open the draft PR per `docs/agents/pr-conventions.md`; push each subsequent merge to it for visibility.
    **Done when:** every ticket is merged, blocked, or parked — each with its review, fix rounds, and rulings persisted — and `dotnet test` is green on the batch branch.
 
@@ -49,5 +49,11 @@ Do not move to the next step until the **Done when** criterion for the current s
 
 6. **Close out.** Confirm the pushed branch's checks are green on the self-hosted runner — Release-config tests, installer package, clean checkout; CI is the end-of-run gate, not a per-merge loop. Finalize the draft PR body per `docs/agents/pr-conventions.md` `## PR body` with the full `REVIEW_NOTES` under `### Review notes`. Dispatch the run retro per `REFERENCE.md` `## Run retro`. Deliver the run summary with the PR link and the top retro candidates, then hand off to `/qa`.
    **Done when:** checks are green, the draft PR body is complete, `reports/run-retro.md` is persisted, and the summary is delivered.
+
+## Queue and wave branches
+
+In **queue** mode there is no batch branch. Each ticket traverses step 4's dispatch on its own `build/issue-<N>`: the per-ticket and final reviews collapse into one `AXES=both` `/review` on `PARENT...build/issue-<N>` (the fix ladder and adjudication apply unchanged), `dotnet test` runs on the ticket branch, and the ticket's own draft PR is its closeout — step 5's batch review and step 6's single-PR finalization do not exist for a queue ticket.
+
+In **wave** mode each wave traverses steps 2–6 as its own unit: the wave's tickets stand in for the batch, the final review's `SPEC_SOURCE` is the wave's ticket bodies and comments, and coherence inside the wave picks batch or queue topology per `REFERENCE.md` `## Inputs and merge topology`.
 
 See [`REFERENCE.md`](REFERENCE.md) for intake resolution, the prior-work check, dispatch mechanics, run state, the per-ticket review and fix ladder, the run retro, and an example.

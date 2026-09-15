@@ -79,10 +79,10 @@ Your granted toolset is `read`, `edit`, `exec`, `grep`, `glob` (shown in your fu
 6. One logical commit referencing the ticket and parent spec:
 
    ```
-   git add -A && git commit -m "<summary> (#{{ticket}}, part of #{{parent_spec}})"
+   git add -A && git commit -m "<summary> (#{{ticket}}{{parent_ref}})"
    ```
 
-   Never push, never open a PR — the orchestrator owns the merge, the push, and the PR.
+   `{{parent_ref}}` is `, part of #<spec>` in a batch run, empty in a queue run. Never push, never open a PR — the orchestrator owns the merge, the push, and the PR.
 
 ## Report
 
