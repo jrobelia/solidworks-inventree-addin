@@ -137,7 +137,7 @@ namespace SwInventreeAddin.Tests
                 try
                 {
                     Assert.That(
-                        HiddenTestWindow.IsOnScreen(dialogRect.Left, dialogRect.Top, dialogRect.Right, dialogRect.Bottom),
+                        HiddenTestWindow.IsOnScreen(dialogRect),
                         Is.False, "Test dialog must stay off every monitor");
                     Assert.That(dx, Is.LessThan(5), $"Dialog is horizontally off by {dx} pixels");
                     Assert.That(dy, Is.LessThan(5), $"Dialog is vertically off by {dy} pixels");
@@ -240,7 +240,7 @@ namespace SwInventreeAddin.Tests
                     try
                     {
                         Assert.That(
-                            HiddenTestWindow.IsOnScreen(dialogRect.Left, dialogRect.Top, dialogRect.Right, dialogRect.Bottom),
+                            HiddenTestWindow.IsOnScreen(dialogRect),
                             Is.False, "Test dialog must stay off every monitor");
                         Assert.That(dx, Is.LessThan(5), $"Dialog is horizontally off by {dx} pixels");
                         Assert.That(dy, Is.LessThan(5), $"Dialog is vertically off by {dy} pixels");

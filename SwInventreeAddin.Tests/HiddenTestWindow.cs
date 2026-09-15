@@ -50,9 +50,8 @@ namespace SwInventreeAddin.Tests
             };
 
         /// <summary>True when the native window rectangle overlaps any display.</summary>
-        internal static bool IsOnScreen(int left, int top, int right, int bottom)
+        internal static bool IsOnScreen(Rectangle rect)
         {
-            var rect = new Rectangle(left, top, right - left, bottom - top);
             foreach (var screen in Screen.AllScreens)
             {
                 if (screen.Bounds.IntersectsWith(rect))
