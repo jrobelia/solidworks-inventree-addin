@@ -37,7 +37,7 @@ Skills cannot be invoked from inside a subagent — these are files to read, and
 Only the declaration — the orchestrator persists it verbatim to `seams/{{ticket}}.md`:
 
 ```
-## Seam declaration
+## Module Design
 - Public interface: <everything a caller must know>
 - Production adapter: <concrete implementation at the seam>
 - Test adapter: <the Stub*/fake at the same seam>

@@ -31,7 +31,7 @@ Read the seam note before designing anything: `{{seam_note_path}}`. It is the ap
 
 ## Worktree
 
-Work inside `{{worktree_path}}` — your own worktree on branch `afk/{{ticket}}`, cut from batch SHA `{{base_sha}}`. Verify before starting:
+Work inside `{{worktree_path}}` — your own git worktree under `.worktrees/`, on branch `afk/{{ticket}}`, cut from batch SHA `{{base_sha}}`. Verify before starting:
 
 ```
 git -C {{worktree_path}} rev-parse HEAD            # must print {{base_sha}}
@@ -52,7 +52,7 @@ Skills cannot be invoked from inside a subagent — every pointer above is a fil
 
 ## Tool reality (smoke-tested)
 
-Your granted toolset is `read`, `edit`, `exec`, `grep`, `glob` — nothing else.
+Your granted toolset is `read`, `edit`, `exec`, `grep`, `glob` (shown in your function list as `find_file_by_name`) — nothing else. Custom profiles are capped at these five in this build: `allowed-tools` can narrow the set but never widen it — verified by dispatch with no `allowed-tools` declared at all. Only the built-in `subagent_general` gets the full toolset, and it always runs on the parent's model.
 
 - No `write` tool: create new files through `exec` (`cat > path <<'EOF'` or `git apply`). `edit` fails on files that do not exist.
 - No background-shell tools (`get_output`, `kill_shell`, `write_to_process`): every command is a foreground `exec` that blocks until exit — run commands that terminate.
