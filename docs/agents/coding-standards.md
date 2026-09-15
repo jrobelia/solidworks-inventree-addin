@@ -1,6 +1,6 @@
 # Coding Standards
 
-This file defines the coding standards for this project. It is the Standards-axis rulebook for `/review` — run by `/build`, `/fix`, and `/build-afk`'s review step — and the source of the agent verification command and module-design rules those skills apply.
+This file defines the coding standards for this project. It is the Standards-axis rulebook for `/review` — run by `/build-hitl`, `/fix`, and `/build-afk`'s review step — and the source of the agent verification command and module-design rules those skills apply.
 
 ---
 

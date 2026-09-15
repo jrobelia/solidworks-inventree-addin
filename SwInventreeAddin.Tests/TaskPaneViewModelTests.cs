@@ -42,9 +42,9 @@ namespace SwInventreeAddin.Tests
 
         private static PropertyMappingConfig DefaultMapping => PropertyMappingConfig.WithDefaults();
 
-        private void CreateVm(string seedPartNo = "R-10K-0402")
+        private void CreateVm(string seedIpn = "R-10K-0402")
         {
-            _propertyService.Seed(DefaultMapping.IpnProperty!, seedPartNo);
+            _propertyService.Seed(DefaultMapping.IpnProperty!, seedIpn);
             _vm = new TaskPaneViewModel(_client, _propertyService, null, createPartValidator: _createPartValidator);
         }
 
@@ -1526,6 +1526,80 @@ namespace SwInventreeAddin.Tests
             Assert.That(_vm.CurrentInvenTreePk, Is.EqualTo(0));
         }
 
+        [Test]
+        public async Task FetchPartAsync_DuplicateIpn_OneRevMatch_ThumbnailUrl_DownloadsAndSetsThumbnail()
+        {
+            var matched = new InventreePart
+            {
+                Pk = 11,
+                Ipn = "PART-001",
+                Revision = "B",
+                Name = "Panel",
+                ThumbnailUrl = "/media/panel.png",
+            };
+            _client.PartsByIpnToReturn = new System.Collections.Generic.List<InventreePart>
+            {
+                new InventreePart { Pk = 10, Ipn = "PART-001", Revision = "A" },
+                matched,
+            };
+            _client.ThumbnailBytesToReturn = new byte[] { 1, 2, 3 };
+            _propertyService.Seed("Revision", "B");
+            CreateVm("PART-001");
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.ThumbnailBytes, Is.EqualTo(new byte[] { 1, 2, 3 }));
+            Assert.That(_client.DownloadImageCallCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public async Task FetchPartAsync_DuplicateIpn_OneRevMatch_NoThumbnailUrl_ThumbnailBytesNull()
+        {
+            var matched = new InventreePart
+            {
+                Pk = 11,
+                Ipn = "PART-001",
+                Revision = "B",
+                Name = "Panel",
+            };
+            _client.PartsByIpnToReturn = new System.Collections.Generic.List<InventreePart>
+            {
+                new InventreePart { Pk = 10, Ipn = "PART-001", Revision = "A" },
+                matched,
+            };
+            _propertyService.Seed("Revision", "B");
+            CreateVm("PART-001");
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.ThumbnailBytes, Is.Null);
+        }
+
+        [Test]
+        public async Task FetchPartAsync_DuplicateIpn_OneRevMatch_DownloadFails_ThumbnailBytesNullAndNoException()
+        {
+            var matched = new InventreePart
+            {
+                Pk = 11,
+                Ipn = "PART-001",
+                Revision = "B",
+                Name = "Panel",
+                ThumbnailUrl = "/media/panel.png",
+            };
+            _client.PartsByIpnToReturn = new System.Collections.Generic.List<InventreePart>
+            {
+                new InventreePart { Pk = 10, Ipn = "PART-001", Revision = "A" },
+                matched,
+            };
+            _client.ThumbnailBytesToReturn = new byte[] { 1, 2, 3 };
+            _client.ThrowOnDownload = new System.Net.Http.HttpRequestException("network error");
+            _propertyService.Seed("Revision", "B");
+            CreateVm("PART-001");
+
+            Assert.DoesNotThrowAsync(async () => await _vm.FetchPartAsync());
+            Assert.That(_vm.ThumbnailBytes, Is.Null);
+        }
+
         // ── Part link from thumbnail ───────────────────────────────────────────
 
         [Test]
@@ -2204,7 +2278,7 @@ namespace SwInventreeAddin.Tests
     }
 }
 
-// ── BOM button enabled tests ────────────────────────────────────────────────────
+// ── BOM visibility tests ────────────────────────────────────────────────────
 namespace SwInventreeAddin.Tests
 {
     using System.Collections.Generic;
@@ -2213,7 +2287,7 @@ namespace SwInventreeAddin.Tests
     using SwInventreeAddin.SolidWorks;
 
     [TestFixture]
-    public class BomButtonEnabledTests
+    public class BomVisibilityTests
     {
         private StubInventreeClient _client;
         private StubDocumentPropertyService _propertyService;
@@ -2228,13 +2302,17 @@ namespace SwInventreeAddin.Tests
             _createPartValidator = new StubCreatePartValidationErrorService();
         }
 
-        private void CreateVm(string seedPartNo = "ASSY-001")
+        private static PropertyMappingConfig DefaultMapping => PropertyMappingConfig.WithDefaults();
+
+        private void CreateVm(string seedIpn = "ASSY-001", string? pk = null)
         {
-            _propertyService.Seed("PartNo", seedPartNo);
+            _propertyService.Seed(DefaultMapping.IpnProperty!, seedIpn);
+            if (pk != null)
+                _propertyService.Seed(DefaultMapping.PkProperty!, pk);
             _vm = new TaskPaneViewModel(_client, _propertyService, null, createPartValidator: _createPartValidator);
         }
 
-        // ── BOM button enabled ─────────────────────────────────────────────────
+        // ── BOM visibility ─────────────────────────────────────────────────
 
         [Test]
         public void BomButtonEnabled_AssemblyWithNoSession_IsFalse()
@@ -2279,6 +2357,157 @@ namespace SwInventreeAddin.Tests
             await _vm.FetchPartAsync();
 
             Assert.That(raised, Does.Contain("BomButtonEnabled"));
+        }
+
+        // ── BOM section visible ────────────────────────────────────────────────
+
+        [Test]
+        public void BomSectionVisible_UnlinkedAssembly_IsFalse()
+        {
+            _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            CreateVm(string.Empty);
+
+            Assert.That(_vm.BomSectionVisible, Is.False);
+        }
+
+        [Test]
+        public void BomSectionVisible_LinkedAssembly_IsTrue()
+        {
+            _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            CreateVm("ASSY-001");
+
+            Assert.That(_vm.BomSectionVisible, Is.True);
+        }
+
+        [Test]
+        public void BomSectionVisible_LinkedByPkOnlyAssembly_IsTrue()
+        {
+            _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            CreateVm(seedIpn: string.Empty, pk: "42");
+
+            Assert.That(_vm.BomSectionVisible, Is.True);
+        }
+
+        [Test]
+        public void BomButtonEnabled_LinkedByPkOnlyAssembly_IsFalse()
+        {
+            _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            CreateVm(seedIpn: string.Empty, pk: "42");
+
+            Assert.That(_vm.BomButtonEnabled, Is.False);
+        }
+
+        [Test]
+        public void BomSectionVisible_LinkedByPkOnlyPart_IsFalse()
+        {
+            // StubDocumentPropertyService defaults to DocumentType.Part
+            CreateVm(seedIpn: string.Empty, pk: "42");
+
+            Assert.That(_vm.BomSectionVisible, Is.False);
+        }
+
+        // ── PK-only linked state (#222) ────────────────────────────────────
+
+        [Test]
+        public void PropertiesSectionVisible_LinkedByPkOnlyPart_IsTrue()
+        {
+            CreateVm(seedIpn: string.Empty, pk: "42");
+
+            Assert.That(_vm.PropertiesSectionVisible, Is.True);
+        }
+
+        [Test]
+        public void PropertiesSectionVisible_LinkedByPkOnlyAssembly_IsTrue()
+        {
+            _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            CreateVm(seedIpn: string.Empty, pk: "42");
+
+            Assert.That(_vm.PropertiesSectionVisible, Is.True);
+        }
+
+        [Test]
+        public void CurrentPk_LinkedByPkOnly_ShowsStampedPk()
+        {
+            CreateVm(seedIpn: string.Empty, pk: "42");
+
+            Assert.That(_vm.CurrentPk, Is.EqualTo("42"));
+        }
+
+        [Test]
+        public void LinkedByPkOnly_FetchEnabled_ApplyAndApplyPkDisabled()
+        {
+            _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            CreateVm(seedIpn: string.Empty, pk: "42");
+
+            Assert.That(_vm.FetchEnabled, Is.True);
+            Assert.That(_vm.ApplyEnabled, Is.False);
+            Assert.That(_vm.ApplyPkEnabled, Is.False);
+        }
+
+        [Test]
+        public async Task BomSectionVisible_AssemblyAfterFetch_IsTrue()
+        {
+            _client.PartToReturn = new InventreePart { Pk = 1, Ipn = "ASSY-001" };
+            _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            CreateVm("ASSY-001");
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.BomSectionVisible, Is.True);
+        }
+
+        [Test]
+        public void BomSectionVisible_PartDocument_IsFalse()
+        {
+            // StubDocumentPropertyService defaults to DocumentType.Part
+            CreateVm("R-10K-0402");
+
+            Assert.That(_vm.BomSectionVisible, Is.False);
+        }
+
+        [Test]
+        public async Task BomSectionVisible_AfterFetch_RaisesPropertyChanged()
+        {
+            _client.PartToReturn = new InventreePart { Pk = 1, Ipn = "ASSY-001" };
+            _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            CreateVm("ASSY-001");
+
+            var raised = new List<string>();
+            _vm.PropertyChanged += (s, e) => raised.Add(e.PropertyName);
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(raised, Does.Contain("BomSectionVisible"));
+        }
+
+        [Test]
+        public async Task BomSectionVisible_AfterClearAll_ForAssembly_IsFalse()
+        {
+            _client.PartToReturn = new InventreePart { Pk = 1, Ipn = "ASSY-001" };
+            _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            CreateVm("ASSY-001");
+            await _vm.FetchPartAsync();
+
+            _vm.ClearAll();
+
+            Assert.That(_vm.BomSectionVisible, Is.False);
+        }
+
+        [Test]
+        public async Task BomSectionVisible_AssemblyInheritingSessionForSamePart_IsTrue()
+        {
+            // A session fetched for a Part survives the switch to an Assembly
+            // stamped with the same IPN/PK — the session belongs to the
+            // InvenTree part, so the Assembly is POPULATED, not LINKED.
+            _client.PartByPkToReturn = new InventreePart { Pk = 1, Ipn = "SHARED-001" };
+            _propertyService.DocumentTypeToReturn = DocumentType.Part;
+            CreateVm("SHARED-001", pk: "1");
+            await _vm.FetchPartAsync();
+
+            _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            _vm.LoadPartNumber();
+
+            Assert.That(_vm.BomSectionVisible, Is.True);
         }
     }
 }
@@ -3104,6 +3333,63 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(vm.FetchEnabled, Is.True);
             Assert.That(vm.CreatePartEnabled, Is.False);
+        }
+
+        // #224: a Settings Apply must re-read the document identity — a PK
+        // stamped after the last LoadPartNumber, with the property event
+        // missed, still picks up the LINKED-by-PK state.
+        [Test]
+        public void PkStampedAfterLoadPartNumber_SettingsApplyRefreshesPanel()
+        {
+            _propertyService.Seed(Mapping.IpnProperty!, string.Empty); // doc starts unlinked
+            var vm = CreateVm();
+            Assert.That(vm.PropertiesSectionVisible, Is.False);
+
+            _propertyService.Seed(Mapping.PkProperty!, "42");
+            vm.UpdateMapping(new StubPropertyMappingProvider { Config = PropertyMappingConfig.WithDefaults() });
+
+            Assert.That(vm.PropertiesSectionVisible, Is.True);
+            Assert.That(vm.CurrentPk, Is.EqualTo("42"));
+            Assert.That(vm.FetchEnabled, Is.True);
+            Assert.That(vm.ApplyEnabled, Is.False);
+        }
+
+        // #224 IPN twin: an IPN stamped after the last LoadPartNumber is
+        // picked up on Settings Apply the same way.
+        [Test]
+        public void IpnStampedAfterLoadPartNumber_SettingsApplyRefreshesPanel()
+        {
+            _propertyService.Seed(Mapping.IpnProperty!, string.Empty); // doc starts unlinked
+            var vm = CreateVm();
+            Assert.That(vm.PropertiesSectionVisible, Is.False);
+
+            _propertyService.Seed(Mapping.IpnProperty!, "PART-001");
+            vm.UpdateMapping(new StubPropertyMappingProvider { Config = PropertyMappingConfig.WithDefaults() });
+
+            Assert.That(vm.PropertiesSectionVisible, Is.True);
+            Assert.That(vm.PartNumber, Is.EqualTo("PART-001"));
+            Assert.That(vm.FetchEnabled, Is.True);
+            Assert.That(vm.ApplyEnabled, Is.False);
+        }
+
+        // #224: the mapping-changed path has the same staleness gap — a
+        // mapping-editor SaveMapping or external file edit on a document whose
+        // link was stamped after the last LoadPartNumber must also re-read
+        // document identity when no session is loaded.
+        [Test]
+        public void MappingChanged_NoSession_PicksUpStampedPk()
+        {
+            _propertyService.Seed(Mapping.IpnProperty!, string.Empty); // doc starts unlinked
+            var provider = new StubPropertyMappingProvider { Config = PropertyMappingConfig.WithDefaults() };
+            var vm = new TaskPaneViewModel(_client, _propertyService, null, provider,
+                                           createPartValidator: _createPartValidator);
+            Assert.That(vm.PropertiesSectionVisible, Is.False);
+
+            _propertyService.Seed(Mapping.PkProperty!, "42");
+            provider.RaiseMappingChanged();
+
+            Assert.That(vm.PropertiesSectionVisible, Is.True);
+            Assert.That(vm.CurrentPk, Is.EqualTo("42"));
         }
 
         // The Option-B gap documented by #186: on the PK path the fetched part's

@@ -1,17 +1,17 @@
 ---
-name: build
-description: "Build a reviewed, test-passing draft PR from a spec or tickets using /tdd and /review."
+name: build-hitl
+description: "Interactive build of a reviewed, test-passing draft PR from a spec or tickets using /tdd and /review, with seam confirmations and review escalations in-session. Invoke with /build-hitl."
 disable-model-invocation: true
 triggers: ["user"]
 ---
 
-# Build
+# `/build-hitl`
 
-`grill-with-docs → to-spec → to-tickets → build → qa`
+`grill-with-docs → to-spec → to-tickets → build-hitl | build-afk → qa`
 
 ## Inputs
 
-`/build` can be invoked with a single ticket, a parent spec alone, or a parent spec with explicit child tickets. See `REFERENCE.md` `## Inputs and issue hierarchy` for how to resolve each case.
+`/build-hitl` can be invoked with a single ticket, a parent spec alone, or a parent spec with explicit child tickets. See `REFERENCE.md` `## Inputs and issue hierarchy` for how to resolve each case.
 
 ## Guardrails
 
@@ -27,7 +27,7 @@ Do not move to the next step until the **Done when** criterion for the current s
    **Done when:** the parent spec, the task graph, and the frontier of unblocked child tickets are identified, the body and comments of each are read, and the user has confirmed the batch.
 2. Load the remaining **context pointers** in `REFERENCE.md` (`## Context pointers`) only when their branches fire.
    **Done when:** you can name which context pointers fired for this run and the design vocabulary has been consulted.
-3. Verify the working tree is clean. If `git status --short` is non-empty, stop and ask the user to commit or stash their changes before `/build` starts.
+3. Verify the working tree is clean. If `git status --short` is non-empty, stop and ask the user to commit or stash their changes before `/build-hitl` starts.
    **Done when:** `git status --short` returns no output.
 4. Capture the current branch as `PARENT_BRANCH` and the current commit as `PRE_BUILD_SHA`.
    **Done when:** both values are stored and visible.
