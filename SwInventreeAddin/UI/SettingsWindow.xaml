@@ -73,7 +73,7 @@
 
             <!-- Credential form: collapsed until Edit connection is clicked. The MaxHeight
                  keeps the expanded dialog inside a small monitor; Test Connection and its
-                 status bar stay outside this panel so they work while it is collapsed (#211). -->
+                 status bar stay outside this panel so they work while it is collapsed. -->
             <ScrollViewer x:Name="CredentialFormScroll"
                           Visibility="Collapsed"
                           MaxHeight="260"
@@ -86,7 +86,7 @@
                     <TextBox x:Name="UrlBox" Style="{StaticResource SWFieldStyle}" Height="28" />
 
                     <!-- Mode switcher: stacked, full-width. The active mode's button gets the
-                         primary style; only that mode's form is visible below (#212). -->
+                         primary style; only that mode's form is visible below. -->
                     <Button x:Name="AccountModeButton"
                             Margin="0,10,0,0"
                             HorizontalAlignment="Stretch"

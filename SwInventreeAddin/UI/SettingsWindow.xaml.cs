@@ -204,7 +204,7 @@ namespace SwInventreeAddin.UI
             }
         }
 
-        // ── Remove API key (#213) ────────────────────────────────────────────
+        // ── Remove API key ───────────────────────────────────────────────────
 
         // Deleting the saved settings file goes through the apply service so every
         // settings mutation surfaces as a SettingsApplyException with a consistent

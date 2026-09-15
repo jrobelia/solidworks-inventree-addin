@@ -104,11 +104,16 @@ namespace SwInventreeAddin.Config
                     ex);
             }
 
-            if (!response.IsSuccessStatusCode)
-                throw new InvalidOperationException(
-                    $"Server responded: {(int)response.StatusCode} {response.ReasonPhrase}");
+            // HttpResponseMessage is IDisposable — on net48 an undisposed response
+            // holds the connection until GC.
+            using (response)
+            {
+                if (!response.IsSuccessStatusCode)
+                    throw new InvalidOperationException(
+                        $"Server responded: {(int)response.StatusCode} {response.ReasonPhrase}");
 
-            return apiKey;
+                return apiKey;
+            }
         }
 
         private async Task<string> ResolveApiKeyAsync(SettingsApplyInput input)
