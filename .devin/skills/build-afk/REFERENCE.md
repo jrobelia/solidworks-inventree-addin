@@ -1,8 +1,14 @@
 # `/build-afk` reference
 
-## Inputs and issue hierarchy
+## Inputs and merge topology
 
-The input is a parent spec. Find child issues whose bodies contain `## Parent` referencing it, per `docs/agents/issue-tracker.md` `## Parent and child issues`. Resolve each child's `## Blocked by` links into the task graph; the **frontier** is the set of unblocked children. Read every body's full text and **all comments** — comments are part of the spec. Cap the batch at 3–5 tickets.
+Every intake shape resolves to a confirmed finite set plus a merge topology, presented together at the batch gate. An open-ended pull is rejected — the maintainer confirms a finite list, never a query's future results. For every ticket read the full body and **all comments** — comments are part of the spec — and resolve `## Blocked by` links into the task graph; the **frontier** is the unblocked set.
+
+- **Parent spec** (`/build-afk spec #N`) — children via `## Parent` bodies, per `docs/agents/issue-tracker.md` `## Parent and child issues`. Spec children share one batch: `build/spec-<parent>-<children>` per `docs/agents/pr-conventions.md` `## Branch names`, one draft PR. Batch cap is 3–5 tickets.
+- **Explicit issue list** (`/build-afk #45 #51 #63`) — fetch each ticket the same way. With no shared `## Parent` the set runs as a **queue**: each ticket works on `build/issue-<N>` branched from `PARENT_BRANCH` and gets its own draft PR — unrelated changes never share a PR, and a stalled ticket holds nothing up. Queue tickets with no `## Blocked by` edges never see each other's code; a ticket blocked by a sibling branches from that sibling's `build/issue-<M>` at dispatch.
+- **Label/milestone query** (`/build-afk --label <x>` / `--milestone <y>`) — resolve the full set once via `gh issue list --label`/`--milestone`, then partition into **waves** of at most 5 by dependency layer. Waves run sequentially, each traversing the loop (SKILL.md steps 2–6) and producing its own PR(s) — the cap is a wave size, not a run limit. Within a wave, coherence picks the topology: shared `## Parent` → batch, otherwise queue.
+
+The prior-work check below runs for every intake shape, not just spec intake.
 
 ## Prior-work check
 

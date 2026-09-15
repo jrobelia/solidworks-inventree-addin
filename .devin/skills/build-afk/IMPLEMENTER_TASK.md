@@ -31,11 +31,11 @@ Read the seam note before designing anything: `{{seam_note_path}}`. It is the ap
 
 ## Worktree
 
-Work inside `{{worktree_path}}` — your own git worktree under `.worktrees/`, on branch `afk/{{ticket}}`, cut from batch SHA `{{base_sha}}`. Verify before starting:
+Work inside `{{worktree_path}}` — your own git worktree under `.worktrees/`, on branch `{{branch}}` (`afk/<ticket>` in a batch run, `build/issue-<N>` in a queue run), cut from base SHA `{{base_sha}}`. Verify before starting:
 
 ```
 git -C {{worktree_path}} rev-parse HEAD            # must print {{base_sha}}
-git -C {{worktree_path}} branch --show-current     # must print afk/{{ticket}}
+git -C {{worktree_path}} branch --show-current     # must print {{branch}}
 ```
 
 Every file edit and every command runs inside the worktree, never the main checkout.
@@ -82,7 +82,7 @@ Your granted toolset is `read`, `edit`, `exec`, `grep`, `glob` (shown in your fu
    git add -A && git commit -m "<summary> (#{{ticket}}, part of #{{parent_spec}})"
    ```
 
-   Never push, never open a PR — the orchestrator merges.
+   Never push, never open a PR — the orchestrator owns the merge, the push, and the PR.
 
 ## Report
 
@@ -93,7 +93,7 @@ Then return only this JSON — no prose around it:
 ```json
 {
   "status": "COMPLETE | COMPLETE_WITH_CONCERNS | BLOCKED",
-  "branch": "afk/{{ticket}}",
+  "branch": "{{branch}}",
   "commit": "<short sha>",
   "worktree_path": "{{worktree_path}}",
   "test_summary": "<one-line result>",
