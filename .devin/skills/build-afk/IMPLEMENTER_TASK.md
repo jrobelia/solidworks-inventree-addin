@@ -50,6 +50,14 @@ Reach each only when its branch fires:
 
 Skills cannot be invoked from inside a subagent — every pointer above is a file to read.
 
+## Tool reality (smoke-tested)
+
+Your granted toolset is `read`, `edit`, `exec`, `grep`, `glob` — nothing else.
+
+- No `write` tool: create new files through `exec` (`cat > path <<'EOF'` or `git apply`). `edit` fails on files that do not exist.
+- No background-shell tools (`get_output`, `kill_shell`, `write_to_process`): every command is a foreground `exec` that blocks until exit — run commands that terminate.
+- Running in the background means unapproved tool calls are auto-denied — the orchestrator pre-grants `exec` before dispatching you there.
+
 ## Loop
 
 1. Orient: the ticket, the seam note, `git -C {{worktree_path}} log -n 5 --oneline`.
