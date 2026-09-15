@@ -411,7 +411,10 @@ namespace SwInventreeAddin.UI
 
             try
             {
-                await _settingsApplyService.ApplyAsync(input).ConfigureAwait(false);
+                using (var client = new HttpClient())
+                {
+                    await _settingsApplyService.ApplyAsync(input, client).ConfigureAwait(false);
+                }
             }
             catch (SettingsApplyException ex)
             {

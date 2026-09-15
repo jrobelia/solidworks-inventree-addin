@@ -13,6 +13,7 @@ namespace SwInventreeAddin.Tests.Stubs
         }
 
         public SettingsApplyInput? LastInput { get; private set; }
+        public HttpClient? LastApplyClient { get; private set; }
         public HttpClient? LastTestClient { get; private set; }
         public int RemoveCallCount { get; private set; }
 
@@ -26,9 +27,10 @@ namespace SwInventreeAddin.Tests.Stubs
         /// </summary>
         public IConfigProvider? ConfigProvider { get; }
 
-        public Task ApplyAsync(SettingsApplyInput input)
+        public Task ApplyAsync(SettingsApplyInput input, HttpClient client)
         {
             LastInput = input;
+            LastApplyClient = client;
 
             if (ExceptionToThrowOnApply != null)
                 throw ExceptionToThrowOnApply;
