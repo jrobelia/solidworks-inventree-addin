@@ -21,5 +21,12 @@ namespace SwInventreeAddin.Config
         /// reachable. Throws <see cref="System.InvalidOperationException"/> on failure.
         /// </summary>
         Task TestConnectionAsync(SettingsApplyInput input, HttpClient client);
+
+        /// <summary>
+        /// Deletes the saved server settings. Throws <see cref="SettingsApplyException"/>
+        /// when deletion fails; the message begins with "Failed to remove server settings".
+        /// Completes normally when nothing is saved.
+        /// </summary>
+        Task RemoveServerConfigAsync();
     }
 }

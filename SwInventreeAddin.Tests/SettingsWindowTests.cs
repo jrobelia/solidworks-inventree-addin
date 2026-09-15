@@ -819,6 +819,159 @@ namespace SwInventreeAddin.Tests
             Assert.That(GetPasswordBox(window, "PasswordBox").Password, Is.Empty);
         }
 
+        // ── Remove API key (#213) ───────────────────────────────────────────
+
+        [Test]
+        public void RemoveApiKeyButton_IsInsideApiKeyForm()
+        {
+            var window = CreateWindow();
+
+            Assert.That(IsInside(window, "RemoveApiKeyButton", "ApiKeyFormPanel"), Is.True);
+        }
+
+        [Test]
+        public void RemoveApiKey_WhenClicked_CallsRemoveServerConfigAsync()
+        {
+            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var applyService = new StubSettingsApplyService(configProvider);
+            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
+
+            Click(window, "RemoveApiKeyButton");
+
+            Assert.That(applyService.RemoveCallCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void RemoveApiKey_WhenClicked_UpdatesStatusCardToNoServerSettingsSaved()
+        {
+            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var applyService = new StubSettingsApplyService(configProvider);
+            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
+
+            Click(window, "RemoveApiKeyButton");
+
+            Assert.That(GetText(window, "ConnectionCardText"), Is.EqualTo("No server settings saved"));
+        }
+
+        [Test]
+        public void RemoveApiKey_WhenClicked_HidesServerUrlOnStatusCard()
+        {
+            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var applyService = new StubSettingsApplyService(configProvider);
+            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
+
+            Click(window, "RemoveApiKeyButton");
+
+            var url = (TextBlock)LogicalTreeHelper.FindLogicalNode(window, "ConnectionCardUrl")!;
+            Assert.That(url.Visibility, Is.EqualTo(Visibility.Collapsed));
+        }
+
+        [Test]
+        public void RemoveApiKey_WhenClicked_ResetsCredentialFields()
+        {
+            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var applyService = new StubSettingsApplyService(configProvider);
+            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
+
+            Click(window, "RemoveApiKeyButton");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetTextBox(window, "UrlBox")!.Text, Is.Empty, "UrlBox");
+                Assert.That(GetTextBox(window, "UsernameBox")!.Text, Is.Empty, "UsernameBox");
+                Assert.That(GetPasswordBox(window, "PasswordBox").Password, Is.Empty, "PasswordBox");
+                Assert.That(GetPasswordBox(window, "ApiKeyMaskedBox").Password, Is.Empty, "ApiKeyMaskedBox");
+                Assert.That(GetTextBox(window, "ApiBox")!.Text, Is.Empty, "ApiBox");
+            });
+        }
+
+        [Test]
+        public void RemoveApiKey_WhenClicked_ResetsToAccountMode()
+        {
+            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var applyService = new StubSettingsApplyService(configProvider);
+            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
+
+            Click(window, "RemoveApiKeyButton");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetPanel(window, "AccountFormPanel").Visibility, Is.EqualTo(Visibility.Visible),
+                            "AccountFormPanel visibility");
+                Assert.That(GetPanel(window, "ApiKeyFormPanel").Visibility, Is.EqualTo(Visibility.Collapsed),
+                            "ApiKeyFormPanel visibility");
+            });
+        }
+
+        [Test]
+        public void RemoveApiKey_WhenClicked_CollapsesCredentialForm()
+        {
+            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var applyService = new StubSettingsApplyService(configProvider);
+            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
+            Click(window, "EditConnectionButton");
+
+            Click(window, "RemoveApiKeyButton");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetCredentialForm(window).Visibility, Is.EqualTo(Visibility.Collapsed),
+                            "CredentialFormScroll visibility");
+                Assert.That(GetText(window, "EditConnectionButtonText"), Is.EqualTo("Edit connection"),
+                            "EditConnectionButtonText");
+            });
+        }
+
+        [Test]
+        public void RemoveApiKey_WhenClicked_LeavesTheDialogClean()
+        {
+            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var applyService = new StubSettingsApplyService(configProvider);
+            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
+
+            Click(window, "RemoveApiKeyButton");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetButton(window, "ApplyButton").IsEnabled, Is.False, "ApplyButton.IsEnabled");
+                Assert.That(GetText(window, "CancelButtonText"), Is.EqualTo("Close"), "CancelButtonText");
+            });
+        }
+
+        [Test]
+        public void RemoveApiKey_WhenServiceThrows_ShowsErrorInActionStatus()
+        {
+            var applyService = new StubSettingsApplyService
+            {
+                ExceptionToThrowOnRemove = new SettingsApplyException(
+                    "Failed to remove server settings: stub delete failure"),
+            };
+            var window = CreateWindow(applyService: applyService);
+
+            Click(window, "RemoveApiKeyButton");
+
+            Assert.That(GetText(window, "ActionStatusText"),
+                        Does.Contain("Failed to remove server settings"));
+        }
+
+        [Test]
+        public void RemoveApiKey_WhenServiceThrows_LeavesConfiguredStatusCard()
+        {
+            var applyService = new StubSettingsApplyService
+            {
+                ExceptionToThrowOnRemove = new SettingsApplyException(
+                    "Failed to remove server settings: stub delete failure"),
+            };
+            var window = CreateWindow(
+                applyService: applyService,
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            Click(window, "RemoveApiKeyButton");
+
+            Assert.That(GetText(window, "ConnectionCardText"),
+                        Is.EqualTo("Server connection configured \u2014 API key saved"));
+        }
+
         // ── Helpers ───────────────────────────────────────────────────────────
 
         private static ScrollViewer GetCredentialForm(Window window)
@@ -828,16 +981,21 @@ namespace SwInventreeAddin.Tests
             return element!;
         }
 
-        private static bool IsInsideCredentialForm(Window window, string name)
-        {
-            var element = LogicalTreeHelper.FindLogicalNode(window, name) as DependencyObject;
-            Assert.That(element, Is.Not.Null, $"Could not find element named '{name}'.");
+        private static bool IsInsideCredentialForm(Window window, string name) =>
+            IsInside(window, name, "CredentialFormScroll");
 
-            var form = GetCredentialForm(window);
+        private static bool IsInside(Window window, string elementName, string ancestorName)
+        {
+            var element = LogicalTreeHelper.FindLogicalNode(window, elementName) as DependencyObject;
+            Assert.That(element, Is.Not.Null, $"Could not find element named '{elementName}'.");
+
+            var ancestor = LogicalTreeHelper.FindLogicalNode(window, ancestorName) as DependencyObject;
+            Assert.That(ancestor, Is.Not.Null, $"Could not find element named '{ancestorName}'.");
+
             for (var parent = LogicalTreeHelper.GetParent(element!); parent != null;
                  parent = LogicalTreeHelper.GetParent(parent))
             {
-                if (ReferenceEquals(parent, form)) return true;
+                if (ReferenceEquals(parent, ancestor)) return true;
             }
 
             return false;

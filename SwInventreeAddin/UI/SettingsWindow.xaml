@@ -150,6 +150,17 @@
                                    Foreground="{StaticResource BrushSubtle}"
                                    TextWrapping="Wrap"
                                    Text="The key is saved encrypted on this machine and never shown on the status card." />
+                        <Button x:Name="RemoveApiKeyButton"
+                                Margin="0,10,0,0"
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Click="RemoveApiKey_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Remove API key" VerticalAlignment="Center" />
+                                <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                           VerticalAlignment="Center" Margin="6,0,0,0" />
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
 
                 </StackPanel>

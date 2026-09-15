@@ -204,6 +204,38 @@ namespace SwInventreeAddin.UI
             }
         }
 
+        // ── Remove API key (#213) ────────────────────────────────────────────
+
+        // Deleting the saved settings file goes through the apply service so every
+        // settings mutation surfaces as a SettingsApplyException with a consistent
+        // message prefix. The reset below is the post-state the status card already
+        // reports when nothing has ever been saved.
+        private async void RemoveApiKey_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                await _settingsApplyService.RemoveServerConfigAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                this.Dispatcher.Invoke(() => SetActionStatus(ex.Message, StatusSeverity.Error));
+                return;
+            }
+
+            this.Dispatcher.Invoke(() =>
+            {
+                _credentialState.Clear();
+                UrlBox.Clear();
+                UsernameBox.Clear();
+                PasswordBox.Clear();
+                RenderCredentialForm();
+                RefreshConnectionCard(TryGetConfig());
+                _savedSnapshot = CaptureSnapshot();
+                RefreshButtonStates();
+                SetCredentialFormExpanded(false);
+            });
+        }
+
         // ── Radio button handlers ──────────────────────────────────────────────
 
         private void SharedRadio_Checked(object sender, RoutedEventArgs e)

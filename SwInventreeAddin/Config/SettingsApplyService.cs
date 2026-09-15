@@ -81,6 +81,21 @@ namespace SwInventreeAddin.Config
                     $"Server responded: {(int)response.StatusCode} {response.ReasonPhrase}");
         }
 
+        /// <inheritdoc/>
+        public Task RemoveServerConfigAsync()
+        {
+            try
+            {
+                _configProvider.DeleteServerConfig();
+            }
+            catch (Exception ex)
+            {
+                throw RemoveError(ex);
+            }
+
+            return Task.CompletedTask;
+        }
+
         // ── Private helpers ───────────────────────────────────────────────────
 
         private async Task<string> ResolveApiKeyAsync(SettingsApplyInput input)
@@ -116,5 +131,8 @@ namespace SwInventreeAddin.Config
 
         private static SettingsApplyException ConfigError(Exception ex)
             => new SettingsApplyException($"Failed to save server settings: {ex.Message}", ex);
+
+        private static SettingsApplyException RemoveError(Exception ex)
+            => new SettingsApplyException($"Failed to remove server settings: {ex.Message}", ex);
     }
 }

@@ -120,5 +120,41 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(state.ApiKey, Is.Empty);
         }
+
+        // ── Clear (#213) ────────────────────────────────────────────────────
+
+        [Test]
+        public void Clear_FromApiKeyMode_ResetsToAccountMode()
+        {
+            var state = CredentialEditorState.FromSavedConfig(
+                new ServerConfig { Url = "https://inventree.example.com", ApiKey = "saved-key" });
+
+            state.Clear();
+
+            Assert.That(state.Mode, Is.EqualTo(CredentialEntryMode.Account));
+        }
+
+        [Test]
+        public void Clear_FromApiKeyMode_EmptiesApiKey()
+        {
+            var state = CredentialEditorState.FromSavedConfig(
+                new ServerConfig { Url = "https://inventree.example.com", ApiKey = "saved-key" });
+
+            state.Clear();
+
+            Assert.That(state.ApiKey, Is.Empty);
+        }
+
+        [Test]
+        public void Clear_WhenApiKeyRevealed_MasksApiKeyAgain()
+        {
+            var state = CredentialEditorState.FromSavedConfig(
+                new ServerConfig { Url = "https://inventree.example.com", ApiKey = "saved-key" });
+            state.ToggleApiKeyReveal();
+
+            state.Clear();
+
+            Assert.That(state.IsApiKeyRevealed, Is.False);
+        }
     }
 }

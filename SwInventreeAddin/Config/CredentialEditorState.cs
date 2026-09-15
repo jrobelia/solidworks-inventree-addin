@@ -65,5 +65,17 @@ namespace SwInventreeAddin.Config
 
         /// <summary>Flips the API key between masked and plain text.</summary>
         public void ToggleApiKeyReveal() => IsApiKeyRevealed = !IsApiKeyRevealed;
+
+        /// <summary>
+        /// Resets the editor to the nothing-saved state that <see cref="FromSavedConfig"/>
+        /// produces for a <c>null</c> config: <see cref="CredentialEntryMode.Account"/>,
+        /// an empty key, and the masked display.
+        /// </summary>
+        public void Clear()
+        {
+            Mode = CredentialEntryMode.Account;
+            ApiKey = string.Empty;
+            IsApiKeyRevealed = false;
+        }
     }
 }

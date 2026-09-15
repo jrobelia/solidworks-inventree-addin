@@ -4,10 +4,12 @@ namespace SwInventreeAddin.Tests.Stubs
 {
     public class StubConfigProvider : IConfigProvider
     {
-        private readonly ServerConfig? _config;
+        private ServerConfig? _config;
 
         public ServerConfig? LastSavedConfig { get; private set; }
+        public int DeleteCallCount { get; private set; }
         public System.Exception? ThrowOnSave { get; set; }
+        public System.Exception? ThrowOnDelete { get; set; }
 
         /// <summary>
         /// The config returned by GetServerConfig — mutable so tests can change saved values.
@@ -36,6 +38,16 @@ namespace SwInventreeAddin.Tests.Stubs
                 throw ThrowOnSave;
 
             LastSavedConfig = config;
+        }
+
+        public void DeleteServerConfig()
+        {
+            DeleteCallCount++;
+
+            if (ThrowOnDelete != null)
+                throw ThrowOnDelete;
+
+            _config = null;
         }
     }
 }

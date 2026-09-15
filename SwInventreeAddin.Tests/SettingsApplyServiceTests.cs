@@ -157,6 +157,48 @@ namespace SwInventreeAddin.Tests
             Assert.That(ex!.Message, Does.Contain("API key").And.Not.Contain("Advanced"));
         }
 
+        // ── RemoveServerConfigAsync (#213) ──────────────────────────────────
+
+        [Test]
+        public async Task RemoveServerConfigAsync_DelegatesToConfigProvider()
+        {
+            var configProvider = new StubConfigProvider("https://example.com", "key");
+            var tokenService = new StubInventreeTokenService { TokenToReturn = "token" };
+            var service = new SettingsApplyService(configProvider, tokenService);
+
+            await service.RemoveServerConfigAsync();
+
+            Assert.That(configProvider.DeleteCallCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public async Task RemoveServerConfigAsync_WhenNothingSaved_Completes()
+        {
+            var configProvider = StubConfigProvider.WithNoSavedConfig();
+            var tokenService = new StubInventreeTokenService { TokenToReturn = "token" };
+            var service = new SettingsApplyService(configProvider, tokenService);
+
+            Assert.DoesNotThrowAsync(() => service.RemoveServerConfigAsync());
+
+            Assert.That(configProvider.DeleteCallCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void RemoveServerConfigAsync_WhenProviderThrows_ThrowsSettingsApplyException()
+        {
+            var configProvider = new StubConfigProvider("https://example.com", "key")
+            {
+                ThrowOnDelete = new InvalidOperationException("delete failed"),
+            };
+            var tokenService = new StubInventreeTokenService { TokenToReturn = "token" };
+            var service = new SettingsApplyService(configProvider, tokenService);
+
+            var ex = Assert.ThrowsAsync<SettingsApplyException>(
+                () => service.RemoveServerConfigAsync());
+
+            Assert.That(ex!.Message, Does.Contain("Failed to remove server settings"));
+        }
+
         private static SettingsApplyInput CreateInput()
         {
             return new SettingsApplyInput

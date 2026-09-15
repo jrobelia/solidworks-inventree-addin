@@ -102,6 +102,36 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public void DeleteServerConfig_WhenFileExists_RemovesFileAndGetReturnsNull()
+        {
+            _provider.SaveServerConfig(new ServerConfig { Url = "http://example.com", ApiKey = "key" });
+            Assert.That(File.Exists(_tempFilePath), Is.True);
+
+            _provider.DeleteServerConfig();
+
+            Assert.That(File.Exists(_tempFilePath), Is.False);
+            Assert.That(_provider.GetServerConfig(), Is.Null);
+        }
+
+        [Test]
+        public void DeleteServerConfig_WhenNoFileExists_IsANoOp()
+        {
+            Assert.DoesNotThrow(() => _provider.DeleteServerConfig());
+            Assert.That(_provider.GetServerConfig(), Is.Null);
+        }
+
+        [Test]
+        public void DeleteServerConfig_WhenFileIsLocked_ThrowsInvalidOperationException()
+        {
+            _provider.SaveServerConfig(new ServerConfig { Url = "http://example.com", ApiKey = "key" });
+
+            using var stream = new FileStream(_tempFilePath, FileMode.Open, FileAccess.Read, FileShare.None);
+
+            Assert.That(() => _provider.DeleteServerConfig(),
+                Throws.TypeOf<InvalidOperationException>().With.Message.Contains("delete"));
+        }
+
+        [Test]
         public void GetServerConfig_LegacyWaitForServerAssignedIpn_MigratesToNewKey()
         {
             var legacyJson =
