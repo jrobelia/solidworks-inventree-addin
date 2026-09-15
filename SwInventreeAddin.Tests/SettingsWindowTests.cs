@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -21,18 +20,6 @@ namespace SwInventreeAddin.Tests
     [NonParallelizable]
     public class SettingsWindowTests
     {
-        [DllImport("user32.dll")]
-        private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct RECT
-        {
-            public int Left;
-            public int Top;
-            public int Right;
-            public int Bottom;
-        }
-
         private string _localMappingPath = null!;
 
         [SetUp]
@@ -893,12 +880,10 @@ namespace SwInventreeAddin.Tests
                         try
                         {
                             var helper = new WindowInteropHelper(window);
-                            _ = GetWindowRect(helper.Handle, out var dialogRect);
+                            var dialogRect = HiddenTestWindow.GetRect(helper.Handle);
 
                             Assert.That(
-                                HiddenTestWindow.IsOnScreen(
-                                    dialogRect.Left, dialogRect.Top,
-                                    dialogRect.Right, dialogRect.Bottom),
+                                HiddenTestWindow.IsOnScreen(dialogRect),
                                 Is.False, "Test dialog must stay off every monitor");
                         }
                         catch (Exception ex)
