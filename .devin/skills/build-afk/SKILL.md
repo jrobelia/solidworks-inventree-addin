@@ -47,7 +47,7 @@ Do not move to the next step until the **Done when** criterion for the current s
 5. **Final review.** Run `/review` with `REVIEW_BASE` = `PRE_BUILD_SHA`, `SPEC_SOURCE` = the parent spec (body and comments), `AXES=both`. Fixes dispatch back through an implementer. Act on `REVIEW_STATUS` per `/review`'s output contract.
    **Done when:** `REVIEW_STATUS` is `clean`, `resolved`, or `deferred`, or the maintainer has been consulted on `escalated`/`capped`.
 
-6. **Close out.** Confirm the pushed branch's checks are green on the self-hosted runner — Release-config tests, installer package, clean checkout; CI is the end-of-run gate, not a per-merge loop. Finalize the draft PR body per `docs/agents/pr-conventions.md` `## PR body` with the full `REVIEW_NOTES` under `### Review notes`. Dispatch the run retro per `REFERENCE.md` `## Run retro`. Deliver the run summary with the PR link and the top retro candidates, then hand off to `/qa`.
+6. **Close out.** Confirm the pushed branch's checks are green on the self-hosted runner — Release-config tests, installer package, clean checkout; CI is the end-of-run gate, not a per-merge loop. Finalize the draft PR body per `docs/agents/pr-conventions.md` `## PR body` with the full `REVIEW_NOTES` under `### Review notes`. Remove the `.worktrees/` worktrees and delete the `afk/<ticket>` branches once the PR is open — stale `afk/` branches false-positive the prior-work check on later runs. Dispatch the run retro per `REFERENCE.md` `## Run retro`. Deliver the run summary with the PR link and the top retro candidates, then hand off to `/qa`.
    **Done when:** checks are green, the draft PR body is complete, `reports/run-retro.md` is persisted, and the summary is delivered.
 
 ## Queue and wave branches

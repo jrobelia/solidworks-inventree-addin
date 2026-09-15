@@ -11,7 +11,7 @@
         "seam notes persist verbatim to seams/<ticket>.md",
         "architectural proposals reach the maintainer in one consolidated seam gate — the last planned interruption before implementation",
         "the first build-implementer dispatch is foreground (is_background=false) and targets #902 as the riskiest unblocked ticket",
-        "#903 receives no dispatch while its blocker is unresolved"
+        "#903 receives no implementer dispatch while its blocker is unresolved"
       ]
     },
     {

@@ -69,7 +69,7 @@ Your granted toolset is `read`, `edit`, `exec`, `grep`, `glob` (shown in your fu
 
      ```bash
      mapfile -t files < <( { git diff --name-only --diff-filter=AM HEAD; git ls-files --others --exclude-standard; } | grep '\.cs$' )
-     if ((${#files[@]})); then dotnet format "Solidworks Inventree Add-In.sln" "${files[@]/#/--include }"; fi
+     if ((${#files[@]})); then dotnet format "Solidworks Inventree Add-In.sln" --include "${files[@]}"; fi
      ```
 
    - The WPF smoke harness when the UI pointer fired.
