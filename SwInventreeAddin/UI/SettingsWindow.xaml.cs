@@ -204,7 +204,7 @@ namespace SwInventreeAddin.UI
             }
         }
 
-        // ── Remove API key (#213) ────────────────────────────────────────────
+        // ── Remove API key ───────────────────────────────────────────────────
 
         // Deleting the saved settings file goes through the apply service so every
         // settings mutation surfaces as a SettingsApplyException with a consistent
@@ -411,7 +411,10 @@ namespace SwInventreeAddin.UI
 
             try
             {
-                await _settingsApplyService.ApplyAsync(input).ConfigureAwait(false);
+                using (var client = new HttpClient())
+                {
+                    await _settingsApplyService.ApplyAsync(input, client).ConfigureAwait(false);
+                }
             }
             catch (SettingsApplyException ex)
             {

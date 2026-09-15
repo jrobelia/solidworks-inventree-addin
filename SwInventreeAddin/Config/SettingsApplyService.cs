@@ -21,12 +21,15 @@ namespace SwInventreeAddin.Config
         }
 
         /// <inheritdoc/>
-        public async Task ApplyAsync(SettingsApplyInput input)
+        public async Task ApplyAsync(SettingsApplyInput input, HttpClient client)
         {
+            if (client == null)
+                throw new ArgumentNullException(nameof(client));
+
             string apiKey;
             try
             {
-                apiKey = await ResolveApiKeyAsync(input).ConfigureAwait(false);
+                apiKey = await ResolveAndProbeAsync(input, client).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -58,27 +61,7 @@ namespace SwInventreeAddin.Config
             if (client == null)
                 throw new ArgumentNullException(nameof(client));
 
-            string apiKey = await ResolveApiKeyAsync(input).ConfigureAwait(false);
-
-            client.BaseAddress = new Uri(input.Url.Trim());
-            client.DefaultRequestHeaders.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Token", apiKey);
-
-            HttpResponseMessage response;
-            try
-            {
-                response = await client.GetAsync("api/part/?limit=1").ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException(
-                    $"Could not reach the InvenTree server. Check the URL and network connection. ({ex.Message})",
-                    ex);
-            }
-
-            if (!response.IsSuccessStatusCode)
-                throw new InvalidOperationException(
-                    $"Server responded: {(int)response.StatusCode} {response.ReasonPhrase}");
+            await ResolveAndProbeAsync(input, client).ConfigureAwait(false);
         }
 
         /// <inheritdoc/>
@@ -97,6 +80,41 @@ namespace SwInventreeAddin.Config
         }
 
         // ── Private helpers ───────────────────────────────────────────────────
+
+        // Apply and Test Connection share the same resolve-and-probe path so an
+        // untested key can never be persisted: the probe result is the gate, and
+        // ApplyAsync alone decides whether a passing probe leads to a save.
+        private async Task<string> ResolveAndProbeAsync(SettingsApplyInput input, HttpClient client)
+        {
+            string apiKey = await ResolveApiKeyAsync(input).ConfigureAwait(false);
+
+            client.BaseAddress = new Uri(input.Url.Trim());
+            client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Token", apiKey);
+
+            HttpResponseMessage response;
+            try
+            {
+                response = await client.GetAsync("api/part/?limit=1").ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException(
+                    $"Could not reach the InvenTree server. Check the URL and network connection. ({ex.Message})",
+                    ex);
+            }
+
+            // HttpResponseMessage is IDisposable — on net48 an undisposed response
+            // holds the connection until GC.
+            using (response)
+            {
+                if (!response.IsSuccessStatusCode)
+                    throw new InvalidOperationException(
+                        $"Server responded: {(int)response.StatusCode} {response.ReasonPhrase}");
+
+                return apiKey;
+            }
+        }
 
         private async Task<string> ResolveApiKeyAsync(SettingsApplyInput input)
         {

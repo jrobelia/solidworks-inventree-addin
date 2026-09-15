@@ -1,10 +1,13 @@
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Threading;
 using NUnit.Framework;
 using SwInventreeAddin.Config;
 using SwInventreeAddin.InvenTree;
@@ -18,6 +21,18 @@ namespace SwInventreeAddin.Tests
     [NonParallelizable]
     public class SettingsWindowTests
     {
+        [DllImport("user32.dll")]
+        private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
         private string _localMappingPath = null!;
 
         [SetUp]
@@ -817,6 +832,99 @@ namespace SwInventreeAddin.Tests
             await window.ApplySettingsAsync();
 
             Assert.That(GetPasswordBox(window, "PasswordBox").Password, Is.Empty);
+        }
+
+        // ── Test-before-save on Apply/Save (#214) ────────────────────────────
+
+        [Test]
+        public async Task ApplySettingsAsync_PassesAnHttpClientToTheApplyService()
+        {
+            var applyService = new StubSettingsApplyService();
+            var window = CreateWindow(applyService: applyService);
+
+            await window.ApplySettingsAsync();
+
+            Assert.That(applyService.LastApplyClient, Is.Not.Null);
+        }
+
+        // Clicking Save runs synchronously to the early return: the stub apply
+        // service throws before yielding, so DialogResult is never set and the
+        // (unshown) dialog stays open.
+        [Test]
+        public void Save_Click_WhenApplyFails_StaysOpenAndShowsErrorStatus()
+        {
+            var applyService = new StubSettingsApplyService
+            {
+                ExceptionToThrowOnApply = new SettingsApplyException(
+                    "Failed to save server settings: Server responded: 500"),
+            };
+            var window = CreateWindow(applyService: applyService);
+
+            Click(window, "SaveButton");
+
+            Assert.That(window.DialogResult, Is.Null);
+            Assert.That(GetText(window, "ActionStatusText"),
+                        Does.Contain("Failed to save server settings"));
+        }
+
+        [Test, Timeout(10000)]
+        public void Save_Click_WhenApplySucceeds_ClosesDialogWithTrueResult()
+        {
+            using var form = HiddenTestWindow.CreateOwnerForm();
+            form.Show();
+            SolidWorksWindowHandle.Set(form.Handle);
+
+            try
+            {
+                var window = CreateWindow();
+                Exception? assertFailure = null;
+
+                window.ContentRendered += (s, e) =>
+                {
+                    var timer = new DispatcherTimer(DispatcherPriority.Render)
+                    {
+                        Interval = TimeSpan.FromMilliseconds(300),
+                    };
+
+                    timer.Tick += (s2, e2) =>
+                    {
+                        timer.Stop();
+
+                        try
+                        {
+                            var helper = new WindowInteropHelper(window);
+                            _ = GetWindowRect(helper.Handle, out var dialogRect);
+
+                            Assert.That(
+                                HiddenTestWindow.IsOnScreen(
+                                    dialogRect.Left, dialogRect.Top,
+                                    dialogRect.Right, dialogRect.Bottom),
+                                Is.False, "Test dialog must stay off every monitor");
+                        }
+                        catch (Exception ex)
+                        {
+                            assertFailure = ex;
+                        }
+
+                        Click(window, "SaveButton");
+                    };
+
+                    timer.Start();
+                };
+
+                var result = window.ShowDialog();
+
+                if (assertFailure != null)
+                    Assert.Fail($"Off-screen assertion failed: {assertFailure.Message}");
+
+                Assert.That(result, Is.EqualTo(true));
+                Assert.That(window.DialogResult, Is.EqualTo(true));
+                Assert.That(GetText(window, "ActionStatusText"), Does.Contain("Settings applied"));
+            }
+            finally
+            {
+                SolidWorksWindowHandle.Set(IntPtr.Zero);
+            }
         }
 
         // ── Remove API key (#213) ───────────────────────────────────────────
