@@ -1,4 +1,6 @@
+using System;
 using System.Drawing;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using SwInventreeAddin.UI;
 
@@ -11,6 +13,25 @@ namespace SwInventreeAddin.Tests
     /// </summary>
     internal static class HiddenTestWindow
     {
+        [DllImport("user32.dll")]
+        private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
+        /// <summary>Returns the native window rectangle for a live handle.</summary>
+        internal static Rectangle GetRect(IntPtr hWnd)
+        {
+            _ = GetWindowRect(hWnd, out var rect);
+            return new Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
+        }
+
         /// <summary>
         /// Creates a large owner form parked at the same far off-screen position
         /// production uses, so a dialog centered on it lands outside every monitor.
