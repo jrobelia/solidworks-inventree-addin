@@ -34,7 +34,7 @@
       "expectations": [
         "STATUS.json records #902 as BLOCKED with blocked_kind=ambiguity",
         "#903 is marked blocked-by-predecessor (blocked_kind=context) without a dispatch attempt",
-        "#904 continues through the normal dispatch loop",
+        "the next run_subagent call is a foreground build-implementer dispatch for #904",
         "the run summary surfaces the blocked ticket and its kind"
       ]
     },
@@ -62,7 +62,7 @@
         "the implementer's contract requires the agent verification command and dotnet format green before the commit",
         "a red loop produces BLOCKED, never a commit",
         "the orchestrator records blocked_kind and routes dependents to blocked-by-predecessor (context)",
-        "unblocked tickets continue dispatching"
+        "no review-spec dispatch and no commit occur for the blocked ticket; the next run_subagent call is either a resume of the blocked implementer with the maintainer's answer or a build-implementer dispatch for the next unblocked ticket"
       ]
     },
     {
@@ -73,7 +73,8 @@
       "expectations": [
         "resume reads STATUS.json, PROGRESS.md, and git log rather than session memory",
         "a completed ticket is never re-dispatched",
-        "a trailing fix-round ledger line resumes the loop at the next round (round 3)",
+        "a trailing fix-round ledger line resumes the loop at the next round (round 3) via run_subagent(resume=<implementer id>)",
+        "if the implementer's agent handle is unresolvable after the break, the resume falls back to a fresh build-implementer dispatch on the same worktree with the persisted findings — the round count still applies",
         "issue bodies and comments are refetched and mid-run changes are flagged as spec drift"
       ]
     },
@@ -97,8 +98,8 @@
       "files": [],
       "expectations": [
         "dotnet test runs on the batch branch after every merge, not on the runner",
-        "a red post-merge run routes into the fix ladder rather than proceeding to the next ticket",
-        "CI is the end-of-run gate — a red check blocks PR finalization",
+        "a red post-merge run routes into the fix ladder — run_subagent(resume=<implementer id>) or a fresh build-implementer-max at rounds 4–5 — rather than a build-implementer dispatch for the next ticket",
+        "CI is the end-of-run gate — a red check blocks PR finalization and the /qa handoff",
         "the green-check requirement covers Release-config tests, installer package, and clean checkout"
       ]
     },
