@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "/build-afk spec #900, whose children are #901 (routine seam), #902 (architectural seam, unblocked), and #903 (blocked by #902). After the batch gate confirms the batch, walk through what happens until the first implementer dispatch. Name the exact run_subagent calls.",
-      "expected_output": "Design pass dispatches run_subagent(profile=\"build-designer\") once per ticket, at most 2 concurrent; each declaration persists to seams/<ticket>.md. #902's architectural proposal joins one consolidated seam gate before any implementer runs. The first implementer dispatch is run_subagent(profile=\"build-implementer\", is_background=false) for #902 — the riskiest unblocked ticket — not #901. No dispatch for #903 until #902 merges.",
+      "expected_output": "Design pass dispatches run_subagent(profile=\"build-designer\") once per ticket, at most 2 concurrent; each declaration persists to seams/<ticket>.md. #902's architectural proposal joins one consolidated seam gate before any implementer runs. The first implementer dispatch is run_subagent(profile=\"build-implementer\", is_background=false) for #902 — the riskiest unblocked ticket — not #901. No implementer dispatch for #903 until #902 merges.",
       "files": [],
       "expectations": [
         "build-designer dispatches once per ticket with cap 2 concurrent, before any implementer",
