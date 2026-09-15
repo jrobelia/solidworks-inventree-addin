@@ -1,6 +1,6 @@
 ---
 name: build-afk
-description: "Autonomous build of a reviewed, test-passing draft PR from a parent spec's child tickets: consolidated seam gate, serial worktree implementers, per-ticket review with a five-round fix ladder, one draft PR. Invoke with /build-afk."
+description: "Autonomous build of reviewed, test-passing draft PRs from a parent spec (batched children), an explicit issue list (queued per-ticket PRs), or a label/milestone query (dependency-layered waves): consolidated seam gate, serial worktree implementers, five-round fix ladder. Invoke with /build-afk."
 disable-model-invocation: true
 triggers: ["user"]
 ---
