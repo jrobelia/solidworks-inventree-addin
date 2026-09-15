@@ -1,0 +1,132 @@
+{
+  "skill_name": "build-afk",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/build-afk spec #900, whose children are #901 (routine seam), #902 (architectural seam, unblocked), and #903 (blocked by #902). After the batch gate confirms the batch, walk through what happens until the first implementer dispatch. Name the exact run_subagent calls.",
+      "expected_output": "Design pass dispatches run_subagent(profile=\"build-designer\") once per ticket, at most 2 concurrent; each declaration persists to seams/<ticket>.md. #902's architectural proposal joins one consolidated seam gate before any implementer runs. The first implementer dispatch is run_subagent(profile=\"build-implementer\", is_background=false) for #902 — the riskiest unblocked ticket — not #901. No dispatch for #903 until #902 merges.",
+      "files": [],
+      "expectations": [
+        "build-designer dispatches once per ticket with cap 2 concurrent, before any implementer",
+        "seam notes persist verbatim to seams/<ticket>.md",
+        "architectural proposals reach the maintainer in one consolidated seam gate — the last planned interruption before implementation",
+        "the first build-implementer dispatch is foreground (is_background=false) and targets #902 as the riskiest unblocked ticket",
+        "#903 receives no dispatch while its blocker is unresolved"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "During a /build-afk design pass, ticket #901's designer returns a routine seam and #902's returns architectural with two equally-good candidates. Describe exactly what the orchestrator does with each result.",
+      "expected_output": "Routine seams auto-approve with no maintainer contact. Architectural proposals — including two equal candidates — collect into one consolidated gate presented to the maintainer once. The orchestrator applies docs/agents/coding-standards.md ## Module Design when classifying and may invoke /codebase-design itself, since the root session is the one place a skill can be invoked.",
+      "files": [],
+      "expectations": [
+        "the routine declaration is persisted to seams/901.md and auto-approved without interrupting the maintainer",
+        "the architectural proposal waits for the consolidated gate rather than interrupting per ticket",
+        "both candidates are presented under the same seam declaration for the maintainer to choose",
+        "classification applies coding-standards.md ## Module Design criteria; /codebase-design may be invoked in the root session only"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "In a /build-afk run, #902's implementer returns BLOCKED with blocked_kind=ambiguity. #903 is blocked by #902; #904 is unblocked. State the status of every ticket afterward.",
+      "expected_output": "#902 is recorded BLOCKED with blocked_kind=ambiguity in STATUS.json and the run ledger. #903 is marked blocked-by-predecessor with blocked_kind=context. #904 proceeds to dispatch normally. The blocked ticket is surfaced in the run summary, not silently dropped.",
+      "files": [],
+      "expectations": [
+        "STATUS.json records #902 as BLOCKED with blocked_kind=ambiguity",
+        "#903 is marked blocked-by-predecessor (blocked_kind=context) without a dispatch attempt",
+        "#904 continues through the normal dispatch loop",
+        "the run summary surfaces the blocked ticket and its kind"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Ticket #901 merges into the batch branch and its per-ticket review keeps returning findings. Walk the five-round fix ladder: which calls happen at each round, and how do open findings get adjudicated?",
+      "expected_output": "Each round dispatches review-spec on the merged diff (REVIEW_BASE = batch SHA before the merge, SPEC = ticket body+comments, IMPLEMENTER CLAIMS = the implementer's status JSON) and persists raw output to reports/901-review-<round>.md. Rounds 1–3 resume the implementer via run_subagent's resume param; rounds 4–5 dispatch a fresh build-implementer-max (swe-2-max). Open findings are adjudicated against coding-standards.md's own tests with YAGNI load-bearing; contested or non-load-bearing findings park with a written ruling in reports/ citing the standard. The loop stops for the maintainer only when every path forward is a guess.",
+      "files": [],
+      "expectations": [
+        "review-spec runs with REVIEW_BASE equal to the batch SHA before the merge and carries the ticket body plus comments as SPEC",
+        "IMPLEMENTER CLAIMS are passed to the reviewer",
+        "raw reviewer output persists to reports/<N>-review-<round>.md",
+        "rounds 1–3 resume the same implementer subagent",
+        "rounds 4–5 dispatch a fresh build-implementer-max",
+        "non-load-bearing findings park with a written ruling citing the standard; the YAGNI test decides load-bearing status",
+        "minor findings never enter the ladder and park for the final review"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "A build-implementer's feedback loop stays red — dotnet test keeps failing after its fixes. What does the implementer return, and what does the orchestrator do with it?",
+      "expected_output": "The implementer returns BLOCKED rather than committing on red — the red-commit guardrail in its profile and task contract requires all feedback loops green before the single commit. The orchestrator records the blocked_kind, marks dependents blocked-by-predecessor, and continues with unblocked tickets.",
+      "files": [],
+      "expectations": [
+        "the implementer's contract requires the agent verification command and dotnet format green before the commit",
+        "a red loop produces BLOCKED, never a commit",
+        "the orchestrator records blocked_kind and routes dependents to blocked-by-predecessor (context)",
+        "unblocked tickets continue dispatching"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "A /build-afk session compacts mid-run: #901 shows Task 901: complete in PROGRESS.md, and the last ledger line reads Task 902: fix round 2. The session resumes. How does the orchestrator reconstruct state, and what does it do first?",
+      "expected_output": "It trusts .scratch/build-afk/<run>/STATUS.json, PROGRESS.md, and git log over session memory. #901 is never re-dispatched — the ledger and git log prove it merged. #902's trailing fix-round line resumes the ladder at round 3. The orchestrator refetches every issue's body and comments and flags any that changed mid-run before proceeding.",
+      "files": [],
+      "expectations": [
+        "resume reads STATUS.json, PROGRESS.md, and git log rather than session memory",
+        "a completed ticket is never re-dispatched",
+        "a trailing fix-round ledger line resumes the loop at the next round (round 3)",
+        "issue bodies and comments are refetched and mid-run changes are flagged as spec drift"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "A /build-afk run finishes: every ticket merged or blocked, the draft PR open. The run directory holds mixed statuses, three parked rulings, and one ticket that took four fix rounds. Describe the retro step.",
+      "expected_output": "A read-only subagent (build-designer or subagent_explore) is dispatched over .scratch/build-afk/<run>/ — STATUS.json, PROGRESS.md, seams/, reports/ — and writes reports/run-retro.md: severity-ordered improvement candidates in the spirit of the retro skill's categories plus run signals (blocked_kind clusters feeding back to /to-tickets, fix-round counts evidencing the tier floor, parked rulings showing reviewer noise or standards gaps, seam-gate escalation rate, permission denials, merge conflicts). Top candidates surface in the run summary beside the PR link.",
+      "files": [],
+      "expectations": [
+        "a read-only subagent is dispatched over the run directory",
+        "reports/run-retro.md is written with severity-ordered candidates citing the artifacts",
+        "run-specific signals are covered: blocked_kind clusters, per-ticket fix-round counts, parked rulings, seam-gate escalation rate, permission denials, merge conflicts",
+        "top candidates appear in the run summary next to the PR link",
+        "the deeper session-level pass remains a user-invoked /retro"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Ticket #901 merges into the batch branch and dotnet test on the batch branch fails — a cross-ticket regression. Later, the end-of-run CI check comes back red. What happens at each point?",
+      "expected_output": "The post-merge dotnet test failure routes into the fix ladder — the next ticket does not dispatch on a red batch branch. At closeout, the red CI check blocks PR finalization: the pushed branch's checks must be green (Release-config tests, installer package, clean checkout) before the run completes.",
+      "files": [],
+      "expectations": [
+        "dotnet test runs on the batch branch after every merge, not on the runner",
+        "a red post-merge run routes into the fix ladder rather than proceeding to the next ticket",
+        "CI is the end-of-run gate — a red check blocks PR finalization",
+        "the green-check requirement covers Release-config tests, installer package, and clean checkout"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Compare two invocations: /build-afk #45 #51 #63 (three unrelated tickets, no shared ## Parent) and /build-afk --milestone m3 (resolving to 8 tickets). Describe each merge topology.",
+      "expected_output": "The explicit list runs as a queue: each ticket gets build/issue-<N> branched from PARENT_BRANCH with its own draft PR, and tickets never see each other's code; per-ticket and final reviews collapse into one AXES=both /review on the ticket's own diff. The milestone query resolves the full finite set via gh issue list, partitions into 3–5-ticket waves by dependency layer, and runs waves sequentially, each producing its own PR(s) — the cap is a wave size, not a run limit.",
+      "files": [],
+      "expectations": [
+        "the explicit list produces build/issue-N branches from PARENT_BRANCH, one draft PR per ticket",
+        "queue tickets with no ## Blocked by edges never see each other's code",
+        "queue reviews collapse into a single AXES=both /review on the ticket's own diff",
+        "the query resolves a confirmed finite set first — open-ended pulls are rejected",
+        "the set partitions into 3–5-ticket waves by dependency layer, sequential, each with its own PR(s)"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "/build-afk spec #208 resolves children #211 through #214. The prior-work check finds: open PR #216 whose body says Closes #211, a local branch afk/213, and #212's ## Blocked by points at closed issue #209. What reaches the batch gate?",
+      "expected_output": "Each ticket gets a disposition presented at the batch-confirmation gate: #211's open Closes PR and #213's afk/213 branch surface satisfied / adopt / rebuild options; #212 counts as satisfied because its ## Blocked by references a closed issue. Adopting a branch makes it the ticket's dispatch base — in batch mode the batch base — and its existing draft PR is superseded or absorbed into the run's PR rather than left as a separate stacked PR.",
+      "files": [],
+      "expectations": [
+        "open PRs are found via gh pr list --search \"Closes #<N>\" --state open",
+        "branches are found via git branch -a --list \"build/*<N>*\" --list \"afk/<N>\"",
+        "each finding surfaces at the batch gate with satisfied / adopt / rebuild options",
+        "a ## Blocked by reference to a closed issue counts as satisfied",
+        "an adopted branch folds into the run's PR topology — the existing draft PR is superseded or absorbed, never a separate stacked PR"
+      ]
+    }
+  ]
+}

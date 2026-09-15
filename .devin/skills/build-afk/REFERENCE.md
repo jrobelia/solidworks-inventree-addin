@@ -41,7 +41,7 @@ Each finding gets a disposition at the batch gate:
 - `seams/<ticket>.md` — designer output, persisted verbatim.
 - `reports/` — implementer reports, raw reviewer output (`<N>-review-<round>.md`), adjudication rulings, `run-retro.md`.
 
-After compaction or a session break, trust the ledger and `git log` over session memory. On resume, refetch every issue's body and comments and flag any that changed mid-run — spec drift is surfaced to the maintainer, never silently built on. Reports stay on disk referenced by path; load them only to compose the PR body.
+After compaction or a session break, trust the ledger and `git log` over session memory. On resume, refetch every issue's body and comments and flag any that changed mid-run — spec drift is surfaced to the maintainer, never silently built on. Reports stay on disk referenced by path; load them only to compose the PR body. Resuming a mid-ladder ticket needs the implementer's live agent handle, which may not survive a break — if it is unresolvable, dispatch a fresh `build-implementer` on the same worktree with the persisted findings; the round count still applies.
 
 ## Per-ticket review
 
