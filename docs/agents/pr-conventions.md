@@ -10,6 +10,7 @@ This doc owns the branch, PR body, and PR lifecycle conventions that `/build-hit
 - Chained batch (retired `build-afk-cloud`; one branch per child): `build/spec-<parent>-<child>` per child
   - Each child PR targets the previous child branch; the first targets `PARENT_BRANCH`.
 - Fix: `fix/issue-<number>`
+- `/build-afk` implementer worktree branch: `afk/<ticket>` — internal to a run, never PR'd directly; the prior-work check searches for it across sessions
 - General agent work (git skill fallback): `devin/<issue-or-task-slug>`
 - If a name already exists, append or increment a trailing `-<N>` suffix until free.
 
