@@ -1,4 +1,5 @@
 using System;
+using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using SwInventreeAddin.InvenTree;
@@ -21,7 +22,7 @@ namespace SwInventreeAddin.Config
         }
 
         /// <inheritdoc/>
-        public async Task ApplyAsync(SettingsApplyInput input, HttpClient client)
+        public async Task<ConnectionProbeResult> ApplyAsync(SettingsApplyInput input, HttpClient client)
         {
             if (client == null)
                 throw new ArgumentNullException(nameof(client));
@@ -29,7 +30,7 @@ namespace SwInventreeAddin.Config
             string apiKey;
             try
             {
-                apiKey = await ResolveAndProbeAsync(input, client).ConfigureAwait(false);
+                apiKey = await ResolveApiKeyAsync(input).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -53,23 +54,33 @@ namespace SwInventreeAddin.Config
             {
                 throw ConfigError(ex);
             }
+
+            // The save already happened, so a failed probe is reported back to the
+            // caller instead of throwing — it must never roll back persisted settings.
+            return await ProbeAsync(input.Url.Trim(), apiKey, client).ConfigureAwait(false);
         }
 
         /// <inheritdoc/>
-        public async Task TestConnectionAsync(SettingsApplyInput input, HttpClient client)
+        public async Task<ConnectionProbeResult> TestConnectionAsync(SettingsApplyInput input, HttpClient client)
         {
             if (client == null)
                 throw new ArgumentNullException(nameof(client));
 
-            await ResolveAndProbeAsync(input, client).ConfigureAwait(false);
+            string apiKey = await ResolveApiKeyAsync(input).ConfigureAwait(false);
+            return await ProbeAsync(input.Url.Trim(), apiKey, client).ConfigureAwait(false);
         }
 
         /// <inheritdoc/>
-        public Task RemoveServerConfigAsync()
+        public Task RemoveApiKeyAsync()
         {
             try
             {
-                _configProvider.DeleteServerConfig();
+                var config = _configProvider.GetServerConfig();
+                if (config == null)
+                    return Task.CompletedTask;
+
+                config.ApiKey = string.Empty;
+                _configProvider.SaveServerConfig(config);
             }
             catch (Exception ex)
             {
@@ -81,14 +92,13 @@ namespace SwInventreeAddin.Config
 
         // ── Private helpers ───────────────────────────────────────────────────
 
-        // Apply and Test Connection share the same resolve-and-probe path so an
-        // untested key can never be persisted: the probe result is the gate, and
-        // ApplyAsync alone decides whether a passing probe leads to a save.
-        private async Task<string> ResolveAndProbeAsync(SettingsApplyInput input, HttpClient client)
+        // Apply and Test Connection share the same probe so both report the same
+        // outcome for the same credential. Validation happens before this runs, so
+        // a failure here always means the probe itself — never the settings.
+        private static async Task<ConnectionProbeResult> ProbeAsync(
+            string url, string apiKey, HttpClient client)
         {
-            string apiKey = await ResolveApiKeyAsync(input).ConfigureAwait(false);
-
-            client.BaseAddress = new Uri(input.Url.Trim());
+            client.BaseAddress = new Uri(url);
             client.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Token", apiKey);
 
@@ -99,20 +109,30 @@ namespace SwInventreeAddin.Config
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException(
-                    $"Could not reach the InvenTree server. Check the URL and network connection. ({ex.Message})",
-                    ex);
+                return new ConnectionProbeResult(
+                    ConnectionProbeStatus.Unreachable,
+                    $"Could not reach the InvenTree server. Check the URL and network connection. ({ex.Message})");
             }
 
             // HttpResponseMessage is IDisposable — on net48 an undisposed response
             // holds the connection until GC.
             using (response)
             {
-                if (!response.IsSuccessStatusCode)
-                    throw new InvalidOperationException(
-                        $"Server responded: {(int)response.StatusCode} {response.ReasonPhrase}");
+                if (response.IsSuccessStatusCode)
+                    return new ConnectionProbeResult(
+                        ConnectionProbeStatus.Connected, "Connection successful.");
 
-                return apiKey;
+                if (response.StatusCode == HttpStatusCode.Unauthorized ||
+                    response.StatusCode == HttpStatusCode.Forbidden)
+                {
+                    return new ConnectionProbeResult(
+                        ConnectionProbeStatus.CredentialRejected,
+                        $"The server rejected the API key ({(int)response.StatusCode} {response.ReasonPhrase}).");
+                }
+
+                return new ConnectionProbeResult(
+                    ConnectionProbeStatus.ServerError,
+                    $"Server responded: {(int)response.StatusCode} {response.ReasonPhrase}");
             }
         }
 
@@ -126,6 +146,12 @@ namespace SwInventreeAddin.Config
             if (!url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException(
                     "Server URL must begin with https:// — a plain http:// connection is not secure.");
+
+            // Validation must guarantee the probe can run: an unparsable URL would
+            // otherwise throw from Uri construction after Apply already persisted.
+            if (!Uri.TryCreate(url, UriKind.Absolute, out _))
+                throw new InvalidOperationException(
+                    "Enter a valid server URL, e.g. https://inventree.example.com");
 
             var username = input.Username.Trim();
             var password = input.Password;
@@ -151,6 +177,6 @@ namespace SwInventreeAddin.Config
             => new SettingsApplyException($"Failed to save server settings: {ex.Message}", ex);
 
         private static SettingsApplyException RemoveError(Exception ex)
-            => new SettingsApplyException($"Failed to remove server settings: {ex.Message}", ex);
+            => new SettingsApplyException($"Failed to remove the API key: {ex.Message}", ex);
     }
 }

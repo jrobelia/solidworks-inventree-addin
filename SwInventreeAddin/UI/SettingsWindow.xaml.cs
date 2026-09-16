@@ -206,15 +206,16 @@ namespace SwInventreeAddin.UI
 
         // ── Remove API key ───────────────────────────────────────────────────
 
-        // Deleting the saved settings file goes through the apply service so every
-        // settings mutation surfaces as a SettingsApplyException with a consistent
-        // message prefix. The reset below is the post-state the status card already
-        // reports when nothing has ever been saved.
+        // Removing the API key goes through the apply service so every settings
+        // mutation surfaces as a SettingsApplyException with a consistent message
+        // prefix. Only the credential is cleared — the saved URL, Property Mapping
+        // path, and BOM keyword survive, and the card lands on the
+        // authentication-required state ("no API key saved").
         private async void RemoveApiKey_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                await _settingsApplyService.RemoveServerConfigAsync().ConfigureAwait(false);
+                await _settingsApplyService.RemoveApiKeyAsync().ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -225,7 +226,6 @@ namespace SwInventreeAddin.UI
             this.Dispatcher.Invoke(() =>
             {
                 _credentialState.Clear();
-                UrlBox.Clear();
                 UsernameBox.Clear();
                 PasswordBox.Clear();
                 RenderCredentialForm();
@@ -233,6 +233,7 @@ namespace SwInventreeAddin.UI
                 _savedSnapshot = CaptureSnapshot();
                 RefreshButtonStates();
                 SetCredentialFormExpanded(false);
+                SetActionStatus("Credential removed. Server address kept.", StatusSeverity.Success);
             });
         }
 
@@ -394,8 +395,7 @@ namespace SwInventreeAddin.UI
 
         private async void Apply_Click(object sender, RoutedEventArgs e)
         {
-            if (!await ApplySettingsAsync()) return;
-            this.Dispatcher.Invoke(() => SetActionStatus("\u2713  Settings applied.", StatusSeverity.Success));
+            await ApplySettingsAsync();
         }
 
         // ── Shared settings save + notify ─────────────────────────────────────
@@ -403,17 +403,21 @@ namespace SwInventreeAddin.UI
         /// <summary>
         /// Resolves credentials, persists server config, rebuilds the mapping provider,
         /// refreshes the status bar, and fires <see cref="MappingApplied"/>.
-        /// Returns <c>true</c> on success, <c>false</c> if an error was shown to the user.
+        /// Returns <c>true</c> once the settings are persisted — a failed connection
+        /// probe is reported as the outcome, not an apply failure; <c>false</c> only
+        /// when an error was shown to the user.
         /// </summary>
         public async System.Threading.Tasks.Task<bool> ApplySettingsAsync()
         {
             var input = BuildInput();
 
+            ConnectionProbeResult probe;
             try
             {
                 using (var client = new HttpClient())
                 {
-                    await _settingsApplyService.ApplyAsync(input, client).ConfigureAwait(false);
+                    probe = await _settingsApplyService.ApplyAsync(input, client)
+                                                       .ConfigureAwait(false);
                 }
             }
             catch (SettingsApplyException ex)
@@ -460,7 +464,11 @@ namespace SwInventreeAddin.UI
                     RefreshConnectionCard(TryGetConfig());
                     _savedSnapshot = CaptureSnapshot();
                     RefreshButtonStates();
-                    SetActionStatus("\u2713  Settings applied.", StatusSeverity.Success);
+                    SetActionStatus(
+                        probe.Succeeded
+                            ? "\u2713  Settings applied."
+                            : $"Settings applied \u2014 {probe.Message}",
+                        probe.Succeeded ? StatusSeverity.Success : StatusSeverity.Error);
                 });
                 return true;
             }
@@ -484,14 +492,16 @@ namespace SwInventreeAddin.UI
         {
             try
             {
+                ConnectionProbeResult result;
                 using (var client = new HttpClient())
                 {
-                    await _settingsApplyService.TestConnectionAsync(BuildInput(), client)
-                                               .ConfigureAwait(false);
+                    result = await _settingsApplyService.TestConnectionAsync(BuildInput(), client)
+                                                        .ConfigureAwait(false);
                 }
 
-                this.Dispatcher.Invoke(() =>
-                    SetConnectionStatus("\u2713  Connection successful.", StatusSeverity.Success));
+                this.Dispatcher.Invoke(() => SetConnectionStatus(
+                    result.Succeeded ? "\u2713  Connection successful." : result.Message,
+                    result.Succeeded ? StatusSeverity.Success : StatusSeverity.Error));
             }
             catch (InvalidOperationException ex)
             {

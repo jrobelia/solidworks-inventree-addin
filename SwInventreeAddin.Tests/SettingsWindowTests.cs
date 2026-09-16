@@ -834,6 +834,92 @@ namespace SwInventreeAddin.Tests
             Assert.That(applyService.LastApplyClient, Is.Not.Null);
         }
 
+        // ── Apply reports the probe outcome (#232) ───────────────────────
+        // The service persists first, then probes: a failed probe is a reported
+        // outcome, not an apply failure, so Apply still proceeds.
+
+        [Test]
+        public async Task ApplySettingsAsync_WhenProbeFails_ReturnsTrueAndReportsOutcome()
+        {
+            var applyService = new StubSettingsApplyService
+            {
+                ResultToReturnOnApply = new ConnectionProbeResult(
+                    ConnectionProbeStatus.CredentialRejected,
+                    "The server rejected the API key (401 Unauthorized)."),
+            };
+            var window = CreateWindow(applyService: applyService);
+
+            bool result = await window.ApplySettingsAsync();
+
+            Assert.That(result, Is.True);
+            Assert.That(GetText(window, "ActionStatusText"),
+                        Does.Contain("rejected the API key"));
+        }
+
+        [Test]
+        public async Task ApplySettingsAsync_WhenProbeFails_StillFiresMappingApplied()
+        {
+            var applyService = new StubSettingsApplyService
+            {
+                ResultToReturnOnApply = new ConnectionProbeResult(
+                    ConnectionProbeStatus.Unreachable,
+                    "Could not reach the InvenTree server."),
+            };
+            var mappingProvider = new StubPropertyMappingProvider();
+            var window = CreateWindow(applyService: applyService, mappingProvider: mappingProvider);
+
+            IPropertyMappingProvider? firedProvider = null;
+            window.MappingApplied += (s, e) => firedProvider = e;
+
+            await window.ApplySettingsAsync();
+
+            Assert.That(firedProvider, Is.SameAs(mappingProvider));
+        }
+
+        [Test]
+        public async Task ApplySettingsAsync_WhenProbeSucceeds_ReportsConnectedOutcome()
+        {
+            var applyService = new StubSettingsApplyService
+            {
+                ResultToReturnOnApply = new ConnectionProbeResult(
+                    ConnectionProbeStatus.Connected, "Connection successful."),
+            };
+            var window = CreateWindow(applyService: applyService);
+
+            bool result = await window.ApplySettingsAsync();
+
+            Assert.That(result, Is.True);
+            Assert.That(GetText(window, "ActionStatusText"), Does.Contain("Settings applied"));
+        }
+
+        [Test]
+        public void TestConnection_WhenProbeFails_ReportsOutcomeInConnectionStatus()
+        {
+            var applyService = new StubSettingsApplyService
+            {
+                ResultToReturnOnTestConnection = new ConnectionProbeResult(
+                    ConnectionProbeStatus.Unreachable,
+                    "Could not reach the InvenTree server."),
+            };
+            var window = CreateWindow(applyService: applyService);
+
+            Click(window, "TestConnectionButton");
+
+            Assert.That(GetText(window, "ConnectionStatusText"),
+                        Does.Contain("Could not reach"));
+        }
+
+        [Test]
+        public void TestConnection_WhenProbeSucceeds_ReportsSuccessInConnectionStatus()
+        {
+            var window = CreateWindow();
+
+            Click(window, "TestConnectionButton");
+
+            Assert.That(GetText(window, "ConnectionStatusText"),
+                        Does.Contain("Connection successful"));
+        }
+
         // Clicking Save runs synchronously to the early return: the stub apply
         // service throws before yielding, so DialogResult is never set and the
         // (unshown) dialog stays open.
@@ -923,7 +1009,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void RemoveApiKey_WhenClicked_CallsRemoveServerConfigAsync()
+        public void RemoveApiKey_WhenClicked_CallsRemoveApiKeyAsync()
         {
             var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
             var applyService = new StubSettingsApplyService(configProvider);
@@ -934,8 +1020,11 @@ namespace SwInventreeAddin.Tests
             Assert.That(applyService.RemoveCallCount, Is.EqualTo(1));
         }
 
+        // Remove clears only the credential (#232): the server URL, Property
+        // Mapping path, and BOM keyword survive and the card lands on the
+        // authentication-required state.
         [Test]
-        public void RemoveApiKey_WhenClicked_UpdatesStatusCardToNoServerSettingsSaved()
+        public void RemoveApiKey_WhenClicked_UpdatesStatusCardToNoApiKeySaved()
         {
             var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
             var applyService = new StubSettingsApplyService(configProvider);
@@ -943,11 +1032,12 @@ namespace SwInventreeAddin.Tests
 
             Click(window, "RemoveApiKeyButton");
 
-            Assert.That(GetText(window, "ConnectionCardText"), Is.EqualTo("No server settings saved"));
+            Assert.That(GetText(window, "ConnectionCardText"),
+                        Is.EqualTo("Server connection configured \u2014 no API key saved"));
         }
 
         [Test]
-        public void RemoveApiKey_WhenClicked_HidesServerUrlOnStatusCard()
+        public void RemoveApiKey_WhenClicked_KeepsServerUrlOnStatusCard()
         {
             var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
             var applyService = new StubSettingsApplyService(configProvider);
@@ -956,11 +1046,12 @@ namespace SwInventreeAddin.Tests
             Click(window, "RemoveApiKeyButton");
 
             var url = (TextBlock)LogicalTreeHelper.FindLogicalNode(window, "ConnectionCardUrl")!;
-            Assert.That(url.Visibility, Is.EqualTo(Visibility.Collapsed));
+            Assert.That(url.Visibility, Is.EqualTo(Visibility.Visible));
+            Assert.That(url.Text, Is.EqualTo("https://inventree.example.com"));
         }
 
         [Test]
-        public void RemoveApiKey_WhenClicked_ResetsCredentialFields()
+        public void RemoveApiKey_WhenClicked_ResetsCredentialFieldsButKeepsServerUrl()
         {
             var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
             var applyService = new StubSettingsApplyService(configProvider);
@@ -970,12 +1061,26 @@ namespace SwInventreeAddin.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(GetTextBox(window, "UrlBox")!.Text, Is.Empty, "UrlBox");
+                Assert.That(GetTextBox(window, "UrlBox")!.Text,
+                            Is.EqualTo("https://inventree.example.com"), "UrlBox");
                 Assert.That(GetTextBox(window, "UsernameBox")!.Text, Is.Empty, "UsernameBox");
                 Assert.That(GetPasswordBox(window, "PasswordBox").Password, Is.Empty, "PasswordBox");
                 Assert.That(GetPasswordBox(window, "ApiKeyMaskedBox").Password, Is.Empty, "ApiKeyMaskedBox");
                 Assert.That(GetTextBox(window, "ApiBox")!.Text, Is.Empty, "ApiBox");
             });
+        }
+
+        [Test]
+        public void RemoveApiKey_WhenClicked_ReportsCredentialRemovedInActionStatus()
+        {
+            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var applyService = new StubSettingsApplyService(configProvider);
+            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
+
+            Click(window, "RemoveApiKeyButton");
+
+            Assert.That(GetText(window, "ActionStatusText"),
+                        Does.Contain("Credential removed"));
         }
 
         [Test]
@@ -1037,14 +1142,14 @@ namespace SwInventreeAddin.Tests
             var applyService = new StubSettingsApplyService
             {
                 ExceptionToThrowOnRemove = new SettingsApplyException(
-                    "Failed to remove server settings: stub delete failure"),
+                    "Failed to remove the API key: stub delete failure"),
             };
             var window = CreateWindow(applyService: applyService);
 
             Click(window, "RemoveApiKeyButton");
 
             Assert.That(GetText(window, "ActionStatusText"),
-                        Does.Contain("Failed to remove server settings"));
+                        Does.Contain("Failed to remove the API key"));
         }
 
         [Test]
@@ -1053,7 +1158,7 @@ namespace SwInventreeAddin.Tests
             var applyService = new StubSettingsApplyService
             {
                 ExceptionToThrowOnRemove = new SettingsApplyException(
-                    "Failed to remove server settings: stub delete failure"),
+                    "Failed to remove the API key: stub delete failure"),
             };
             var window = CreateWindow(
                 applyService: applyService,
