@@ -1,31 +1,37 @@
-using System;
-using SwInventreeAddin.Config;
-
 namespace SwInventreeAddin.UI
 {
     /// <summary>
-    /// A value snapshot of every editable Settings field. The dialog compares the current
-    /// snapshot against the saved one to decide whether Apply/Save are enabled.
+    /// A value snapshot of every editable Settings field. The dialog compares the
+    /// current snapshot against the saved one via <see cref="HasPersistableChangeFrom"/>
+    /// to decide whether Apply/Save are enabled — the single home of the
+    /// dirty-gating rules, so no field-changed handler re-implements them.
     /// </summary>
-    internal struct SettingsSnapshot : IEquatable<SettingsSnapshot>
+    internal struct SettingsSnapshot
     {
-        public SettingsSnapshot(string url, string apiKey, string username, string password,
-                                string sharedPath, string bomKeyword, bool useLocalMapping,
-                                CredentialEntryMode mode)
+        public SettingsSnapshot(
+            string url, string apiKeyDraft, bool hasSavedApiKey,
+            string username, string password,
+            string sharedPath, string bomKeyword, bool useLocalMapping,
+            bool waitForServerAssignedIpn)
         {
             Url = url;
-            ApiKey = apiKey;
+            ApiKeyDraft = apiKeyDraft;
+            HasSavedApiKey = hasSavedApiKey;
             Username = username;
             Password = password;
             SharedPath = sharedPath;
             BomKeyword = bomKeyword;
             UseLocalMapping = useLocalMapping;
-            Mode = mode;
+            WaitForServerAssignedIpn = waitForServerAssignedIpn;
         }
 
         public string Url { get; }
 
-        public string ApiKey { get; }
+        /// <summary>The typed key draft only — never the saved key or a placeholder.</summary>
+        public string ApiKeyDraft { get; }
+
+        /// <summary>Whether a key is persisted; its value never enters the snapshot.</summary>
+        public bool HasSavedApiKey { get; }
 
         public string Username { get; }
 
@@ -37,39 +43,34 @@ namespace SwInventreeAddin.UI
 
         public bool UseLocalMapping { get; }
 
-        public CredentialEntryMode Mode { get; }
+        public bool WaitForServerAssignedIpn { get; }
 
-        public static bool operator ==(SettingsSnapshot left, SettingsSnapshot right) => left.Equals(right);
-
-        public static bool operator !=(SettingsSnapshot left, SettingsSnapshot right) => !left.Equals(right);
-
-        public bool Equals(SettingsSnapshot other) =>
-            string.Equals(Url, other.Url, StringComparison.Ordinal)
-            && string.Equals(ApiKey, other.ApiKey, StringComparison.Ordinal)
-            && string.Equals(Username, other.Username, StringComparison.Ordinal)
-            && string.Equals(Password, other.Password, StringComparison.Ordinal)
-            && string.Equals(SharedPath, other.SharedPath, StringComparison.Ordinal)
-            && string.Equals(BomKeyword, other.BomKeyword, StringComparison.Ordinal)
-            && UseLocalMapping == other.UseLocalMapping
-            && Mode == other.Mode;
-
-        public override bool Equals(object? obj) => obj is SettingsSnapshot other && Equals(other);
-
-        public override int GetHashCode()
+        /// <summary>
+        /// True when this snapshot differs from <paramref name="saved"/> in a way Apply
+        /// can persist: the URL or any non-credential field changed, the key draft is
+        /// non-blank, saved-key presence changed, or a complete non-blank
+        /// username/password pair was typed. Blank or half-typed credential fields
+        /// never count — a stray half-pair must not enable Apply.
+        /// </summary>
+        public bool HasPersistableChangeFrom(SettingsSnapshot saved)
         {
-            unchecked
+            if (!string.Equals(Url, saved.Url, System.StringComparison.Ordinal)
+                || !string.Equals(SharedPath, saved.SharedPath, System.StringComparison.Ordinal)
+                || !string.Equals(BomKeyword, saved.BomKeyword, System.StringComparison.Ordinal)
+                || UseLocalMapping != saved.UseLocalMapping
+                || WaitForServerAssignedIpn != saved.WaitForServerAssignedIpn)
             {
-                int hash = 17;
-                hash = (hash * 31) + (Url ?? string.Empty).GetHashCode();
-                hash = (hash * 31) + (ApiKey ?? string.Empty).GetHashCode();
-                hash = (hash * 31) + (Username ?? string.Empty).GetHashCode();
-                hash = (hash * 31) + (Password ?? string.Empty).GetHashCode();
-                hash = (hash * 31) + (SharedPath ?? string.Empty).GetHashCode();
-                hash = (hash * 31) + (BomKeyword ?? string.Empty).GetHashCode();
-                hash = (hash * 31) + UseLocalMapping.GetHashCode();
-                hash = (hash * 31) + Mode.GetHashCode();
-                return hash;
+                return true;
             }
+
+            if (HasSavedApiKey != saved.HasSavedApiKey)
+                return true;
+
+            if (!string.IsNullOrWhiteSpace(ApiKeyDraft))
+                return true;
+
+            return !string.IsNullOrWhiteSpace(Username)
+                && !string.IsNullOrWhiteSpace(Password);
         }
     }
 }

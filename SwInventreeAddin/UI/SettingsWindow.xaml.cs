@@ -9,7 +9,10 @@ using SwInventreeAddin.Config;
 namespace SwInventreeAddin.UI
 {
     /// <summary>
-    /// Settings dialog — server credentials (upper section) + property mapping (lower section).
+    /// Settings dialog — server credentials (upper section) + property mapping
+    /// (lower section). The credential section follows prototype 1b: a fixed
+    /// three-line status card whenever anything is saved, and a single plain
+    /// form (URL + username/password or API key) with no mode switcher.
     /// </summary>
     public partial class SettingsWindow : Window
     {
@@ -21,8 +24,16 @@ namespace SwInventreeAddin.UI
 
         private SettingsSnapshot _savedSnapshot;
         private readonly bool _savedWaitForServerAssignedIpn = true;
-        private readonly CredentialEditorState _credentialState;
-        private bool _suppressApiKeySync;
+        private CredentialEditorState _credentialState;
+        private ServerConfig? _savedConfig;
+        private ConnectionProbeResult? _lastProbe;
+        private bool _probeInFlight;
+
+        // Configured state only: which slice of the form a toolbar click revealed.
+        // Both are forced open whenever the config is incomplete.
+        private bool _editingUrl;
+        private bool _showCredentialForm;
+
         private MappingChangedSubscription? _mappingChangedSubscription;
         private string? _mappingStatusDetail;
 
@@ -50,8 +61,7 @@ namespace SwInventreeAddin.UI
             UrlBox.TextChanged += (_, __) => RefreshButtonStates();
             UsernameBox.TextChanged += (_, __) => RefreshButtonStates();
             PasswordBox.PasswordChanged += (_, __) => RefreshButtonStates();
-            ApiBox.TextChanged += (_, __) => OnApiKeyEdited(ApiBox.Text);
-            ApiKeyMaskedBox.PasswordChanged += (_, __) => OnApiKeyEdited(ApiKeyMaskedBox.Password);
+            ApiKeyBox.PasswordChanged += (_, __) => OnApiKeyEdited();
             SharedPathBox.TextChanged += (_, __) => RefreshButtonStates();
             BomKeywordBox.TextChanged += (_, __) => RefreshButtonStates();
             LocalRadio.Checked += (_, __) => RefreshButtonStates();
@@ -59,24 +69,24 @@ namespace SwInventreeAddin.UI
 
             WindowCentering.Attach(this, SolidWorksWindowHandle.Get());
 
-            // Pre-fill server credentials
-            var savedConfig = TryGetConfig();
-            _credentialState = CredentialEditorState.FromSavedConfig(savedConfig);
+            // Pre-fill server settings
+            _savedConfig = TryGetConfig();
+            _credentialState = CredentialEditorState.FromSavedConfig(_savedConfig);
 
-            if (savedConfig != null)
+            if (_savedConfig != null)
             {
-                UrlBox.Text = savedConfig.Url ?? string.Empty;
+                UrlBox.Text = _savedConfig.Url ?? string.Empty;
 
-                if (!string.IsNullOrEmpty(savedConfig.MappingSourcePath))
-                    SharedPathBox.Text = savedConfig.MappingSourcePath;
+                if (!string.IsNullOrEmpty(_savedConfig.MappingSourcePath))
+                    SharedPathBox.Text = _savedConfig.MappingSourcePath;
 
-                BomKeywordBox.Text = savedConfig.BomKeyword ?? "inventree";
-                _savedWaitForServerAssignedIpn = savedConfig.WaitForServerAssignedIpn;
+                BomKeywordBox.Text = _savedConfig.BomKeyword ?? "inventree";
+                _savedWaitForServerAssignedIpn = _savedConfig.WaitForServerAssignedIpn;
             }
 
-            RefreshConnectionCard(savedConfig);
-            SetCredentialFormExpanded(false);
+            RefreshConnectionCard();
             RenderCredentialForm();
+            UpdateApiKeyPlaceholders();
 
             // Show local path (read-only, copyable)
             LocalPathBox.Text = _mappingProvider.LocalFilePath;
@@ -95,113 +105,131 @@ namespace SwInventreeAddin.UI
         private SettingsSnapshot CaptureSnapshot() =>
             new SettingsSnapshot(
                 url: UrlBox.Text.Trim(),
-                apiKey: _credentialState.ApiKey.Trim(),
+                apiKeyDraft: ApiKeyBox.Password.Trim(),
+                hasSavedApiKey: _credentialState.HasSavedApiKey,
                 username: UsernameBox.Text.Trim(),
                 password: PasswordBox.Password,
                 sharedPath: SharedPathBox.Text.Trim(),
                 bomKeyword: BomKeywordBox.Text.Trim(),
                 useLocalMapping: LocalRadio.IsChecked == true,
-                mode: _credentialState.Mode);
+                waitForServerAssignedIpn: _savedWaitForServerAssignedIpn);
 
         private void RefreshButtonStates()
         {
-            bool isDirty = !CaptureSnapshot().Equals(_savedSnapshot);
+            bool isDirty = CaptureSnapshot().HasPersistableChangeFrom(_savedSnapshot);
             ApplyButton.IsEnabled = isDirty;
             SaveButton.IsEnabled = isDirty;
             CancelButtonText.Text = isDirty ? "Cancel" : "Close";
+            TestConnectionButton.IsEnabled =
+                !string.IsNullOrWhiteSpace(UrlBox.Text)
+                || !string.IsNullOrWhiteSpace(_savedConfig?.Url);
         }
 
         // ── Connection status card ─────────────────────────────────────────────
 
-        // The card is the default view of the server section: it reports what is saved
-        // and which server it points at. The card itself never shows the API key (ADR-0022).
-        private void RefreshConnectionCard(ServerConfig? config)
+        // The card holds the persistent state: what is saved plus the session's
+        // probe axis. The footer status bar reports what the last action did —
+        // they are deliberately separate (prototype 1b).
+        private void RefreshConnectionCard()
         {
-            var status = ServerConnectionStatus.From(config);
+            _savedConfig = TryGetConfig();
+            var status = ServerConnectionStatus.From(_savedConfig, _lastProbe, _probeInFlight);
 
-            ConnectionCardText.Text = status.Message;
-            ConnectionCardUrl.Text = status.ServerUrl;
-            ConnectionCardUrl.ToolTip = status.HasServerUrl ? status.ServerUrl : null;
-            ConnectionCardUrl.Visibility = status.HasServerUrl ? Visibility.Visible : Visibility.Collapsed;
+            ConnectionCard.Visibility = status.IsSaved ? Visibility.Visible : Visibility.Collapsed;
+            ConnectionCardTitle.Text = status.Title;
+            ConnectionCardServer.Text = status.ServerLine;
+            ConnectionCardCredential.Text = status.CredentialLine;
+            ConnectionCardConnection.Text = status.ConnectionLine;
+            ConnectionCardToolbar.Visibility =
+                status.IsComplete ? Visibility.Visible : Visibility.Collapsed;
+
+            SetStatusDot(status.Indicator);
         }
 
-        // ── Edit connection disclosure ─────────────────────────────────────────
-
-        private void EditConnection_Click(object sender, RoutedEventArgs e) =>
-            SetCredentialFormExpanded(CredentialFormScroll.Visibility != Visibility.Visible);
-
-        private void SetCredentialFormExpanded(bool expanded)
+        // Colour never carries meaning alone — Title always names the state.
+        private void SetStatusDot(ServerConnectionIndicator indicator)
         {
-            CredentialFormScroll.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
-            EditConnectionButtonText.Text = expanded ? "Hide connection" : "Edit connection";
+            switch (indicator)
+            {
+                case ServerConnectionIndicator.NotTested:
+                    ConnectionStatusDot.Fill = Brushes.Transparent;
+                    ConnectionStatusDot.Stroke = (Brush)FindResource("BrushStatusNotTested");
+                    break;
+                case ServerConnectionIndicator.Testing:
+                    ConnectionStatusDot.Fill = (Brush)FindResource("BrushAccentBlue");
+                    ConnectionStatusDot.Stroke = Brushes.Transparent;
+                    break;
+                case ServerConnectionIndicator.Connected:
+                    ConnectionStatusDot.Fill = (Brush)FindResource("BrushStatusSuccess");
+                    ConnectionStatusDot.Stroke = Brushes.Transparent;
+                    break;
+                case ServerConnectionIndicator.Failed:
+                    ConnectionStatusDot.Fill = (Brush)FindResource("BrushStatusError");
+                    ConnectionStatusDot.Stroke = Brushes.Transparent;
+                    break;
+                default: // AuthenticationRequired
+                    ConnectionStatusDot.Fill = (Brush)FindResource("BrushStatusWarning");
+                    ConnectionStatusDot.Stroke = Brushes.Transparent;
+                    break;
+            }
         }
 
-        // ── Credential mode switcher and masked API key ────────────────────────
+        // ── Single credential form ───────────────────────────────────────────
 
-        private void AccountMode_Click(object sender, RoutedEventArgs e) =>
-            SelectCredentialMode(CredentialEntryMode.Account);
-
-        private void ApiKeyMode_Click(object sender, RoutedEventArgs e) =>
-            SelectCredentialMode(CredentialEntryMode.ApiKey);
-
-        private void ShowApiKey_Click(object sender, RoutedEventArgs e)
-        {
-            _credentialState.ToggleApiKeyReveal();
-            RenderCredentialForm();
-        }
-
-        private void SelectCredentialMode(CredentialEntryMode mode)
-        {
-            _credentialState.SelectMode(mode);
-            RenderCredentialForm();
-            RefreshButtonStates();
-        }
-
-        // The API key is masked by default, so the visible field follows the reveal flag (ADR-0022).
+        // When the saved config is incomplete the form is always open — there is
+        // nothing to summarise yet. Once complete, the card toolbar reveals just
+        // the slice being changed.
         private void RenderCredentialForm()
         {
-            bool accountMode = _credentialState.Mode == CredentialEntryMode.Account;
+            var status = ServerConnectionStatus.From(_savedConfig, _lastProbe, _probeInFlight);
+            bool forced = !status.IsComplete;
 
-            AccountFormPanel.Visibility = accountMode ? Visibility.Visible : Visibility.Collapsed;
-            ApiKeyFormPanel.Visibility = accountMode ? Visibility.Collapsed : Visibility.Visible;
+            bool showUrl = forced || _editingUrl;
+            bool showCredentials = forced || _showCredentialForm;
 
-            AccountModeButton.Style = ModeButtonStyle(isActive: accountMode);
-            ApiKeyModeButton.Style = ModeButtonStyle(isActive: !accountMode);
-
-            bool revealed = _credentialState.IsApiKeyRevealed;
-            ApiBox.Visibility = revealed ? Visibility.Visible : Visibility.Collapsed;
-            ApiKeyMaskedBox.Visibility = revealed ? Visibility.Collapsed : Visibility.Visible;
-            ShowApiKeyButtonText.Text = revealed ? "Hide" : "Show";
-
-            WriteApiKeyToFields(_credentialState.ApiKey);
+            CredentialFormScroll.Visibility =
+                (showUrl || showCredentials) ? Visibility.Visible : Visibility.Collapsed;
+            UrlFieldPanel.Visibility = showUrl ? Visibility.Visible : Visibility.Collapsed;
+            CredentialFieldsPanel.Visibility =
+                showCredentials ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        private Style ModeButtonStyle(bool isActive) =>
-            (Style)FindResource(isActive ? "PrimaryButtonStyle" : "SecondaryButtonStyle");
-
-        private void OnApiKeyEdited(string value)
+        private void ChangeServer_Click(object sender, RoutedEventArgs e)
         {
-            if (_suppressApiKeySync) return;
+            _editingUrl = !_editingUrl;
+            _showCredentialForm = false;
+            RenderCredentialForm();
+            if (_editingUrl) UrlBox.Focus();
+        }
 
-            _credentialState.ApiKey = value;
-            WriteApiKeyToFields(value);
+        private void ChangeCredential_Click(object sender, RoutedEventArgs e)
+        {
+            _showCredentialForm = !_showCredentialForm;
+            _editingUrl = false;
+            RenderCredentialForm();
+            if (_showCredentialForm) ApiKeyBox.Focus();
+        }
+
+        // ── API key field: write-once draft + placeholders ───────────────────
+
+        private void OnApiKeyEdited()
+        {
+            _credentialState.ApiKey = ApiKeyBox.Password;
+            UpdateApiKeyPlaceholders();
             RefreshButtonStates();
         }
 
-        // Both fields hold the key so revealing or masking it never loses an edit. The flag
-        // stops the change events they raise from re-entering OnApiKeyEdited.
-        private void WriteApiKeyToFields(string value)
+        // Dots stand in for a saved key — never the key itself. With no saved key
+        // the field prompts for a paste. Typing hides either overlay.
+        private void UpdateApiKeyPlaceholders()
         {
-            _suppressApiKeySync = true;
-            try
-            {
-                if (ApiBox.Text != value) ApiBox.Text = value;
-                if (ApiKeyMaskedBox.Password != value) ApiKeyMaskedBox.Password = value;
-            }
-            finally
-            {
-                _suppressApiKeySync = false;
-            }
+            bool empty = ApiKeyBox.Password.Length == 0;
+            ApiKeyDotsPlaceholder.Visibility =
+                empty && _credentialState.HasSavedApiKey
+                    ? Visibility.Visible : Visibility.Collapsed;
+            ApiKeyPromptPlaceholder.Visibility =
+                empty && !_credentialState.HasSavedApiKey
+                    ? Visibility.Visible : Visibility.Collapsed;
         }
 
         // ── Remove API key ───────────────────────────────────────────────────
@@ -209,8 +237,8 @@ namespace SwInventreeAddin.UI
         // Removing the API key goes through the apply service so every settings
         // mutation surfaces as a SettingsApplyException with a consistent message
         // prefix. Only the credential is cleared — the saved URL, Property Mapping
-        // path, and BOM keyword survive, and the card lands on the
-        // authentication-required state ("no API key saved").
+        // path, and BOM keyword survive, and the card lands on
+        // Authentication required with the form open.
         private async void RemoveApiKey_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -226,13 +254,17 @@ namespace SwInventreeAddin.UI
             this.Dispatcher.Invoke(() =>
             {
                 _credentialState.Clear();
+                _lastProbe = null;
+                _editingUrl = false;
+                _showCredentialForm = false;
                 UsernameBox.Clear();
                 PasswordBox.Clear();
+                ApiKeyBox.Clear();
+                RefreshConnectionCard();
                 RenderCredentialForm();
-                RefreshConnectionCard(TryGetConfig());
+                UpdateApiKeyPlaceholders();
                 _savedSnapshot = CaptureSnapshot();
                 RefreshButtonStates();
-                SetCredentialFormExpanded(false);
                 SetActionStatus("Credential removed. Server address kept.", StatusSeverity.Success);
             });
         }
@@ -362,6 +394,8 @@ namespace SwInventreeAddin.UI
 
         /// <summary>
         /// Builds a <see cref="SettingsApplyInput"/> from the current UI fields.
+        /// Credential precedence lives in <see cref="CredentialEditorState.ApplyCredentialTo"/> —
+        /// typed key draft wins, then a complete username/password pair, then the saved key.
         /// </summary>
         private SettingsApplyInput BuildInput()
         {
@@ -369,18 +403,16 @@ namespace SwInventreeAddin.UI
                 ? (string.IsNullOrWhiteSpace(SharedPathBox.Text) ? null : SharedPathBox.Text.Trim())
                 : null;
 
-            bool accountMode = _credentialState.Mode == CredentialEntryMode.Account;
-
-            return new SettingsApplyInput
+            var input = new SettingsApplyInput
             {
                 Url = UrlBox.Text.Trim(),
-                Username = accountMode ? UsernameBox.Text.Trim() : string.Empty,
-                Password = accountMode ? PasswordBox.Password : string.Empty,
-                RawApiKey = accountMode ? string.Empty : _credentialState.ApiKey.Trim(),
                 SharedMappingPath = sharedPath,
                 BomKeyword = BomKeywordBox.Text,
                 WaitForServerAssignedIpn = _savedWaitForServerAssignedIpn,
             };
+
+            _credentialState.ApplyCredentialTo(input, UsernameBox.Text, PasswordBox.Password);
+            return input;
         }
 
         // ── Save ──────────────────────────────────────────────────────────────
@@ -402,7 +434,7 @@ namespace SwInventreeAddin.UI
 
         /// <summary>
         /// Resolves credentials, persists server config, rebuilds the mapping provider,
-        /// refreshes the status bar, and fires <see cref="MappingApplied"/>.
+        /// refreshes the status card, and fires <see cref="MappingApplied"/>.
         /// Returns <c>true</c> once the settings are persisted — a failed connection
         /// probe is reported as the outcome, not an apply failure; <c>false</c> only
         /// when an error was shown to the user.
@@ -412,6 +444,8 @@ namespace SwInventreeAddin.UI
             var input = BuildInput();
 
             ConnectionProbeResult probe;
+            _probeInFlight = true;
+            RefreshConnectionCard();
             try
             {
                 using (var client = new HttpClient())
@@ -422,9 +456,17 @@ namespace SwInventreeAddin.UI
             }
             catch (SettingsApplyException ex)
             {
-                this.Dispatcher.Invoke(() => SetActionStatus(ex.Message, StatusSeverity.Error));
+                _probeInFlight = false;
+                this.Dispatcher.Invoke(() =>
+                {
+                    RefreshConnectionCard();
+                    SetActionStatus(ex.Message, StatusSeverity.Error);
+                });
                 return false;
             }
+
+            _probeInFlight = false;
+            _lastProbe = probe;
 
             // The service has resolved a token from the password, so it must not linger on screen.
             if (!string.IsNullOrEmpty(input.Password))
@@ -432,7 +474,6 @@ namespace SwInventreeAddin.UI
 
             try
             {
-                var previousProvider = _mappingProvider;
                 _mappingProvider = _mappingProviderFactory.Create(input.SharedMappingPath);
 
                 bool mappingOk = this.Dispatcher.Invoke(() => RefreshMappingStatus());
@@ -461,13 +502,23 @@ namespace SwInventreeAddin.UI
                 this.Dispatcher.Invoke(() =>
                 {
                     MappingApplied?.Invoke(this, _mappingProvider);
-                    RefreshConnectionCard(TryGetConfig());
+
+                    // Persist happened: re-read so the card, credential state, and
+                    // placeholders reflect what is now on disk. A typed key draft is
+                    // cleared — saved keys are never re-shown.
+                    _credentialState = CredentialEditorState.FromSavedConfig(TryGetConfig());
+                    _editingUrl = false;
+                    _showCredentialForm = false;
+                    ApiKeyBox.Clear();
+                    RefreshConnectionCard();
+                    RenderCredentialForm();
+                    UpdateApiKeyPlaceholders();
                     _savedSnapshot = CaptureSnapshot();
                     RefreshButtonStates();
                     SetActionStatus(
                         probe.Succeeded
-                            ? "\u2713  Settings applied."
-                            : $"Settings applied \u2014 {probe.Message}",
+                            ? "Saved \u2014 connection successful."
+                            : $"Saved \u2014 but the connection failed ({probe.Message})",
                         probe.Succeeded ? StatusSeverity.Success : StatusSeverity.Error);
                 });
                 return true;
@@ -486,31 +537,64 @@ namespace SwInventreeAddin.UI
             DialogResult = false;
         }
 
-        // ── Test Connection ───────────────────────────────────────────────────
+        // ── Test connection ───────────────────────────────────────────────────
 
+        // Test never saves — it probes with the effective credential and reports
+        // on the footer status bar while the card takes the probe outcome.
         private async void Test_Click(object sender, RoutedEventArgs e)
         {
+            var input = BuildInput();
+
+            // The URL field is hidden in the configured state; fall back to the
+            // saved URL so Test still works after the draft is cleared.
+            if (string.IsNullOrWhiteSpace(input.Url) && _savedConfig != null)
+                input.Url = _savedConfig.Url ?? string.Empty;
+
+            _probeInFlight = true;
+            RefreshConnectionCard();
+
             try
             {
                 ConnectionProbeResult result;
                 using (var client = new HttpClient())
                 {
-                    result = await _settingsApplyService.TestConnectionAsync(BuildInput(), client)
+                    result = await _settingsApplyService.TestConnectionAsync(input, client)
                                                         .ConfigureAwait(false);
                 }
 
-                this.Dispatcher.Invoke(() => SetConnectionStatus(
-                    result.Succeeded ? "\u2713  Connection successful." : result.Message,
-                    result.Succeeded ? StatusSeverity.Success : StatusSeverity.Error));
+                _probeInFlight = false;
+                _lastProbe = result;
+
+                this.Dispatcher.Invoke(() =>
+                {
+                    RefreshConnectionCard();
+                    RenderCredentialForm();
+                    SetActionStatus(
+                        result.Succeeded ? result.Message : $"Connection failed. {result.Message}",
+                        result.Succeeded ? StatusSeverity.Success : StatusSeverity.Error);
+
+                    // A sent password is spent once the token request has run.
+                    if (!string.IsNullOrEmpty(input.Password))
+                        PasswordBox.Clear();
+                });
             }
             catch (InvalidOperationException ex)
             {
-                this.Dispatcher.Invoke(() => SetConnectionStatus(ex.Message, StatusSeverity.Error));
+                _probeInFlight = false;
+                this.Dispatcher.Invoke(() =>
+                {
+                    RefreshConnectionCard();
+                    SetActionStatus(ex.Message, StatusSeverity.Error);
+                });
             }
             catch (Exception ex)
             {
+                _probeInFlight = false;
                 this.Dispatcher.Invoke(() =>
-                    SetConnectionStatus($"Connection failed: {ex.Message}", StatusSeverity.Error));
+                {
+                    RefreshConnectionCard();
+                    SetActionStatus($"Connection failed: {ex.Message}", StatusSeverity.Error);
+                });
             }
         }
 
@@ -535,11 +619,8 @@ namespace SwInventreeAddin.UI
 
         // ── Status bars ───────────────────────────────────────────────────────
 
-        // Server-connection results live beside the Test Connection button; Apply/Save
-        // results live in the status bar next to the action buttons (ADR-0018).
-        internal void SetConnectionStatus(string text, StatusSeverity severity) =>
-            SetStatusBar(ConnectionStatusText, ConnectionStatusStripe, text, severity);
-
+        // One footer status bar reports what the last action did (ADR-0018); the
+        // status card above holds the persistent server state.
         internal void SetActionStatus(string text, StatusSeverity severity) =>
             SetStatusBar(ActionStatusText, ActionStatusStripe, text, severity);
 
