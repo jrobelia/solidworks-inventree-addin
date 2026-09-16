@@ -1,5 +1,6 @@
 using System;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using SwInventreeAddin.Config;
 
@@ -14,7 +15,10 @@ namespace SwInventreeAddin.Tests.Stubs
 
         public SettingsApplyInput? LastInput { get; private set; }
         public HttpClient? LastApplyClient { get; private set; }
+        public SettingsApplyInput? LastTestInput { get; private set; }
         public HttpClient? LastTestClient { get; private set; }
+        public CancellationToken LastTestToken { get; private set; }
+        public int TestCallCount { get; private set; }
         public int RemoveCallCount { get; private set; }
 
         public Exception? ExceptionToThrowOnApply { get; set; }
@@ -32,6 +36,14 @@ namespace SwInventreeAddin.Tests.Stubs
         /// Defaults to a successful connection.
         /// </summary>
         public ConnectionProbeResult ResultToReturnOnTestConnection { get; set; } = ConnectedResult();
+
+        /// <summary>
+        /// When set, TestConnectionAsync holds the probe open until this source
+        /// completes or the caller's token is cancelled — mirroring the real
+        /// service honouring the lifecycle token — so a test can keep a probe
+        /// in flight across window events.
+        /// </summary>
+        public TaskCompletionSource<ConnectionProbeResult>? PendingTestResult { get; set; }
 
         /// <summary>
         /// Optional provider the remove call delegates to, mirroring the real
@@ -74,15 +86,28 @@ namespace SwInventreeAddin.Tests.Stubs
             return Task.FromResult(ResultToReturnOnApply);
         }
 
-        public Task<ConnectionProbeResult> TestConnectionAsync(SettingsApplyInput input, HttpClient client)
+        public async Task<ConnectionProbeResult> TestConnectionAsync(
+            SettingsApplyInput input, HttpClient client, CancellationToken cancellationToken)
         {
             LastInput = input;
+            LastTestInput = input;
             LastTestClient = client;
+            LastTestToken = cancellationToken;
+            TestCallCount++;
 
             if (ExceptionToThrowOnTestConnection != null)
                 throw ExceptionToThrowOnTestConnection;
 
-            return Task.FromResult(ResultToReturnOnTestConnection);
+            if (PendingTestResult != null)
+            {
+                var cancelled = Task.Delay(Timeout.Infinite, cancellationToken);
+                if (await Task.WhenAny(PendingTestResult.Task, cancelled).ConfigureAwait(false) == cancelled)
+                    throw new OperationCanceledException();
+
+                return await PendingTestResult.Task.ConfigureAwait(false);
+            }
+
+            return ResultToReturnOnTestConnection;
         }
 
         public Task RemoveApiKeyAsync()

@@ -1,4 +1,6 @@
+using System;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SwInventreeAddin.Config
@@ -24,14 +26,21 @@ namespace SwInventreeAddin.Config
         /// <summary>
         /// Resolves the API key for the supplied <paramref name="input"/> and probes the
         /// server with it exactly as <see cref="ApplyAsync"/> does, but writes nothing.
-        /// A normal return means the probe ran. Throws <see cref="ArgumentNullException"/>
+        /// A normal return means the probe ran. Every probe is bounded to a few
+        /// seconds internally — a timeout returns an Unreachable result rather than
+        /// throwing. <paramref name="cancellationToken"/> is a lifecycle signal only:
+        /// when it fires, <see cref="OperationCanceledException"/> propagates
+        /// unclassified instead of a result. Callers without a lifecycle pass
+        /// <see cref="CancellationToken.None"/> and still get the bound.
+        /// Throws <see cref="ArgumentNullException"/>
         /// when <paramref name="client"/> is null and
         /// <see cref="System.InvalidOperationException"/> when the probe cannot be
         /// attempted — invalid URL, missing credential, or token-resolution failure.
         /// The caller owns and disposes <paramref name="client"/> and must not rely on
         /// its BaseAddress or headers afterwards.
         /// </summary>
-        Task<ConnectionProbeResult> TestConnectionAsync(SettingsApplyInput input, HttpClient client);
+        Task<ConnectionProbeResult> TestConnectionAsync(SettingsApplyInput input, HttpClient client,
+            CancellationToken cancellationToken);
 
         /// <summary>
         /// Clears only the saved API key; the server URL, Property Mapping path, BOM

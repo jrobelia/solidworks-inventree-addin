@@ -83,7 +83,7 @@ namespace SwInventreeAddin.Tests
 
             await window.ApplySettingsAsync();
 
-            Assert.That(GetText(window, "ConnectionCardTitle"), Is.EqualTo("Not tested"));
+            Assert.That(GetText(window, "ConnectionCardTitle"), Is.EqualTo("Connected"));
         }
 
         [Test]
@@ -447,35 +447,40 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void Constructor_WithFullConfig_ShowsNotTestedCard()
+        public void Constructor_WithFullConfig_ShowsTestingCardWhileProbeInFlight()
         {
+            var pending = new TaskCompletionSource<ConnectionProbeResult>();
+            var applyService = new StubSettingsApplyService { PendingTestResult = pending };
             var window = CreateWindow(
+                applyService: applyService,
                 configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
 
             Assert.Multiple(() =>
             {
-                Assert.That(GetText(window, "ConnectionCardTitle"), Is.EqualTo("Not tested"));
+                Assert.That(GetText(window, "ConnectionCardTitle"), Is.EqualTo("Testing connection…"));
                 Assert.That(GetText(window, "ConnectionCardServer"),
                             Is.EqualTo("https://inventree.example.com"));
                 Assert.That(GetText(window, "ConnectionCardCredential"),
                             Is.EqualTo("API key saved"));
                 Assert.That(GetText(window, "ConnectionCardConnection"),
-                            Is.EqualTo("not tested yet"));
+                            Is.EqualTo("testing…"));
             });
+
+            pending.SetCanceled();
         }
 
         [Test]
-        public void Constructor_WithFullConfig_UsesHollowGreyDot()
+        public void Constructor_WithFullConfig_UsesBlueDotWhileProbing()
         {
+            var pending = new TaskCompletionSource<ConnectionProbeResult>();
+            var applyService = new StubSettingsApplyService { PendingTestResult = pending };
             var window = CreateWindow(
+                applyService: applyService,
                 configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
 
-            var dot = GetDot(window);
-            Assert.Multiple(() =>
-            {
-                Assert.That(dot.Fill, Is.SameAs(Brushes.Transparent));
-                Assert.That(dot.Stroke, Is.SameAs(GetBrush(window, "BrushStatusNotTested")));
-            });
+            Assert.That(GetDot(window).Fill, Is.SameAs(GetBrush(window, "BrushAccentBlue")));
+
+            pending.SetCanceled();
         }
 
         [Test]
@@ -546,6 +551,204 @@ namespace SwInventreeAddin.Tests
                 Assert.That(LogicalTreeHelper.FindLogicalNode(window, "ShowApiKeyButton"), Is.Null);
                 Assert.That(LogicalTreeHelper.FindLogicalNode(window, "ApiBox"), Is.Null);
                 Assert.That(LogicalTreeHelper.FindLogicalNode(window, "ApiKeyMaskedBox"), Is.Null);
+            });
+        }
+
+        // ── Probe on open (#234) ───────────────────────────────────────
+        // A complete saved config gets a live probe on every open: the card
+        // shows Testing while it runs, then the verdict — never a stale saved
+        // claim. Fresh and auth-required states start nothing; Close and a
+        // new Apply both cancel the probe and discard any late result.
+
+        [Test]
+        public void Constructor_WithSavedKey_StartsOpenProbeWithSavedValues()
+        {
+            var pending = new TaskCompletionSource<ConnectionProbeResult>();
+            var applyService = new StubSettingsApplyService { PendingTestResult = pending };
+            var window = CreateWindow(
+                applyService: applyService,
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(window.OpenProbeTask, Is.Not.Null);
+                Assert.That(applyService.TestCallCount, Is.EqualTo(1));
+                Assert.That(applyService.LastTestInput!.Url,
+                            Is.EqualTo("https://inventree.example.com"));
+                Assert.That(applyService.LastTestInput.RawApiKey, Is.EqualTo("saved-key"));
+                Assert.That(applyService.LastTestInput.Username, Is.Empty);
+                Assert.That(applyService.LastTestInput.Password, Is.Empty);
+            });
+
+            pending.SetCanceled();
+            WaitForProbe(window);
+        }
+
+        [Test]
+        public void Constructor_WithNoSavedConfig_DoesNotProbe()
+        {
+            var applyService = new StubSettingsApplyService();
+            var window = CreateWindow(
+                applyService: applyService,
+                configProvider: StubConfigProvider.WithNoSavedConfig());
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(window.OpenProbeTask, Is.Null);
+                Assert.That(applyService.TestCallCount, Is.EqualTo(0));
+            });
+        }
+
+        [Test]
+        public void Constructor_WithServerOnlySaved_DoesNotProbe()
+        {
+            var applyService = new StubSettingsApplyService();
+            var window = CreateWindow(
+                applyService: applyService,
+                configProvider: new StubConfigProvider("https://inventree.example.com", string.Empty));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(window.OpenProbeTask, Is.Null);
+                Assert.That(applyService.TestCallCount, Is.EqualTo(0));
+            });
+        }
+
+        [Test]
+        public void OpenProbe_WhenConnected_SettlesCardToConnected()
+        {
+            var pending = new TaskCompletionSource<ConnectionProbeResult>();
+            var applyService = new StubSettingsApplyService { PendingTestResult = pending };
+            var window = CreateWindow(
+                applyService: applyService,
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            pending.SetResult(new ConnectionProbeResult(
+                ConnectionProbeStatus.Connected, "Connection successful."));
+            WaitForProbe(window);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetText(window, "ConnectionCardTitle"), Is.EqualTo("Connected"));
+                Assert.That(GetText(window, "ConnectionCardConnection"),
+                            Is.EqualTo("last test succeeded"));
+                Assert.That(GetDot(window).Fill,
+                            Is.SameAs(GetBrush(window, "BrushStatusSuccess")));
+                Assert.That(GetText(window, "ActionStatusText"), Is.Empty,
+                            "the open probe writes to the card only, never the status bar");
+            });
+        }
+
+        [Test]
+        public void OpenProbe_WhenUnreachable_SettlesCardToFailedWithDetail()
+        {
+            var pending = new TaskCompletionSource<ConnectionProbeResult>();
+            var applyService = new StubSettingsApplyService { PendingTestResult = pending };
+            var window = CreateWindow(
+                applyService: applyService,
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            pending.SetResult(new ConnectionProbeResult(
+                ConnectionProbeStatus.Unreachable,
+                "Could not reach the InvenTree server. Check the URL and network connection."));
+            WaitForProbe(window);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetText(window, "ConnectionCardTitle"),
+                            Is.EqualTo("Connection failed"));
+                Assert.That(GetText(window, "ConnectionCardConnection"),
+                            Does.Contain("Could not reach"));
+                Assert.That(GetDot(window).Fill,
+                            Is.SameAs(GetBrush(window, "BrushStatusError")));
+            });
+        }
+
+        [Test]
+        public void OpenProbe_WhenCredentialRejected_SettlesCardToAuthenticationRequired()
+        {
+            var pending = new TaskCompletionSource<ConnectionProbeResult>();
+            var applyService = new StubSettingsApplyService { PendingTestResult = pending };
+            var window = CreateWindow(
+                applyService: applyService,
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            pending.SetResult(new ConnectionProbeResult(
+                ConnectionProbeStatus.CredentialRejected,
+                "The server rejected the API key (401 Unauthorized)."));
+            WaitForProbe(window);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetText(window, "ConnectionCardTitle"),
+                            Is.EqualTo("Authentication required"));
+                Assert.That(GetText(window, "ConnectionCardConnection"),
+                            Does.Contain("rejected the API key"));
+            });
+        }
+
+        [Test, Timeout(15000)]
+        public void OpenProbe_WhenWindowClosed_DiscardsTheLateResult()
+        {
+            using var form = HiddenTestWindow.CreateOwnerForm();
+            form.Show();
+            SolidWorksWindowHandle.Set(form.Handle);
+
+            try
+            {
+                var pending = new TaskCompletionSource<ConnectionProbeResult>();
+                var applyService = new StubSettingsApplyService { PendingTestResult = pending };
+                var window = CreateWindow(
+                    applyService: applyService,
+                    configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+                window.Show();
+                Assert.That(
+                    HiddenTestWindow.IsOnScreen(
+                        HiddenTestWindow.GetRect(new WindowInteropHelper(window).Handle)),
+                    Is.False, "Test dialog must stay off every monitor");
+                Assert.That(GetText(window, "ConnectionCardTitle"),
+                            Is.EqualTo("Testing connection…"));
+
+                window.Close();
+                WaitForProbe(window);
+
+                pending.SetResult(new ConnectionProbeResult(
+                    ConnectionProbeStatus.Connected, "Connection successful."));
+
+                Assert.That(GetText(window, "ConnectionCardTitle"),
+                            Is.EqualTo("Testing connection…"),
+                            "a verdict landing after Close is discarded");
+            }
+            finally
+            {
+                SolidWorksWindowHandle.Set(IntPtr.Zero);
+            }
+        }
+
+        [Test, Timeout(15000)]
+        public async Task Apply_WhenOpenProbeInFlight_CancelsItAndAppliesOwnVerdict()
+        {
+            var pending = new TaskCompletionSource<ConnectionProbeResult>();
+            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var applyService = new StubSettingsApplyService(configProvider) { PendingTestResult = pending };
+            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
+
+            bool result = await window.ApplySettingsAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.True);
+                Assert.That(window.OpenProbeTask, Is.Not.Null);
+            });
+            WaitForProbe(window);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(applyService.LastTestToken.IsCancellationRequested, Is.True,
+                            "starting Apply cancels the in-flight open probe");
+                Assert.That(GetText(window, "ConnectionCardTitle"), Is.EqualTo("Connected"),
+                            "the apply's own verdict supersedes the open probe");
             });
         }
 
@@ -1362,7 +1565,7 @@ namespace SwInventreeAddin.Tests
 
             Click(window, "RemoveApiKeyButton");
 
-            Assert.That(GetText(window, "ConnectionCardTitle"), Is.EqualTo("Not tested"));
+            Assert.That(GetText(window, "ConnectionCardTitle"), Is.EqualTo("Connected"));
         }
 
         // ── Credential form container ────────────────────────────────────────
@@ -1384,6 +1587,22 @@ namespace SwInventreeAddin.Tests
         }
 
         // ── Helpers ───────────────────────────────────────────────────────────
+
+        // The open probe applies its verdict via Dispatcher.Invoke from a pool
+        // thread, so a plain await in the test deadlocks — NUnit does not pump
+        // the dispatcher while it waits. Pump a DispatcherFrame until the task
+        // completes instead.
+        private static void WaitForProbe(SettingsWindow window)
+        {
+            var task = window.OpenProbeTask;
+            Assert.That(task, Is.Not.Null, "no open probe was started");
+
+            var frame = new DispatcherFrame();
+            task!.ContinueWith(
+                _ => window.Dispatcher.BeginInvoke(new Action(() => frame.Continue = false)),
+                TaskScheduler.Default);
+            Dispatcher.PushFrame(frame);
+        }
 
         private static ScrollViewer GetCredentialForm(Window window)
         {

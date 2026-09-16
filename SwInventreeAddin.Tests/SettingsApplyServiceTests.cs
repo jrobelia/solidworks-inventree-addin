@@ -274,7 +274,7 @@ namespace SwInventreeAddin.Tests
             var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "[]");
             using var client = new HttpClient(handler);
 
-            var result = await service.TestConnectionAsync(CreateInput(), client);
+            var result = await service.TestConnectionAsync(CreateInput(), client, CancellationToken.None);
 
             Assert.That(result.Status, Is.EqualTo(ConnectionProbeStatus.Connected));
             Assert.That(result.Succeeded, Is.True);
@@ -290,7 +290,7 @@ namespace SwInventreeAddin.Tests
             var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "[]");
             using var client = new HttpClient(handler);
 
-            await service.TestConnectionAsync(CreateInput(), client);
+            await service.TestConnectionAsync(CreateInput(), client, CancellationToken.None);
 
             Assert.That(configProvider.LastSavedConfig, Is.Null);
         }
@@ -305,7 +305,7 @@ namespace SwInventreeAddin.Tests
             var handler = new StubHttpMessageHandler(HttpStatusCode.Unauthorized, "Unauthorized");
             using var client = new HttpClient(handler);
 
-            var result = await service.TestConnectionAsync(CreateInput(), client);
+            var result = await service.TestConnectionAsync(CreateInput(), client, CancellationToken.None);
 
             Assert.That(result.Status, Is.EqualTo(ConnectionProbeStatus.CredentialRejected));
             Assert.That(result.Succeeded, Is.False);
@@ -321,7 +321,7 @@ namespace SwInventreeAddin.Tests
             var handler = new FailingHttpMessageHandler(new HttpRequestException("connection refused"));
             using var client = new HttpClient(handler);
 
-            var result = await service.TestConnectionAsync(CreateInput(), client);
+            var result = await service.TestConnectionAsync(CreateInput(), client, CancellationToken.None);
 
             Assert.That(result.Status, Is.EqualTo(ConnectionProbeStatus.Unreachable));
             Assert.That(result.Message, Does.Contain("Could not reach"));
@@ -338,7 +338,7 @@ namespace SwInventreeAddin.Tests
             input.Url = "https://";
 
             Assert.ThrowsAsync<InvalidOperationException>(
-                () => service.TestConnectionAsync(input, OkClient()));
+                () => service.TestConnectionAsync(input, OkClient(), CancellationToken.None));
         }
 
         [Test]
@@ -352,7 +352,7 @@ namespace SwInventreeAddin.Tests
             input.RawApiKey = string.Empty;
 
             Assert.ThrowsAsync<InvalidOperationException>(
-                () => service.TestConnectionAsync(input, OkClient()));
+                () => service.TestConnectionAsync(input, OkClient(), CancellationToken.None));
         }
 
         [Test]
@@ -367,7 +367,7 @@ namespace SwInventreeAddin.Tests
             input.Password = "pass";
 
             Assert.ThrowsAsync<InvalidOperationException>(
-                () => service.TestConnectionAsync(input, OkClient()));
+                () => service.TestConnectionAsync(input, OkClient(), CancellationToken.None));
         }
 
         [Test]
@@ -378,7 +378,69 @@ namespace SwInventreeAddin.Tests
             var service = new SettingsApplyService(configProvider, tokenService);
 
             Assert.ThrowsAsync<ArgumentNullException>(
-                () => service.TestConnectionAsync(CreateInput(), null!));
+                () => service.TestConnectionAsync(CreateInput(), null!, CancellationToken.None));
+        }
+
+        // ── Bounded probe + caller lifecycle (#234) ─────────────────────
+        // The service bounds every probe to ~4 s internally; the caller's
+        // token is a lifecycle signal only — its cancellation propagates
+        // unclassified, while a timeout surfaces as Unreachable.
+
+        [Test]
+        public async Task TestConnectionAsync_WhenProbeExceedsInternalBound_ReturnsUnreachableWithTimeoutWording()
+        {
+            var configProvider = new StubConfigProvider("https://example.com", "key");
+            var tokenService = new StubInventreeTokenService { TokenToReturn = "token" };
+            var service = new SettingsApplyService(configProvider, tokenService);
+
+            // The handler answers only when its request token is cancelled —
+            // with the caller token None, only the service's own bound can end it.
+            using var client = new HttpClient(new AwaitsCancellationHandler());
+
+            var probe = service.TestConnectionAsync(CreateInput(), client, CancellationToken.None);
+            var finished = await Task.WhenAny(probe, Task.Delay(TimeSpan.FromSeconds(10)));
+
+            Assert.That(finished, Is.SameAs(probe),
+                "the internal probe bound must fire well inside 10 s");
+
+            var result = await probe;
+            Assert.That(result.Status, Is.EqualTo(ConnectionProbeStatus.Unreachable));
+            Assert.That(result.Message, Does.Contain("timed out"));
+        }
+
+        [Test]
+        public async Task TestConnectionAsync_WhenCallerCancelsMidRequest_PropagatesOperationCanceled()
+        {
+            var configProvider = new StubConfigProvider("https://example.com", "key");
+            var tokenService = new StubInventreeTokenService { TokenToReturn = "token" };
+            var service = new SettingsApplyService(configProvider, tokenService);
+
+            using var client = new HttpClient(new AwaitsCancellationHandler());
+            using var cts = new CancellationTokenSource();
+
+            var probe = service.TestConnectionAsync(CreateInput(), client, cts.Token);
+            cts.Cancel();
+
+            var finished = await Task.WhenAny(probe, Task.Delay(TimeSpan.FromSeconds(10)));
+            Assert.That(finished, Is.SameAs(probe),
+                "caller cancellation must end the probe promptly");
+            Assert.CatchAsync<OperationCanceledException>(() => probe);
+        }
+
+        [Test]
+        public void TestConnectionAsync_WhenCallerTokenAlreadyCancelled_PropagatesOperationCanceled()
+        {
+            var configProvider = new StubConfigProvider("https://example.com", "key");
+            var tokenService = new StubInventreeTokenService { TokenToReturn = "token" };
+            var service = new SettingsApplyService(configProvider, tokenService);
+
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "[]");
+            using var client = new HttpClient(handler);
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            Assert.CatchAsync<OperationCanceledException>(
+                () => service.TestConnectionAsync(CreateInput(), client, cts.Token));
         }
 
         [Test]
@@ -482,6 +544,18 @@ namespace SwInventreeAddin.Tests
                 HttpRequestMessage request, CancellationToken cancellationToken)
             {
                 throw _exception;
+            }
+        }
+
+        // Answers only when the request token is cancelled — the only way out is
+        // the service's own probe bound or the caller's lifecycle token.
+        private sealed class AwaitsCancellationHandler : HttpMessageHandler
+        {
+            protected override async Task<HttpResponseMessage> SendAsync(
+                HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                await Task.Delay(Timeout.Infinite, cancellationToken).ConfigureAwait(false);
+                return new HttpResponseMessage(HttpStatusCode.OK);
             }
         }
     }

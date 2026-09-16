@@ -1,5 +1,7 @@
 # Settings window credential UI and disclosure
 
+> **Superseded by [ADR-0023](0023-settings-credential-state-axes.md).** The two-axis state model replaces this ADR's status-card/mode-switch design, persist-then-probe replaces test-before-save, the saved key is write-once (no reveal), and Remove API key is credential-only. The DPAPI storage and never-show-the-key decisions below remain in effect.
+
 The Settings dialog stores the InvenTree API key as DPAPI-encrypted data, but it gives the engineer no indication that credentials are saved. The API key is shown in a plain `TextBox`, the username and password fields are always visible even though they are not persisted, and the only way to know the stored key works is to press Test Connection. We are redesigning the Settings window so it communicates the saved state clearly, masks the key, and tests before it saves.
 
 ## Decision

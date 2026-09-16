@@ -1,6 +1,7 @@
 using System;
 using System.Net;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using SwInventreeAddin.InvenTree;
 
@@ -11,6 +12,10 @@ namespace SwInventreeAddin.Config
     /// </summary>
     public class SettingsApplyService : ISettingsApplyService
     {
+        // Every probe is bounded — ~4 s, never the HttpClient default — so a
+        // dead server cannot stall the Settings window.
+        private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(4);
+
         private readonly IConfigProvider _configProvider;
         private readonly IInventreeTokenService _tokenService;
 
@@ -57,17 +62,18 @@ namespace SwInventreeAddin.Config
 
             // The save already happened, so a failed probe is reported back to the
             // caller instead of throwing — it must never roll back persisted settings.
-            return await ProbeAsync(input.Url.Trim(), apiKey, client).ConfigureAwait(false);
+            return await ProbeAsync(input.Url.Trim(), apiKey, client, CancellationToken.None).ConfigureAwait(false);
         }
 
         /// <inheritdoc/>
-        public async Task<ConnectionProbeResult> TestConnectionAsync(SettingsApplyInput input, HttpClient client)
+        public async Task<ConnectionProbeResult> TestConnectionAsync(
+            SettingsApplyInput input, HttpClient client, CancellationToken cancellationToken)
         {
             if (client == null)
                 throw new ArgumentNullException(nameof(client));
 
             string apiKey = await ResolveApiKeyAsync(input).ConfigureAwait(false);
-            return await ProbeAsync(input.Url.Trim(), apiKey, client).ConfigureAwait(false);
+            return await ProbeAsync(input.Url.Trim(), apiKey, client, cancellationToken).ConfigureAwait(false);
         }
 
         /// <inheritdoc/>
@@ -96,16 +102,38 @@ namespace SwInventreeAddin.Config
         // outcome for the same credential. Validation happens before this runs, so
         // a failure here always means the probe itself — never the settings.
         private static async Task<ConnectionProbeResult> ProbeAsync(
-            string url, string apiKey, HttpClient client)
+            string url, string apiKey, HttpClient client, CancellationToken cancellationToken)
         {
             client.BaseAddress = new Uri(url);
             client.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Token", apiKey);
 
+            // A pre-cancelled lifecycle token must propagate even when the
+            // transport would answer faster than the cancellation machinery.
+            cancellationToken.ThrowIfCancellationRequested();
+
             HttpResponseMessage response;
             try
             {
-                response = await client.GetAsync("api/part/?limit=1").ConfigureAwait(false);
+                // The caller's token carries lifecycle only; the probe bound is
+                // applied on top so a cancellation can be told apart from a timeout.
+                using (var probeCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+                {
+                    probeCts.CancelAfter(ProbeTimeout);
+                    response = await client.GetAsync("api/part/?limit=1", probeCts.Token)
+                                           .ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // The caller's lifecycle fired — propagate unclassified, never a result.
+                throw;
+            }
+            catch (OperationCanceledException)
+            {
+                return new ConnectionProbeResult(
+                    ConnectionProbeStatus.Unreachable,
+                    "Could not reach the InvenTree server — the connection timed out. Check the URL and network connection.");
             }
             catch (Exception ex)
             {
