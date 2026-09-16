@@ -1,5 +1,7 @@
 using System;
 using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
 using Microsoft.Win32;
@@ -36,6 +38,17 @@ namespace SwInventreeAddin.UI
 
         private MappingChangedSubscription? _mappingChangedSubscription;
         private string? _mappingStatusDetail;
+
+        // Lifecycle for the probe fired on open: Closed cancels it, and so does
+        // any newer user-initiated probe whose verdict supersedes it.
+        private readonly CancellationTokenSource _openProbeCts = new CancellationTokenSource();
+
+        /// <summary>
+        /// The probe fired on open when a full config is saved — null when no
+        /// probe started. Never faults; completes once the verdict is applied
+        /// or discarded. Tests await it for a deterministic settle point.
+        /// </summary>
+        internal Task? OpenProbeTask { get; private set; }
 
         /// <summary>
         /// Raised after Apply successfully saves settings, so the caller can update
@@ -94,10 +107,16 @@ namespace SwInventreeAddin.UI
             // Set Edit Mappings button state and mapping status bar
             RefreshMappingStatus();
             AttachMappingChanged();
-            Closed += (_, __) => DetachMappingChanged();
+            Closed += (_, __) =>
+            {
+                _openProbeCts.Cancel();
+                DetachMappingChanged();
+            };
 
             _savedSnapshot = CaptureSnapshot();
             RefreshButtonStates();
+
+            StartOpenProbe();
         }
 
         // ── Dirty-state tracking ───────────────────────────────────────────────
@@ -171,6 +190,74 @@ namespace SwInventreeAddin.UI
                     ConnectionStatusDot.Fill = (Brush)FindResource("BrushStatusWarning");
                     ConnectionStatusDot.Stroke = Brushes.Transparent;
                     break;
+            }
+        }
+
+        // ── Probe on open (#234) ─────────────────────────────────────────────
+        // A complete saved config gets a live probe on every open — the card
+        // reports a real verdict, never a stale saved claim. The probe runs
+        // against the saved values, not the form fields, and its lifecycle is
+        // the window's: Close and any newer probe cancel it, and a late
+        // verdict is discarded.
+
+        private void StartOpenProbe()
+        {
+            if (!ServerConnectionStatus.From(_savedConfig).IsComplete)
+                return;
+
+            var input = new SettingsApplyInput
+            {
+                Url = _savedConfig!.Url,
+                RawApiKey = _savedConfig.ApiKey,
+            };
+
+            _probeInFlight = true;
+            RefreshConnectionCard();
+            OpenProbeTask = RunOpenProbeAsync(input);
+        }
+
+        private async Task RunOpenProbeAsync(SettingsApplyInput input)
+        {
+            ConnectionProbeResult? result;
+            try
+            {
+                using (var client = new HttpClient())
+                {
+                    result = await _settingsApplyService
+                        .TestConnectionAsync(input, client, _openProbeCts.Token)
+                        .ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Closed or superseded by a newer probe — discard silently.
+                return;
+            }
+            catch (Exception ex)
+            {
+                // The probe could not run to a verdict (e.g. an unparsable saved
+                // URL) — surface it like any other failure instead of leaving
+                // the card on Testing forever.
+                result = new ConnectionProbeResult(ConnectionProbeStatus.Unreachable, ex.Message);
+            }
+
+            try
+            {
+                this.Dispatcher.Invoke(() =>
+                {
+                    // Closed or superseded between verdict and application —
+                    // the newer probe owns the card now.
+                    if (_openProbeCts.IsCancellationRequested)
+                        return;
+
+                    _lastProbe = result;
+                    _probeInFlight = false;
+                    RefreshConnectionCard();
+                });
+            }
+            catch (Exception)
+            {
+                // The window's dispatcher is gone — nothing left to report to.
             }
         }
 
@@ -439,8 +526,11 @@ namespace SwInventreeAddin.UI
         /// probe is reported as the outcome, not an apply failure; <c>false</c> only
         /// when an error was shown to the user.
         /// </summary>
-        public async System.Threading.Tasks.Task<bool> ApplySettingsAsync()
+        public async Task<bool> ApplySettingsAsync()
         {
+            // The apply's own probe verdict supersedes the open probe's.
+            _openProbeCts.Cancel();
+
             var input = BuildInput();
 
             ConnectionProbeResult probe;
@@ -543,6 +633,10 @@ namespace SwInventreeAddin.UI
         // on the footer status bar while the card takes the probe outcome.
         private async void Test_Click(object sender, RoutedEventArgs e)
         {
+            // A user-initiated probe supersedes the open probe — the card
+            // should settle on the freshest verdict.
+            _openProbeCts.Cancel();
+
             var input = BuildInput();
 
             // The URL field is hidden in the configured state; fall back to the
@@ -558,8 +652,9 @@ namespace SwInventreeAddin.UI
                 ConnectionProbeResult result;
                 using (var client = new HttpClient())
                 {
-                    result = await _settingsApplyService.TestConnectionAsync(input, client)
-                                                        .ConfigureAwait(false);
+                    result = await _settingsApplyService.TestConnectionAsync(
+                            input, client, CancellationToken.None)
+                        .ConfigureAwait(false);
                 }
 
                 _probeInFlight = false;
