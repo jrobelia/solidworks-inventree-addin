@@ -1291,6 +1291,53 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public void Test_WhenProbeInFlight_ReportsTestingInActionStatus()
+        {
+            var pending = new TaskCompletionSource<ConnectionProbeResult>();
+            var applyService = new StubSettingsApplyService { PendingTestResult = pending };
+            var window = CreateWindow(
+                applyService: applyService,
+                configProvider: StubConfigProvider.WithNoSavedConfig());
+            GetTextBox(window, "UrlBox")!.Text = "https://inventree.example.com";
+            GetPasswordBox(window, "ApiKeyBox").Password = "inv-new";
+
+            Click(window, "TestConnectionButton");
+
+            Assert.That(GetText(window, "ActionStatusText"),
+                        Is.EqualTo("Testing connection…"));
+
+            pending.SetCanceled();
+        }
+
+        [Test]
+        public void Test_WhenKeyDraftWins_StillClearsTypedPassword()
+        {
+            var window = CreateWindow(configProvider: StubConfigProvider.WithNoSavedConfig());
+            GetTextBox(window, "UrlBox")!.Text = "https://inventree.example.com";
+            GetTextBox(window, "UsernameBox")!.Text = "engineer";
+            GetPasswordBox(window, "PasswordBox").Password = "s3cret";
+            GetPasswordBox(window, "ApiKeyBox").Password = "inv-new";  // key wins — password never sent
+
+            Click(window, "TestConnectionButton");
+
+            Assert.That(GetPasswordBox(window, "PasswordBox").Password, Is.Empty);
+        }
+
+        [Test]
+        public async Task Apply_WhenKeyDraftWins_StillClearsTypedPassword()
+        {
+            var window = CreateWindow(configProvider: StubConfigProvider.WithNoSavedConfig());
+            GetTextBox(window, "UrlBox")!.Text = "https://inventree.example.com";
+            GetTextBox(window, "UsernameBox")!.Text = "engineer";
+            GetPasswordBox(window, "PasswordBox").Password = "s3cret";
+            GetPasswordBox(window, "ApiKeyBox").Password = "inv-new";  // key wins — password never sent
+
+            await window.ApplySettingsAsync();
+
+            Assert.That(GetPasswordBox(window, "PasswordBox").Password, Is.Empty);
+        }
+
+        [Test]
         public void Test_WhenProbeSucceeds_ReportsSuccessAndUpdatesCard()
         {
             var window = CreateWindow();

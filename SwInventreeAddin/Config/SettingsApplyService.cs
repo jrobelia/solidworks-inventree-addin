@@ -198,7 +198,7 @@ namespace SwInventreeAddin.Config
                 return rawKey;
 
             throw new InvalidOperationException(
-                "Enter a username and password, or choose API key and paste a key.");
+                "Enter a username and password, or paste an API key.");
         }
 
         private static SettingsApplyException ConfigError(Exception ex)
