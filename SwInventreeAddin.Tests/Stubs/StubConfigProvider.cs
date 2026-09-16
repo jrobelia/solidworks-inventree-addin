@@ -38,6 +38,7 @@ namespace SwInventreeAddin.Tests.Stubs
                 throw ThrowOnSave;
 
             LastSavedConfig = config;
+            _config = config;
         }
 
         public void DeleteServerConfig()

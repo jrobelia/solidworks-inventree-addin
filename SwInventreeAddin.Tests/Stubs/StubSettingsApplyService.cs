@@ -48,6 +48,29 @@ namespace SwInventreeAddin.Tests.Stubs
             if (ExceptionToThrowOnApply != null)
                 throw ExceptionToThrowOnApply;
 
+            // Mirror the real service's persist-then-probe contract: a normal
+            // return means the settings were saved, so a re-read of the provider
+            // must observe them. A complete username+password pair resolves to a
+            // stand-in token, as the real token service would produce.
+            if (ConfigProvider != null)
+            {
+                string apiKey = !string.IsNullOrWhiteSpace(input.RawApiKey)
+                    ? input.RawApiKey.Trim()
+                    : (!string.IsNullOrWhiteSpace(input.Username) &&
+                       !string.IsNullOrWhiteSpace(input.Password))
+                        ? "stub-resolved-token"
+                        : (ConfigProvider.GetServerConfig()?.ApiKey ?? string.Empty);
+
+                ConfigProvider.SaveServerConfig(new ServerConfig
+                {
+                    Url = input.Url.Trim(),
+                    ApiKey = apiKey,
+                    MappingSourcePath = input.SharedMappingPath,
+                    BomKeyword = input.BomKeyword,
+                    WaitForServerAssignedIpn = input.WaitForServerAssignedIpn,
+                });
+            }
+
             return Task.FromResult(ResultToReturnOnApply);
         }
 
