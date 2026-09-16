@@ -22,12 +22,25 @@ namespace SwInventreeAddin.Tests.Stubs
         public Exception? ExceptionToThrowOnRemove { get; set; }
 
         /// <summary>
+        /// The probe outcome returned when ApplyAsync does not throw. Defaults to
+        /// a successful connection.
+        /// </summary>
+        public ConnectionProbeResult ResultToReturnOnApply { get; set; } = ConnectedResult();
+
+        /// <summary>
+        /// The probe outcome returned when TestConnectionAsync does not throw.
+        /// Defaults to a successful connection.
+        /// </summary>
+        public ConnectionProbeResult ResultToReturnOnTestConnection { get; set; } = ConnectedResult();
+
+        /// <summary>
         /// Optional provider the remove call delegates to, mirroring the real
-        /// service, so UI tests can observe the deleted-config post-state.
+        /// service's read-modify-write, so UI tests can observe the
+        /// cleared-credential post-state.
         /// </summary>
         public IConfigProvider? ConfigProvider { get; }
 
-        public Task ApplyAsync(SettingsApplyInput input, HttpClient client)
+        public Task<ConnectionProbeResult> ApplyAsync(SettingsApplyInput input, HttpClient client)
         {
             LastInput = input;
             LastApplyClient = client;
@@ -35,10 +48,10 @@ namespace SwInventreeAddin.Tests.Stubs
             if (ExceptionToThrowOnApply != null)
                 throw ExceptionToThrowOnApply;
 
-            return Task.CompletedTask;
+            return Task.FromResult(ResultToReturnOnApply);
         }
 
-        public Task TestConnectionAsync(SettingsApplyInput input, HttpClient client)
+        public Task<ConnectionProbeResult> TestConnectionAsync(SettingsApplyInput input, HttpClient client)
         {
             LastInput = input;
             LastTestClient = client;
@@ -46,18 +59,27 @@ namespace SwInventreeAddin.Tests.Stubs
             if (ExceptionToThrowOnTestConnection != null)
                 throw ExceptionToThrowOnTestConnection;
 
-            return Task.CompletedTask;
+            return Task.FromResult(ResultToReturnOnTestConnection);
         }
 
-        public Task RemoveServerConfigAsync()
+        public Task RemoveApiKeyAsync()
         {
             RemoveCallCount++;
 
             if (ExceptionToThrowOnRemove != null)
                 throw ExceptionToThrowOnRemove;
 
-            ConfigProvider?.DeleteServerConfig();
+            var config = ConfigProvider?.GetServerConfig();
+            if (config != null)
+            {
+                config.ApiKey = string.Empty;
+                ConfigProvider!.SaveServerConfig(config);
+            }
+
             return Task.CompletedTask;
         }
+
+        private static ConnectionProbeResult ConnectedResult() =>
+            new ConnectionProbeResult(ConnectionProbeStatus.Connected, "Connection successful.");
     }
 }
