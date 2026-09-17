@@ -453,10 +453,8 @@ namespace SwInventreeAddin.UI
                     _ => StatusSeverity.Error,
                 };
 
-                MappingStatusStripe.Background = StatusSeverityToBrush(this, stripeSeverity);
                 _mappingStatusDetail = result.FullStatusMessage;
-                MappingStatusText.Text = _mappingStatusDetail;
-                MappingStatusText.ToolTip = _mappingStatusDetail;
+                MappingStatusBar.SetStatus(_mappingStatusDetail, stripeSeverity);
                 return true;
             }
             catch (InvalidOperationException ex)
@@ -487,10 +485,8 @@ namespace SwInventreeAddin.UI
                                            detail);
 
             EditMappingsButton.IsEnabled = false;
-            MappingStatusStripe.Background = StatusSeverityToBrush(this, StatusSeverity.Error);
             _mappingStatusDetail = result.FullStatusMessage;
-            MappingStatusText.Text = _mappingStatusDetail;
-            MappingStatusText.ToolTip = _mappingStatusDetail;
+            MappingStatusBar.SetStatus(_mappingStatusDetail, StatusSeverity.Error);
             return false;
         }
 
@@ -743,28 +739,11 @@ namespace SwInventreeAddin.UI
         // connection-scoped action did — Test connection, Remove API key
         // (ADR-0018); the status card above holds the persistent server state.
         internal void SetConnectionStatus(string text, StatusSeverity severity) =>
-            SetStatusBar(ConnectionStatusText, ConnectionStatusStripe, text, severity);
+            ConnectionStatusBar.SetStatus(text, severity);
 
         // The footer's action status bar reports what the last dialog-level
         // action did — Apply / Save.
         internal void SetActionStatus(string text, StatusSeverity severity) =>
-            SetStatusBar(ActionStatusText, ActionStatusStripe, text, severity);
-
-        private static Brush StatusSeverityToBrush(FrameworkElement element, StatusSeverity severity) =>
-            (Brush)element.FindResource(severity switch
-            {
-                StatusSeverity.Success => "BrushStatusSuccess",
-                StatusSeverity.Warning => "BrushStatusWarning",
-                StatusSeverity.Error => "BrushStatusError",
-                _ => "BrushStatusNone",
-            });
-
-        private void SetStatusBar(System.Windows.Controls.TextBox textBox, System.Windows.Controls.Border stripe,
-                                  string text, StatusSeverity severity)
-        {
-            textBox.Text = text;
-            textBox.ToolTip = string.IsNullOrEmpty(text) ? null : text;
-            stripe.Background = StatusSeverityToBrush(this, severity);
-        }
+            ActionStatusBar.SetStatus(text, severity);
     }
 }

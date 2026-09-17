@@ -1,0 +1,24 @@
+<UserControl x:Class="SwInventreeAddin.UI.StatusBarControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- One status surface: a severity stripe beside read-only selectable text.
+         Hosts set Grid.Column / alignment; the control owns its internals.
+         DynamicResource resolves against the host window's DesignTokens — a
+         UserControl's StaticResource cannot see the host's Window.Resources. -->
+    <Border Height="32"
+            Background="#FFF0F0F0"
+            BorderBrush="{DynamicResource BrushBorder}"
+            BorderThickness="0,1,0,0">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="4" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Border x:Name="StatusStripe" Grid.Column="0"
+                    Background="{DynamicResource BrushStatusNone}" />
+            <TextBox x:Name="StatusText"
+                     Grid.Column="1"
+                     Style="{DynamicResource StatusBarTextStyle}" />
+        </Grid>
+    </Border>
+</UserControl>

@@ -48,7 +48,7 @@ namespace SwInventreeAddin.Tests
 
             var window = CreateWindow(mappingProvider: mappingProvider);
 
-            Assert.That(GetText(window, "MappingStatusText"), Does.Contain("The Property Mapping file is invalid."));
+            Assert.That(GetStatusBarText(window, "MappingStatusBar"), Does.Contain("The Property Mapping file is invalid."));
             Assert.That(GetStripeBrush(window), Is.SameAs(GetBrush(window, "BrushStatusError")));
         }
 
@@ -66,8 +66,8 @@ namespace SwInventreeAddin.Tests
             bool result = await window.ApplySettingsAsync();
 
             Assert.That(result, Is.False);
-            Assert.That(GetText(window, "ActionStatusText"), Does.Contain("Failed to save server settings"));
-            Assert.That(GetText(window, "ActionStatusText"), Does.Contain("stub config failure"));
+            Assert.That(GetStatusBarText(window, "ActionStatusBar"), Does.Contain("Failed to save server settings"));
+            Assert.That(GetStatusBarText(window, "ActionStatusBar"), Does.Contain("stub config failure"));
         }
 
         [Test]
@@ -106,9 +106,9 @@ namespace SwInventreeAddin.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(result, Is.False);
-                Assert.That(GetText(window, "MappingStatusText"),
+                Assert.That(GetStatusBarText(window, "MappingStatusBar"),
                             Does.Contain("Failed to load mapping file"));
-                Assert.That(GetText(window, "ActionStatusText"),
+                Assert.That(GetStatusBarText(window, "ActionStatusBar"),
                             Does.Contain("could not be loaded"));
             });
         }
@@ -127,30 +127,17 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(result, Is.True);
             Assert.That(firedProvider, Is.SameAs(mappingProvider));
-            Assert.That(GetText(window, "ActionStatusText"), Does.Contain("Saved"));
+            Assert.That(GetStatusBarText(window, "ActionStatusBar"), Does.Contain("Saved"));
         }
 
-        [Test]
-        public void ActionStatusText_IsReadOnlySelectableTextBox()
+        [TestCase("ActionStatusBar")]
+        [TestCase("ConnectionStatusBar")]
+        [TestCase("MappingStatusBar")]
+        public void StatusBarText_IsReadOnlySelectableTextBox(string barName)
         {
             var window = CreateWindow();
-            var element = LogicalTreeHelper.FindLogicalNode(window, "ActionStatusText");
+            var textBox = GetStatusBarTextBox(window, barName);
 
-            Assert.That(element, Is.InstanceOf<TextBox>());
-            var textBox = (TextBox)element!;
-            Assert.That(textBox.IsReadOnly, Is.True);
-            Assert.That(textBox.Focusable, Is.True);
-            Assert.That(textBox.IsTabStop, Is.False);
-        }
-
-        [Test]
-        public void ConnectionStatusText_IsReadOnlySelectableTextBox()
-        {
-            var window = CreateWindow();
-            var element = LogicalTreeHelper.FindLogicalNode(window, "ConnectionStatusText");
-
-            Assert.That(element, Is.InstanceOf<TextBox>());
-            var textBox = (TextBox)element!;
             Assert.That(textBox.IsReadOnly, Is.True);
             Assert.That(textBox.Focusable, Is.True);
             Assert.That(textBox.IsTabStop, Is.False);
@@ -169,7 +156,7 @@ namespace SwInventreeAddin.Tests
 
             await window.ApplySettingsAsync();
 
-            var textBox = (TextBox)LogicalTreeHelper.FindLogicalNode(window, "ActionStatusText")!;
+            var textBox = GetStatusBarTextBox(window, "ActionStatusBar");
             Assert.That(textBox.ToolTip, Is.InstanceOf<string>());
             Assert.That((string)textBox.ToolTip, Does.Contain(longMessage));
         }
@@ -187,7 +174,7 @@ namespace SwInventreeAddin.Tests
 
             var window = CreateWindow(mappingProvider: mappingProvider);
 
-            Assert.That(GetText(window, "MappingStatusText"), Does.Contain("up to date").IgnoreCase);
+            Assert.That(GetStatusBarText(window, "MappingStatusBar"), Does.Contain("up to date").IgnoreCase);
             Assert.That(GetStripeBrush(window), Is.SameAs(GetBrush(window, "BrushStatusSuccess")));
         }
 
@@ -202,7 +189,7 @@ namespace SwInventreeAddin.Tests
 
             var window = CreateWindow(mappingProvider: mappingProvider);
 
-            Assert.That(GetText(window, "MappingStatusText"), Does.Contain("Property Mapping Schema is out of date"));
+            Assert.That(GetStatusBarText(window, "MappingStatusBar"), Does.Contain("Property Mapping Schema is out of date"));
             Assert.That(GetStripeBrush(window), Is.SameAs(GetBrush(window, "BrushStatusWarning")));
         }
 
@@ -217,7 +204,7 @@ namespace SwInventreeAddin.Tests
 
             var window = CreateWindow(mappingProvider: mappingProvider);
 
-            var statusText = GetText(window, "MappingStatusText");
+            var statusText = GetStatusBarText(window, "MappingStatusBar");
             Assert.That(statusText, Does.Contain("newer").IgnoreCase);
             Assert.That(statusText, Does.Contain("add-in").IgnoreCase);
             Assert.That(GetStripeBrush(window), Is.SameAs(GetBrush(window, "BrushStatusWarning")));
@@ -234,21 +221,8 @@ namespace SwInventreeAddin.Tests
 
             var window = CreateWindow(mappingProvider: mappingProvider);
 
-            Assert.That(GetText(window, "MappingStatusText"), Does.Contain("The Property Mapping file is invalid."));
+            Assert.That(GetStatusBarText(window, "MappingStatusBar"), Does.Contain("The Property Mapping file is invalid."));
             Assert.That(GetStripeBrush(window), Is.SameAs(GetBrush(window, "BrushStatusError")));
-        }
-
-        [Test]
-        public void MappingStatusText_IsReadOnlySelectableTextBox()
-        {
-            var window = CreateWindow();
-            var element = LogicalTreeHelper.FindLogicalNode(window, "MappingStatusText");
-
-            Assert.That(element, Is.InstanceOf<TextBox>());
-            var textBox = (TextBox)element!;
-            Assert.That(textBox.IsReadOnly, Is.True);
-            Assert.That(textBox.Focusable, Is.True);
-            Assert.That(textBox.IsTabStop, Is.False);
         }
 
         [Test]
@@ -263,7 +237,7 @@ namespace SwInventreeAddin.Tests
             };
 
             var window = CreateWindow(mappingProvider: mappingProvider);
-            var textBox = (TextBox)LogicalTreeHelper.FindLogicalNode(window, "MappingStatusText")!;
+            var textBox = GetStatusBarTextBox(window, "MappingStatusBar");
 
             Assert.That(textBox.ToolTip, Is.InstanceOf<string>());
             Assert.That((string)textBox.ToolTip, Does.Contain(longMessage));
@@ -280,7 +254,7 @@ namespace SwInventreeAddin.Tests
             };
 
             var window = CreateWindow(mappingProvider: mappingProvider);
-            var textBox = (TextBox)LogicalTreeHelper.FindLogicalNode(window, "MappingStatusText")!;
+            var textBox = GetStatusBarTextBox(window, "MappingStatusBar");
 
             Assert.That(textBox.Text, Does.Contain("The Property Mapping Schema is out of date."));
             Assert.That(textBox.Text, Does.Contain("Edit the Property Mapping and save to enable Part Sync."));
@@ -297,13 +271,13 @@ namespace SwInventreeAddin.Tests
             };
             var window = CreateWindow(mappingProvider: mappingProvider);
 
-            Assert.That(GetText(window, "MappingStatusText"), Does.Contain("up to date").IgnoreCase);
+            Assert.That(GetStatusBarText(window, "MappingStatusBar"), Does.Contain("up to date").IgnoreCase);
 
             mappingProvider.Health = MappingHealth.Invalid;
             mappingProvider.Message = "Invalid after change";
             mappingProvider.RaiseMappingChanged();
 
-            Assert.That(GetText(window, "MappingStatusText"), Does.Contain("The Property Mapping file is invalid."));
+            Assert.That(GetStatusBarText(window, "MappingStatusBar"), Does.Contain("The Property Mapping file is invalid."));
             Assert.That(GetStripeBrush(window), Is.SameAs(GetBrush(window, "BrushStatusError")));
         }
 
@@ -331,7 +305,7 @@ namespace SwInventreeAddin.Tests
 
             newProvider.RaiseMappingChanged();
 
-            Assert.That(GetText(window, "MappingStatusText"), Does.Contain("The Property Mapping file is invalid."));
+            Assert.That(GetStatusBarText(window, "MappingStatusBar"), Does.Contain("The Property Mapping file is invalid."));
         }
 
         // ── Edit Mappings button ───────────────────────────────────────────────
@@ -653,10 +627,10 @@ namespace SwInventreeAddin.Tests
                             Is.EqualTo("last test succeeded"));
                 Assert.That(GetDot(window).Fill,
                             Is.SameAs(GetBrush(window, "BrushStatusSuccess")));
-                Assert.That(GetText(window, "ActionStatusText"), Is.Empty,
-                            "the open probe writes to the card only, never the status bar");
-                Assert.That(GetText(window, "ConnectionStatusText"), Is.Empty,
-                            "the open probe writes to the card only, never the status bar");
+                Assert.That(GetStatusBarText(window, "ActionStatusBar"), Is.Empty,
+                            "the open probe writes to the card only, never the footer status bar");
+                Assert.That(GetStatusBarText(window, "ConnectionStatusBar"), Is.Empty,
+                            "the open probe writes to the card only, never the connection status bar");
             });
         }
 
@@ -1194,7 +1168,7 @@ namespace SwInventreeAddin.Tests
             bool result = await window.ApplySettingsAsync();
 
             Assert.That(result, Is.True);
-            Assert.That(GetText(window, "ActionStatusText"),
+            Assert.That(GetStatusBarText(window, "ActionStatusBar"),
                         Does.Contain("Saved").And.Contain("authentication required"));
         }
 
@@ -1227,9 +1201,9 @@ namespace SwInventreeAddin.Tests
             bool result = await window.ApplySettingsAsync();
 
             Assert.That(result, Is.True);
-            Assert.That(GetText(window, "ActionStatusText"),
+            Assert.That(GetStatusBarText(window, "ActionStatusBar"),
                         Does.Contain("Saved").And.Contain("connection successful"));
-            Assert.That(GetText(window, "ConnectionStatusText"), Is.Empty,
+            Assert.That(GetStatusBarText(window, "ConnectionStatusBar"), Is.Empty,
                         "an Apply outcome is dialog-level — the section bar stays empty");
         }
 
@@ -1305,7 +1279,7 @@ namespace SwInventreeAddin.Tests
                             Is.EqualTo("Authentication required"));
                 Assert.That(GetText(window, "ConnectionCardServer"),
                             Is.EqualTo("https://inventree.example.com"));
-                Assert.That(GetText(window, "ActionStatusText"),
+                Assert.That(GetStatusBarText(window, "ActionStatusBar"),
                             Does.Contain("Saved").And.Contain("authentication required"),
                             "nothing was probed — the bar must not claim a failed connection");
             });
@@ -1400,7 +1374,7 @@ namespace SwInventreeAddin.Tests
 
             Click(window, "TestConnectionButton");
 
-            Assert.That(GetText(window, "ConnectionStatusText"),
+            Assert.That(GetStatusBarText(window, "ConnectionStatusBar"),
                         Is.EqualTo("Testing connection…"));
 
             pending.SetCanceled();
@@ -1443,9 +1417,9 @@ namespace SwInventreeAddin.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(GetText(window, "ConnectionStatusText"),
+                Assert.That(GetStatusBarText(window, "ConnectionStatusBar"),
                             Does.Contain("Connection successful"));
-                Assert.That(GetText(window, "ActionStatusText"), Is.Empty,
+                Assert.That(GetStatusBarText(window, "ActionStatusBar"), Is.Empty,
                             "a Test outcome is connection-scoped — the footer bar stays empty");
                 Assert.That(GetText(window, "ConnectionCardTitle"), Is.EqualTo("Connected"));
             });
@@ -1466,7 +1440,7 @@ namespace SwInventreeAddin.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(GetText(window, "ConnectionStatusText"), Does.Contain("Could not reach"));
+                Assert.That(GetStatusBarText(window, "ConnectionStatusBar"), Does.Contain("Could not reach"));
                 Assert.That(GetText(window, "ConnectionCardTitle"),
                             Is.EqualTo("Connection failed"));
                 Assert.That(GetText(window, "ConnectionCardConnection"),
@@ -1504,7 +1478,7 @@ namespace SwInventreeAddin.Tests
             Click(window, "SaveButton");
 
             Assert.That(window.DialogResult, Is.Null);
-            Assert.That(GetText(window, "ActionStatusText"),
+            Assert.That(GetStatusBarText(window, "ActionStatusBar"),
                         Does.Contain("Failed to save server settings"));
         }
 
@@ -1558,7 +1532,7 @@ namespace SwInventreeAddin.Tests
 
                 Assert.That(result, Is.EqualTo(true));
                 Assert.That(window.DialogResult, Is.EqualTo(true));
-                Assert.That(GetText(window, "ActionStatusText"), Does.Contain("Saved"));
+                Assert.That(GetStatusBarText(window, "ActionStatusBar"), Does.Contain("Saved"));
             }
             finally
             {
@@ -1661,7 +1635,7 @@ namespace SwInventreeAddin.Tests
 
             Click(window, "RemoveApiKeyButton");
 
-            Assert.That(GetText(window, "ConnectionStatusText"),
+            Assert.That(GetStatusBarText(window, "ConnectionStatusBar"),
                         Does.Contain("Credential removed"));
         }
 
@@ -1693,7 +1667,7 @@ namespace SwInventreeAddin.Tests
 
             Click(window, "RemoveApiKeyButton");
 
-            Assert.That(GetText(window, "ConnectionStatusText"),
+            Assert.That(GetStatusBarText(window, "ConnectionStatusBar"),
                         Does.Contain("Failed to remove the API key"));
         }
 
@@ -1875,13 +1849,21 @@ namespace SwInventreeAddin.Tests
             return element as TextBox;
         }
 
-        private static Brush GetStripeBrush(Window window)
+        private static StatusBarControl GetStatusBar(Window window, string name)
         {
-            var element = LogicalTreeHelper.FindLogicalNode(window, "MappingStatusStripe");
-            var border = (Border?)element;
-            Assert.That(border, Is.Not.Null, "Could not find MappingStatusStripe.");
-            return border!.Background!;
+            var element = LogicalTreeHelper.FindLogicalNode(window, name) as StatusBarControl;
+            Assert.That(element, Is.Not.Null, $"Could not find StatusBarControl named '{name}'.");
+            return element!;
         }
+
+        private static string GetStatusBarText(Window window, string name) =>
+            GetStatusBar(window, name).StatusText.Text;
+
+        private static TextBox GetStatusBarTextBox(Window window, string name) =>
+            GetStatusBar(window, name).StatusText;
+
+        private static Brush GetStripeBrush(Window window) =>
+            GetStatusBar(window, "MappingStatusBar").StatusStripe.Background;
 
         private static Brush GetBrush(Window window, string key)
         {

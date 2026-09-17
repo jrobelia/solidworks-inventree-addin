@@ -2,6 +2,7 @@
     x:Class="SwInventreeAddin.UI.SettingsWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="clr-namespace:SwInventreeAddin.UI"
     Title="{Binding Version, StringFormat='InvenTree Settings - v{0}'}"
     Width="480"
     SizeToContent="Height"
@@ -191,7 +192,8 @@
             </ScrollViewer>
 
             <!-- Section action row: the connection status bar reports what the
-                 last connection action did (Test, Apply/Save probe outcomes);
+                 last connection-scoped action did (Test connection, Remove API
+                 key); Apply/Save outcomes report on the footer action bar, and
                  the card above holds the persistent state. Test connection is
                  connection-scoped — it never saves. -->
             <Grid x:Name="ConnectionActionRow" Margin="0,10,0,0">
@@ -201,25 +203,9 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <Border x:Name="ConnectionStatusBar"
-                        Grid.Column="0"
-                        Height="32"
-                        Background="#FFF0F0F0"
-                        BorderBrush="{StaticResource BrushBorder}"
-                        BorderThickness="0,1,0,0"
-                        VerticalAlignment="Center">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="4" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Border x:Name="ConnectionStatusStripe" Grid.Column="0"
-                                Background="{StaticResource BrushStatusNone}" />
-                        <TextBox x:Name="ConnectionStatusText"
-                                 Grid.Column="1"
-                                 Style="{StaticResource StatusBarTextStyle}" />
-                    </Grid>
-                </Border>
+                <ui:StatusBarControl x:Name="ConnectionStatusBar"
+                                     Grid.Column="0"
+                                     VerticalAlignment="Center" />
 
                 <Button x:Name="TestConnectionButton"
                         Grid.Column="2"
@@ -322,24 +308,8 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <Border x:Name="MappingStatusBar"
-                        Grid.Column="0"
-                        Height="32"
-                        Background="#FFF0F0F0"
-                        BorderBrush="{StaticResource BrushBorder}"
-                        BorderThickness="0,1,0,0">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="4" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Border x:Name="MappingStatusStripe" Grid.Column="0"
-                                Background="{StaticResource BrushStatusNone}" />
-                        <TextBox x:Name="MappingStatusText"
-                                 Grid.Column="1"
-                                 Style="{StaticResource StatusBarTextStyle}" />
-                    </Grid>
-                </Border>
+                <ui:StatusBarControl x:Name="MappingStatusBar"
+                                     Grid.Column="0" />
 
                 <Button x:Name="EditMappingsButton"
                         Grid.Column="2"
@@ -386,25 +356,9 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <Border x:Name="ActionStatusBar"
-                        Grid.Column="0"
-                        Height="32"
-                        Background="#FFF0F0F0"
-                        BorderBrush="{StaticResource BrushBorder}"
-                        BorderThickness="0,1,0,0"
-                        VerticalAlignment="Center">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="4" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Border x:Name="ActionStatusStripe" Grid.Column="0"
-                                Background="{StaticResource BrushStatusNone}" />
-                        <TextBox x:Name="ActionStatusText"
-                                 Grid.Column="1"
-                                 Style="{StaticResource StatusBarTextStyle}" />
-                    </Grid>
-                </Border>
+                <ui:StatusBarControl x:Name="ActionStatusBar"
+                                     Grid.Column="0"
+                                     VerticalAlignment="Center" />
 
                 <Button x:Name="ApplyButton"
                         Grid.Column="2"
