@@ -87,7 +87,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public async Task ApplySettingsAsync_WhenMappingProviderThrowsOnRefresh_SetsActionStatus()
+        public async Task ApplySettingsAsync_WhenMappingProviderThrowsOnRefresh_ReportsInMappingStatusBar()
         {
             var applyService = new StubSettingsApplyService();
             var throwingProvider = new StubPropertyMappingProvider
@@ -103,8 +103,14 @@ namespace SwInventreeAddin.Tests
 
             bool result = await window.ApplySettingsAsync();
 
-            Assert.That(result, Is.False);
-            Assert.That(GetText(window, "ActionStatusText"), Does.Contain("Failed to load mapping file"));
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.False);
+                Assert.That(GetText(window, "MappingStatusText"),
+                            Does.Contain("Failed to load mapping file"));
+                Assert.That(GetText(window, "ActionStatusText"),
+                            Does.Contain("could not be loaded"));
+            });
         }
 
         [Test]
@@ -1174,7 +1180,7 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(result, Is.True);
             Assert.That(GetText(window, "ActionStatusText"),
-                        Does.Contain("Saved").And.Contain("connection failed"));
+                        Does.Contain("Saved").And.Contain("authentication required"));
         }
 
         [Test]
@@ -1282,6 +1288,9 @@ namespace SwInventreeAddin.Tests
                             Is.EqualTo("Authentication required"));
                 Assert.That(GetText(window, "ConnectionCardServer"),
                             Is.EqualTo("https://inventree.example.com"));
+                Assert.That(GetText(window, "ActionStatusText"),
+                            Does.Contain("Saved").And.Contain("authentication required"),
+                            "nothing was probed — the bar must not claim a failed connection");
             });
         }
 
@@ -1702,6 +1711,9 @@ namespace SwInventreeAddin.Tests
             var form = GetCredentialForm(window);
             var content = (FrameworkElement)form.Content!;
 
+            // 440 ≈ the window's content width (Width=480 minus padding) — a
+            // narrower measure would only inflate DesiredSize.Height, keeping
+            // the assertion conservative.
             content.Measure(new Size(440, double.PositiveInfinity));
 
             Assert.That(form.MaxHeight,

@@ -159,8 +159,8 @@ namespace SwInventreeAddin.UI
         // ── Connection status card ─────────────────────────────────────────────
 
         // The card holds the persistent state: what is saved plus the session's
-        // probe axis. The footer status bar reports what the last action did —
-        // they are deliberately separate (prototype 1b).
+        // probe axis. The connection section's status bar reports what the last
+        // action did — they are deliberately separate (prototype 1b).
         private void ReloadConfigAndRefreshCard()
         {
             _savedConfig = TryGetConfig();
@@ -556,8 +556,8 @@ namespace SwInventreeAddin.UI
             ConnectionProbeResult probe;
             _probeInFlight = true;
             ReloadConfigAndRefreshCard();
-            // The save happens inside ApplyAsync — the interim footer must not
-            // claim a save that a pre-persistence failure would disprove.
+            // The save happens inside ApplyAsync — the interim status bar must
+            // not claim a save that a pre-persistence failure would disprove.
             SetActionStatus("Saving settings and testing connection\u2026", StatusSeverity.None);
             try
             {
@@ -585,28 +585,34 @@ namespace SwInventreeAddin.UI
             // resolution or shadowed by a winning key draft.
             this.Dispatcher.Invoke(() => PasswordBox.Clear());
 
+            bool mappingOk;
             try
             {
                 _mappingProvider = _mappingProviderFactory.Create(input.SharedMappingPath);
 
-                bool mappingOk = this.Dispatcher.Invoke(() => RefreshMappingStatus());
+                mappingOk = this.Dispatcher.Invoke(() => RefreshMappingStatus());
 
                 this.Dispatcher.Invoke(() =>
                 {
                     DetachMappingChanged();
                     AttachMappingChanged();
                 });
-
-                if (!mappingOk)
-                {
-                    this.Dispatcher.Invoke(() =>
-                        SetActionStatus(_mappingStatusDetail ?? MappingStatusText.Text, StatusSeverity.Error));
-                    return false;
-                }
             }
             catch (Exception ex)
             {
-                this.Dispatcher.Invoke(() => SetActionStatus($"Failed to load the Property Mapping file: {ex.Message}", StatusSeverity.Error));
+                // Mapping detail stays in the Property Mapping section's own
+                // status bar — ShowInvalidMappingStatus renders it there.
+                this.Dispatcher.Invoke(() =>
+                    ShowInvalidMappingStatus($"Failed to load the Property Mapping file: {ex.Message}"));
+                mappingOk = false;
+            }
+
+            if (!mappingOk)
+            {
+                // The save persisted; the mapping bar carries the detail. The
+                // connection action bar only notes that Apply could not finish.
+                this.Dispatcher.Invoke(() =>
+                    SetActionStatus("Saved — but the Property Mapping file could not be loaded.", StatusSeverity.Error));
                 return false;
             }
 
@@ -622,10 +628,19 @@ namespace SwInventreeAddin.UI
                     _credentialState = CredentialEditorState.FromSavedConfig(TryGetConfig());
                     CollapseFormAndRefresh();
                     SetActionStatus(
-                        probe.Succeeded
-                            ? "Saved \u2014 connection successful."
-                            : $"Saved \u2014 but the connection failed ({probe.Message})",
-                        probe.Succeeded ? StatusSeverity.Success : StatusSeverity.Error);
+                        probe.Status switch
+                        {
+                            ConnectionProbeStatus.Connected => "Saved \u2014 connection successful.",
+                            ConnectionProbeStatus.CredentialRejected =>
+                                $"Saved \u2014 authentication required ({probe.Message})",
+                            _ => $"Saved \u2014 but the connection failed ({probe.Message})",
+                        },
+                        probe.Status switch
+                        {
+                            ConnectionProbeStatus.Connected => StatusSeverity.Success,
+                            ConnectionProbeStatus.CredentialRejected => StatusSeverity.Warning,
+                            _ => StatusSeverity.Error,
+                        });
                 });
                 return true;
             }
@@ -646,7 +661,7 @@ namespace SwInventreeAddin.UI
         // ── Test connection ───────────────────────────────────────────────────
 
         // Test never saves — it probes with the effective credential and reports
-        // on the footer status bar while the card takes the probe outcome.
+        // on the section status bar while the card takes the probe outcome.
         private async void Test_Click(object sender, RoutedEventArgs e)
         {
             // A user-initiated probe supersedes the open probe — the card
@@ -727,8 +742,9 @@ namespace SwInventreeAddin.UI
 
         // ── Status bars ───────────────────────────────────────────────────────
 
-        // One footer status bar reports what the last action did (ADR-0018); the
-        // status card above holds the persistent server state.
+        // The Server Connection section's status bar reports what the last
+        // connection action did (ADR-0018); the status card above holds the
+        // persistent server state.
         internal void SetActionStatus(string text, StatusSeverity severity) =>
             SetStatusBar(ActionStatusText, ActionStatusStripe, text, severity);
 

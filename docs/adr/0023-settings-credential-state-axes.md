@@ -49,9 +49,12 @@ This ADR replaces that design with the model landed across #232, #233, and #234
   Apply start, and on Test connection — and a verdict arriving after
   cancellation is discarded untouched. Failure text distinguishes "server
   unreachable" from "server rejected the credential".
-- **Status channels stay split.** The card reports persistent state; the footer
-  status bar reports what the last action did ("Saved — connection
-  successful."). The open probe writes to the card only.
+- **Status channels stay split.** The card reports persistent state; the Server
+  Connection section's status bar reports what the last connection action did
+  ("Saved — connection successful."). The open probe writes to the card only.
+  *(Amended after #239: the action status bar and Test connection live at the
+  bottom of the Server Connection section — matching ADR-0018's
+  status-bar-next-to-its-action pattern — not in the window footer.)*
 
 ## Considered options
 
