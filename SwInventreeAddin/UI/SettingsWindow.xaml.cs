@@ -361,7 +361,7 @@ namespace SwInventreeAddin.UI
             }
             catch (Exception ex)
             {
-                this.Dispatcher.Invoke(() => SetConnectionStatus(ex.Message, StatusSeverity.Error));
+                this.Dispatcher.Invoke(() => ConnectionStatusBar.SetStatus(ex.Message, StatusSeverity.Error));
                 return;
             }
 
@@ -372,7 +372,7 @@ namespace SwInventreeAddin.UI
                 UsernameBox.Clear();
                 PasswordBox.Clear();
                 CollapseFormAndRefresh();
-                SetConnectionStatus("Credential removed. Server address kept.", StatusSeverity.Success);
+                ConnectionStatusBar.SetStatus("Credential removed. Server address kept.", StatusSeverity.Success);
             });
         }
 
@@ -557,7 +557,7 @@ namespace SwInventreeAddin.UI
             ReloadConfigAndRefreshCard();
             // The save happens inside ApplyAsync — the interim status bar must
             // not claim a save that a pre-persistence failure would disprove.
-            SetActionStatus("Saving settings and testing connection\u2026", StatusSeverity.None);
+            ActionStatusBar.SetStatus("Saving settings and testing connection\u2026", StatusSeverity.None);
             try
             {
                 using (var client = new HttpClient())
@@ -572,7 +572,7 @@ namespace SwInventreeAddin.UI
                 this.Dispatcher.Invoke(() =>
                 {
                     ReloadConfigAndRefreshCard();
-                    SetActionStatus(ex.Message, StatusSeverity.Error);
+                    ActionStatusBar.SetStatus(ex.Message, StatusSeverity.Error);
                 });
                 return false;
             }
@@ -610,7 +610,7 @@ namespace SwInventreeAddin.UI
                 // The save persisted; the mapping bar carries the detail. The
                 // footer action bar only notes that Apply could not finish.
                 this.Dispatcher.Invoke(() =>
-                    SetActionStatus("Saved — but the Property Mapping file could not be loaded.", StatusSeverity.Error));
+                    ActionStatusBar.SetStatus("Saved — but the Property Mapping file could not be loaded.", StatusSeverity.Error));
                 return false;
             }
 
@@ -633,13 +633,13 @@ namespace SwInventreeAddin.UI
                             ($"Saved \u2014 authentication required ({probe.Message})", StatusSeverity.Warning),
                         _ => ($"Saved \u2014 but the connection failed ({probe.Message})", StatusSeverity.Error),
                     };
-                    SetActionStatus(outcome, outcomeSeverity);
+                    ActionStatusBar.SetStatus(outcome, outcomeSeverity);
                 });
                 return true;
             }
             catch (Exception ex)
             {
-                this.Dispatcher.Invoke(() => SetActionStatus($"Failed to apply settings: {ex.Message}", StatusSeverity.Error));
+                this.Dispatcher.Invoke(() => ActionStatusBar.SetStatus($"Failed to apply settings: {ex.Message}", StatusSeverity.Error));
                 return false;
             }
         }
@@ -666,7 +666,7 @@ namespace SwInventreeAddin.UI
 
             _probeInFlight = true;
             ReloadConfigAndRefreshCard();
-            SetConnectionStatus("Testing connection\u2026", StatusSeverity.None);
+            ConnectionStatusBar.SetStatus("Testing connection\u2026", StatusSeverity.None);
 
             try
             {
@@ -685,7 +685,7 @@ namespace SwInventreeAddin.UI
                 {
                     ReloadConfigAndRefreshCard();
                     RenderCredentialForm();
-                    SetConnectionStatus(
+                    ConnectionStatusBar.SetStatus(
                         result.Succeeded ? result.Message : $"Connection failed. {result.Message}",
                         result.Succeeded ? StatusSeverity.Success : StatusSeverity.Error);
 
@@ -700,7 +700,7 @@ namespace SwInventreeAddin.UI
                 this.Dispatcher.Invoke(() =>
                 {
                     ReloadConfigAndRefreshCard();
-                    SetConnectionStatus(ex.Message, StatusSeverity.Error);
+                    ConnectionStatusBar.SetStatus(ex.Message, StatusSeverity.Error);
                 });
             }
             catch (Exception ex)
@@ -709,7 +709,7 @@ namespace SwInventreeAddin.UI
                 this.Dispatcher.Invoke(() =>
                 {
                     ReloadConfigAndRefreshCard();
-                    SetConnectionStatus($"Connection failed: {ex.Message}", StatusSeverity.Error);
+                    ConnectionStatusBar.SetStatus($"Connection failed: {ex.Message}", StatusSeverity.Error);
                 });
             }
         }
@@ -733,17 +733,5 @@ namespace SwInventreeAddin.UI
             RefreshMappingStatus();
         }
 
-        // ── Status bars ───────────────────────────────────────────────────────
-
-        // The Server Connection section's status bar reports what the last
-        // connection-scoped action did — Test connection, Remove API key
-        // (ADR-0018); the status card above holds the persistent server state.
-        internal void SetConnectionStatus(string text, StatusSeverity severity) =>
-            ConnectionStatusBar.SetStatus(text, severity);
-
-        // The footer's action status bar reports what the last dialog-level
-        // action did — Apply / Save.
-        internal void SetActionStatus(string text, StatusSeverity severity) =>
-            ActionStatusBar.SetStatus(text, severity);
     }
 }
