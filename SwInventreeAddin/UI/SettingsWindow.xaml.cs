@@ -465,9 +465,12 @@ namespace SwInventreeAddin.UI
             }
             catch (Exception ex)
             {
-                return ShowInvalidMappingStatus($"Failed to load the Property Mapping file: {ex.Message}");
+                return ShowMappingLoadFailure(ex);
             }
         }
+
+        private bool ShowMappingLoadFailure(Exception ex) =>
+            ShowInvalidMappingStatus($"Failed to load the Property Mapping file: {ex.Message}");
 
         private void SetEditMappingsButtonLabel(MappingResult result)
         {
@@ -602,8 +605,7 @@ namespace SwInventreeAddin.UI
             {
                 // Mapping detail stays in the Property Mapping section's own
                 // status bar — ShowInvalidMappingStatus renders it there.
-                this.Dispatcher.Invoke(() =>
-                    ShowInvalidMappingStatus($"Failed to load the Property Mapping file: {ex.Message}"));
+                this.Dispatcher.Invoke(() => ShowMappingLoadFailure(ex));
                 mappingOk = false;
             }
 
@@ -627,20 +629,15 @@ namespace SwInventreeAddin.UI
                     // cleared — saved keys are never re-shown.
                     _credentialState = CredentialEditorState.FromSavedConfig(TryGetConfig());
                     CollapseFormAndRefresh();
-                    SetActionStatus(
-                        probe.Status switch
-                        {
-                            ConnectionProbeStatus.Connected => "Saved \u2014 connection successful.",
-                            ConnectionProbeStatus.CredentialRejected =>
-                                $"Saved \u2014 authentication required ({probe.Message})",
-                            _ => $"Saved \u2014 but the connection failed ({probe.Message})",
-                        },
-                        probe.Status switch
-                        {
-                            ConnectionProbeStatus.Connected => StatusSeverity.Success,
-                            ConnectionProbeStatus.CredentialRejected => StatusSeverity.Warning,
-                            _ => StatusSeverity.Error,
-                        });
+                    var (outcome, outcomeSeverity) = probe.Status switch
+                    {
+                        ConnectionProbeStatus.Connected =>
+                            ("Saved \u2014 connection successful.", StatusSeverity.Success),
+                        ConnectionProbeStatus.CredentialRejected =>
+                            ($"Saved \u2014 authentication required ({probe.Message})", StatusSeverity.Warning),
+                        _ => ($"Saved \u2014 but the connection failed ({probe.Message})", StatusSeverity.Error),
+                    };
+                    SetActionStatus(outcome, outcomeSeverity);
                 });
                 return true;
             }

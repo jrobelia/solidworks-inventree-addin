@@ -371,7 +371,7 @@
                        TextWrapping="Wrap" />
             <TextBox x:Name="BomKeywordBox" Style="{StaticResource SWFieldStyle}" />
 
-            <!-- Footer: dialog-level actions only — Apply / Save / Close. The
+            <!-- Footer: dialog-level actions only — Apply / Save / Cancel. The
                  connection status bar and Test connection live up in the Server
                  Connection section, next to what they act on. -->
             <Grid x:Name="DialogActionRow" Margin="0,16,0,0">
