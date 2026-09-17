@@ -144,6 +144,19 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public void ConnectionStatusText_IsReadOnlySelectableTextBox()
+        {
+            var window = CreateWindow();
+            var element = LogicalTreeHelper.FindLogicalNode(window, "ConnectionStatusText");
+
+            Assert.That(element, Is.InstanceOf<TextBox>());
+            var textBox = (TextBox)element!;
+            Assert.That(textBox.IsReadOnly, Is.True);
+            Assert.That(textBox.Focusable, Is.True);
+            Assert.That(textBox.IsTabStop, Is.False);
+        }
+
+        [Test]
         public async Task ActionStatusText_LongError_ToolTipContainsFullMessage()
         {
             var longMessage = "Failed to save server settings: " + new string('x', 500);
@@ -641,6 +654,8 @@ namespace SwInventreeAddin.Tests
                 Assert.That(GetDot(window).Fill,
                             Is.SameAs(GetBrush(window, "BrushStatusSuccess")));
                 Assert.That(GetText(window, "ActionStatusText"), Is.Empty,
+                            "the open probe writes to the card only, never the status bar");
+                Assert.That(GetText(window, "ConnectionStatusText"), Is.Empty,
                             "the open probe writes to the card only, never the status bar");
             });
         }
@@ -1214,6 +1229,8 @@ namespace SwInventreeAddin.Tests
             Assert.That(result, Is.True);
             Assert.That(GetText(window, "ActionStatusText"),
                         Does.Contain("Saved").And.Contain("connection successful"));
+            Assert.That(GetText(window, "ConnectionStatusText"), Is.Empty,
+                        "an Apply outcome is dialog-level — the section bar stays empty");
         }
 
         [Test]
@@ -1294,13 +1311,14 @@ namespace SwInventreeAddin.Tests
             });
         }
 
-        // ── Test connection (#233, #239) ───────────────────────────────────
+        // ── Test connection (#233, #239, #242) ─────────────────────────────
         // Test lives at the bottom of the Server Connection section beside the
-        // connection status bar — not in the window footer. It never saves and
-        // reports on the section status bar while the card takes the probe result.
+        // connection status bar. It never saves and reports on the section's
+        // connection bar while the card takes the probe result. Apply/Save
+        // outcomes report on the footer's action status bar instead.
 
         [Test]
-        public void TestConnectionButton_AndActionStatusBar_LiveInConnectionActionRow()
+        public void TestConnectionButton_AndConnectionStatusBar_LiveInConnectionActionRow()
         {
             var window = CreateWindow();
 
@@ -1308,24 +1326,26 @@ namespace SwInventreeAddin.Tests
             {
                 Assert.That(IsInside(window, "TestConnectionButton", "ConnectionActionRow"),
                             Is.True, "Test connection belongs at the bottom of the Server Connection section");
-                Assert.That(IsInside(window, "ActionStatusBar", "ConnectionActionRow"),
+                Assert.That(IsInside(window, "ConnectionStatusBar", "ConnectionActionRow"),
                             Is.True, "the connection status bar belongs to the Server Connection section");
             });
         }
 
         [Test]
-        public void DialogActionRow_KeepsOnlyTheDialogLevelButtons()
+        public void DialogActionRow_HoldsActionStatusBarAndDialogLevelButtons()
         {
             var window = CreateWindow();
 
             Assert.Multiple(() =>
             {
+                Assert.That(IsInside(window, "ActionStatusBar", "DialogActionRow"),
+                            Is.True, "the dialog-level bar reports Apply/Save outcomes");
                 Assert.That(IsInside(window, "ApplyButton", "DialogActionRow"), Is.True);
                 Assert.That(IsInside(window, "SaveButton", "DialogActionRow"), Is.True);
                 Assert.That(IsInside(window, "CancelButton", "DialogActionRow"), Is.True);
                 Assert.That(IsInside(window, "TestConnectionButton", "DialogActionRow"),
                             Is.False, "Test connection is connection-scoped, not dialog-level");
-                Assert.That(IsInside(window, "ActionStatusBar", "DialogActionRow"),
+                Assert.That(IsInside(window, "ConnectionStatusBar", "DialogActionRow"),
                             Is.False, "the connection status bar is section-scoped, not dialog-level");
             });
         }
@@ -1368,7 +1388,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void Test_WhenProbeInFlight_ReportsTestingInActionStatus()
+        public void Test_WhenProbeInFlight_ReportsTestingInConnectionStatus()
         {
             var pending = new TaskCompletionSource<ConnectionProbeResult>();
             var applyService = new StubSettingsApplyService { PendingTestResult = pending };
@@ -1380,7 +1400,7 @@ namespace SwInventreeAddin.Tests
 
             Click(window, "TestConnectionButton");
 
-            Assert.That(GetText(window, "ActionStatusText"),
+            Assert.That(GetText(window, "ConnectionStatusText"),
                         Is.EqualTo("Testing connection…"));
 
             pending.SetCanceled();
@@ -1423,8 +1443,10 @@ namespace SwInventreeAddin.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(GetText(window, "ActionStatusText"),
+                Assert.That(GetText(window, "ConnectionStatusText"),
                             Does.Contain("Connection successful"));
+                Assert.That(GetText(window, "ActionStatusText"), Is.Empty,
+                            "a Test outcome is connection-scoped — the footer bar stays empty");
                 Assert.That(GetText(window, "ConnectionCardTitle"), Is.EqualTo("Connected"));
             });
         }
@@ -1444,7 +1466,7 @@ namespace SwInventreeAddin.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(GetText(window, "ActionStatusText"), Does.Contain("Could not reach"));
+                Assert.That(GetText(window, "ConnectionStatusText"), Does.Contain("Could not reach"));
                 Assert.That(GetText(window, "ConnectionCardTitle"),
                             Is.EqualTo("Connection failed"));
                 Assert.That(GetText(window, "ConnectionCardConnection"),
@@ -1631,7 +1653,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void RemoveApiKey_WhenClicked_ReportsCredentialRemovedInActionStatus()
+        public void RemoveApiKey_WhenClicked_ReportsCredentialRemovedInConnectionStatus()
         {
             var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
             var applyService = new StubSettingsApplyService(configProvider);
@@ -1639,7 +1661,7 @@ namespace SwInventreeAddin.Tests
 
             Click(window, "RemoveApiKeyButton");
 
-            Assert.That(GetText(window, "ActionStatusText"),
+            Assert.That(GetText(window, "ConnectionStatusText"),
                         Does.Contain("Credential removed"));
         }
 
@@ -1660,7 +1682,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void RemoveApiKey_WhenServiceThrows_ShowsErrorInActionStatus()
+        public void RemoveApiKey_WhenServiceThrows_ShowsErrorInConnectionStatus()
         {
             var applyService = new StubSettingsApplyService
             {
@@ -1671,7 +1693,7 @@ namespace SwInventreeAddin.Tests
 
             Click(window, "RemoveApiKeyButton");
 
-            Assert.That(GetText(window, "ActionStatusText"),
+            Assert.That(GetText(window, "ConnectionStatusText"),
                         Does.Contain("Failed to remove the API key"));
         }
 

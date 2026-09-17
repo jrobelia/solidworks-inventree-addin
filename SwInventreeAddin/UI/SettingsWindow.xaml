@@ -201,7 +201,7 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <Border x:Name="ActionStatusBar"
+                <Border x:Name="ConnectionStatusBar"
                         Grid.Column="0"
                         Height="32"
                         Background="#FFF0F0F0"
@@ -213,9 +213,9 @@
                             <ColumnDefinition Width="4" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <Border x:Name="ActionStatusStripe" Grid.Column="0"
+                        <Border x:Name="ConnectionStatusStripe" Grid.Column="0"
                                 Background="{StaticResource BrushStatusNone}" />
-                        <TextBox x:Name="ActionStatusText"
+                        <TextBox x:Name="ConnectionStatusText"
                                  Grid.Column="1"
                                  Style="{StaticResource StatusBarTextStyle}" />
                     </Grid>
@@ -371,12 +371,14 @@
                        TextWrapping="Wrap" />
             <TextBox x:Name="BomKeywordBox" Style="{StaticResource SWFieldStyle}" />
 
-            <!-- Footer: dialog-level actions only — Apply / Save / Cancel. The
-                 connection status bar and Test connection live up in the Server
-                 Connection section, next to what they act on. -->
+            <!-- Footer: dialog-level action status bar + Apply / Save / Cancel.
+                 The action bar reports what Apply/Save did; connection-scoped
+                 outcomes (Test connection, Remove API key) live up in the Server
+                 Connection section's own status bar. -->
             <Grid x:Name="DialogActionRow" Margin="0,16,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="8" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="8" />
                     <ColumnDefinition Width="Auto" />
@@ -384,8 +386,28 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
+                <Border x:Name="ActionStatusBar"
+                        Grid.Column="0"
+                        Height="32"
+                        Background="#FFF0F0F0"
+                        BorderBrush="{StaticResource BrushBorder}"
+                        BorderThickness="0,1,0,0"
+                        VerticalAlignment="Center">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="4" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border x:Name="ActionStatusStripe" Grid.Column="0"
+                                Background="{StaticResource BrushStatusNone}" />
+                        <TextBox x:Name="ActionStatusText"
+                                 Grid.Column="1"
+                                 Style="{StaticResource StatusBarTextStyle}" />
+                    </Grid>
+                </Border>
+
                 <Button x:Name="ApplyButton"
-                        Grid.Column="1"
+                        Grid.Column="2"
                         Style="{StaticResource SecondaryButtonStyle}"
                         Width="80" Margin="0"
                         VerticalAlignment="Center"
@@ -397,7 +419,7 @@
                     </StackPanel>
                 </Button>
                 <Button x:Name="SaveButton"
-                        Grid.Column="3"
+                        Grid.Column="4"
                         Style="{StaticResource PrimaryButtonStyle}"
                         Width="80" Margin="0"
                         VerticalAlignment="Center"
@@ -410,7 +432,7 @@
                     </StackPanel>
                 </Button>
                 <Button x:Name="CancelButton"
-                        Grid.Column="5"
+                        Grid.Column="6"
                         Style="{StaticResource SecondaryButtonStyle}"
                         Width="80" Margin="0"
                         VerticalAlignment="Center"
