@@ -1249,9 +1249,77 @@ namespace SwInventreeAddin.Tests
             Assert.That(GetPasswordBox(window, "PasswordBox").Password, Is.Empty);
         }
 
-        // ── Test connection (#233) ──────────────────────────────────────────
-        // Test lives in the footer, never saves, and reports on the status bar
-        // while the card takes the probe result.
+        // ── URL-only save (#238) ─────────────────────────────────────
+        // The server-only state must be reachable by saving — not only by
+        // removing a key. Apply with just a URL persists and lands on
+        // Authentication required.
+
+        [Test]
+        public async Task Apply_FromFreshState_WithUrlOnly_SavesAndLandsOnAuthenticationRequired()
+        {
+            var configProvider = StubConfigProvider.WithNoSavedConfig();
+            var applyService = new StubSettingsApplyService(configProvider)
+            {
+                ResultToReturnOnApply = new ConnectionProbeResult(
+                    ConnectionProbeStatus.CredentialRejected,
+                    "No credential saved — add a username and password or an API key."),
+            };
+            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
+            GetTextBox(window, "UrlBox")!.Text = "https://inventree.example.com";
+
+            bool result = await window.ApplySettingsAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.True, "the URL-only save persisted");
+                Assert.That(configProvider.LastSavedConfig, Is.Not.Null);
+                Assert.That(configProvider.LastSavedConfig!.Url,
+                            Is.EqualTo("https://inventree.example.com"));
+                Assert.That(configProvider.LastSavedConfig!.ApiKey, Is.Empty);
+                Assert.That(GetElement(window, "ConnectionCard").Visibility,
+                            Is.EqualTo(Visibility.Visible));
+                Assert.That(GetText(window, "ConnectionCardTitle"),
+                            Is.EqualTo("Authentication required"));
+                Assert.That(GetText(window, "ConnectionCardServer"),
+                            Is.EqualTo("https://inventree.example.com"));
+            });
+        }
+
+        // ── Test connection (#233, #239) ───────────────────────────────────
+        // Test lives at the bottom of the Server Connection section beside the
+        // connection status bar — not in the window footer. It never saves and
+        // reports on the section status bar while the card takes the probe result.
+
+        [Test]
+        public void TestConnectionButton_AndActionStatusBar_LiveInConnectionActionRow()
+        {
+            var window = CreateWindow();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(IsInside(window, "TestConnectionButton", "ConnectionActionRow"),
+                            Is.True, "Test connection belongs at the bottom of the Server Connection section");
+                Assert.That(IsInside(window, "ActionStatusBar", "ConnectionActionRow"),
+                            Is.True, "the connection status bar belongs to the Server Connection section");
+            });
+        }
+
+        [Test]
+        public void DialogActionRow_KeepsOnlyTheDialogLevelButtons()
+        {
+            var window = CreateWindow();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(IsInside(window, "ApplyButton", "DialogActionRow"), Is.True);
+                Assert.That(IsInside(window, "SaveButton", "DialogActionRow"), Is.True);
+                Assert.That(IsInside(window, "CancelButton", "DialogActionRow"), Is.True);
+                Assert.That(IsInside(window, "TestConnectionButton", "DialogActionRow"),
+                            Is.False, "Test connection is connection-scoped, not dialog-level");
+                Assert.That(IsInside(window, "ActionStatusBar", "DialogActionRow"),
+                            Is.False, "the connection status bar is section-scoped, not dialog-level");
+            });
+        }
 
         [Test]
         public void TestConnectionButton_IsOutsideCollapsibleCredentialForm()
@@ -1623,6 +1691,22 @@ namespace SwInventreeAddin.Tests
             var window = CreateWindow();
 
             Assert.That(GetCredentialForm(window).MaxHeight, Is.LessThan(double.PositiveInfinity));
+        }
+
+        // The cap keeps the expanded dialog inside small monitors, but it must
+        // not clip the fresh-state form — the tallest layout the section shows.
+        [Test]
+        public void CredentialForm_MaxHeightFitsTheFreshStateForm()
+        {
+            var window = CreateWindow(configProvider: StubConfigProvider.WithNoSavedConfig());
+            var form = GetCredentialForm(window);
+            var content = (FrameworkElement)form.Content!;
+
+            content.Measure(new Size(440, double.PositiveInfinity));
+
+            Assert.That(form.MaxHeight,
+                        Is.GreaterThanOrEqualTo(content.DesiredSize.Height),
+                        "the fresh-state form should fit without scrolling");
         }
 
         [Test]

@@ -62,6 +62,15 @@ namespace SwInventreeAddin.Config
 
             // The save already happened, so a failed probe is reported back to the
             // caller instead of throwing — it must never roll back persisted settings.
+            // A credential-less save is valid ("server only" on the configuration
+            // axis): report it without probing — there is nothing to test with.
+            if (apiKey.Length == 0)
+            {
+                return new ConnectionProbeResult(
+                    ConnectionProbeStatus.CredentialRejected,
+                    "No credential saved — the server address was kept. Add a username and password or an API key to authenticate.");
+            }
+
             return await ProbeAsync(input.Url.Trim(), apiKey, client, CancellationToken.None).ConfigureAwait(false);
         }
 
@@ -73,6 +82,9 @@ namespace SwInventreeAddin.Config
                 throw new ArgumentNullException(nameof(client));
 
             string apiKey = await ResolveApiKeyAsync(input).ConfigureAwait(false);
+            if (apiKey.Length == 0)
+                throw new InvalidOperationException(
+                    "Enter a username and password, or paste an API key.");
             return await ProbeAsync(input.Url.Trim(), apiKey, client, cancellationToken).ConfigureAwait(false);
         }
 
@@ -197,8 +209,10 @@ namespace SwInventreeAddin.Config
             if (!string.IsNullOrWhiteSpace(rawKey))
                 return rawKey;
 
-            throw new InvalidOperationException(
-                "Enter a username and password, or paste an API key.");
+            // No credential at all is not an error here — Apply persists the
+            // URL-only config. Callers that require a credential (Test
+            // Connection) check for the empty result themselves.
+            return string.Empty;
         }
 
         private static SettingsApplyException ConfigError(Exception ex)

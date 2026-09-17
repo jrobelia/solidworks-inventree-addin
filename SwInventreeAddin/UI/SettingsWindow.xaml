@@ -117,7 +117,7 @@
                  The MaxHeight keeps the expanded dialog inside a small monitor. -->
             <ScrollViewer x:Name="CredentialFormScroll"
                           Visibility="Collapsed"
-                          MaxHeight="260"
+                          MaxHeight="300"
                           Margin="0,10,0,0"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
@@ -189,6 +189,51 @@
 
                 </StackPanel>
             </ScrollViewer>
+
+            <!-- Section action row: the connection status bar reports what the
+                 last connection action did (Test, Apply/Save probe outcomes);
+                 the card above holds the persistent state. Test connection is
+                 connection-scoped — it never saves. -->
+            <Grid x:Name="ConnectionActionRow" Margin="0,10,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Border x:Name="ActionStatusBar"
+                        Grid.Column="0"
+                        Height="32"
+                        Background="#FFF0F0F0"
+                        BorderBrush="{StaticResource BrushBorder}"
+                        BorderThickness="0,1,0,0"
+                        VerticalAlignment="Center">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="4" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border x:Name="ActionStatusStripe" Grid.Column="0"
+                                Background="{StaticResource BrushStatusNone}" />
+                        <TextBox x:Name="ActionStatusText"
+                                 Grid.Column="1"
+                                 Style="{StaticResource StatusBarTextStyle}" />
+                    </Grid>
+                </Border>
+
+                <Button x:Name="TestConnectionButton"
+                        Grid.Column="2"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Width="120" Margin="0"
+                        VerticalAlignment="Center"
+                        Click="Test_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Test connection" VerticalAlignment="Center" />
+                        <TextBlock Text="&#xE703;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                   VerticalAlignment="Center" Margin="6,0,0,0" />
+                    </StackPanel>
+                </Button>
+            </Grid>
 
             <!-- ── Separator ────────────────────────────────────────────────── -->
             <Separator Background="{StaticResource BrushBorder}" Margin="0,14,0,0" />
@@ -326,15 +371,12 @@
                        TextWrapping="Wrap" />
             <TextBox x:Name="BomKeywordBox" Style="{StaticResource SWFieldStyle}" />
 
-            <!-- Footer: one status bar + Test / Apply / Save / Cancel. The status
-                 bar reports what the last action did; the card above holds the
-                 persistent server state. -->
-            <Grid Margin="0,16,0,0">
+            <!-- Footer: dialog-level actions only — Apply / Save / Close. The
+                 connection status bar and Test connection live up in the Server
+                 Connection section, next to what they act on. -->
+            <Grid x:Name="DialogActionRow" Margin="0,16,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="8" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="8" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="8" />
                     <ColumnDefinition Width="Auto" />
@@ -342,40 +384,8 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <Border x:Name="ActionStatusBar"
-                        Grid.Column="0"
-                        Height="32"
-                        Background="#FFF0F0F0"
-                        BorderBrush="{StaticResource BrushBorder}"
-                        BorderThickness="0,1,0,0"
-                        VerticalAlignment="Center">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="4" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Border x:Name="ActionStatusStripe" Grid.Column="0"
-                                Background="{StaticResource BrushStatusNone}" />
-                        <TextBox x:Name="ActionStatusText"
-                                 Grid.Column="1"
-                                 Style="{StaticResource StatusBarTextStyle}" />
-                    </Grid>
-                </Border>
-
-                <Button x:Name="TestConnectionButton"
-                        Grid.Column="2"
-                        Style="{StaticResource SecondaryButtonStyle}"
-                        Width="120" Margin="0"
-                        VerticalAlignment="Center"
-                        Click="Test_Click">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Test connection" VerticalAlignment="Center" />
-                        <TextBlock Text="&#xE703;" FontFamily="Segoe MDL2 Assets" FontSize="13"
-                                   VerticalAlignment="Center" Margin="6,0,0,0" />
-                    </StackPanel>
-                </Button>
                 <Button x:Name="ApplyButton"
-                        Grid.Column="4"
+                        Grid.Column="1"
                         Style="{StaticResource SecondaryButtonStyle}"
                         Width="80" Margin="0"
                         VerticalAlignment="Center"
@@ -387,7 +397,7 @@
                     </StackPanel>
                 </Button>
                 <Button x:Name="SaveButton"
-                        Grid.Column="6"
+                        Grid.Column="3"
                         Style="{StaticResource PrimaryButtonStyle}"
                         Width="80" Margin="0"
                         VerticalAlignment="Center"
@@ -400,7 +410,7 @@
                     </StackPanel>
                 </Button>
                 <Button x:Name="CancelButton"
-                        Grid.Column="8"
+                        Grid.Column="5"
                         Style="{StaticResource SecondaryButtonStyle}"
                         Width="80" Margin="0"
                         VerticalAlignment="Center"

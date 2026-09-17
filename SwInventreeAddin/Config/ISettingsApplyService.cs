@@ -14,7 +14,11 @@ namespace SwInventreeAddin.Config
         /// Resolves the API key, validates the server URL, persists the settings, then
         /// probes the server with the persisted credential and reports the outcome.
         /// A normal return means the settings were persisted — a failed probe never
-        /// throws and never rolls back the save. Throws <see cref="ArgumentNullException"/>
+        /// throws and never rolls back the save. When the input resolves to no
+        /// credential at all, the URL-only config is still persisted ("server only" is
+        /// a valid saved state); the returned result reports
+        /// <see cref="ConnectionProbeStatus.CredentialRejected"/> without a probe being
+        /// made. Throws <see cref="ArgumentNullException"/>
         /// when <paramref name="client"/> is null. Throws <see cref="SettingsApplyException"/>
         /// when any pre-persistence step fails — validation, credential resolution, or
         /// the config write; the message begins with "Failed to save server settings" and

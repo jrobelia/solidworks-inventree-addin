@@ -443,20 +443,39 @@ namespace SwInventreeAddin.Tests
                 () => service.TestConnectionAsync(CreateInput(), client, cts.Token));
         }
 
+        // ── URL-only save (#238) ────────────────────────────────────
+        // A URL with no credential is a valid persisted state — "server
+        // only" on the configuration axis. Apply saves it and reports the
+        // missing credential as the outcome instead of throwing.
+
         [Test]
-        public void ApplyAsync_WithNoCredentials_ThrowsMessageNamingTheApiKeyMode()
+        public async Task ApplyAsync_WhenNoCredential_PersistsUrlAndReportsCredentialNeeded()
         {
-            var configProvider = new StubConfigProvider("https://example.com", "key");
+            var configProvider = StubConfigProvider.WithNoSavedConfig();
             var tokenService = new StubInventreeTokenService { TokenToReturn = "token" };
             var service = new SettingsApplyService(configProvider, tokenService);
+
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "[]");
+            using var client = new HttpClient(handler);
 
             var input = CreateInput();
             input.RawApiKey = string.Empty;
 
-            var ex = Assert.ThrowsAsync<SettingsApplyException>(
-                () => service.ApplyAsync(input, OkClient()));
+            var result = await service.ApplyAsync(input, client);
 
-            Assert.That(ex!.Message, Does.Contain("API key").And.Not.Contain("Advanced"));
+            Assert.Multiple(() =>
+            {
+                Assert.That(configProvider.LastSavedConfig, Is.Not.Null,
+                    "the URL-only save must persist");
+                Assert.That(configProvider.LastSavedConfig!.Url,
+                            Is.EqualTo("https://example.com"));
+                Assert.That(configProvider.LastSavedConfig!.ApiKey, Is.Empty);
+                Assert.That(result.Succeeded, Is.False);
+                Assert.That(result.Status, Is.EqualTo(ConnectionProbeStatus.CredentialRejected));
+                Assert.That(result.Message, Does.Contain("credential").IgnoreCase);
+                Assert.That(handler.LastRequest, Is.Null,
+                    "no credential to probe with — the save must not hit the network");
+            });
         }
 
         // ── RemoveApiKeyAsync (#232) ────────────────────────────────────
