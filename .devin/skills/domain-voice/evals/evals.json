@@ -5,19 +5,97 @@
       "id": 1,
       "prompt": "Tell me about PR 156. What is it doing?",
       "expected_output": "A concise, domain-language summary of PR 156 that uses project terms (e.g., Mapping Health, Part Sync, Task Pane, Settings, IPN, Create Part) and avoids AI tells.",
-      "files": ["evals/pr-156-summary/source.md"]
+      "files": [
+        "evals/pr-156-summary/source.md"
+      ],
+      "expectations": [
+        "Uses CONTEXT.md preferred terms verbatim for every domain concept it names (Part Sync, Task Pane, Mapping Health, IPN, Create Part, Property Mapping, Settings, BOM Compare, Fetch, Push, Apply)",
+        "Uses no CONTEXT.md avoid-list term where the preferred term applies, even when the input uses them",
+        "Passes the unslop audit: no AI vocabulary, filler, chatbot phrases, em/en dashes, curly quotes, title-case headings, bold-as-headers, or promotional language",
+        "Every sentence carries one idea and stays under roughly 30 words",
+        "Opens with orienting context: the first two sentences name the workflow or domain framing before listing details",
+        "Pairs each code identifier with its observable effect rather than listing bare identifiers",
+        "Explains the Mapping Health to Part Sync lockout: Task Pane and Settings disable actions when the mapping is Invalid, NeedsUpgrade, or NewerSchema",
+        "Mentions that Create Part now surfaces server validation errors (the client-side duplicate-IPN pre-check was removed)",
+        "Notes the PR's place in the redesign (#140) and/or the green test run (517 tests)",
+        "A domain expert who cannot read C# could state what the change does and why it is being made",
+        "Contains no facts beyond those in source.md"
+      ]
     },
     {
       "id": 2,
       "prompt": "The latest commit changed CanCreatePart in TaskPaneViewModel to also check that the validation error service is present. Summarize what this means for the user.",
       "expected_output": "A short explanation in domain language: Create Part is now disabled when the validation error service is not wired up, instead of silently doing nothing.",
-      "files": ["evals/can-create-part-change/source.md"]
+      "files": [
+        "evals/can-create-part-change/source.md"
+      ],
+      "expectations": [
+        "Uses CONTEXT.md preferred terms verbatim for every domain concept it names (Task Pane, Create Part; Part Sync if mentioned)",
+        "Uses no CONTEXT.md avoid-list term where the preferred term applies, even when the input uses them",
+        "Passes the unslop audit: no AI vocabulary, filler, chatbot phrases, em/en dashes, curly quotes, title-case headings, bold-as-headers, or promotional language",
+        "Every sentence carries one idea and stays under roughly 30 words",
+        "Opens with orienting context: names the Create Part workflow or the effect before the identifier detail",
+        "Pairs each code identifier with its observable effect rather than listing bare identifiers",
+        "States the observable effect: the Task Pane disables Create Part when the validation error service is missing, instead of silently doing nothing",
+        "Gives the design context: SwAddin creates and injects the service at startup, and/or the seam was renamed to ErrorService because it only extracts server validation errors",
+        "A domain expert who cannot read C# could state what the change does and why it is being made",
+        "Contains no facts beyond those in source.md"
+      ]
     },
     {
       "id": 3,
       "prompt": "Explain the change that moved the Copy-to-local action from the Property Mapping Editor to the Settings window. Why is it better there?",
       "expected_output": "A domain-language explanation of the Copy-to-local move, mentioning shared/read-only mappings and the Settings workflow.",
-      "files": ["evals/copy-to-local/source.md"]
+      "files": [
+        "evals/copy-to-local/source.md"
+      ],
+      "expectations": [
+        "Uses CONTEXT.md preferred terms verbatim for every domain concept it names (Property Mapping or Property Mappings editor, Settings window, Mapping Health or Invalid if mentioned)",
+        "Uses no CONTEXT.md avoid-list term where the preferred term applies, even when the input uses them",
+        "Passes the unslop audit: no AI vocabulary, filler, chatbot phrases, em/en dashes, curly quotes, title-case headings, bold-as-headers, or promotional language",
+        "Every sentence carries one idea and stays under roughly 30 words",
+        "Opens with orienting context: names the workflow or the user-facing effect before the detail",
+        "Pairs each code identifier with its observable effect rather than listing bare identifiers",
+        "Explains why Settings is better: the editor cannot be opened for a shared read-only mapping, and/or Settings is where the engineer selects Local vs. Shared",
+        "Describes the new flow: the Copy to local button appears in Settings when the mapping is shared, then the engineer selects Local and Applies",
+        "A domain expert who cannot read C# could state what the change does and why it is being made",
+        "Contains no facts beyond those in source.md"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Summarize what this commit changes for the user.",
+      "expected_output": "A domain-language summary that rewrites the source's avoid-list vocabulary into CONTEXT.md terms (Task Pane not sidebar, IPN not part number, Part Sync not sync, Fetch not load) while staying factually accurate.",
+      "files": [
+        "evals/poisoned-terms-fetch/source.md"
+      ],
+      "expectations": [
+        "Uses CONTEXT.md preferred terms verbatim despite the source using avoid-list terms (Task Pane for sidebar/panel, IPN for part number, Part Sync for sync, Fetch for load/reload, SolidWorks Document Property for custom property, Property Mapping for field mapping)",
+        "Zero avoid-list leakage: no 'sidebar', 'part number', 'custom property', 'field mapping', or loose 'sync'/'load' where a preferred term applies",
+        "Passes the unslop audit: no AI vocabulary, filler, chatbot phrases, em/en dashes, curly quotes, title-case headings, bold-as-headers, or promotional language",
+        "Every sentence carries one idea and stays under roughly 30 words",
+        "Opens with orienting context before the detail",
+        "States the observable fixes: stale IPN now refreshes after Part Sync, the spinner times out at 30 seconds, and the thumbnail Push is unchanged",
+        "A domain expert who cannot read C# could state what the change does and why it is being made",
+        "Contains no facts beyond those in source.md"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Draft the PR description body for this change.",
+      "expected_output": "A PR body that follows docs/agents/pr-conventions.md — Closes line, convention structure, /qa handoff — while the prose portions still read in domain voice. Tests the scope boundary: PR bodies are agent-facing in this repo, so conventions lead and readability supports them.",
+      "files": [
+        "evals/bom-push-guard/source.md"
+      ],
+      "expectations": [
+        "Follows the PR-body contract from docs/agents/pr-conventions.md: 'Closes #173' and the milestone note are present, and the '/qa' handoff line appears at the end",
+        "Uses CONTEXT.md preferred terms verbatim for every domain concept it names (BOM Compare, BOM Diff State, IpnNotFound, Push, IPN, InvenTree)",
+        "Uses no CONTEXT.md avoid-list term where the preferred term applies (no 'BOM sync', 'BOM check', 'upload', loose 'sync')",
+        "Passes the unslop audit: no AI vocabulary, filler, chatbot phrases, em/en dashes, curly quotes, title-case headings, bold-as-headers, or promotional language",
+        "Explains the before/after in observable terms: IpnNotFound lines could be pushed and failed server-side; now they are unchecked and the row explains why",
+        "Structure serves scanning (headings, short bullets) rather than hiding the contract inside dense paragraphs",
+        "Contains no facts beyond those in source.md, apart from repo-convention boilerplate (Closes lines, milestone notes, the /qa handoff) which is expected in a PR body"
+      ]
     }
   ]
 }
