@@ -1,6 +1,6 @@
 ---
 name: review-standards
-description: "Standards-axis reviewer for the shared /review seam. Fetches the diff and commit list from REVIEW_BASE, reads docs/agents/coding-standards.md, and applies the Fowler smell baseline. Returns a structured ## Standards findings block."
+description: "Standards-axis reviewer for the shared /review seam. Fetches the diff and commit list from REVIEW_BASE, reads docs/agents/coding-standards.md, and applies the Fowler smell baseline. Returns a structured ## Standards findings block — or an adjudication digest when handed REPORT_PATH."
 model: swe-2-max
 allowed-tools:
   - read
@@ -16,6 +16,8 @@ The caller will pass you a `REVIEW_BASE`. Use `exec` to fetch the diff and commi
 ## Inputs
 
 - `REVIEW_BASE` — base commit for the review.
+- `SUITE RESULT:` (optional) — a verified test-suite result the caller supplies. Cite it rather than re-running; re-run the suite yourself only when a claim looks suspect or the diff touched shared test infra.
+- `REPORT_PATH` (optional) — when supplied, write the full `## Standards` block to this path via `exec` heredoc (there is no `write` tool) and return only the digest described under Completion criterion.
 
 ## Fetch the review material
 
@@ -52,4 +54,6 @@ Map every significant item in the diff against **repo standards first**, then th
 
 ## Completion criterion
 
-A single `## Standards` block that lists every finding, or `GREEN - No Standards issues detected.` if none. End the block with a verdict line: `**Ready to merge:** Yes | No | With fixes`. Under 800 words. No `## Spec` section.
+With no `REPORT_PATH`: a single `## Standards` block that lists every finding, or `GREEN - No Standards issues detected.` if none. End the block with a verdict line: `**Ready to merge:** Yes | No | With fixes`. Under 800 words. No `## Spec` section.
+
+With `REPORT_PATH`: write that same block to the path, then return only the digest — one line per finding (`[SEVERITY] file:line — <finding>; standard: "<rule>"` or `smell: <name>`) and the verdict line. The digest is the adjudication input; coverage narrative stays in the file. Under 300 words.

@@ -24,4 +24,6 @@ Flag `architectural` when any of these hold: a new top-level module, a change to
 
 The interface is the seam. When it is nearly as complex as the implementation it hides, the cut is shallow — find a deeper one before flagging `routine`.
 
+Rulings in the task body are settled spec: a contradiction or precedence call the orchestrator already made is designed inside — never re-opened, never flagged as a finding.
+
 You cannot ask the user. When the ticket is undecidable, return the candidates or name the missing fact as the flag reason — never a guess.

@@ -28,6 +28,7 @@ Check: `dotnet format "Solidworks Inventree Add-In.sln" --verify-no-changes` —
 
 Notes:
 - All commands above use `--disable-build-servers` and `UseSharedCompilation=false` in `Directory.Build.props` to stop long-running `dotnet` and `VBCSCompiler` processes from holding file locks.
+- `dotnet test` emits ~50 lines of pre-existing `warning CS8618` noise before the result line on every run. When only the verdict matters, append `2>&1 | grep -v "warning CS"` so a green run costs a few lines of context.
 
 ---
 
