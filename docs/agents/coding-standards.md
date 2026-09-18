@@ -128,6 +128,16 @@ For the shared vocabulary, design-it-twice patterns, and deepening guidance, con
 
 ---
 
+## UI Design Language
+
+GUI changes follow the add-in's documented visual vocabulary in [design-language.md](design-language.md) — the tokens, container patterns, and status conventions reused across the Task Pane, Settings, and dialogs. Read it before adding a control, grouping content, or surfacing state in XAML.
+
+- **No hardcoded visual literals.** Colors, fonts, spacing, and control styles come from `SwInventreeAddin/UI/DesignTokens.xaml` resources. Never hex literals, pixel guesses, or ad-hoc `Style` blocks where a named token or style exists.
+- **Reuse the documented patterns.** A grouped choice or state summary uses the card pattern; a status report uses `StatusBarControl`; a message prompt uses `MessageDialog`. Invent a new pattern only when none fits, and call it out in the PR so it can be reviewed on its own merits.
+- **Status colors are severities only.** `BrushStatus*` brushes render severity — never decoration, branding, or emphasis.
+
+---
+
 ## What Reviewers Look For
 
 - Business logic or InvenTree API calls placed directly in XAML code-behind instead of the ViewModel.
@@ -153,3 +163,6 @@ For the shared vocabulary, design-it-twice patterns, and deepening guidance, con
 - Test code that references SolidWorks interop types or otherwise cannot run on a machine without SolidWorks installed.
 - Live-window tests missing the `HiddenTestWindow` off-screen guard.
 - New modules or seams introduced before the code shows a real need for them (YAGNI / over-engineering).
+- Hardcoded color, font, or spacing literals in XAML instead of `DesignTokens.xaml` resources.
+- A new visual pattern invented where a `design-language.md` pattern exists — cards, section headers, status bars, action rows — without being flagged in the PR.
+- `BrushStatus*` colors used for decoration rather than severity, or more than one `PrimaryButtonStyle` button in a dialog.
