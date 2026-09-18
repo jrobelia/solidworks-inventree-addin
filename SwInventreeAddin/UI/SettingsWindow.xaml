@@ -132,11 +132,13 @@
                     <StackPanel x:Name="CredentialFieldsPanel">
                         <!-- The credential choice sits in its own labelled box so
                              the "or" divider reads as username+password OR API
-                             key — the Server URL is never part of the choice. -->
+                             key — the Server URL is never part of the choice.
+                             Canvas white, not the card grey: grey marks the
+                             summary card above; this box is the edit surface. -->
                         <Border x:Name="CredentialGroup"
                                 Margin="0,8,0,0"
                                 Padding="10,8"
-                                Background="{StaticResource BrushSectionHeader}"
+                                Background="White"
                                 BorderBrush="{StaticResource BrushBorder}"
                                 BorderThickness="1">
                             <StackPanel>
