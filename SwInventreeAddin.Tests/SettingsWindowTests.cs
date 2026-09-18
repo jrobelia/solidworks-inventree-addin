@@ -129,6 +129,9 @@ namespace SwInventreeAddin.Tests
                 mappingProvider: new StubPropertyMappingProvider(),
                 mappingProviderFactory: new StubMappingProviderFactory { Factory = _ => invalidProvider });
 
+            IPropertyMappingProvider? applied = null;
+            window.MappingApplied += (s, e) => applied = e;
+
             bool result = await window.ApplySettingsAsync();
 
             Assert.Multiple(() =>
@@ -140,6 +143,12 @@ namespace SwInventreeAddin.Tests
                 Assert.That(footer, Does.Contain("Saved"));
                 Assert.That(footer, Does.Contain("connection successful"));
                 Assert.That(footer, Does.Contain("could not be loaded"));
+                // The provider swapped with the save — the add-in must receive
+                // it even though the file is invalid, or a reopened window
+                // reports a stale provider's health instead of the saved path's.
+                Assert.That(applied, Is.SameAs(invalidProvider));
+                // The probe resolved — the card must leave the Testing state.
+                Assert.That(GetText(window, "ConnectionCardTitle"), Is.EqualTo("Connected"));
             });
         }
 

@@ -620,7 +620,16 @@ namespace SwInventreeAddin.UI
                     _ => $"connection failed ({probe.Message})",
                 };
                 this.Dispatcher.Invoke(() =>
-                    ActionStatusBar.SetStatus($"Saved — {mappingFailureClause}; the Property Mapping file could not be loaded.", StatusSeverity.Error));
+                {
+                    // The provider was swapped even though the file is invalid —
+                    // the add-in and Task Pane must track the saved source path;
+                    // the Invalid result keeps Part Sync gated off on its own.
+                    MappingApplied?.Invoke(this, _mappingProvider);
+                    // The probe already resolved — re-render the card so it
+                    // leaves the Testing state instead of staying blue.
+                    ReloadConfigAndRefreshCard();
+                    ActionStatusBar.SetStatus($"Saved — {mappingFailureClause}; the Property Mapping file could not be loaded.", StatusSeverity.Error);
+                });
                 return false;
             }
 
