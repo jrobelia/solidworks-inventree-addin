@@ -53,7 +53,7 @@ Tokens are defined in `SwInventreeAddin/UI/DesignTokens.xaml` — this doc says 
 ## Reference material
 
 - `docs/screenshots/` — screenshots of the current UI.
-- `docs/sw-addin-layout.pen` — layout sketches.
+- `docs/sw-addin-layout.pen` — the design source of truth; mocks of every shipped window plus the Style Reference card. Edit it through the Pencil MCP — see the `pencil-mockups` skill for the tool quirks. When this doc and the .pen file disagree, the .pen file shows the original intent.
 - ADRs with UI decisions: 0009 (icon font + glyph map), 0010 (button spacing), 0015 (window centering), 0018 (mapping status), 0022 superseded by 0023 (Settings credential state and disclosure).
 
 ## Known drift
