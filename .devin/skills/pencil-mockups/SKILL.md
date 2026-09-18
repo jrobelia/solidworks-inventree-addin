@@ -33,6 +33,10 @@ Mid-list insertion without `Move`: delete the tail siblings, append the new node
 
 `Failed to connect to MCP server 'pencil'` happens often. Retry after 10-25s. Reconnects seem to force a layout re-solve — a stuck element may correct itself after a disconnect, which can mask whether your fix worked. Re-screenshot after any reconnect.
 
+## Disk writes lag the canvas — check before committing
+
+MCP edits mutate the in-memory document; Pencil flushes to the `.pen` file on its own schedule. A `git commit` right after edits can capture a stale file — the tail of the work then shows up as an uncommitted diff on Pencil's next save. Before committing, `git status`/`git diff` the file, or nudge the app to save first.
+
 ## Schema notes
 
 - `layout: vertical|horizontal|none`; children of `none` need explicit x/y and pixel sizes (`fill_container` warns outside flex).
