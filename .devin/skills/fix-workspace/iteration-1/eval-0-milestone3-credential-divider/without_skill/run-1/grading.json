@@ -1,0 +1,64 @@
+{
+  "eval_id": 0,
+  "eval_name": "milestone3-credential-divider",
+  "run": "without_skill",
+  "summary": {
+    "pass_rate": 0.4,
+    "passed": 4,
+    "failed": 6,
+    "total": 10
+  },
+  "note": "Baseline ran with the issue body + Agent Brief pasted inline and was instructed NOT to push or open a PR. Failures on process assertions are partly by instruction — they mark what the skill's pipeline adds (regression test, review loop, PR packaging), not baseline incompetence.",
+  "expectations": [
+    {
+      "text": "issue-comments-fetched-as-spec: run treated the issue comments as part of the spec",
+      "passed": true,
+      "evidence": "Spec was pasted inline into the prompt (body + Agent Brief). fix-report.md applies the comment's acceptable directions and checks each acceptance criterion — comments treated as spec in effect."
+    },
+    {
+      "text": "pre-fix-sha-captured-before-work",
+      "passed": false,
+      "evidence": "No evidence of a PRE_FIX_SHA / REVIEW_BASE capture; not part of the baseline task."
+    },
+    {
+      "text": "fix-branch-per-convention: new branch fix/issue-243 cut from milestone-3",
+      "passed": false,
+      "evidence": "Committed on eval/baseline-243 as instructed (no push/PR allowed). fix/issue-243 never created — baseline had no branch-convention knowledge."
+    },
+    {
+      "text": "tdd-red-green-followed: failing regression test written before the fix",
+      "passed": false,
+      "evidence": "No new test written. Baseline changed XAML first, then reacted to a pre-existing fits-test failure (MaxHeight bump) — test-after-fix, not red-first."
+    },
+    {
+      "text": "regression-test-covers-acceptance: dedicated test asserts URL outside the credential choice",
+      "passed": false,
+      "evidence": "No new test added. The pre-existing CredentialForm_MaxHeightFitsTheFreshStateForm was incidentally involved (its failure drove the MaxHeight bump) but no test asserts the URL/credential grouping."
+    },
+    {
+      "text": "verification-command-green: dotnet test passed",
+      "passed": true,
+      "evidence": "fix-report.md: 795/795 passed on eval/baseline-243 commit 2ca8eb1."
+    },
+    {
+      "text": "commit-references-issue: fix commit references #243",
+      "passed": true,
+      "evidence": "2ca8eb1 'fix(settings): scope credential form's or-divider to the credential choice (#243)' — conventional format inferred from repo history unprompted."
+    },
+    {
+      "text": "review-ran-with-correct-inputs",
+      "passed": false,
+      "evidence": "No review pass of any kind; no REVIEW_STATUS/REVIEW_NOTES."
+    },
+    {
+      "text": "draft-pr-with-review-notes",
+      "passed": false,
+      "evidence": "Instructed not to push or open a PR; none created."
+    },
+    {
+      "text": "scope-respected",
+      "passed": true,
+      "evidence": "fix-report.md: XAML-only change; CredentialEditorState/ApplyCredentialTo, placeholders, hint text, dirty gating, configured-state toolbar all untouched."
+    }
+  ]
+}

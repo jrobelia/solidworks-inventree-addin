@@ -1,0 +1,63 @@
+{
+  "eval_id": 0,
+  "eval_name": "milestone3-credential-divider",
+  "run": "with_skill",
+  "summary": {
+    "pass_rate": 1.0,
+    "passed": 10,
+    "failed": 0,
+    "total": 10
+  },
+  "expectations": [
+    {
+      "text": "issue-comments-fetched-as-spec: run fetched issue #243's body AND all comments per docs/agents/issue-tracker.md",
+      "passed": true,
+      "evidence": "run-report.md step 1 quotes the body and the triage Agent Brief comment (acceptable directions, key interfaces, acceptance criteria, out-of-scope) and stores them together as the fix's spec."
+    },
+    {
+      "text": "pre-fix-sha-captured-before-work: PRE_FIX_SHA captured before fix work and used as REVIEW_BASE",
+      "passed": true,
+      "evidence": "PRE_FIX_SHA=8bcecbe3c30d6d3838898ee7c76e88733fdbdc0c captured at step 4 before the fix commit; parent of bb7ad50; REVIEW_BASE identical in step 7 and in the PR's review notes."
+    },
+    {
+      "text": "fix-branch-per-convention: new branch fix/issue-243 cut from milestone-3",
+      "passed": true,
+      "evidence": "gh pr view 250: headRefName=fix/issue-243, baseRefName=milestone-3. gh pr list returned [] so the skill's no-open-PR path ran per docs/agents/pr-conventions.md ## Branch names."
+    },
+    {
+      "text": "tdd-red-green-followed: failing regression test written before the fix",
+      "passed": true,
+      "evidence": "run-report step 5: RED run failed with 'Could not find element named CredentialGroup/CredentialGroupLabel/CredentialOrDivider'; minimal XAML fix then went green. Caveat: /tdd's 'confirm seams with user' was adapted (no user available) to the already-established logical-tree seam — documented in Deviations."
+    },
+    {
+      "text": "regression-test-covers-acceptance: test asserts Server URL outside the credential choice scope",
+      "passed": true,
+      "evidence": "Verified via git show fix/issue-243: test CredentialGroup_GroupsCredentialFieldsUnderALabel_ExcludingServerUrl asserts UsernameBox/PasswordBox/CredentialOrDivider/ApiKeyBox inside CredentialGroup, UrlBox outside, and CredentialGroupLabel text 'Credential'."
+    },
+    {
+      "text": "verification-command-green: dotnet test passed on the fix commit",
+      "passed": true,
+      "evidence": "run-report step 6: 796 passed / 0 failed (795 baseline + 1 new regression test); dotnet format --verify-no-changes clean."
+    },
+    {
+      "text": "commit-references-issue: fix commit references #243",
+      "passed": true,
+      "evidence": "git log fix/issue-243: bb7ad50 'fix(settings): group credential fields in a labelled box separate from Server URL (#243)'."
+    },
+    {
+      "text": "review-ran-with-correct-inputs: REVIEW_BASE=PRE_FIX_SHA, SPEC_SOURCE=stored spec, AXES=both",
+      "passed": true,
+      "evidence": "Inputs correct per run-report step 7; REVIEW_STATUS=clean. Adaptation: axes ran inline (no subagent tool in the harness) per .devin/agents/review-standards.md + review-spec.md — documented as a deviation, notes still in the documented shape."
+    },
+    {
+      "text": "draft-pr-with-review-notes: draft PR vs milestone-3 with Closes #243 + verbatim REVIEW_NOTES + /qa handoff",
+      "passed": true,
+      "evidence": "Verified gh pr view 250: isDraft=true, base=milestone-3, body contains 'Closes #243', root cause, regression test, verification commands, '### Review notes' with the verbatim REVIEW_NOTES block, '### Deferred and follow-up issues', and the /qa handoff line."
+    },
+    {
+      "text": "scope-respected: precedence/validation unchanged, #240 toolbar untouched",
+      "passed": true,
+      "evidence": "Commit bb7ad50 touches only SettingsWindow.xaml + SettingsWindowTests.cs; CredentialEditorState/ApplyCredentialTo untouched; spec's out-of-scope list respected."
+    }
+  ]
+}

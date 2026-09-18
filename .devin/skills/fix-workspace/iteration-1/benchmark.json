@@ -1,0 +1,206 @@
+{
+  "metadata": {
+    "skill_name": "fix",
+    "skill_path": ".devin/skills/fix",
+    "executor_model": "<model-name>",
+    "analyzer_model": "<model-name>",
+    "timestamp": "2026-09-18T06:22:22Z",
+    "evals_run": [
+      0
+    ],
+    "runs_per_configuration": 3
+  },
+  "runs": [
+    {
+      "eval_id": 0,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 10,
+        "failed": 0,
+        "total": 10,
+        "time_seconds": 0.0,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "issue-comments-fetched-as-spec: run fetched issue #243's body AND all comments per docs/agents/issue-tracker.md",
+          "passed": true,
+          "evidence": "run-report.md step 1 quotes the body and the triage Agent Brief comment (acceptable directions, key interfaces, acceptance criteria, out-of-scope) and stores them together as the fix's spec."
+        },
+        {
+          "text": "pre-fix-sha-captured-before-work: PRE_FIX_SHA captured before fix work and used as REVIEW_BASE",
+          "passed": true,
+          "evidence": "PRE_FIX_SHA=8bcecbe3c30d6d3838898ee7c76e88733fdbdc0c captured at step 4 before the fix commit; parent of bb7ad50; REVIEW_BASE identical in step 7 and in the PR's review notes."
+        },
+        {
+          "text": "fix-branch-per-convention: new branch fix/issue-243 cut from milestone-3",
+          "passed": true,
+          "evidence": "gh pr view 250: headRefName=fix/issue-243, baseRefName=milestone-3. gh pr list returned [] so the skill's no-open-PR path ran per docs/agents/pr-conventions.md ## Branch names."
+        },
+        {
+          "text": "tdd-red-green-followed: failing regression test written before the fix",
+          "passed": true,
+          "evidence": "run-report step 5: RED run failed with 'Could not find element named CredentialGroup/CredentialGroupLabel/CredentialOrDivider'; minimal XAML fix then went green. Caveat: /tdd's 'confirm seams with user' was adapted (no user available) to the already-established logical-tree seam \u00e2\u20ac\u201d documented in Deviations."
+        },
+        {
+          "text": "regression-test-covers-acceptance: test asserts Server URL outside the credential choice scope",
+          "passed": true,
+          "evidence": "Verified via git show fix/issue-243: test CredentialGroup_GroupsCredentialFieldsUnderALabel_ExcludingServerUrl asserts UsernameBox/PasswordBox/CredentialOrDivider/ApiKeyBox inside CredentialGroup, UrlBox outside, and CredentialGroupLabel text 'Credential'."
+        },
+        {
+          "text": "verification-command-green: dotnet test passed on the fix commit",
+          "passed": true,
+          "evidence": "run-report step 6: 796 passed / 0 failed (795 baseline + 1 new regression test); dotnet format --verify-no-changes clean."
+        },
+        {
+          "text": "commit-references-issue: fix commit references #243",
+          "passed": true,
+          "evidence": "git log fix/issue-243: bb7ad50 'fix(settings): group credential fields in a labelled box separate from Server URL (#243)'."
+        },
+        {
+          "text": "review-ran-with-correct-inputs: REVIEW_BASE=PRE_FIX_SHA, SPEC_SOURCE=stored spec, AXES=both",
+          "passed": true,
+          "evidence": "Inputs correct per run-report step 7; REVIEW_STATUS=clean. Adaptation: axes ran inline (no subagent tool in the harness) per .devin/agents/review-standards.md + review-spec.md \u00e2\u20ac\u201d documented as a deviation, notes still in the documented shape."
+        },
+        {
+          "text": "draft-pr-with-review-notes: draft PR vs milestone-3 with Closes #243 + verbatim REVIEW_NOTES + /qa handoff",
+          "passed": true,
+          "evidence": "Verified gh pr view 250: isDraft=true, base=milestone-3, body contains 'Closes #243', root cause, regression test, verification commands, '### Review notes' with the verbatim REVIEW_NOTES block, '### Deferred and follow-up issues', and the /qa handoff line."
+        },
+        {
+          "text": "scope-respected: precedence/validation unchanged, #240 toolbar untouched",
+          "passed": true,
+          "evidence": "Commit bb7ad50 touches only SettingsWindow.xaml + SettingsWindowTests.cs; CredentialEditorState/ApplyCredentialTo untouched; spec's out-of-scope list respected."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 0,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.4,
+        "passed": 4,
+        "failed": 6,
+        "total": 10,
+        "time_seconds": 0.0,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "issue-comments-fetched-as-spec: run treated the issue comments as part of the spec",
+          "passed": true,
+          "evidence": "Spec was pasted inline into the prompt (body + Agent Brief). fix-report.md applies the comment's acceptable directions and checks each acceptance criterion \u00e2\u20ac\u201d comments treated as spec in effect."
+        },
+        {
+          "text": "pre-fix-sha-captured-before-work",
+          "passed": false,
+          "evidence": "No evidence of a PRE_FIX_SHA / REVIEW_BASE capture; not part of the baseline task."
+        },
+        {
+          "text": "fix-branch-per-convention: new branch fix/issue-243 cut from milestone-3",
+          "passed": false,
+          "evidence": "Committed on eval/baseline-243 as instructed (no push/PR allowed). fix/issue-243 never created \u00e2\u20ac\u201d baseline had no branch-convention knowledge."
+        },
+        {
+          "text": "tdd-red-green-followed: failing regression test written before the fix",
+          "passed": false,
+          "evidence": "No new test written. Baseline changed XAML first, then reacted to a pre-existing fits-test failure (MaxHeight bump) \u00e2\u20ac\u201d test-after-fix, not red-first."
+        },
+        {
+          "text": "regression-test-covers-acceptance: dedicated test asserts URL outside the credential choice",
+          "passed": false,
+          "evidence": "No new test added. The pre-existing CredentialForm_MaxHeightFitsTheFreshStateForm was incidentally involved (its failure drove the MaxHeight bump) but no test asserts the URL/credential grouping."
+        },
+        {
+          "text": "verification-command-green: dotnet test passed",
+          "passed": true,
+          "evidence": "fix-report.md: 795/795 passed on eval/baseline-243 commit 2ca8eb1."
+        },
+        {
+          "text": "commit-references-issue: fix commit references #243",
+          "passed": true,
+          "evidence": "2ca8eb1 'fix(settings): scope credential form's or-divider to the credential choice (#243)' \u00e2\u20ac\u201d conventional format inferred from repo history unprompted."
+        },
+        {
+          "text": "review-ran-with-correct-inputs",
+          "passed": false,
+          "evidence": "No review pass of any kind; no REVIEW_STATUS/REVIEW_NOTES."
+        },
+        {
+          "text": "draft-pr-with-review-notes",
+          "passed": false,
+          "evidence": "Instructed not to push or open a PR; none created."
+        },
+        {
+          "text": "scope-respected",
+          "passed": true,
+          "evidence": "fix-report.md: XAML-only change; CredentialEditorState/ApplyCredentialTo, placeholders, hint text, dirty gating, configured-state toolbar all untouched."
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 1.0,
+        "stddev": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "tokens": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 0.4,
+        "stddev": 0.0,
+        "min": 0.4,
+        "max": 0.4
+      },
+      "time_seconds": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "tokens": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    "delta": {
+      "pass_rate": "+0.60",
+      "time_seconds": "+0.0",
+      "tokens": "+0"
+    }
+  },
+  "notes": [
+    "Analyst: the +0.60 delta is driven by pipeline artifacts, not fix quality — both runs converged on near-identical XAML approaches (Credential label + container/divider text + MaxHeight bump) since the bug spec prescribes acceptable directions. For cosmetic layout bugs, fix quality alone does not discriminate.",
+    "Analyst: 3 of the 6 baseline failures were by instruction (it was told not to push/PR, so PRE_FIX_SHA, branch convention, and PR assertions could not pass). The genuinely discriminating failures: no red-first regression test and no review pass — the baseline fixed the bug then reacted to a pre-existing test failure (test-after-fix); the skill wrote a dedicated regression test red-first that encodes the acceptance criterion.",
+    "Analyst: non-discriminating assertions (passed both runs): issue-comments-as-spec, verification-command-green, commit-references-issue, scope-respected. Baseline even matched conventional commit format unprompted — consider trimming these or reserving them as smoke checks.",
+    "Analyst: timing/token data unavailable — the harness did not supply total_tokens/duration_ms in completion notifications, so time and token columns are zeros.",
+    "Skill-improvement signal (deviations the with-skill run documented): (a) step 4 clean-tree check has no carve-out for unrelated dirty files though the open-PR path already carries the 'commit only the files the fix touches' rule; (b) /tdd 'confirm seams with user' has no unattended-mode guidance — run substituted the already-established test seam; (c) /review's subagent-dispatch fallback covers run_subagent-denied but not 'no subagent capability at all' — run invented the inline-axes adaptation; (d) step 8 leaves Closes #N placement in a new-PR body unspecified.",
+    "Analyst: positive signal — the run surfaced the milestone-branch auto-close caveat unprompted and flagged it for the /qa handoff; the pr-conventions pointer did its job."
+  ]
+}

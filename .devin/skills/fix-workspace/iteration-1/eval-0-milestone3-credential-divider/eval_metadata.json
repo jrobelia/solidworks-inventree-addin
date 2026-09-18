@@ -1,0 +1,47 @@
+{
+  "eval_id": 0,
+  "eval_name": "milestone3-credential-divider",
+  "prompt": "/fix #243",
+  "assertions": [
+    {
+      "name": "issue-comments-fetched-as-spec",
+      "description": "The run fetched issue #243's body AND all comments (the Agent Brief comment is part of the spec) per docs/agents/issue-tracker.md"
+    },
+    {
+      "name": "pre-fix-sha-captured-before-work",
+      "description": "git rev-parse HEAD was captured as PRE_FIX_SHA before any fix commit landed, and /review later used it as REVIEW_BASE"
+    },
+    {
+      "name": "fix-branch-per-convention",
+      "description": "A new branch fix/issue-243 was cut from milestone-3 (no open PR existed on milestone-3)"
+    },
+    {
+      "name": "tdd-red-green-followed",
+      "description": "The /tdd skill loop ran: a failing regression test reproducing the bug was written before the fix, then the minimal fix made it pass"
+    },
+    {
+      "name": "regression-test-covers-acceptance",
+      "description": "The regression test asserts Server URL is visually outside the username+password OR API key choice scope (the acceptance criterion from the Agent Brief)"
+    },
+    {
+      "name": "verification-command-green",
+      "description": "dotnet test \"SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj\" --disable-build-servers passed on the fix commit"
+    },
+    {
+      "name": "commit-references-issue",
+      "description": "The fix commit message references #243"
+    },
+    {
+      "name": "review-ran-with-correct-inputs",
+      "description": "/review ran with REVIEW_BASE=PRE_FIX_SHA, SPEC_SOURCE=the stored fix spec (body+comments), AXES=both, and returned clean/resolved/deferred (or escalated/capped with user consultation recorded)"
+    },
+    {
+      "name": "draft-pr-with-review-notes",
+      "description": "A draft PR opened against milestone-3 containing Closes #243, a one-line root cause + regression test note, build/test commands, ### Review notes with verbatim REVIEW_NOTES, and the /qa handoff line"
+    },
+    {
+      "name": "scope-respected",
+      "description": "Credential precedence/validation logic unchanged, configured-state card toolbar (#240) untouched, no out-of-scope edits"
+    }
+  ]
+}
