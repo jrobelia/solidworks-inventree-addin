@@ -118,7 +118,7 @@
                  The MaxHeight keeps the expanded dialog inside a small monitor. -->
             <ScrollViewer x:Name="CredentialFormScroll"
                           Visibility="Collapsed"
-                          MaxHeight="300"
+                          MaxHeight="340"
                           Margin="0,10,0,0"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
@@ -130,62 +130,82 @@
                     </StackPanel>
 
                     <StackPanel x:Name="CredentialFieldsPanel">
-                        <TextBlock Text="Username" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
-                        <TextBox x:Name="UsernameBox" Style="{StaticResource SWFieldStyle}" Height="28" />
+                        <!-- The credential choice sits in its own labelled box so
+                             the "or" divider reads as username+password OR API
+                             key — the Server URL is never part of the choice.
+                             Canvas white, not the card grey: grey marks the
+                             summary card above; this box is the edit surface. -->
+                        <Border x:Name="CredentialGroup"
+                                Margin="0,8,0,0"
+                                Padding="10,8"
+                                Background="White"
+                                BorderBrush="{StaticResource BrushBorder}"
+                                BorderThickness="1">
+                            <StackPanel>
+                                <TextBlock x:Name="CredentialGroupLabel"
+                                           Text="Credential"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource BrushForeground}" />
 
-                        <TextBlock Text="Password" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
-                        <PasswordBox x:Name="PasswordBox" Height="28"
-                                     Style="{StaticResource SWPasswordBoxStyle}" />
-                        <TextBlock Margin="0,4,0,0"
-                                   FontSize="{StaticResource FontSizeBody}"
-                                   Foreground="{StaticResource BrushSubtle}"
-                                   TextWrapping="Wrap"
-                                   Text="Used once to request an API token &#x2014; the password itself is not saved." />
+                                <TextBlock Text="Username" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
+                                <TextBox x:Name="UsernameBox" Style="{StaticResource SWFieldStyle}" Height="28" />
 
-                        <!-- "or" divider -->
-                        <Grid Margin="0,10,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Separator Grid.Column="0" VerticalAlignment="Center"
-                                       Background="{StaticResource BrushBorder}" />
-                            <TextBlock Grid.Column="1" Text="or"
-                                       Margin="8,0" VerticalAlignment="Center"
-                                       Foreground="{StaticResource BrushSubtle}" />
-                            <Separator Grid.Column="2" VerticalAlignment="Center"
-                                       Background="{StaticResource BrushBorder}" />
-                        </Grid>
+                                <TextBlock Text="Password" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
+                                <PasswordBox x:Name="PasswordBox" Height="28"
+                                             Style="{StaticResource SWPasswordBoxStyle}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           FontSize="{StaticResource FontSizeBody}"
+                                           Foreground="{StaticResource BrushSubtle}"
+                                           TextWrapping="Wrap"
+                                           Text="Used once to request an API token &#x2014; the password itself is not saved." />
 
-                        <TextBlock Text="API Key" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
-                        <Grid>
-                            <PasswordBox x:Name="ApiKeyBox" Height="28"
-                                         Style="{StaticResource SWPasswordBoxStyle}" />
-                            <!-- Placeholder overlays: dots stand in for a saved
-                                 key (never the key itself); a paste prompt shows
-                                 when no key is saved. Both ignore hit-testing so
-                                 the PasswordBox stays editable underneath. -->
-                            <TextBlock x:Name="ApiKeyDotsPlaceholder"
-                                       Text="&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;"
-                                       Margin="8,0,0,0"
-                                       VerticalAlignment="Center"
-                                       Foreground="{StaticResource BrushSubtle}"
-                                       IsHitTestVisible="False"
-                                       Visibility="Collapsed" />
-                            <TextBlock x:Name="ApiKeyPromptPlaceholder"
-                                       Text="Paste key"
-                                       Margin="8,0,0,0"
-                                       VerticalAlignment="Center"
-                                       Foreground="{StaticResource BrushSubtle}"
-                                       IsHitTestVisible="False"
-                                       Visibility="Collapsed" />
-                        </Grid>
-                        <TextBlock Margin="0,4,0,0"
-                                   FontSize="{StaticResource FontSizeBody}"
-                                   Foreground="{StaticResource BrushSubtle}"
-                                   TextWrapping="Wrap"
-                                   Text="If both are filled, the API key is used." />
+                                <!-- "or" divider -->
+                                <Grid Margin="0,10,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Separator Grid.Column="0" VerticalAlignment="Center"
+                                               Background="{StaticResource BrushBorder}" />
+                                    <TextBlock x:Name="CredentialOrDivider"
+                                               Grid.Column="1" Text="or"
+                                               Margin="8,0" VerticalAlignment="Center"
+                                               Foreground="{StaticResource BrushSubtle}" />
+                                    <Separator Grid.Column="2" VerticalAlignment="Center"
+                                               Background="{StaticResource BrushBorder}" />
+                                </Grid>
+
+                                <TextBlock Text="API Key" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
+                                <Grid>
+                                    <PasswordBox x:Name="ApiKeyBox" Height="28"
+                                                 Style="{StaticResource SWPasswordBoxStyle}" />
+                                    <!-- Placeholder overlays: dots stand in for a saved
+                                         key (never the key itself); a paste prompt shows
+                                         when no key is saved. Both ignore hit-testing so
+                                         the PasswordBox stays editable underneath. -->
+                                    <TextBlock x:Name="ApiKeyDotsPlaceholder"
+                                               Text="&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;"
+                                               Margin="8,0,0,0"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource BrushSubtle}"
+                                               IsHitTestVisible="False"
+                                               Visibility="Collapsed" />
+                                    <TextBlock x:Name="ApiKeyPromptPlaceholder"
+                                               Text="Paste key"
+                                               Margin="8,0,0,0"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource BrushSubtle}"
+                                               IsHitTestVisible="False"
+                                               Visibility="Collapsed" />
+                                </Grid>
+                                <TextBlock Margin="0,4,0,0"
+                                           FontSize="{StaticResource FontSizeBody}"
+                                           Foreground="{StaticResource BrushSubtle}"
+                                           TextWrapping="Wrap"
+                                           Text="If both are filled, the API key is used." />
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
                 </StackPanel>
