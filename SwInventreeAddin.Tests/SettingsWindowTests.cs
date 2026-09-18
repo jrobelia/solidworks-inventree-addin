@@ -1778,6 +1778,30 @@ namespace SwInventreeAddin.Tests
             Assert.That(IsInsideCredentialForm(window, "UrlBox"), Is.True);
         }
 
+        // ── Credential group vs Server URL (#243) ────────────────────────────
+        // The "or" divider scopes username+password OR API key only — the
+        // Server URL is always required and not part of the choice. A labelled
+        // Credential group wraps the credential fields so the divider cannot
+        // read as "URL+login vs key".
+
+        [Test]
+        public void CredentialGroup_GroupsCredentialFieldsUnderALabel_ExcludingServerUrl()
+        {
+            var window = CreateWindow(configProvider: StubConfigProvider.WithNoSavedConfig());
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetText(window, "CredentialGroupLabel"),
+                            Is.EqualTo("Credential"));
+                Assert.That(IsInside(window, "UsernameBox", "CredentialGroup"), Is.True);
+                Assert.That(IsInside(window, "PasswordBox", "CredentialGroup"), Is.True);
+                Assert.That(IsInside(window, "CredentialOrDivider", "CredentialGroup"), Is.True);
+                Assert.That(IsInside(window, "ApiKeyBox", "CredentialGroup"), Is.True);
+                Assert.That(IsInside(window, "UrlBox", "CredentialGroup"), Is.False,
+                            "the Server URL is not part of the credential choice");
+            });
+        }
+
         // ── Helpers ───────────────────────────────────────────────────────────
 
         // The open probe applies its verdict via Dispatcher.Invoke from a pool
