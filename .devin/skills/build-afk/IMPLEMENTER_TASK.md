@@ -2,6 +2,8 @@
 
 Dispatch one per ticket. Fill every `{{slot}}`; the implementer profile body already carries the loop, the seam discipline, and the status contract — this template carries the per-ticket specifics and the pointers.
 
+`{{extra_context}}` carries the outcomes of the tickets this one was blocked on plus any spec rulings confirmed at the batch gate that govern this ticket — write rulings as settled spec, not as open questions. Write `None.` when empty.
+
 ```
 run_subagent(
   profile: "build-implementer",     # rounds 4-5 of a fix ladder: "build-implementer-max"
@@ -20,7 +22,7 @@ You are implementing ticket #{{ticket}}: {{ticket_title}}
 Fetch the body and **all comments** first — comments are part of the spec (`docs/agents/issue-tracker.md` `## Comments are part of the spec`):
 
 ```
-gh issue view {{ticket}} --comments
+gh issue view {{ticket}} --json title,body,comments,labels
 ```
 
 {{extra_context}}

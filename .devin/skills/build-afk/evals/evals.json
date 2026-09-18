@@ -42,12 +42,13 @@
     {
       "id": 4,
       "prompt": "Ticket #901 merges into the batch branch and its per-ticket review keeps returning findings. Walk the five-round fix ladder: which calls happen at each round, and how do open findings get adjudicated?",
-      "expected_output": "Each round dispatches review-spec on the merged diff (REVIEW_BASE = batch SHA before the merge, SPEC = ticket body+comments, IMPLEMENTER CLAIMS = the implementer's status JSON) and persists raw output to reports/901-review-<round>.md. Rounds 1–3 resume the implementer via run_subagent's resume param; rounds 4–5 dispatch a fresh build-implementer-max (swe-2-max). Open findings are adjudicated against coding-standards.md's own tests with YAGNI load-bearing; contested or non-load-bearing findings park with a written ruling in reports/ citing the standard. The loop stops for the maintainer only when every path forward is a guess.",
+      "expected_output": "Each round dispatches review-spec on the merged diff (REVIEW_BASE = batch SHA before the merge, SPEC = ticket body+comments, IMPLEMENTER CLAIMS = the implementer's status JSON, SUITE RESULT = the post-merge dotnet test line, REPORT_PATH = reports/901-review-<round>.md — the reviewer writes its full findings there itself and returns an adjudication digest). Rounds 1–3 resume the implementer via run_subagent's resume param; rounds 4–5 dispatch a fresh build-implementer-max (swe-2-max). Open findings are adjudicated against coding-standards.md's own tests with YAGNI load-bearing; contested or non-load-bearing findings park with a written ruling in reports/ citing the standard. The loop stops for the maintainer only when every path forward is a guess.",
       "files": [],
       "expectations": [
         "review-spec runs with REVIEW_BASE equal to the batch SHA before the merge and carries the ticket body plus comments as SPEC",
-        "IMPLEMENTER CLAIMS are passed to the reviewer",
-        "raw reviewer output persists to reports/<N>-review-<round>.md",
+        "IMPLEMENTER CLAIMS and the post-merge SUITE RESULT are passed to the reviewer",
+        "the dispatch passes REPORT_PATH=reports/<N>-review-<round>.md and the reviewer self-persists its full findings there",
+        "the reviewer returns an adjudication digest — severity, file:line, and spec quote per finding — rather than the full block",
         "rounds 1–3 resume the same implementer subagent",
         "rounds 4–5 dispatch a fresh build-implementer-max",
         "non-load-bearing findings park with a written ruling citing the standard; the YAGNI test decides load-bearing status",
@@ -68,7 +69,7 @@
     },
     {
       "id": 6,
-      "prompt": "A /build-afk session compacts mid-run: #901 shows Task 901: complete in PROGRESS.md, and the last ledger line reads Task 902: fix round 2. The session resumes. How does the orchestrator reconstruct state, and what does it do first?",
+      "prompt": "A /build-afk session compacts mid-run: #901 shows 14:02 Task 901: complete in PROGRESS.md, and the last ledger line reads 15:47 Task 902: fix round 2. The session resumes. How does the orchestrator reconstruct state, and what does it do first?",
       "expected_output": "It trusts .scratch/build-afk/<run>/STATUS.json, PROGRESS.md, and git log over session memory. #901 is never re-dispatched — the ledger and git log prove it merged. #902's trailing fix-round line resumes the ladder at round 3. The orchestrator refetches every issue's body and comments and flags any that changed mid-run before proceeding.",
       "files": [],
       "expectations": [
@@ -120,14 +121,53 @@
     {
       "id": 10,
       "prompt": "/build-afk spec #208 resolves children #211 through #214. The prior-work check finds: open PR #216 whose body says Closes #211, a local branch afk/213, and #212's ## Blocked by points at closed issue #209. What reaches the batch gate?",
-      "expected_output": "Each ticket gets a disposition presented at the batch-confirmation gate: #211's open Closes PR and #213's afk/213 branch surface satisfied / adopt / rebuild options; #212 counts as satisfied because its ## Blocked by references a closed issue. Adopting a branch makes it the ticket's dispatch base — in batch mode the batch base — and its existing draft PR is superseded or absorbed into the run's PR rather than left as a separate stacked PR.",
+      "expected_output": "Each ticket gets a disposition presented at the batch-confirmation gate: #211's open Closes PR and #213's afk/213 branch surface satisfied / adopt / rebuild options; #212's ## Blocked by edge to closed #209 is satisfied without a search — the edge clears and #212 is unblocked, but it still gets its own disposition rather than being dropped. Adopting a branch makes it the ticket's dispatch base — in batch mode the batch base — and its existing draft PR is superseded or absorbed into the run's PR rather than left as a separate stacked PR.",
       "files": [],
       "expectations": [
-        "open PRs are found via gh pr list --search \"Closes #<N>\" --state open",
+        "open PRs are found via gh pr list --search \"Closes #<N>\" --state open --json number,title,url",
+        "PR-body references are projected with --json/--jq rather than pulling full PR bodies into context",
         "branches are found via git branch -a --list \"build/*<N>*\" --list \"afk/<N>\"",
         "each finding surfaces at the batch gate with satisfied / adopt / rebuild options",
-        "a ## Blocked by reference to a closed issue counts as satisfied",
+        "a ## Blocked by edge to a closed issue is satisfied without a search — the dependent is unblocked but still gets its own disposition",
         "an adopted branch folds into the run's PR topology — the existing draft PR is superseded or absorbed, never a separate stacked PR"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "/build-afk spec #900 resolves children #901 and #902. The parent's Implementation Decisions say \"the form starts on Sign-in mode\", but #901's AC says \"a saved API key preselects Paste API key mode\". The spec set also never says whether a saved API key beats a freshly typed username+password pair. What reaches the batch gate, and where do the rulings go?",
+      "expected_output": "The gate lists two proposed rulings: the parent↔child contradiction (Sign-in default vs saved-key preselect) and the unspecified precedence rule (saved key vs typed pair). The default ruling is that the child's finer-grained AC governs the parent's generality — saved key preselects Paste mode; the precedence gap gets a proposed ruling for the maintainer. Confirmed rulings propagate to the designer via {{blocker_context}} and to the implementer via {{extra_context}} or the seam note — downstream agents see settled spec, never the raw contradiction.",
+      "files": [],
+      "expectations": [
+        "the parent↔child contradiction is caught during resolution and listed at the batch gate with a proposed ruling",
+        "the unspecified precedence/interaction rule is listed at the gate as its own ruling, not left for a designer or implementer to guess",
+        "the default ruling is that the child's finer-grained AC governs the parent's generality",
+        "rulings reach the designer through {{blocker_context}} and the implementer through {{extra_context}} or the seam note",
+        "downstream agents apply a ruling as settled spec — they never see the raw contradiction"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "/build-afk spec #900's prior-work check finds branch build/spec-800-801 whose tip predates PARENT_BRANCH's latest merges — the adopted base is stale, missing current docs and skill files. For #903 the check finds nothing: no afk/903 branch, no open PR. What does the orchestrator do with each finding?",
+      "expected_output": "The stale adopted base becomes the batch base, and at setup the orchestrator merges PARENT_BRANCH into the batch branch so implementers read current docs and the closeout merge is clean by construction — never a rebase, because the adopted commits are referenced by the folded PRs. For #903, an absent afk/ branch proves nothing (closeout deletes them): the check falls back to merged ancestry on PARENT_BRANCH (git log --grep, branch --contains, or patch-id) and to prior run ledgers (.scratch/build-afk/*/STATUS.json commit fields) before declaring no prior work. Each disposition and its source is recorded in PROGRESS.md.",
+      "files": [],
+      "expectations": [
+        "a stale adopted base gets PARENT_BRANCH merged into the batch branch at setup, never rebased",
+        "the no-rebase reason is that the adopted commits are referenced by the folded PRs",
+        "an absent afk/<N> branch does not count as 'no prior work' because closeout deletes them",
+        "the fallback checks merged ancestry on PARENT_BRANCH and prior run ledgers before declaring no prior work",
+        "the disposition and its source are recorded in PROGRESS.md"
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "A /build-afk session has no exec tool grants for any subagent profile. What does the batch gate say about dispatch, and what happens at setup?",
+      "expected_output": "The batch gate states 'serial dispatch this run' plainly — the skill never implies fan-out that can't happen. At setup the orchestrator surfaces exec grants for the designer, implementer, and reviewer profiles before the design pass — requesting them from the maintainer if missing. A grant confirmed there upgrades the serial declaration; without one the run stays serial and the outcome is recorded in the ledger.",
+      "files": [],
+      "expectations": [
+        "an ungranted run states 'serial dispatch this run' at the batch gate rather than implying fan-out",
+        "setup surfaces the tool grants each subagent profile needs (exec for implementers and reviewers, read/grep/glob for the designer) before the design pass",
+        "a grant confirmed at setup upgrades the gate's serial declaration",
+        "the grant outcome is recorded in the run ledger"
       ]
     }
   ]
