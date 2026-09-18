@@ -2,6 +2,7 @@
     x:Class="SwInventreeAddin.UI.SettingsWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="clr-namespace:SwInventreeAddin.UI"
     Title="{Binding Version, StringFormat='InvenTree Settings - v{0}'}"
     Width="480"
     SizeToContent="Height"
@@ -32,65 +33,188 @@
                        FontWeight="SemiBold"
                        Foreground="{StaticResource BrushForeground}" />
 
-            <TextBlock Text="Server URL" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
-            <TextBox x:Name="UrlBox" Style="{StaticResource SWFieldStyle}" Height="28" />
+            <!-- Status card: fixed three-line layout once anything is saved.
+                 Only the dot, title, and line values change between states —
+                 never the structure. The API key is never shown here (ADR-0022). -->
+            <Border x:Name="ConnectionCard"
+                    Margin="0,8,0,0"
+                    Padding="10,8"
+                    Background="{StaticResource BrushSectionHeader}"
+                    BorderBrush="{StaticResource BrushBorder}"
+                    BorderThickness="1"
+                    Visibility="Collapsed">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse x:Name="ConnectionStatusDot"
+                                 Width="10" Height="10"
+                                 StrokeThickness="1.5"
+                                 VerticalAlignment="Center" />
+                        <TextBlock x:Name="ConnectionCardTitle"
+                                   Margin="8,0,0,0"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   Foreground="{StaticResource BrushForeground}" />
+                    </StackPanel>
 
-            <TextBlock Text="Username" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
-            <TextBox x:Name="UsernameBox" Style="{StaticResource SWFieldStyle}" Height="28" />
+                    <Grid Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="80" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition />
+                            <RowDefinition />
+                            <RowDefinition />
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Server"
+                                   Foreground="{StaticResource BrushSubtle}" />
+                        <TextBlock x:Name="ConnectionCardServer"
+                                   Grid.Row="0" Grid.Column="1"
+                                   TextTrimming="CharacterEllipsis"
+                                   Foreground="{StaticResource BrushForeground}" />
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Credential"
+                                   Foreground="{StaticResource BrushSubtle}" />
+                        <TextBlock x:Name="ConnectionCardCredential"
+                                   Grid.Row="1" Grid.Column="1"
+                                   Foreground="{StaticResource BrushForeground}" />
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Connection"
+                                   Foreground="{StaticResource BrushSubtle}" />
+                        <TextBlock x:Name="ConnectionCardConnection"
+                                   Grid.Row="2" Grid.Column="1"
+                                   TextTrimming="CharacterEllipsis"
+                                   Foreground="{StaticResource BrushForeground}" />
+                    </Grid>
 
-            <TextBlock Text="Password" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
-            <PasswordBox x:Name="PasswordBox" Height="28"
-                         Style="{StaticResource SWPasswordBoxStyle}" />
-
-            <!-- Advanced expander: raw API key -->
-            <Expander x:Name="AdvancedExpander"
-                      Header="Advanced — paste API key directly"
-                      Margin="0,10,0,0"
-                      Foreground="{StaticResource BrushSubtle}"
-                      FontSize="{StaticResource FontSizeBody}">
-                <StackPanel Margin="0,6,0,0">
-                    <TextBlock Text="API Key" Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,4" />
-                    <TextBox x:Name="ApiBox" Style="{StaticResource SWFieldStyle}" Height="28" />
-                    <TextBlock Margin="0,4,0,0"
-                               FontSize="{StaticResource FontSizeBody}"
-                               Foreground="{StaticResource BrushSubtle}"
-                               TextWrapping="Wrap"
-                               Text="Leave username and password blank to use this key directly." />
+                    <!-- Toolbar exists only while the card summarizes a complete
+                         config — in the auth state the form below is already open. -->
+                    <StackPanel x:Name="ConnectionCardToolbar"
+                                Orientation="Horizontal"
+                                Margin="0,8,0,0"
+                                Visibility="Collapsed">
+                        <Button x:Name="ChangeServerButton"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Height="24" Margin="0,0,6,0"
+                                Click="ChangeServer_Click">
+                            <TextBlock Text="Change server" VerticalAlignment="Center" />
+                        </Button>
+                        <Button x:Name="ChangeCredentialButton"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Height="24" Margin="0,0,6,0"
+                                Click="ChangeCredential_Click">
+                            <TextBlock Text="Change credential" VerticalAlignment="Center" />
+                        </Button>
+                        <Button x:Name="RemoveApiKeyButton"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Height="24" Margin="0"
+                                Click="RemoveApiKey_Click">
+                            <TextBlock Text="Remove API key" VerticalAlignment="Center" />
+                        </Button>
+                    </StackPanel>
                 </StackPanel>
-            </Expander>
+            </Border>
 
-            <!-- Test Connection + connection status bar -->
-            <Grid Margin="0,16,0,0">
+            <!-- One plain form: Server URL, then username+password OR the key.
+                 No mode switcher, no Show/Hide — the key field is always masked.
+                 The MaxHeight keeps the expanded dialog inside a small monitor. -->
+            <ScrollViewer x:Name="CredentialFormScroll"
+                          Visibility="Collapsed"
+                          MaxHeight="300"
+                          Margin="0,10,0,0"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="0,0,4,0">
+
+                    <StackPanel x:Name="UrlFieldPanel">
+                        <TextBlock Text="Server URL" Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,4" />
+                        <TextBox x:Name="UrlBox" Style="{StaticResource SWFieldStyle}" Height="28" />
+                    </StackPanel>
+
+                    <StackPanel x:Name="CredentialFieldsPanel">
+                        <TextBlock Text="Username" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
+                        <TextBox x:Name="UsernameBox" Style="{StaticResource SWFieldStyle}" Height="28" />
+
+                        <TextBlock Text="Password" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
+                        <PasswordBox x:Name="PasswordBox" Height="28"
+                                     Style="{StaticResource SWPasswordBoxStyle}" />
+                        <TextBlock Margin="0,4,0,0"
+                                   FontSize="{StaticResource FontSizeBody}"
+                                   Foreground="{StaticResource BrushSubtle}"
+                                   TextWrapping="Wrap"
+                                   Text="Used once to request an API token &#x2014; the password itself is not saved." />
+
+                        <!-- "or" divider -->
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Separator Grid.Column="0" VerticalAlignment="Center"
+                                       Background="{StaticResource BrushBorder}" />
+                            <TextBlock Grid.Column="1" Text="or"
+                                       Margin="8,0" VerticalAlignment="Center"
+                                       Foreground="{StaticResource BrushSubtle}" />
+                            <Separator Grid.Column="2" VerticalAlignment="Center"
+                                       Background="{StaticResource BrushBorder}" />
+                        </Grid>
+
+                        <TextBlock Text="API Key" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
+                        <Grid>
+                            <PasswordBox x:Name="ApiKeyBox" Height="28"
+                                         Style="{StaticResource SWPasswordBoxStyle}" />
+                            <!-- Placeholder overlays: dots stand in for a saved
+                                 key (never the key itself); a paste prompt shows
+                                 when no key is saved. Both ignore hit-testing so
+                                 the PasswordBox stays editable underneath. -->
+                            <TextBlock x:Name="ApiKeyDotsPlaceholder"
+                                       Text="&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;"
+                                       Margin="8,0,0,0"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource BrushSubtle}"
+                                       IsHitTestVisible="False"
+                                       Visibility="Collapsed" />
+                            <TextBlock x:Name="ApiKeyPromptPlaceholder"
+                                       Text="Paste key"
+                                       Margin="8,0,0,0"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource BrushSubtle}"
+                                       IsHitTestVisible="False"
+                                       Visibility="Collapsed" />
+                        </Grid>
+                        <TextBlock Margin="0,4,0,0"
+                                   FontSize="{StaticResource FontSizeBody}"
+                                   Foreground="{StaticResource BrushSubtle}"
+                                   TextWrapping="Wrap"
+                                   Text="If both are filled, the API key is used." />
+                    </StackPanel>
+
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Section action row: the connection status bar reports what the
+                 last connection-scoped action did (Test connection, Remove API
+                 key); Apply/Save outcomes report on the footer action bar, and
+                 the card above holds the persistent state. Test connection is
+                 connection-scoped — it never saves. -->
+            <Grid x:Name="ConnectionActionRow" Margin="0,10,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="8" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <Border x:Name="ConnectionStatusBar"
-                        Grid.Column="0"
-                        Height="32"
-                        Background="#FFF0F0F0"
-                        BorderBrush="{StaticResource BrushBorder}"
-                        BorderThickness="0,1,0,0">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="4" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Border x:Name="ConnectionStatusStripe" Grid.Column="0"
-                                Background="{StaticResource BrushStatusNone}" />
-                        <TextBox x:Name="ConnectionStatusText"
-                                 Grid.Column="1"
-                                 Style="{StaticResource StatusBarTextStyle}" />
-                    </Grid>
-                </Border>
-                <Button Grid.Column="2"
+
+                <ui:StatusBarControl x:Name="ConnectionStatusBar"
+                                     Grid.Column="0"
+                                     VerticalAlignment="Center" />
+
+                <Button x:Name="TestConnectionButton"
+                        Grid.Column="2"
                         Style="{StaticResource SecondaryButtonStyle}"
-                        Width="140" Margin="0"
+                        Width="120" Margin="0"
                         VerticalAlignment="Center"
                         Click="Test_Click">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Test Connection" VerticalAlignment="Center" />
+                        <TextBlock Text="Test connection" VerticalAlignment="Center" />
                         <TextBlock Text="&#xE703;" FontFamily="Segoe MDL2 Assets" FontSize="13"
                                    VerticalAlignment="Center" Margin="6,0,0,0" />
                     </StackPanel>
@@ -184,24 +308,8 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <Border x:Name="MappingStatusBar"
-                        Grid.Column="0"
-                        Height="32"
-                        Background="#FFF0F0F0"
-                        BorderBrush="{StaticResource BrushBorder}"
-                        BorderThickness="0,1,0,0">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="4" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Border x:Name="MappingStatusStripe" Grid.Column="0"
-                                Background="{StaticResource BrushStatusNone}" />
-                        <TextBox x:Name="MappingStatusText"
-                                 Grid.Column="1"
-                                 Style="{StaticResource StatusBarTextStyle}" />
-                    </Grid>
-                </Border>
+                <ui:StatusBarControl x:Name="MappingStatusBar"
+                                     Grid.Column="0" />
 
                 <Button x:Name="EditMappingsButton"
                         Grid.Column="2"
@@ -233,8 +341,11 @@
                        TextWrapping="Wrap" />
             <TextBox x:Name="BomKeywordBox" Style="{StaticResource SWFieldStyle}" />
 
-            <!-- Apply / Save / Cancel buttons + action status bar -->
-            <Grid Margin="0,16,0,0">
+            <!-- Footer: dialog-level action status bar + Apply / Save / Cancel.
+                 The action bar reports what Apply/Save did; connection-scoped
+                 outcomes (Test connection, Remove API key) live up in the Server
+                 Connection section's own status bar. -->
+            <Grid x:Name="DialogActionRow" Margin="0,16,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="8" />
@@ -245,25 +356,9 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <Border x:Name="ActionStatusBar"
-                        Grid.Column="0"
-                        Height="32"
-                        Background="#FFF0F0F0"
-                        BorderBrush="{StaticResource BrushBorder}"
-                        BorderThickness="0,1,0,0"
-                        VerticalAlignment="Center">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="4" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Border x:Name="ActionStatusStripe" Grid.Column="0"
-                                Background="{StaticResource BrushStatusNone}" />
-                        <TextBox x:Name="ActionStatusText"
-                                 Grid.Column="1"
-                                 Style="{StaticResource StatusBarTextStyle}" />
-                    </Grid>
-                </Border>
+                <ui:StatusBarControl x:Name="ActionStatusBar"
+                                     Grid.Column="0"
+                                     VerticalAlignment="Center" />
 
                 <Button x:Name="ApplyButton"
                         Grid.Column="2"

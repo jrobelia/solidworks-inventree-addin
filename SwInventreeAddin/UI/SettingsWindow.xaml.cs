@@ -1,5 +1,7 @@
 using System;
 using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
 using Microsoft.Win32;
@@ -9,7 +11,10 @@ using SwInventreeAddin.Config;
 namespace SwInventreeAddin.UI
 {
     /// <summary>
-    /// Settings dialog — server credentials (upper section) + property mapping (lower section).
+    /// Settings dialog — server credentials (upper section) + property mapping
+    /// (lower section). The credential section follows prototype 1b: a fixed
+    /// three-line status card whenever anything is saved, and a single plain
+    /// form (URL + username/password or API key) with no mode switcher.
     /// </summary>
     public partial class SettingsWindow : Window
     {
@@ -19,11 +24,31 @@ namespace SwInventreeAddin.UI
         private readonly IMappingProviderFactory _mappingProviderFactory;
         private IPropertyMappingProvider _mappingProvider;
 
-        private (string Url, string ApiKey, string Username, string Password,
-                 string SharedPath, string BomKeyword, bool UseLocalMapping) _savedSnapshot;
+        private SettingsSnapshot _savedSnapshot;
         private readonly bool _savedWaitForServerAssignedIpn = true;
+        private CredentialEditorState _credentialState;
+        private ServerConfig? _savedConfig;
+        private ConnectionProbeResult? _lastProbe;
+        private bool _probeInFlight;
+
+        // Configured state only: which slice of the form a toolbar click revealed.
+        // Both are forced open whenever the config is incomplete.
+        private bool _editingUrl;
+        private bool _showCredentialForm;
+
         private MappingChangedSubscription? _mappingChangedSubscription;
         private string? _mappingStatusDetail;
+
+        // Lifecycle for the probe fired on open: Closed cancels it, and so does
+        // any newer user-initiated probe whose verdict supersedes it.
+        private readonly CancellationTokenSource _openProbeCts = new CancellationTokenSource();
+
+        /// <summary>
+        /// The probe fired on open when a full config is saved — null when no
+        /// probe started. Never faults; completes once the verdict is applied
+        /// or discarded. Tests await it for a deterministic settle point.
+        /// </summary>
+        internal Task? OpenProbeTask { get; private set; }
 
         /// <summary>
         /// Raised after Apply successfully saves settings, so the caller can update
@@ -49,7 +74,7 @@ namespace SwInventreeAddin.UI
             UrlBox.TextChanged += (_, __) => RefreshButtonStates();
             UsernameBox.TextChanged += (_, __) => RefreshButtonStates();
             PasswordBox.PasswordChanged += (_, __) => RefreshButtonStates();
-            ApiBox.TextChanged += (_, __) => RefreshButtonStates();
+            ApiKeyBox.PasswordChanged += (_, __) => OnApiKeyEdited();
             SharedPathBox.TextChanged += (_, __) => RefreshButtonStates();
             BomKeywordBox.TextChanged += (_, __) => RefreshButtonStates();
             LocalRadio.Checked += (_, __) => RefreshButtonStates();
@@ -57,23 +82,23 @@ namespace SwInventreeAddin.UI
 
             WindowCentering.Attach(this, SolidWorksWindowHandle.Get());
 
-            // Pre-fill server credentials
-            try
+            _savedConfig = TryGetConfig();
+            _credentialState = CredentialEditorState.FromSavedConfig(_savedConfig);
+
+            if (_savedConfig != null)
             {
-                var config = _configProvider.GetServerConfig();
-                if (config != null)
-                {
-                    UrlBox.Text = config.Url ?? string.Empty;
-                    ApiBox.Text = config.ApiKey ?? string.Empty;
+                UrlBox.Text = _savedConfig.Url ?? string.Empty;
 
-                    if (!string.IsNullOrEmpty(config.MappingSourcePath))
-                        SharedPathBox.Text = config.MappingSourcePath;
+                if (!string.IsNullOrEmpty(_savedConfig.MappingSourcePath))
+                    SharedPathBox.Text = _savedConfig.MappingSourcePath;
 
-                    BomKeywordBox.Text = config.BomKeyword ?? "inventree";
-                    _savedWaitForServerAssignedIpn = config.WaitForServerAssignedIpn;
-                }
+                BomKeywordBox.Text = _savedConfig.BomKeyword ?? "inventree";
+                _savedWaitForServerAssignedIpn = _savedConfig.WaitForServerAssignedIpn;
             }
-            catch { /* corrupt settings — user can re-enter */ }
+
+            ReloadConfigAndRefreshCard();
+            RenderCredentialForm();
+            UpdateApiKeyPlaceholders();
 
             // Show local path (read-only, copyable)
             LocalPathBox.Text = _mappingProvider.LocalFilePath;
@@ -81,24 +106,274 @@ namespace SwInventreeAddin.UI
             // Set Edit Mappings button state and mapping status bar
             RefreshMappingStatus();
             AttachMappingChanged();
-            Closed += (_, __) => DetachMappingChanged();
+            Closed += (_, __) =>
+            {
+                // IsCancellationRequested stays readable after Dispose, so a
+                // late probe continuation still discards cleanly.
+                _openProbeCts.Cancel();
+                _openProbeCts.Dispose();
+                DetachMappingChanged();
+            };
 
             _savedSnapshot = CaptureSnapshot();
             RefreshButtonStates();
+
+            StartOpenProbe();
         }
 
         // ── Dirty-state tracking ───────────────────────────────────────────────
 
-        private (string, string, string, string, string, string, bool) CaptureSnapshot() =>
-            (UrlBox.Text.Trim(), ApiBox.Text.Trim(), UsernameBox.Text.Trim(), PasswordBox.Password,
-             SharedPathBox.Text.Trim(), BomKeywordBox.Text.Trim(), LocalRadio.IsChecked == true);
+        private SettingsSnapshot CaptureSnapshot() =>
+            new SettingsSnapshot(
+                url: UrlBox.Text.Trim(),
+                apiKeyDraft: ApiKeyBox.Password.Trim(),
+                hasSavedApiKey: _credentialState.HasSavedApiKey,
+                username: UsernameBox.Text.Trim(),
+                password: PasswordBox.Password,
+                sharedPath: SharedPathBox.Text.Trim(),
+                bomKeyword: BomKeywordBox.Text.Trim(),
+                useLocalMapping: LocalRadio.IsChecked == true,
+                waitForServerAssignedIpn: _savedWaitForServerAssignedIpn);
+
+        // The URL under test: the trimmed draft, else the saved URL. The URL
+        // field is hidden in the configured state, so both the Test button's
+        // enable check and the probe input fall back to what is on disk.
+        private string EffectiveUrl
+        {
+            get
+            {
+                string typed = UrlBox.Text.Trim();
+                return typed.Length > 0 ? typed : (_savedConfig?.Url ?? string.Empty);
+            }
+        }
 
         private void RefreshButtonStates()
         {
-            bool isDirty = CaptureSnapshot() != _savedSnapshot;
+            bool isDirty = CaptureSnapshot().HasPersistableChangeFrom(_savedSnapshot);
             ApplyButton.IsEnabled = isDirty;
             SaveButton.IsEnabled = isDirty;
             CancelButtonText.Text = isDirty ? "Cancel" : "Close";
+            TestConnectionButton.IsEnabled = !string.IsNullOrWhiteSpace(EffectiveUrl);
+        }
+
+        // ── Connection status card ─────────────────────────────────────────────
+
+        // The card holds the persistent state: what is saved plus the session's
+        // probe axis. The connection section's status bar reports what the last
+        // action did — they are deliberately separate (prototype 1b).
+        private void ReloadConfigAndRefreshCard()
+        {
+            _savedConfig = TryGetConfig();
+            var status = ServerConnectionStatus.From(_savedConfig, _lastProbe, _probeInFlight);
+
+            ConnectionCard.Visibility = status.IsSaved ? Visibility.Visible : Visibility.Collapsed;
+            ConnectionCardTitle.Text = status.Title;
+            ConnectionCardServer.Text = status.ServerLine;
+            ConnectionCardCredential.Text = status.CredentialLine;
+            ConnectionCardConnection.Text = status.ConnectionLine;
+            ConnectionCardToolbar.Visibility =
+                status.IsComplete ? Visibility.Visible : Visibility.Collapsed;
+
+            SetStatusDot(status.Indicator);
+        }
+
+        // Colour never carries meaning alone — Title always names the state.
+        private void SetStatusDot(ServerConnectionIndicator indicator)
+        {
+            switch (indicator)
+            {
+                case ServerConnectionIndicator.NotTested:
+                    ConnectionStatusDot.Fill = Brushes.Transparent;
+                    ConnectionStatusDot.Stroke = (Brush)FindResource("BrushStatusNotTested");
+                    break;
+                case ServerConnectionIndicator.Testing:
+                    ConnectionStatusDot.Fill = (Brush)FindResource("BrushAccentBlue");
+                    ConnectionStatusDot.Stroke = Brushes.Transparent;
+                    break;
+                case ServerConnectionIndicator.Connected:
+                    ConnectionStatusDot.Fill = (Brush)FindResource("BrushStatusSuccess");
+                    ConnectionStatusDot.Stroke = Brushes.Transparent;
+                    break;
+                case ServerConnectionIndicator.Failed:
+                    ConnectionStatusDot.Fill = (Brush)FindResource("BrushStatusError");
+                    ConnectionStatusDot.Stroke = Brushes.Transparent;
+                    break;
+                default: // AuthenticationRequired
+                    ConnectionStatusDot.Fill = (Brush)FindResource("BrushStatusWarning");
+                    ConnectionStatusDot.Stroke = Brushes.Transparent;
+                    break;
+            }
+        }
+
+        // ── Probe on open (#234) ─────────────────────────────────────────────
+        // A complete saved config gets a live probe on every open — the card
+        // reports a real verdict, never a stale saved claim. The probe runs
+        // against the saved values, not the form fields, and its lifecycle is
+        // the window's: Close and any newer probe cancel it, and a late
+        // verdict is discarded.
+
+        private void StartOpenProbe()
+        {
+            if (!ServerConnectionStatus.From(_savedConfig).IsComplete)
+                return;
+
+            var input = new SettingsApplyInput
+            {
+                Url = _savedConfig!.Url,
+                RawApiKey = _savedConfig.ApiKey,
+            };
+
+            _probeInFlight = true;
+            ReloadConfigAndRefreshCard();
+            OpenProbeTask = RunOpenProbeAsync(input);
+        }
+
+        private async Task RunOpenProbeAsync(SettingsApplyInput input)
+        {
+            ConnectionProbeResult? result;
+            try
+            {
+                using (var client = new HttpClient())
+                {
+                    result = await _settingsApplyService
+                        .TestConnectionAsync(input, client, _openProbeCts.Token)
+                        .ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Closed or superseded by a newer probe — discard silently.
+                return;
+            }
+            catch (Exception ex)
+            {
+                // The probe could not run to a verdict (e.g. an unparsable saved
+                // URL) — surface it like any other failure instead of leaving
+                // the card on Testing forever.
+                result = new ConnectionProbeResult(ConnectionProbeStatus.Unreachable, ex.Message);
+            }
+
+            try
+            {
+                this.Dispatcher.Invoke(() =>
+                {
+                    // Closed or superseded between verdict and application —
+                    // the newer probe owns the card now.
+                    if (_openProbeCts.IsCancellationRequested)
+                        return;
+
+                    _lastProbe = result;
+                    _probeInFlight = false;
+                    ReloadConfigAndRefreshCard();
+                });
+            }
+            catch (Exception)
+            {
+                // The window's dispatcher is gone — nothing left to report to.
+            }
+        }
+
+        // ── Single credential form ───────────────────────────────────────────
+
+        // When the saved config is incomplete the form is always open — there is
+        // nothing to summarise yet. Once complete, the card toolbar reveals just
+        // the slice being changed.
+        private void RenderCredentialForm()
+        {
+            var status = ServerConnectionStatus.From(_savedConfig, _lastProbe, _probeInFlight);
+            bool forced = !status.IsComplete;
+
+            bool showUrl = forced || _editingUrl;
+            bool showCredentials = forced || _showCredentialForm;
+
+            CredentialFormScroll.Visibility =
+                (showUrl || showCredentials) ? Visibility.Visible : Visibility.Collapsed;
+            UrlFieldPanel.Visibility = showUrl ? Visibility.Visible : Visibility.Collapsed;
+            CredentialFieldsPanel.Visibility =
+                showCredentials ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        // Shared tail for paths that persist or remove the saved config: the
+        // key draft is dropped (saved keys are never re-shown), the form
+        // collapses back to the card, and everything re-reads from disk state.
+        private void CollapseFormAndRefresh()
+        {
+            _editingUrl = false;
+            _showCredentialForm = false;
+            ApiKeyBox.Clear();
+            ReloadConfigAndRefreshCard();
+            RenderCredentialForm();
+            UpdateApiKeyPlaceholders();
+            _savedSnapshot = CaptureSnapshot();
+            RefreshButtonStates();
+        }
+
+        private void ChangeServer_Click(object sender, RoutedEventArgs e)
+        {
+            _editingUrl = !_editingUrl;
+            _showCredentialForm = false;
+            RenderCredentialForm();
+            if (_editingUrl) UrlBox.Focus();
+        }
+
+        private void ChangeCredential_Click(object sender, RoutedEventArgs e)
+        {
+            _showCredentialForm = !_showCredentialForm;
+            _editingUrl = false;
+            RenderCredentialForm();
+            if (_showCredentialForm) ApiKeyBox.Focus();
+        }
+
+        // ── API key field: write-once draft + placeholders ───────────────────
+
+        private void OnApiKeyEdited()
+        {
+            _credentialState.ApiKey = ApiKeyBox.Password;
+            UpdateApiKeyPlaceholders();
+            RefreshButtonStates();
+        }
+
+        // Dots stand in for a saved key — never the key itself. With no saved key
+        // the field prompts for a paste. Typing hides either overlay.
+        private void UpdateApiKeyPlaceholders()
+        {
+            bool empty = ApiKeyBox.Password.Length == 0;
+            ApiKeyDotsPlaceholder.Visibility =
+                empty && _credentialState.HasSavedApiKey
+                    ? Visibility.Visible : Visibility.Collapsed;
+            ApiKeyPromptPlaceholder.Visibility =
+                empty && !_credentialState.HasSavedApiKey
+                    ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        // ── Remove API key ───────────────────────────────────────────────────
+
+        // Removing the API key goes through the apply service so every settings
+        // mutation surfaces as a SettingsApplyException with a consistent message
+        // prefix. Only the credential is cleared — the saved URL, Property Mapping
+        // path, and BOM keyword survive, and the card lands on
+        // Authentication required with the form open.
+        private async void RemoveApiKey_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                await _settingsApplyService.RemoveApiKeyAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                this.Dispatcher.Invoke(() => ConnectionStatusBar.SetStatus(ex.Message, StatusSeverity.Error));
+                return;
+            }
+
+            this.Dispatcher.Invoke(() =>
+            {
+                _credentialState.Clear();
+                _lastProbe = null;
+                UsernameBox.Clear();
+                PasswordBox.Clear();
+                CollapseFormAndRefresh();
+                ConnectionStatusBar.SetStatus("Credential removed. Server address kept.", StatusSeverity.Success);
+            });
         }
 
         // ── Radio button handlers ──────────────────────────────────────────────
@@ -178,11 +453,9 @@ namespace SwInventreeAddin.UI
                     _ => StatusSeverity.Error,
                 };
 
-                MappingStatusStripe.Background = StatusSeverityToBrush(this, stripeSeverity);
                 _mappingStatusDetail = result.FullStatusMessage;
-                MappingStatusText.Text = _mappingStatusDetail;
-                MappingStatusText.ToolTip = _mappingStatusDetail;
-                return true;
+                MappingStatusBar.SetStatus(_mappingStatusDetail, stripeSeverity);
+                return result.Health != MappingHealth.Invalid;
             }
             catch (InvalidOperationException ex)
             {
@@ -190,9 +463,12 @@ namespace SwInventreeAddin.UI
             }
             catch (Exception ex)
             {
-                return ShowInvalidMappingStatus($"Failed to load the Property Mapping file: {ex.Message}");
+                return ShowMappingLoadFailure(ex);
             }
         }
+
+        private bool ShowMappingLoadFailure(Exception ex) =>
+            ShowInvalidMappingStatus($"Failed to load the Property Mapping file: {ex.Message}");
 
         private void SetEditMappingsButtonLabel(MappingResult result)
         {
@@ -209,10 +485,8 @@ namespace SwInventreeAddin.UI
                                            detail);
 
             EditMappingsButton.IsEnabled = false;
-            MappingStatusStripe.Background = StatusSeverityToBrush(this, StatusSeverity.Error);
             _mappingStatusDetail = result.FullStatusMessage;
-            MappingStatusText.Text = _mappingStatusDetail;
-            MappingStatusText.ToolTip = _mappingStatusDetail;
+            MappingStatusBar.SetStatus(_mappingStatusDetail, StatusSeverity.Error);
             return false;
         }
 
@@ -226,6 +500,8 @@ namespace SwInventreeAddin.UI
 
         /// <summary>
         /// Builds a <see cref="SettingsApplyInput"/> from the current UI fields.
+        /// Credential precedence lives in <see cref="CredentialEditorState.ApplyCredentialTo"/> —
+        /// typed key draft wins, then a complete username/password pair, then the saved key.
         /// </summary>
         private SettingsApplyInput BuildInput()
         {
@@ -233,16 +509,16 @@ namespace SwInventreeAddin.UI
                 ? (string.IsNullOrWhiteSpace(SharedPathBox.Text) ? null : SharedPathBox.Text.Trim())
                 : null;
 
-            return new SettingsApplyInput
+            var input = new SettingsApplyInput
             {
                 Url = UrlBox.Text.Trim(),
-                Username = UsernameBox.Text.Trim(),
-                Password = PasswordBox.Password,
-                RawApiKey = ApiBox.Text.Trim(),
                 SharedMappingPath = sharedPath,
                 BomKeyword = BomKeywordBox.Text,
                 WaitForServerAssignedIpn = _savedWaitForServerAssignedIpn,
             };
+
+            _credentialState.ApplyCredentialTo(input, UsernameBox.Text, PasswordBox.Password);
+            return input;
         }
 
         // ── Save ──────────────────────────────────────────────────────────────
@@ -257,54 +533,103 @@ namespace SwInventreeAddin.UI
 
         private async void Apply_Click(object sender, RoutedEventArgs e)
         {
-            if (!await ApplySettingsAsync()) return;
-            this.Dispatcher.Invoke(() => SetActionStatus("\u2713  Settings applied.", StatusSeverity.Success));
+            await ApplySettingsAsync();
         }
 
         // ── Shared settings save + notify ─────────────────────────────────────
 
         /// <summary>
         /// Resolves credentials, persists server config, rebuilds the mapping provider,
-        /// refreshes the status bar, and fires <see cref="MappingApplied"/>.
-        /// Returns <c>true</c> on success, <c>false</c> if an error was shown to the user.
+        /// refreshes the status card, and fires <see cref="MappingApplied"/>.
+        /// Returns <c>true</c> once the settings are persisted — a failed connection
+        /// probe is reported as the outcome, not an apply failure; <c>false</c> only
+        /// when an error was shown to the user.
         /// </summary>
-        public async System.Threading.Tasks.Task<bool> ApplySettingsAsync()
+        public async Task<bool> ApplySettingsAsync()
         {
+            // The apply's own probe verdict supersedes the open probe's.
+            _openProbeCts.Cancel();
+
             var input = BuildInput();
 
+            ConnectionProbeResult probe;
+            _probeInFlight = true;
+            ReloadConfigAndRefreshCard();
+            // The save happens inside ApplyAsync — the interim status bar must
+            // not claim a save that a pre-persistence failure would disprove.
+            ActionStatusBar.SetStatus("Saving settings and testing connection\u2026", StatusSeverity.None);
+            // A new save supersedes any earlier connection-scoped outcome —
+            // leaving it would let the section bar contradict the fresh verdict.
+            ConnectionStatusBar.SetStatus(string.Empty, StatusSeverity.None);
             try
             {
-                await _settingsApplyService.ApplyAsync(input).ConfigureAwait(false);
+                using (var client = new HttpClient())
+                {
+                    probe = await _settingsApplyService.ApplyAsync(input, client)
+                                                       .ConfigureAwait(false);
+                }
             }
             catch (SettingsApplyException ex)
             {
-                this.Dispatcher.Invoke(() => SetActionStatus(ex.Message, StatusSeverity.Error));
+                _probeInFlight = false;
+                this.Dispatcher.Invoke(() =>
+                {
+                    ReloadConfigAndRefreshCard();
+                    ActionStatusBar.SetStatus(ex.Message, StatusSeverity.Error);
+                });
                 return false;
             }
 
+            _probeInFlight = false;
+            _lastProbe = probe;
+
+            // The password never lingers — whether it was sent for token
+            // resolution or shadowed by a winning key draft.
+            this.Dispatcher.Invoke(() => PasswordBox.Clear());
+
+            bool mappingOk;
             try
             {
-                var previousProvider = _mappingProvider;
                 _mappingProvider = _mappingProviderFactory.Create(input.SharedMappingPath);
 
-                bool mappingOk = this.Dispatcher.Invoke(() => RefreshMappingStatus());
+                mappingOk = this.Dispatcher.Invoke(() => RefreshMappingStatus());
 
                 this.Dispatcher.Invoke(() =>
                 {
                     DetachMappingChanged();
                     AttachMappingChanged();
                 });
-
-                if (!mappingOk)
-                {
-                    this.Dispatcher.Invoke(() =>
-                        SetActionStatus(_mappingStatusDetail ?? MappingStatusText.Text, StatusSeverity.Error));
-                    return false;
-                }
             }
             catch (Exception ex)
             {
-                this.Dispatcher.Invoke(() => SetActionStatus($"Failed to load the Property Mapping file: {ex.Message}", StatusSeverity.Error));
+                // Mapping detail stays in the Property Mapping section's own
+                // status bar — ShowInvalidMappingStatus renders it there.
+                this.Dispatcher.Invoke(() => ShowMappingLoadFailure(ex));
+                mappingOk = false;
+            }
+
+            if (!mappingOk)
+            {
+                // The save persisted; the mapping bar carries the detail. The
+                // footer aggregates both facts — the probe verdict and the
+                // mapping failure — so the line is truthful on its own.
+                var mappingFailureClause = probe.Status switch
+                {
+                    ConnectionProbeStatus.Connected => "connection successful",
+                    ConnectionProbeStatus.CredentialRejected => $"authentication required ({probe.Message})",
+                    _ => $"connection failed ({probe.Message})",
+                };
+                this.Dispatcher.Invoke(() =>
+                {
+                    // The provider was swapped even though the file is invalid —
+                    // the add-in and Task Pane must track the saved source path;
+                    // the Invalid result keeps Part Sync gated off on its own.
+                    MappingApplied?.Invoke(this, _mappingProvider);
+                    // The probe already resolved — re-render the card so it
+                    // leaves the Testing state instead of staying blue.
+                    ReloadConfigAndRefreshCard();
+                    ActionStatusBar.SetStatus($"Saved — {mappingFailureClause}; the Property Mapping file could not be loaded.", StatusSeverity.Error);
+                });
                 return false;
             }
 
@@ -313,15 +638,27 @@ namespace SwInventreeAddin.UI
                 this.Dispatcher.Invoke(() =>
                 {
                     MappingApplied?.Invoke(this, _mappingProvider);
-                    _savedSnapshot = CaptureSnapshot();
-                    RefreshButtonStates();
-                    SetActionStatus("\u2713  Settings applied.", StatusSeverity.Success);
+
+                    // Persist happened: re-read so the card, credential state, and
+                    // placeholders reflect what is now on disk. A typed key draft is
+                    // cleared — saved keys are never re-shown.
+                    _credentialState = CredentialEditorState.FromSavedConfig(TryGetConfig());
+                    CollapseFormAndRefresh();
+                    var (outcome, outcomeSeverity) = probe.Status switch
+                    {
+                        ConnectionProbeStatus.Connected =>
+                            ("Saved \u2014 connection successful.", StatusSeverity.Success),
+                        ConnectionProbeStatus.CredentialRejected =>
+                            ($"Saved \u2014 authentication required ({probe.Message})", StatusSeverity.Warning),
+                        _ => ($"Saved \u2014 but the connection failed ({probe.Message})", StatusSeverity.Error),
+                    };
+                    ActionStatusBar.SetStatus(outcome, outcomeSeverity);
                 });
                 return true;
             }
             catch (Exception ex)
             {
-                this.Dispatcher.Invoke(() => SetActionStatus($"Failed to apply settings: {ex.Message}", StatusSeverity.Error));
+                this.Dispatcher.Invoke(() => ActionStatusBar.SetStatus($"Failed to apply settings: {ex.Message}", StatusSeverity.Error));
                 return false;
             }
         }
@@ -333,29 +670,66 @@ namespace SwInventreeAddin.UI
             DialogResult = false;
         }
 
-        // ── Test Connection ───────────────────────────────────────────────────
+        // ── Test connection ───────────────────────────────────────────────────
 
+        // Test never saves — it probes with the effective credential and reports
+        // on the section status bar while the card takes the probe outcome.
         private async void Test_Click(object sender, RoutedEventArgs e)
         {
+            // A user-initiated probe supersedes the open probe — the card
+            // should settle on the freshest verdict.
+            _openProbeCts.Cancel();
+
+            var input = BuildInput();
+            input.Url = EffectiveUrl;
+
+            _probeInFlight = true;
+            ReloadConfigAndRefreshCard();
+            ConnectionStatusBar.SetStatus("Testing connection\u2026", StatusSeverity.None);
+
             try
             {
+                ConnectionProbeResult result;
                 using (var client = new HttpClient())
                 {
-                    await _settingsApplyService.TestConnectionAsync(BuildInput(), client)
-                                               .ConfigureAwait(false);
+                    result = await _settingsApplyService.TestConnectionAsync(
+                            input, client, CancellationToken.None)
+                        .ConfigureAwait(false);
                 }
 
+                _probeInFlight = false;
+                _lastProbe = result;
+
                 this.Dispatcher.Invoke(() =>
-                    SetConnectionStatus("\u2713  Connection successful.", StatusSeverity.Success));
+                {
+                    ReloadConfigAndRefreshCard();
+                    RenderCredentialForm();
+                    ConnectionStatusBar.SetStatus(
+                        result.Succeeded ? result.Message : $"Connection failed. {result.Message}",
+                        result.Succeeded ? StatusSeverity.Success : StatusSeverity.Error);
+
+                    // The password never lingers — whether it was sent for
+                    // token resolution or shadowed by a winning key draft.
+                    PasswordBox.Clear();
+                });
             }
             catch (InvalidOperationException ex)
             {
-                this.Dispatcher.Invoke(() => SetConnectionStatus(ex.Message, StatusSeverity.Error));
+                _probeInFlight = false;
+                this.Dispatcher.Invoke(() =>
+                {
+                    ReloadConfigAndRefreshCard();
+                    ConnectionStatusBar.SetStatus(ex.Message, StatusSeverity.Error);
+                });
             }
             catch (Exception ex)
             {
+                _probeInFlight = false;
                 this.Dispatcher.Invoke(() =>
-                    SetConnectionStatus($"Connection failed: {ex.Message}", StatusSeverity.Error));
+                {
+                    ReloadConfigAndRefreshCard();
+                    ConnectionStatusBar.SetStatus($"Connection failed: {ex.Message}", StatusSeverity.Error);
+                });
             }
         }
 
@@ -378,31 +752,5 @@ namespace SwInventreeAddin.UI
             RefreshMappingStatus();
         }
 
-        // ── Status bars ───────────────────────────────────────────────────────
-
-        // Server-connection results live beside the Test Connection button; Apply/Save
-        // results live in the status bar next to the action buttons (ADR-0018).
-        internal void SetConnectionStatus(string text, StatusSeverity severity) =>
-            SetStatusBar(ConnectionStatusText, ConnectionStatusStripe, text, severity);
-
-        internal void SetActionStatus(string text, StatusSeverity severity) =>
-            SetStatusBar(ActionStatusText, ActionStatusStripe, text, severity);
-
-        private static Brush StatusSeverityToBrush(FrameworkElement element, StatusSeverity severity) =>
-            (Brush)element.FindResource(severity switch
-            {
-                StatusSeverity.Success => "BrushStatusSuccess",
-                StatusSeverity.Warning => "BrushStatusWarning",
-                StatusSeverity.Error => "BrushStatusError",
-                _ => "BrushStatusNone",
-            });
-
-        private void SetStatusBar(System.Windows.Controls.TextBox textBox, System.Windows.Controls.Border stripe,
-                                  string text, StatusSeverity severity)
-        {
-            textBox.Text = text;
-            textBox.ToolTip = string.IsNullOrEmpty(text) ? null : text;
-            stripe.Background = StatusSeverityToBrush(this, severity);
-        }
     }
 }

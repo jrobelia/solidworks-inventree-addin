@@ -1,5 +1,6 @@
 using System;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using SwInventreeAddin.Config;
 
@@ -7,31 +8,126 @@ namespace SwInventreeAddin.Tests.Stubs
 {
     public class StubSettingsApplyService : ISettingsApplyService
     {
+        public StubSettingsApplyService(IConfigProvider? configProvider = null)
+        {
+            ConfigProvider = configProvider;
+        }
+
         public SettingsApplyInput? LastInput { get; private set; }
+        public HttpClient? LastApplyClient { get; private set; }
+        public SettingsApplyInput? LastTestInput { get; private set; }
         public HttpClient? LastTestClient { get; private set; }
+        public CancellationToken LastTestToken { get; private set; }
+        public int TestCallCount { get; private set; }
+        public int RemoveCallCount { get; private set; }
 
         public Exception? ExceptionToThrowOnApply { get; set; }
         public Exception? ExceptionToThrowOnTestConnection { get; set; }
+        public Exception? ExceptionToThrowOnRemove { get; set; }
 
-        public Task ApplyAsync(SettingsApplyInput input)
+        /// <summary>
+        /// The probe outcome returned when ApplyAsync does not throw. Defaults to
+        /// a successful connection.
+        /// </summary>
+        public ConnectionProbeResult ResultToReturnOnApply { get; set; } = ConnectedResult();
+
+        /// <summary>
+        /// The probe outcome returned when TestConnectionAsync does not throw.
+        /// Defaults to a successful connection.
+        /// </summary>
+        public ConnectionProbeResult ResultToReturnOnTestConnection { get; set; } = ConnectedResult();
+
+        /// <summary>
+        /// When set, TestConnectionAsync holds the probe open until this source
+        /// completes or the caller's token is cancelled — mirroring the real
+        /// service honouring the lifecycle token — so a test can keep a probe
+        /// in flight across window events.
+        /// </summary>
+        public TaskCompletionSource<ConnectionProbeResult>? PendingTestResult { get; set; }
+
+        /// <summary>
+        /// Optional provider the remove call delegates to, mirroring the real
+        /// service's read-modify-write, so UI tests can observe the
+        /// cleared-credential post-state.
+        /// </summary>
+        public IConfigProvider? ConfigProvider { get; }
+
+        public Task<ConnectionProbeResult> ApplyAsync(SettingsApplyInput input, HttpClient client)
         {
             LastInput = input;
+            LastApplyClient = client;
 
             if (ExceptionToThrowOnApply != null)
                 throw ExceptionToThrowOnApply;
 
-            return Task.CompletedTask;
+            // Mirror the real service's persist-then-probe contract: a normal
+            // return means the settings were saved, so a re-read of the provider
+            // must observe them. A complete username+password pair resolves to a
+            // stand-in token, as the real token service would produce.
+            if (ConfigProvider != null)
+            {
+                string apiKey = !string.IsNullOrWhiteSpace(input.RawApiKey)
+                    ? input.RawApiKey.Trim()
+                    : (!string.IsNullOrWhiteSpace(input.Username) &&
+                       !string.IsNullOrWhiteSpace(input.Password))
+                        ? "stub-resolved-token"
+                        : (ConfigProvider.GetServerConfig()?.ApiKey ?? string.Empty);
+
+                ConfigProvider.SaveServerConfig(new ServerConfig
+                {
+                    Url = input.Url.Trim(),
+                    ApiKey = apiKey,
+                    MappingSourcePath = input.SharedMappingPath,
+                    BomKeyword = input.BomKeyword,
+                    WaitForServerAssignedIpn = input.WaitForServerAssignedIpn,
+                });
+            }
+
+            return Task.FromResult(ResultToReturnOnApply);
         }
 
-        public Task TestConnectionAsync(SettingsApplyInput input, HttpClient client)
+        public async Task<ConnectionProbeResult> TestConnectionAsync(
+            SettingsApplyInput input, HttpClient client, CancellationToken cancellationToken)
         {
             LastInput = input;
+            LastTestInput = input;
             LastTestClient = client;
+            LastTestToken = cancellationToken;
+            TestCallCount++;
 
             if (ExceptionToThrowOnTestConnection != null)
                 throw ExceptionToThrowOnTestConnection;
 
+            if (PendingTestResult != null)
+            {
+                var cancelled = Task.Delay(Timeout.Infinite, cancellationToken);
+                if (await Task.WhenAny(PendingTestResult.Task, cancelled).ConfigureAwait(false) == cancelled)
+                    throw new OperationCanceledException();
+
+                return await PendingTestResult.Task.ConfigureAwait(false);
+            }
+
+            return ResultToReturnOnTestConnection;
+        }
+
+        public Task RemoveApiKeyAsync()
+        {
+            RemoveCallCount++;
+
+            if (ExceptionToThrowOnRemove != null)
+                throw ExceptionToThrowOnRemove;
+
+            var config = ConfigProvider?.GetServerConfig();
+            if (config != null)
+            {
+                config.ApiKey = string.Empty;
+                ConfigProvider!.SaveServerConfig(config);
+            }
+
             return Task.CompletedTask;
         }
+
+        private static ConnectionProbeResult ConnectedResult() =>
+            new ConnectionProbeResult(ConnectionProbeStatus.Connected, "Connection successful.");
     }
 }

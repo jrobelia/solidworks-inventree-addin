@@ -82,6 +82,23 @@ namespace SwInventreeAddin.Config
             File.WriteAllBytes(_filePath, cipher);
         }
 
+        /// <inheritdoc/>
+        public void DeleteServerConfig()
+        {
+            if (!File.Exists(_filePath))
+                return;
+
+            try
+            {
+                File.Delete(_filePath);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException(
+                    $"Could not delete settings file at {_filePath}: {ex.Message}", ex);
+            }
+        }
+
         /// <summary>
         /// Copies the legacy <c>WaitForAutoPartNumber</c> JSON value into
         /// <see cref="ServerConfig.WaitForServerAssignedIpn"/> when the new key
