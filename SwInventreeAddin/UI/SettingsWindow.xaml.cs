@@ -455,7 +455,7 @@ namespace SwInventreeAddin.UI
 
                 _mappingStatusDetail = result.FullStatusMessage;
                 MappingStatusBar.SetStatus(_mappingStatusDetail, stripeSeverity);
-                return true;
+                return result.Health != MappingHealth.Invalid;
             }
             catch (InvalidOperationException ex)
             {
@@ -558,6 +558,9 @@ namespace SwInventreeAddin.UI
             // The save happens inside ApplyAsync — the interim status bar must
             // not claim a save that a pre-persistence failure would disprove.
             ActionStatusBar.SetStatus("Saving settings and testing connection\u2026", StatusSeverity.None);
+            // A new save supersedes any earlier connection-scoped outcome —
+            // leaving it would let the section bar contradict the fresh verdict.
+            ConnectionStatusBar.SetStatus(string.Empty, StatusSeverity.None);
             try
             {
                 using (var client = new HttpClient())
@@ -608,9 +611,16 @@ namespace SwInventreeAddin.UI
             if (!mappingOk)
             {
                 // The save persisted; the mapping bar carries the detail. The
-                // footer action bar only notes that Apply could not finish.
+                // footer aggregates both facts — the probe verdict and the
+                // mapping failure — so the line is truthful on its own.
+                var mappingFailureClause = probe.Status switch
+                {
+                    ConnectionProbeStatus.Connected => "connection successful",
+                    ConnectionProbeStatus.CredentialRejected => $"authentication required ({probe.Message})",
+                    _ => $"connection failed ({probe.Message})",
+                };
                 this.Dispatcher.Invoke(() =>
-                    ActionStatusBar.SetStatus("Saved — but the Property Mapping file could not be loaded.", StatusSeverity.Error));
+                    ActionStatusBar.SetStatus($"Saved — {mappingFailureClause}; the Property Mapping file could not be loaded.", StatusSeverity.Error));
                 return false;
             }
 

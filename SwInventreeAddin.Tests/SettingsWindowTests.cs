@@ -114,6 +114,49 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public async Task ApplySettingsAsync_InvalidMappingResult_CombinesVerdictAndMappingFailureInFooter()
+        {
+            var applyService = new StubSettingsApplyService();
+            var invalidProvider = new StubPropertyMappingProvider
+            {
+                LocalFilePath = _localMappingPath,
+                Health = MappingHealth.Invalid,
+                Message = "The configured Property Mapping file was not found: C:\\nonexistent\\map.json",
+            };
+
+            var window = CreateWindow(
+                applyService: applyService,
+                mappingProvider: new StubPropertyMappingProvider(),
+                mappingProviderFactory: new StubMappingProviderFactory { Factory = _ => invalidProvider });
+
+            bool result = await window.ApplySettingsAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.False);
+                Assert.That(GetStatusBarText(window, "MappingStatusBar"),
+                            Does.Contain("invalid").IgnoreCase);
+                var footer = GetStatusBarText(window, "ActionStatusBar");
+                Assert.That(footer, Does.Contain("Saved"));
+                Assert.That(footer, Does.Contain("connection successful"));
+                Assert.That(footer, Does.Contain("could not be loaded"));
+            });
+        }
+
+        [Test]
+        public async Task ApplySettingsAsync_ClearsStaleConnectionStatus()
+        {
+            var window = CreateWindow();
+            GetStatusBar(window, "ConnectionStatusBar")
+                .SetStatus("Connection successful.", StatusSeverity.Success);
+
+            bool result = await window.ApplySettingsAsync();
+
+            Assert.That(result, Is.True);
+            Assert.That(GetStatusBarText(window, "ConnectionStatusBar"), Is.Empty);
+        }
+
+        [Test]
         public async Task ApplySettingsAsync_WhenSuccessful_SetsSavedStatusAndFiresMappingApplied()
         {
             var applyService = new StubSettingsApplyService();
@@ -292,8 +335,7 @@ namespace SwInventreeAddin.Tests
             var newProvider = new StubPropertyMappingProvider
             {
                 LocalFilePath = _localMappingPath,
-                Health = MappingHealth.Invalid,
-                Message = "New provider invalid"
+                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion }
             };
 
             var factory = new StubMappingProviderFactory { Factory = _ => newProvider };
@@ -303,6 +345,8 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(result, Is.True);
 
+            newProvider.Health = MappingHealth.Invalid;
+            newProvider.Message = "New provider invalid";
             newProvider.RaiseMappingChanged();
 
             Assert.That(GetStatusBarText(window, "MappingStatusBar"), Does.Contain("The Property Mapping file is invalid."));
