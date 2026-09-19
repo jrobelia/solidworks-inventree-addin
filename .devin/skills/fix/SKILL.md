@@ -42,7 +42,7 @@ Do not move to the next step until the **Done when** criterion for the current s
    **Done when:** `/tdd` has completed, the regression test passes, and the agent verification command is green.
 6. **Commit and verify.** Run the agent verification command per `docs/agents/coding-standards.md` `## Build & Test Commands`, fix failures, then commit referencing `#N`. `/review` measures a committed diff, so the commit must land before the review call.
    **Done when:** the fix is committed and the agent verification command passes on the commit.
-7. **Review.** Invoke `/review` with `REVIEW_BASE` = `PRE_FIX_SHA`, `SPEC_SOURCE` = the stored fix spec (body and comments), `AXES` = `both`. `/review` runs an adjudicated two-pass review-and-fix loop internally and returns a final `REVIEW_STATUS` plus the full `REVIEW_NOTES` that record every finding's disposition across all passes. Capture both exactly.
+7. **Review.** Invoke `/review` with `REVIEW_BASE` = `PRE_FIX_SHA`, `REVIEW_HEAD` = the fix commit's SHA (capture it with `git rev-parse HEAD` after the step-6 commit), `SPEC_SOURCE` = the stored fix spec (body and comments), `AXES` = `both`. `/review` runs an adjudicated two-pass review-and-fix loop internally and returns a final `REVIEW_STATUS` plus the full `REVIEW_NOTES` that record every finding's disposition across all passes. Capture both exactly.
    - If `REVIEW_STATUS` is `clean`, `resolved`, or `deferred`, proceed.
    - If `REVIEW_STATUS` is `escalated`, stop and hand off to the user; the `REVIEW_NOTES` will include the follow-up issue numbers.
    - If `REVIEW_STATUS` is `capped`, stop and ask the user how to proceed.
@@ -57,3 +57,4 @@ Do not move to the next step until the **Done when** criterion for the current s
 - `/codebase-design` — when the fix touches a public seam.
 - `/tdd` — the red-green fix loop for normal bugs.
 - `/review` — the shared two-axis review-and-fix loop.
+- `/qa` — the handoff destination after ship.

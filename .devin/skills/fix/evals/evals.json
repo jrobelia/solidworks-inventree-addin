@@ -48,6 +48,50 @@
           "description": "Credential precedence/validation logic unchanged, configured-state card toolbar (#240) untouched, no out-of-scope edits"
         }
       ]
+    },
+    {
+      "id": 1,
+      "prompt": "/fix #310 — a null-guard crash in SettingsWindow.xaml.cs. You are on branch feature/settings-toolbar which already has open PR #300, and the PR's changed files include SettingsWindow.xaml.cs. Walk steps 4–8: which branch do you pick, and how does the ship step differ from a fresh-branch run?",
+      "expected_output": "Step 4 runs gh pr list --state open --head feature/settings-toolbar, finds open PR #300, judges the bug overlaps the PR's changed files so it is PR-blocking, verifies git status --short is clean (or commits only the files the fix touches), stays on feature/settings-toolbar instead of cutting fix/issue-310, captures PRE_FIX_SHA before the fix commit, and at step 8 appends Closes #310 plus the verbatim REVIEW_NOTES to the existing PR #300 body with gh pr edit rather than opening a new PR.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "open-pr-detected-before-branching",
+          "description": "gh pr list --state open --head <current-branch> ran before choosing a branch, and open PR #300 was found"
+        },
+        {
+          "name": "pr-blocking-judgment",
+          "description": "The bug was judged PR-blocking because its file overlaps the PR's changed files — the run stays on feature/settings-toolbar rather than branching to fix/issue-310"
+        },
+        {
+          "name": "pre-fix-sha-captured",
+          "description": "git rev-parse HEAD was captured as PRE_FIX_SHA before the fix commit landed"
+        },
+        {
+          "name": "ship-appends-to-existing-pr",
+          "description": "gh pr edit appends Closes #310 and the verbatim REVIEW_NOTES to the existing PR #300 body — no new PR is opened"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "/fix #318 — the issue title is 'Intermittent crash on window open' and the body says 'no deterministic repro, root cause unknown'. Walk the routing decision before any fix work.",
+      "expected_output": "Step 3 detects hard-bug signals (intermittent, no deterministic repro, root cause unknown) and invokes /diagnosing-bugs before any fix work — it does not jump straight to /tdd. The run then routes on the three outcomes: fix + regression test produced → proceed to branch selection with that fix and test; missing or shallow seam → pause and hand off to the user for /improve-codebase-architecture; no tight red-capable loop → stop and ask for the repro environment, redacted artifacts, or permission to instrument.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "hard-bug-signals-detected",
+          "description": "The signals intermittent / no deterministic repro / root cause unknown were detected in the title or body before any fix work"
+        },
+        {
+          "name": "diagnosing-bugs-invoked-first",
+          "description": "/diagnosing-bugs was invoked before /tdd — the hard-bug path is not patched around with a speculative fix"
+        },
+        {
+          "name": "three-outcome-routing",
+          "description": "The run routes on all three /diagnosing-bugs outcomes: fix produced → proceed; shallow seam → user handoff for /improve-codebase-architecture; no red loop → stop and ask for repro artifacts"
+        }
+      ]
     }
   ]
 }
