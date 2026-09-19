@@ -334,7 +334,7 @@ namespace SwInventreeAddin.AddIn
                 form.ShowDialog();
 
                 // Apply saves without closing the dialog, so propagate whenever
-                // ApplySettingsAsync ran — not only when the dialog returns true.
+                // an apply ran — not only when the dialog returns true.
                 if (!settingsApplied) return;
 
                 var newConfig = _configProvider.GetServerConfig();

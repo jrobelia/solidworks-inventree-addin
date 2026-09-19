@@ -1,6 +1,4 @@
 using System;
-using System.Net.Http;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
@@ -15,17 +13,19 @@ namespace SwInventreeAddin.UI
     /// (lower section). The credential section follows prototype 1b: a fixed
     /// three-line status card whenever anything is saved, and a single plain
     /// form (URL + username/password or API key) with no mode switcher.
+    ///
+    /// This code-behind is event wiring and rendering only: field events push
+    /// drafts into the <see cref="SettingsViewModel"/>, every derived output
+    /// flows back through PropertyChanged into a render method, and the
+    /// button handlers forward to the VM's orchestration commands. What stays
+    /// here is what is WPF-bound: the file browse dialog, the shared-path
+    /// read-only styling, the Property Mappings editor launch, and the API-key
+    /// placeholders.
     /// </summary>
     public partial class SettingsWindow : Window
     {
         private readonly SettingsViewModel _vm;
-        private readonly ISettingsApplyService _settingsApplyService;
         private readonly IVersionInfo _versionInfo;
-        private readonly IMappingProviderFactory _mappingProviderFactory;
-        private IPropertyMappingProvider _mappingProvider;
-
-        private MappingChangedSubscription? _mappingChangedSubscription;
-        private string? _mappingStatusDetail;
 
         /// <summary>
         /// The probe fired on open when a full config is saved — owned by the
@@ -33,11 +33,20 @@ namespace SwInventreeAddin.UI
         /// </summary>
         internal Task? OpenProbeTask => _vm.OpenProbeTask;
 
+        /// <summary>The view model — the residual visual tests' settle point.</summary>
+        internal SettingsViewModel ViewModel => _vm;
+
         /// <summary>
         /// Raised after Apply successfully saves settings, so the caller can update
         /// the live mapping provider without waiting for the dialog to close.
         /// </summary>
         public event EventHandler<IPropertyMappingProvider>? MappingApplied;
+
+        /// <summary>
+        /// Raised whenever the VM's connection-state read-model changes — the
+        /// #241 reach path for a Task Pane consumer.
+        /// </summary>
+        public event EventHandler<ServerConnectionStatus>? ConnectionStateChanged;
 
         internal SettingsWindow(IConfigProvider configProvider,
                                 IPropertyMappingProvider mappingProvider,
@@ -45,42 +54,30 @@ namespace SwInventreeAddin.UI
                                 ISettingsApplyService settingsApplyService,
                                 IMappingProviderFactory mappingProviderFactory)
         {
-            _vm = new SettingsViewModel(configProvider, settingsApplyService);
-            _mappingProvider = mappingProvider;
+            _vm = new SettingsViewModel(configProvider, settingsApplyService,
+                                        mappingProvider, mappingProviderFactory);
             _versionInfo = versionInfo;
-            _settingsApplyService = settingsApplyService;
-            _mappingProviderFactory = mappingProviderFactory;
             DataContext = _versionInfo;
 
             InitializeComponent();
 
-            // VM state changes re-render the card and the form: every change
-            // raises StatusCard and the three form outputs together, so one
-            // pass is always coherent.
-            _vm.PropertyChanged += (_, e) =>
-            {
-                switch (e.PropertyName)
-                {
-                    case nameof(SettingsViewModel.StatusCard):
-                    case nameof(SettingsViewModel.UrlSliceOpen):
-                    case nameof(SettingsViewModel.CredentialSliceOpen):
-                    case nameof(SettingsViewModel.CredentialFormOpen):
-                        RefreshStatusCard();
-                        RenderCredentialForm();
-                        break;
-                }
-            };
+            _vm.MappingApplied += (_, provider) => MappingApplied?.Invoke(this, provider);
+            _vm.ConnectionStateChanged += (_, status) => ConnectionStateChanged?.Invoke(this, status);
 
-            // Field events push drafts into the VM; every VM read below pulls
-            // the derived outputs back out for enablement, labels, and visibility.
-            UrlBox.TextChanged += (_, __) => { _vm.Url = UrlBox.Text; RefreshButtonStates(); };
-            UsernameBox.TextChanged += (_, __) => { _vm.Username = UsernameBox.Text; RefreshButtonStates(); };
-            PasswordBox.PasswordChanged += (_, __) => { _vm.Password = PasswordBox.Password; RefreshButtonStates(); };
-            ApiKeyBox.PasswordChanged += (_, __) => OnApiKeyEdited();
-            SharedPathBox.TextChanged += (_, __) => { _vm.SharedMappingPath = SharedPathBox.Text; RefreshButtonStates(); };
-            BomKeywordBox.TextChanged += (_, __) => { _vm.BomKeyword = BomKeywordBox.Text; RefreshButtonStates(); };
-            LocalRadio.Checked += (_, __) => { _vm.UseLocalMapping = true; RefreshButtonStates(); };
-            SharedRadio.Checked += (_, __) => { _vm.UseLocalMapping = false; RefreshButtonStates(); };
+            // Every VM output change re-renders: each derived property flows
+            // through PropertyChanged into the matching render method.
+            _vm.PropertyChanged += (_, e) => OnViewModelPropertyChanged(e.PropertyName);
+
+            // Field events push drafts into the VM; the derived outputs come
+            // back through PropertyChanged.
+            UrlBox.TextChanged += (_, __) => _vm.Url = UrlBox.Text;
+            UsernameBox.TextChanged += (_, __) => _vm.Username = UsernameBox.Text;
+            PasswordBox.PasswordChanged += (_, __) => _vm.Password = PasswordBox.Password;
+            ApiKeyBox.PasswordChanged += (_, __) => _vm.ApiKeyDraft = ApiKeyBox.Password;
+            SharedPathBox.TextChanged += (_, __) => _vm.SharedMappingPath = SharedPathBox.Text;
+            BomKeywordBox.TextChanged += (_, __) => _vm.BomKeyword = BomKeywordBox.Text;
+            LocalRadio.Checked += (_, __) => _vm.UseLocalMapping = true;
+            SharedRadio.Checked += (_, __) => _vm.UseLocalMapping = false;
 
             WindowCentering.Attach(this, SolidWorksWindowHandle.Get());
 
@@ -92,26 +89,90 @@ namespace SwInventreeAddin.UI
             RefreshStatusCard();
             RenderCredentialForm();
             UpdateApiKeyPlaceholders();
+            RenderMappingSection();
+            RefreshButtonStates();
 
-            // Show local path (read-only, copyable)
-            LocalPathBox.Text = _mappingProvider.LocalFilePath;
-
-            // Set Edit Mappings button state and mapping status bar
-            RefreshMappingStatus();
-            AttachMappingChanged();
             Closed += (_, __) =>
             {
-                // The VM cancels and disposes the open probe; a late verdict
-                // landing after this is still discarded.
-                _vm.CancelOpenProbe();
-                DetachMappingChanged();
+                // The VM cancels the open probe and detaches the
+                // mapping-changed subscription — a late verdict landing after
+                // this is still discarded.
+                _vm.OnClosed();
             };
-
-            RefreshButtonStates();
         }
 
-        // ── Dirty-state tracking ───────────────────────────────────────────────
-        // The VM owns the snapshot/diff rules; the window only reads the outputs.
+        // ── Rendering ────────────────────────────────────────────────────────
+        // Every derived output the VM raises lands here; each case is a
+        // mechanical forward — no rules, no state.
+
+        private void OnViewModelPropertyChanged(string? propertyName)
+        {
+            switch (propertyName)
+            {
+                case nameof(SettingsViewModel.StatusCard):
+                case nameof(SettingsViewModel.UrlSliceOpen):
+                case nameof(SettingsViewModel.CredentialSliceOpen):
+                case nameof(SettingsViewModel.CredentialFormOpen):
+                    RefreshStatusCard();
+                    RenderCredentialForm();
+                    break;
+
+                case nameof(SettingsViewModel.ActionStatusText):
+                case nameof(SettingsViewModel.ActionStatusSeverity):
+                    ActionStatusBar.SetStatus(_vm.ActionStatusText, _vm.ActionStatusSeverity);
+                    break;
+
+                case nameof(SettingsViewModel.ConnectionStatusText):
+                case nameof(SettingsViewModel.ConnectionStatusSeverity):
+                    ConnectionStatusBar.SetStatus(_vm.ConnectionStatusText, _vm.ConnectionStatusSeverity);
+                    break;
+
+                case nameof(SettingsViewModel.MappingStatusText):
+                case nameof(SettingsViewModel.MappingStatusSeverity):
+                    MappingStatusBar.SetStatus(_vm.MappingStatusText, _vm.MappingStatusSeverity);
+                    break;
+
+                case nameof(SettingsViewModel.EditMappingsEnabled):
+                    EditMappingsButton.IsEnabled = _vm.EditMappingsEnabled;
+                    break;
+
+                case nameof(SettingsViewModel.EditMappingsLabel):
+                    EditMappingsButtonText.Text = _vm.EditMappingsLabel;
+                    break;
+
+                case nameof(SettingsViewModel.LocalMappingPath):
+                    LocalPathBox.Text = _vm.LocalMappingPath;
+                    break;
+
+                case nameof(SettingsViewModel.UseLocalMapping):
+                    LocalRadio.IsChecked = _vm.UseLocalMapping;
+                    SharedRadio.IsChecked = !_vm.UseLocalMapping;
+                    break;
+
+                case nameof(SettingsViewModel.Username):
+                    UsernameBox.Text = _vm.Username;
+                    break;
+
+                case nameof(SettingsViewModel.Password):
+                    PasswordBox.Password = _vm.Password;
+                    break;
+
+                case nameof(SettingsViewModel.ApiKeyDraft):
+                    ApiKeyBox.Password = _vm.ApiKeyDraft;
+                    UpdateApiKeyPlaceholders();
+                    break;
+
+                case nameof(SettingsViewModel.HasSavedApiKey):
+                    UpdateApiKeyPlaceholders();
+                    break;
+
+                case nameof(SettingsViewModel.IsDirty):
+                case nameof(SettingsViewModel.CancelLabel):
+                case nameof(SettingsViewModel.TestConnectionEnabled):
+                    RefreshButtonStates();
+                    break;
+            }
+        }
 
         private void RefreshButtonStates()
         {
@@ -120,8 +181,6 @@ namespace SwInventreeAddin.UI
             CancelButtonText.Text = _vm.CancelLabel;
             TestConnectionButton.IsEnabled = _vm.TestConnectionEnabled;
         }
-
-        // ── Connection status card ─────────────────────────────────────────────
 
         // The card holds the persistent state: what is saved crossed with the
         // session's probe axis — the VM computes that projection; this only
@@ -170,11 +229,9 @@ namespace SwInventreeAddin.UI
             }
         }
 
-        // ── Single credential form ───────────────────────────────────────────
-
-        // When the saved config is incomplete the form is always open — there is
-        // nothing to summarise yet. Once complete, the card toolbar reveals just
-        // the slice being changed. The VM owns the flags; this only renders.
+        // When the saved config is incomplete the form is always open — there
+        // is nothing to summarise yet. Once complete, the card toolbar reveals
+        // just the slice being changed. The VM owns the flags; this only renders.
         private void RenderCredentialForm()
         {
             CredentialFormScroll.Visibility =
@@ -185,17 +242,17 @@ namespace SwInventreeAddin.UI
                 _vm.CredentialSliceOpen ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        // Shared tail for paths that persist or remove the saved config: the
-        // key draft is dropped (saved keys are never re-shown) and the field
-        // chrome re-renders — card and form re-render on the VM's own
-        // notifications, and the lifecycle call that rebaselines happens at
-        // the call site.
-        private void CollapseFormAndRefresh()
+        private void RenderMappingSection()
         {
-            ApiKeyBox.Clear();
-            UpdateApiKeyPlaceholders();
-            RefreshButtonStates();
+            LocalPathBox.Text = _vm.LocalMappingPath;
+            LocalRadio.IsChecked = _vm.UseLocalMapping;
+            SharedRadio.IsChecked = !_vm.UseLocalMapping;
+            EditMappingsButton.IsEnabled = _vm.EditMappingsEnabled;
+            EditMappingsButtonText.Text = _vm.EditMappingsLabel;
+            MappingStatusBar.SetStatus(_vm.MappingStatusText, _vm.MappingStatusSeverity);
         }
+
+        // ── Card toolbar ─────────────────────────────────────────────────────
 
         private void ChangeServer_Click(object sender, RoutedEventArgs e)
         {
@@ -208,13 +265,6 @@ namespace SwInventreeAddin.UI
         }
 
         // ── API key field: write-once draft + placeholders ───────────────────
-
-        private void OnApiKeyEdited()
-        {
-            _vm.ApiKeyDraft = ApiKeyBox.Password;
-            UpdateApiKeyPlaceholders();
-            RefreshButtonStates();
-        }
 
         // Dots stand in for a saved key — never the key itself. With no saved key
         // the field prompts for a paste. Typing hides either overlay.
@@ -229,37 +279,10 @@ namespace SwInventreeAddin.UI
                     ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        // ── Remove API key ───────────────────────────────────────────────────
-
-        // Removing the API key goes through the apply service so every settings
-        // mutation surfaces as a SettingsApplyException with a consistent message
-        // prefix. Only the credential is cleared — the saved URL, Property Mapping
-        // path, and BOM keyword survive, and the card lands on
-        // Authentication required with the form open.
-        private async void RemoveApiKey_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                await _settingsApplyService.RemoveApiKeyAsync().ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                this.Dispatcher.Invoke(() => ConnectionStatusBar.SetStatus(ex.Message, StatusSeverity.Error));
-                return;
-            }
-
-            this.Dispatcher.Invoke(() =>
-            {
-                _vm.OnCredentialRemoved();
-                _vm.ClearProbeVerdict();
-                UsernameBox.Clear();
-                PasswordBox.Clear();
-                CollapseFormAndRefresh();
-                ConnectionStatusBar.SetStatus("Credential removed. Server address kept.", StatusSeverity.Success);
-            });
-        }
-
-        // ── Radio button handlers ──────────────────────────────────────────────
+        // ── Radio button styling ─────────────────────────────────────────────
+        // WPF-bound chrome: the read-only treatment on the shared-path box
+        // follows whichever radio is checked. The radio state itself is a VM
+        // draft; enablement and labels flow from the mapping projection.
 
         private void SharedRadio_Checked(object sender, RoutedEventArgs e)
         {
@@ -267,8 +290,6 @@ namespace SwInventreeAddin.UI
 
             SharedPathBox.IsReadOnly = false;
             SharedPathBox.Background = System.Windows.Media.Brushes.White;
-            // EditMappingsButton.IsEnabled and label are controlled by RefreshMappingStatus()
-            // based on the resolved mapping file and its MappingHealth.
         }
 
         private void LocalRadio_Checked(object sender, RoutedEventArgs e)
@@ -277,8 +298,6 @@ namespace SwInventreeAddin.UI
 
             SharedPathBox.IsReadOnly = true;
             SharedPathBox.Background = (Brush)FindResource("BrushSectionHeader");
-            // EditMappingsButton.IsEnabled and label are controlled by RefreshMappingStatus()
-            // based on the resolved mapping file and its MappingHealth.
         }
 
         // ── Browse ────────────────────────────────────────────────────────────
@@ -304,301 +323,40 @@ namespace SwInventreeAddin.UI
 
         private void EditMappings_Click(object sender, RoutedEventArgs e)
         {
-            var editor = new PropertyMappingEditorWindow(_mappingProvider, this);
+            var editor = new PropertyMappingEditorWindow(_vm.MappingProvider, this);
             editor.ShowDialog();
-            RefreshMappingStatus();
+            _vm.RefreshMappingStatus();
         }
 
-        // ── Mapping status bar ────────────────────────────────────────────────
-
-        // Re-renders the mapping status bar from IPropertyMappingProvider.GetMappingResult()
-        // whenever the provider or its underlying file changes, so the status, colour, and
-        // Edit Mappings button always reflect the current mapping health.
-        private bool RefreshMappingStatus()
-        {
-            try
-            {
-                var result = _mappingProvider.GetMappingResult();
-
-                EditMappingsButton.IsEnabled = result.CanEdit;
-                SetEditMappingsButtonLabel(result);
-
-                var config = _vm.SavedConfig;
-                bool hasSharedPath = config != null && !string.IsNullOrEmpty(config.MappingSourcePath);
-                SharedRadio.IsChecked = hasSharedPath;
-                LocalRadio.IsChecked = !hasSharedPath;
-
-                var stripeSeverity = result.Health switch
-                {
-                    MappingHealth.Healthy => StatusSeverity.Success,
-                    MappingHealth.NeedsUpgrade => StatusSeverity.Warning,
-                    MappingHealth.NewerSchema => StatusSeverity.Warning,
-                    _ => StatusSeverity.Error,
-                };
-
-                _mappingStatusDetail = result.FullStatusMessage;
-                MappingStatusBar.SetStatus(_mappingStatusDetail, stripeSeverity);
-                return result.Health != MappingHealth.Invalid;
-            }
-            catch (InvalidOperationException ex)
-            {
-                return ShowInvalidMappingStatus(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                return ShowMappingLoadFailure(ex);
-            }
-        }
-
-        private bool ShowMappingLoadFailure(Exception ex) =>
-            ShowInvalidMappingStatus($"Failed to load the Property Mapping file: {ex.Message}");
-
-        private void SetEditMappingsButtonLabel(MappingResult result)
-        {
-            if (EditMappingsButtonText == null) return;   // guard during InitializeComponent
-
-            EditMappingsButtonText.Text =
-                result.Source == MappingSource.Local ? "Edit Local Mappings" : "Edit Shared Mappings";
-        }
-
-        private bool ShowInvalidMappingStatus(string detail)
-        {
-            var result = new MappingResult(MappingHealth.Invalid,
-                                           PropertyMappingConfig.WithDefaults(),
-                                           detail);
-
-            EditMappingsButton.IsEnabled = false;
-            _mappingStatusDetail = result.FullStatusMessage;
-            MappingStatusBar.SetStatus(_mappingStatusDetail, StatusSeverity.Error);
-            return false;
-        }
-
-        // ── Save ──────────────────────────────────────────────────────────────
-
-        private async void Save_Click(object sender, RoutedEventArgs e)
-        {
-            if (!await ApplySettingsAsync()) return;
-            DialogResult = true;
-        }
-
-        // ── Apply ─────────────────────────────────────────────────────────────
+        // ── Orchestration forwards ────────────────────────────────────────────
+        // async-void only on event handlers; the VM's commands never throw for
+        // service, probe, or mapping failures — they surface through the
+        // status pairs instead, so these forwards can never crash the host.
 
         private async void Apply_Click(object sender, RoutedEventArgs e)
         {
-            await ApplySettingsAsync();
+            await _vm.ApplyAsync();
         }
 
-        // ── Shared settings save + notify ─────────────────────────────────────
-
-        /// <summary>
-        /// Resolves credentials, persists server config, rebuilds the mapping provider,
-        /// refreshes the status card, and fires <see cref="MappingApplied"/>.
-        /// Returns <c>true</c> once the settings are persisted — a failed connection
-        /// probe is reported as the outcome, not an apply failure; <c>false</c> only
-        /// when an error was shown to the user.
-        /// </summary>
-        public async Task<bool> ApplySettingsAsync()
+        private async void Save_Click(object sender, RoutedEventArgs e)
         {
-            var input = _vm.BuildApplyInput();
-
-            // #249: a save that changed nothing connection-relevant skips the
-            // probe. The open probe — if still in flight — keeps its claim on
-            // the card: it is not cancelled, the in-flight axis is not raised,
-            // and the NotProbed result never becomes the card's verdict.
-            bool probing = input.ProbeConnection;
-            if (probing)
-            {
-                // The apply's own probe verdict supersedes the open probe's.
-                _vm.BeginUserProbe();
-                // The save happens inside ApplyAsync — the interim status bar must
-                // not claim a save that a pre-persistence failure would disprove.
-                ActionStatusBar.SetStatus("Saving settings and testing connection\u2026", StatusSeverity.None);
-            }
-            else
-            {
-                ActionStatusBar.SetStatus("Saving settings\u2026", StatusSeverity.None);
-            }
-            // A new save supersedes any earlier connection-scoped outcome —
-            // leaving it would let the section bar contradict the fresh verdict.
-            ConnectionStatusBar.SetStatus(string.Empty, StatusSeverity.None);
-
-            ConnectionProbeResult probe;
-            try
-            {
-                using (var client = new HttpClient())
-                {
-                    probe = await _settingsApplyService.ApplyAsync(input, client)
-                                                       .ConfigureAwait(false);
-                }
-            }
-            catch (SettingsApplyException ex)
-            {
-                if (probing) _vm.EndUserProbe(null);
-                this.Dispatcher.Invoke(() =>
-                {
-                    ActionStatusBar.SetStatus(ex.Message, StatusSeverity.Error);
-                });
-                return false;
-            }
-
-            if (probing) _vm.EndUserProbe(probe);
-
-            // The password never lingers — whether it was sent for token
-            // resolution or shadowed by a winning key draft.
-            this.Dispatcher.Invoke(() =>
-            {
-                PasswordBox.Clear();
-                _vm.ClearSecrets();
-            });
-
-            bool mappingOk;
-            try
-            {
-                _mappingProvider = _mappingProviderFactory.Create(input.SharedMappingPath);
-
-                mappingOk = this.Dispatcher.Invoke(() =>
-                {
-                    // The save persisted — re-read the saved config so the
-                    // radios and the card reflect what is now on disk.
-                    _vm.ReloadPersistedConfig();
-                    return RefreshMappingStatus();
-                });
-
-                this.Dispatcher.Invoke(() =>
-                {
-                    DetachMappingChanged();
-                    AttachMappingChanged();
-                });
-            }
-            catch (Exception ex)
-            {
-                // Mapping detail stays in the Property Mapping section's own
-                // status bar — ShowInvalidMappingStatus renders it there.
-                this.Dispatcher.Invoke(() => ShowMappingLoadFailure(ex));
-                mappingOk = false;
-            }
-
-            if (!mappingOk)
-            {
-                // The save persisted; the mapping bar carries the detail. The
-                // footer aggregates both facts — the probe verdict and the
-                // mapping failure — so the line is truthful on its own.
-                var failure = SettingsViewModel.FormatApplyOutcome(probe, mappingOk: false);
-                this.Dispatcher.Invoke(() =>
-                {
-                    // The provider was swapped even though the file is invalid —
-                    // the add-in and Task Pane must track the saved source path;
-                    // the Invalid result keeps Part Sync gated off on its own.
-                    MappingApplied?.Invoke(this, _mappingProvider);
-                    _vm.ReloadPersistedConfig();
-                    ActionStatusBar.SetStatus(failure.Text, failure.Severity);
-                });
-                return false;
-            }
-
-            try
-            {
-                var outcome = SettingsViewModel.FormatApplyOutcome(probe, mappingOk: true);
-                this.Dispatcher.Invoke(() =>
-                {
-                    MappingApplied?.Invoke(this, _mappingProvider);
-
-                    // Persist happened: re-read so the card, credential state, and
-                    // placeholders reflect what is now on disk. A typed key draft is
-                    // cleared — saved keys are never re-shown.
-                    _vm.MarkPersisted();
-                    CollapseFormAndRefresh();
-                    ActionStatusBar.SetStatus(outcome.Text, outcome.Severity);
-                });
-                return true;
-            }
-            catch (Exception ex)
-            {
-                this.Dispatcher.Invoke(() => ActionStatusBar.SetStatus($"Failed to apply settings: {ex.Message}", StatusSeverity.Error));
-                return false;
-            }
+            if (!await _vm.ApplyAsync()) return;
+            DialogResult = true;
         }
 
-        // ── Cancel ────────────────────────────────────────────────────────────
+        private async void Test_Click(object sender, RoutedEventArgs e)
+        {
+            await _vm.TestConnectionAsync();
+        }
+
+        private async void RemoveApiKey_Click(object sender, RoutedEventArgs e)
+        {
+            await _vm.RemoveApiKeyAsync();
+        }
 
         private void Cancel_Click(object sender, RoutedEventArgs e)
         {
             DialogResult = false;
         }
-
-        // ── Test connection ───────────────────────────────────────────────────
-
-        // Test never saves — it probes with the effective credential and reports
-        // on the section status bar while the card takes the probe outcome.
-        private async void Test_Click(object sender, RoutedEventArgs e)
-        {
-            var input = _vm.BuildTestInput();
-
-            // A user-initiated probe supersedes the open probe — the card
-            // should settle on the freshest verdict.
-            _vm.BeginUserProbe();
-            ConnectionStatusBar.SetStatus("Testing connection\u2026", StatusSeverity.None);
-
-            try
-            {
-                ConnectionProbeResult result;
-                using (var client = new HttpClient())
-                {
-                    result = await _settingsApplyService.TestConnectionAsync(
-                            input, client, CancellationToken.None)
-                        .ConfigureAwait(false);
-                }
-
-                _vm.EndUserProbe(result);
-
-                this.Dispatcher.Invoke(() =>
-                {
-                    ConnectionStatusBar.SetStatus(
-                        result.Succeeded ? result.Message : $"Connection failed. {result.Message}",
-                        result.Succeeded ? StatusSeverity.Success : StatusSeverity.Error);
-
-                    // The password never lingers — whether it was sent for
-                    // token resolution or shadowed by a winning key draft.
-                    PasswordBox.Clear();
-                    _vm.ClearSecrets();
-                });
-            }
-            catch (InvalidOperationException ex)
-            {
-                _vm.EndUserProbe(null);
-                this.Dispatcher.Invoke(() =>
-                {
-                    ConnectionStatusBar.SetStatus(ex.Message, StatusSeverity.Error);
-                });
-            }
-            catch (Exception ex)
-            {
-                _vm.EndUserProbe(null);
-                this.Dispatcher.Invoke(() =>
-                {
-                    ConnectionStatusBar.SetStatus($"Connection failed: {ex.Message}", StatusSeverity.Error);
-                });
-            }
-        }
-
-        // ── Mapping change notifications ──────────────────────────────────────
-
-        private void AttachMappingChanged() =>
-            MappingChangedSubscription.SubscribeTo(ref _mappingChangedSubscription, _mappingProvider, OnMappingChanged);
-
-        private void DetachMappingChanged() =>
-            MappingChangedSubscription.UnsubscribeFrom(ref _mappingChangedSubscription);
-
-        private void OnMappingChanged()
-        {
-            if (!CheckAccess())
-            {
-                this.Dispatcher.Invoke(() => RefreshMappingStatus());
-                return;
-            }
-
-            RefreshMappingStatus();
-        }
-
     }
 }

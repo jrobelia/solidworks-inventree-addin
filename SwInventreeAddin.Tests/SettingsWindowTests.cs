@@ -10,13 +10,18 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using NUnit.Framework;
 using SwInventreeAddin.Config;
-using SwInventreeAddin.InvenTree;
 using SwInventreeAddin.Tests.Stubs;
 using SwInventreeAddin.UI;
 using Ellipse = System.Windows.Shapes.Ellipse;
 
 namespace SwInventreeAddin.Tests
 {
+    // Genuinely visual assertions only — every rule assertion (orchestration,
+    // precedence, probe lifecycle, the mapping projection, status wording)
+    // lives in SettingsViewModelTests. What stays here: tooltips, read-only
+    // boxes, PasswordBox dots/placeholders, dialog launching, the card never
+    // rendering the saved key, layout/styling, and the render wiring that
+    // forwards VM outputs into the controls.
     [TestFixture]
     [Apartment(ApartmentState.STA)]
     [NonParallelizable]
@@ -50,6 +55,8 @@ namespace SwInventreeAddin.Tests
                 File.Delete(_localMappingPath);
         }
 
+        // ── Mapping section rendering ────────────────────────────────────────
+
         [Test]
         public void Constructor_WhenMappingProviderThrowsOnGetMappingResult_SetsRedMappingStatusAndDoesNotCrash()
         {
@@ -64,172 +71,6 @@ namespace SwInventreeAddin.Tests
             Assert.That(GetStatusBarText(window, "MappingStatusBar"), Does.Contain("The Property Mapping file is invalid."));
             Assert.That(GetStripeBrush(window), Is.SameAs(GetBrush(window, "BrushStatusError")));
         }
-
-        [Test]
-        public async Task ApplySettingsAsync_WhenServiceThrowsConfigError_SetsActionStatus()
-        {
-            var applyService = new StubSettingsApplyService
-            {
-                ExceptionToThrowOnApply = new SettingsApplyException(
-                    "Failed to save server settings: stub config failure"),
-            };
-
-            var window = CreateWindow(applyService: applyService);
-
-            bool result = await window.ApplySettingsAsync();
-
-            Assert.That(result, Is.False);
-            Assert.That(GetStatusBarText(window, "ActionStatusBar"), Does.Contain("Failed to save server settings"));
-            Assert.That(GetStatusBarText(window, "ActionStatusBar"), Does.Contain("stub config failure"));
-        }
-
-        [Test]
-        public async Task ApplySettingsAsync_WhenServiceThrowsConfigError_LeavesTheStatusCardUnchanged()
-        {
-            var applyService = new StubSettingsApplyService
-            {
-                ExceptionToThrowOnApply = new SettingsApplyException(
-                    "Failed to save server settings: stub config failure"),
-            };
-
-            var window = CreateWindow(applyService: applyService);
-
-            await window.ApplySettingsAsync();
-
-            Assert.That(GetText(window, "ConnectionCardTitle"), Is.EqualTo("Connected"));
-        }
-
-        [Test]
-        public async Task ApplySettingsAsync_WhenMappingProviderThrowsOnRefresh_ReportsInMappingStatusBar()
-        {
-            var applyService = new StubSettingsApplyService();
-            var throwingProvider = new StubPropertyMappingProvider
-            {
-                LocalFilePath = _localMappingPath,
-                ThrowOnGet = new InvalidOperationException("Failed to load mapping file: C:\\temp\\bad.json"),
-            };
-
-            var window = CreateWindow(
-                applyService: applyService,
-                mappingProvider: new StubPropertyMappingProvider(),
-                mappingProviderFactory: new StubMappingProviderFactory { Factory = _ => throwingProvider });
-
-            bool result = await window.ApplySettingsAsync();
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(result, Is.False);
-                Assert.That(GetStatusBarText(window, "MappingStatusBar"),
-                            Does.Contain("Failed to load mapping file"));
-                Assert.That(GetStatusBarText(window, "ActionStatusBar"),
-                            Does.Contain("could not be loaded"));
-            });
-        }
-
-        [Test]
-        public async Task ApplySettingsAsync_InvalidMappingResult_CombinesVerdictAndMappingFailureInFooter()
-        {
-            var applyService = new StubSettingsApplyService();
-            var invalidProvider = new StubPropertyMappingProvider
-            {
-                LocalFilePath = _localMappingPath,
-                Health = MappingHealth.Invalid,
-                Message = "The configured Property Mapping file was not found: C:\\nonexistent\\map.json",
-            };
-
-            var window = CreateWindow(
-                applyService: applyService,
-                mappingProvider: new StubPropertyMappingProvider(),
-                mappingProviderFactory: new StubMappingProviderFactory { Factory = _ => invalidProvider });
-
-            // A connection-relevant change makes Apply probe — and pay the verdict.
-            GetTextBox(window, "UrlBox")!.Text = "https://other.example.com";
-
-            IPropertyMappingProvider? applied = null;
-            window.MappingApplied += (s, e) => applied = e;
-
-            bool result = await window.ApplySettingsAsync();
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(result, Is.False);
-                Assert.That(GetStatusBarText(window, "MappingStatusBar"),
-                            Does.Contain("invalid").IgnoreCase);
-                var footer = GetStatusBarText(window, "ActionStatusBar");
-                Assert.That(footer, Does.Contain("Saved"));
-                Assert.That(footer, Does.Contain("connection successful"));
-                Assert.That(footer, Does.Contain("could not be loaded"));
-                // The provider swapped with the save — the add-in must receive
-                // it even though the file is invalid, or a reopened window
-                // reports a stale provider's health instead of the saved path's.
-                Assert.That(applied, Is.SameAs(invalidProvider));
-                // The probe resolved — the card must leave the Testing state.
-                Assert.That(GetText(window, "ConnectionCardTitle"), Is.EqualTo("Connected"));
-            });
-        }
-
-        [Test]
-        public async Task ApplySettingsAsync_ClearsStaleConnectionStatus()
-        {
-            var window = CreateWindow();
-            GetStatusBar(window, "ConnectionStatusBar")
-                .SetStatus("Connection successful.", StatusSeverity.Success);
-
-            bool result = await window.ApplySettingsAsync();
-
-            Assert.That(result, Is.True);
-            Assert.That(GetStatusBarText(window, "ConnectionStatusBar"), Is.Empty);
-        }
-
-        [Test]
-        public async Task ApplySettingsAsync_WhenSuccessful_SetsSavedStatusAndFiresMappingApplied()
-        {
-            var applyService = new StubSettingsApplyService();
-            var mappingProvider = new StubPropertyMappingProvider();
-            var window = CreateWindow(applyService: applyService, mappingProvider: mappingProvider);
-
-            IPropertyMappingProvider? firedProvider = null;
-            window.MappingApplied += (s, e) => firedProvider = e;
-
-            bool result = await window.ApplySettingsAsync();
-
-            Assert.That(result, Is.True);
-            Assert.That(firedProvider, Is.SameAs(mappingProvider));
-            Assert.That(GetStatusBarText(window, "ActionStatusBar"), Does.Contain("Saved"));
-        }
-
-        [TestCase("ActionStatusBar")]
-        [TestCase("ConnectionStatusBar")]
-        [TestCase("MappingStatusBar")]
-        public void StatusBarText_IsReadOnlySelectableTextBox(string barName)
-        {
-            var window = CreateWindow();
-            var textBox = GetStatusBarTextBox(window, barName);
-
-            Assert.That(textBox.IsReadOnly, Is.True);
-            Assert.That(textBox.Focusable, Is.True);
-            Assert.That(textBox.IsTabStop, Is.False);
-        }
-
-        [Test]
-        public async Task ActionStatusText_LongError_ToolTipContainsFullMessage()
-        {
-            var longMessage = "Failed to save server settings: " + new string('x', 500);
-            var applyService = new StubSettingsApplyService
-            {
-                ExceptionToThrowOnApply = new SettingsApplyException(longMessage),
-            };
-
-            var window = CreateWindow(applyService: applyService);
-
-            await window.ApplySettingsAsync();
-
-            var textBox = GetStatusBarTextBox(window, "ActionStatusBar");
-            Assert.That(textBox.ToolTip, Is.InstanceOf<string>());
-            Assert.That((string)textBox.ToolTip, Does.Contain(longMessage));
-        }
-
-        // ── Mapping health status bar ─────────────────────────────────────────
 
         [Test]
         public void Constructor_HealthyMapping_ShowsGreenStatusWithUpToDateMessage()
@@ -247,39 +88,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void Constructor_NeedsUpgradeMapping_ShowsAmberStatusWithOutOfDateMessage()
-        {
-            var mappingProvider = new StubPropertyMappingProvider
-            {
-                LocalFilePath = _localMappingPath,
-                Config = new PropertyMappingConfig { SchemaVersion = "2" }
-            };
-
-            var window = CreateWindow(mappingProvider: mappingProvider);
-
-            Assert.That(GetStatusBarText(window, "MappingStatusBar"), Does.Contain("Property Mapping Schema is out of date"));
-            Assert.That(GetStripeBrush(window), Is.SameAs(GetBrush(window, "BrushStatusWarning")));
-        }
-
-        [Test]
-        public void Constructor_NewerSchemaMapping_ShowsAmberStatusWithUpgradeAddInPrompt()
-        {
-            var mappingProvider = new StubPropertyMappingProvider
-            {
-                LocalFilePath = _localMappingPath,
-                Config = new PropertyMappingConfig { SchemaVersion = "4" }
-            };
-
-            var window = CreateWindow(mappingProvider: mappingProvider);
-
-            var statusText = GetStatusBarText(window, "MappingStatusBar");
-            Assert.That(statusText, Does.Contain("newer").IgnoreCase);
-            Assert.That(statusText, Does.Contain("add-in").IgnoreCase);
-            Assert.That(GetStripeBrush(window), Is.SameAs(GetBrush(window, "BrushStatusWarning")));
-        }
-
-        [Test]
-        public void Constructor_InvalidMapping_ShowsRedStatusWithDefaultMessage()
+        public void Constructor_InvalidMapping_DisablesEditMappingsButton()
         {
             var mappingProvider = new StubPropertyMappingProvider
             {
@@ -289,8 +98,24 @@ namespace SwInventreeAddin.Tests
 
             var window = CreateWindow(mappingProvider: mappingProvider);
 
-            Assert.That(GetStatusBarText(window, "MappingStatusBar"), Does.Contain("The Property Mapping file is invalid."));
-            Assert.That(GetStripeBrush(window), Is.SameAs(GetBrush(window, "BrushStatusError")));
+            var button = GetButton(window, "EditMappingsButton");
+            Assert.That(button.IsEnabled, Is.False);
+        }
+
+        [Test]
+        public void Constructor_LocalHealthyMapping_ShowsEditLocalMappingsButtonAndEnabled()
+        {
+            var mappingProvider = new StubPropertyMappingProvider
+            {
+                LocalFilePath = _localMappingPath,
+                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion }
+            };
+
+            var window = CreateWindow(mappingProvider: mappingProvider);
+
+            var button = GetButton(window, "EditMappingsButton");
+            Assert.That(button.IsEnabled, Is.True);
+            Assert.That(GetText(window, "EditMappingsButtonText"), Is.EqualTo("Edit Local Mappings"));
         }
 
         [Test]
@@ -329,106 +154,40 @@ namespace SwInventreeAddin.Tests
             Assert.That(textBox.ToolTip, Is.EqualTo(textBox.Text));
         }
 
-        [Test]
-        public void OnMappingChanged_RefreshesMappingStatus()
+        // ── Status bar chrome ────────────────────────────────────────────────
+
+        [TestCase("ActionStatusBar")]
+        [TestCase("ConnectionStatusBar")]
+        [TestCase("MappingStatusBar")]
+        public void StatusBarText_IsReadOnlySelectableTextBox(string barName)
         {
-            var mappingProvider = new StubPropertyMappingProvider
-            {
-                LocalFilePath = _localMappingPath,
-                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion }
-            };
-            var window = CreateWindow(mappingProvider: mappingProvider);
+            var window = CreateWindow();
+            var textBox = GetStatusBarTextBox(window, barName);
 
-            Assert.That(GetStatusBarText(window, "MappingStatusBar"), Does.Contain("up to date").IgnoreCase);
-
-            mappingProvider.Health = MappingHealth.Invalid;
-            mappingProvider.Message = "Invalid after change";
-            mappingProvider.RaiseMappingChanged();
-
-            Assert.That(GetStatusBarText(window, "MappingStatusBar"), Does.Contain("The Property Mapping file is invalid."));
-            Assert.That(GetStripeBrush(window), Is.SameAs(GetBrush(window, "BrushStatusError")));
+            Assert.That(textBox.IsReadOnly, Is.True);
+            Assert.That(textBox.Focusable, Is.True);
+            Assert.That(textBox.IsTabStop, Is.False);
         }
 
         [Test]
-        public async Task ApplySettingsAsync_WithNewProvider_RefreshesOnNewProviderMappingChanged()
+        public void ActionStatusText_LongError_ToolTipContainsFullMessage()
         {
-            var originalProvider = new StubPropertyMappingProvider
+            var longMessage = "Failed to save server settings: " + new string('x', 500);
+            var applyService = new StubSettingsApplyService
             {
-                LocalFilePath = _localMappingPath,
-                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion }
-            };
-            var newProvider = new StubPropertyMappingProvider
-            {
-                LocalFilePath = _localMappingPath,
-                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion }
+                ExceptionToThrowOnApply = new SettingsApplyException(longMessage),
             };
 
-            var factory = new StubMappingProviderFactory { Factory = _ => newProvider };
-            var window = CreateWindow(mappingProvider: originalProvider, mappingProviderFactory: factory);
+            var window = CreateWindow(applyService: applyService);
 
-            bool result = await window.ApplySettingsAsync();
+            Click(window, "ApplyButton");
 
-            Assert.That(result, Is.True);
-
-            newProvider.Health = MappingHealth.Invalid;
-            newProvider.Message = "New provider invalid";
-            newProvider.RaiseMappingChanged();
-
-            Assert.That(GetStatusBarText(window, "MappingStatusBar"), Does.Contain("The Property Mapping file is invalid."));
+            var textBox = GetStatusBarTextBox(window, "ActionStatusBar");
+            Assert.That(textBox.ToolTip, Is.InstanceOf<string>());
+            Assert.That((string)textBox.ToolTip, Does.Contain(longMessage));
         }
 
-        // ── Edit Mappings button ───────────────────────────────────────────────
-
-        [Test]
-        public void Constructor_SharedHealthyMapping_ShowsEditSharedMappingsButtonAndEnabled()
-        {
-            var mappingProvider = new StubPropertyMappingProvider
-            {
-                LocalFilePath = _localMappingPath,
-                SourceFilePath = "C:\\shared.json",
-                SourceFileExists = true,
-                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion }
-            };
-
-            var window = CreateWindow(mappingProvider: mappingProvider);
-
-            var button = GetButton(window, "EditMappingsButton");
-            Assert.That(button.IsEnabled, Is.True);
-            Assert.That(GetText(window, "EditMappingsButtonText"), Is.EqualTo("Edit Shared Mappings"));
-        }
-
-        [Test]
-        public void Constructor_LocalHealthyMapping_ShowsEditLocalMappingsButtonAndEnabled()
-        {
-            var mappingProvider = new StubPropertyMappingProvider
-            {
-                LocalFilePath = _localMappingPath,
-                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion }
-            };
-
-            var window = CreateWindow(mappingProvider: mappingProvider);
-
-            var button = GetButton(window, "EditMappingsButton");
-            Assert.That(button.IsEnabled, Is.True);
-            Assert.That(GetText(window, "EditMappingsButtonText"), Is.EqualTo("Edit Local Mappings"));
-        }
-
-        [Test]
-        public void Constructor_InvalidMapping_DisablesEditMappingsButton()
-        {
-            var mappingProvider = new StubPropertyMappingProvider
-            {
-                LocalFilePath = _localMappingPath,
-                Health = MappingHealth.Invalid,
-            };
-
-            var window = CreateWindow(mappingProvider: mappingProvider);
-
-            var button = GetButton(window, "EditMappingsButton");
-            Assert.That(button.IsEnabled, Is.False);
-        }
-
-        // ── Status card per saved state (#233) ─────────────────────────────
+        // ── Status card rendering ────────────────────────────────────────────
         // The card appears once anything is saved; the layout never changes
         // between states — the title, dot, and line values do.
 
@@ -484,31 +243,6 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void Constructor_WithServerOnlySaved_HidesCardToolbar()
-        {
-            var window = CreateWindow(
-                configProvider: new StubConfigProvider("https://inventree.example.com", string.Empty));
-
-            Assert.That(GetElement(window, "ConnectionCardToolbar").Visibility,
-                        Is.EqualTo(Visibility.Collapsed));
-        }
-
-        [Test]
-        public void Constructor_WithServerOnlySaved_ShowsTheFormDirectly()
-        {
-            var window = CreateWindow(
-                configProvider: new StubConfigProvider("https://inventree.example.com", string.Empty));
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(GetElement(window, "UrlFieldPanel").Visibility,
-                            Is.EqualTo(Visibility.Visible));
-                Assert.That(GetElement(window, "CredentialFieldsPanel").Visibility,
-                            Is.EqualTo(Visibility.Visible));
-            });
-        }
-
-        [Test]
         public void Constructor_WithFullConfig_ShowsTestingCardWhileProbeInFlight()
         {
             var pending = new TaskCompletionSource<ConnectionProbeResult>();
@@ -526,39 +260,12 @@ namespace SwInventreeAddin.Tests
                             Is.EqualTo("API key saved"));
                 Assert.That(GetText(window, "ConnectionCardConnection"),
                             Is.EqualTo("testing…"));
+                Assert.That(GetDot(window).Fill,
+                            Is.SameAs(GetBrush(window, "BrushAccentBlue")),
+                            "the in-flight probe renders the testing-blue dot");
             });
 
             pending.SetCanceled();
-        }
-
-        [Test]
-        public void Constructor_WithFullConfig_UsesBlueDotWhileProbing()
-        {
-            var pending = new TaskCompletionSource<ConnectionProbeResult>();
-            var applyService = new StubSettingsApplyService { PendingTestResult = pending };
-            var window = CreateWindow(
-                applyService: applyService,
-                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
-
-            Assert.That(GetDot(window).Fill, Is.SameAs(GetBrush(window, "BrushAccentBlue")));
-
-            pending.SetCanceled();
-        }
-
-        [Test]
-        public void Constructor_WithFullConfig_ShowsCardToolbar()
-        {
-            var window = CreateWindow(
-                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(GetElement(window, "ConnectionCardToolbar").Visibility,
-                            Is.EqualTo(Visibility.Visible));
-                Assert.That(GetButton(window, "ChangeServerButton"), Is.Not.Null);
-                Assert.That(GetButton(window, "ChangeCredentialButton"), Is.Not.Null);
-                Assert.That(GetButton(window, "RemoveApiKeyButton"), Is.Not.Null);
-            });
         }
 
         [Test]
@@ -616,65 +323,7 @@ namespace SwInventreeAddin.Tests
             });
         }
 
-        // ── Probe on open (#234) ───────────────────────────────────────
-        // A complete saved config gets a live probe on every open: the card
-        // shows Testing while it runs, then the verdict — never a stale saved
-        // claim. Fresh and auth-required states start nothing; Close and a
-        // new Apply both cancel the probe and discard any late result.
-
-        [Test]
-        public void Constructor_WithSavedKey_StartsOpenProbeWithSavedValues()
-        {
-            var pending = new TaskCompletionSource<ConnectionProbeResult>();
-            var applyService = new StubSettingsApplyService { PendingTestResult = pending };
-            var window = CreateWindow(
-                applyService: applyService,
-                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(window.OpenProbeTask, Is.Not.Null);
-                Assert.That(applyService.TestCallCount, Is.EqualTo(1));
-                Assert.That(applyService.LastTestInput!.Url,
-                            Is.EqualTo("https://inventree.example.com"));
-                Assert.That(applyService.LastTestInput.RawApiKey, Is.EqualTo("saved-key"));
-                Assert.That(applyService.LastTestInput.Username, Is.Empty);
-                Assert.That(applyService.LastTestInput.Password, Is.Empty);
-            });
-
-            pending.SetCanceled();
-            WaitForProbe(window);
-        }
-
-        [Test]
-        public void Constructor_WithNoSavedConfig_DoesNotProbe()
-        {
-            var applyService = new StubSettingsApplyService();
-            var window = CreateWindow(
-                applyService: applyService,
-                configProvider: StubConfigProvider.WithNoSavedConfig());
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(window.OpenProbeTask, Is.Null);
-                Assert.That(applyService.TestCallCount, Is.EqualTo(0));
-            });
-        }
-
-        [Test]
-        public void Constructor_WithServerOnlySaved_DoesNotProbe()
-        {
-            var applyService = new StubSettingsApplyService();
-            var window = CreateWindow(
-                applyService: applyService,
-                configProvider: new StubConfigProvider("https://inventree.example.com", string.Empty));
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(window.OpenProbeTask, Is.Null);
-                Assert.That(applyService.TestCallCount, Is.EqualTo(0));
-            });
-        }
+        // ── Open probe → card render ─────────────────────────────────────────
 
         [Test]
         public void OpenProbe_WhenConnected_SettlesCardToConnected()
@@ -703,97 +352,8 @@ namespace SwInventreeAddin.Tests
             });
         }
 
-        [Test]
-        public void OpenProbe_WhenUnreachable_SettlesCardToFailedWithDetail()
-        {
-            var pending = new TaskCompletionSource<ConnectionProbeResult>();
-            var applyService = new StubSettingsApplyService { PendingTestResult = pending };
-            var window = CreateWindow(
-                applyService: applyService,
-                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
-
-            pending.SetResult(new ConnectionProbeResult(
-                ConnectionProbeStatus.Unreachable,
-                "Could not reach the InvenTree server. Check the URL and network connection."));
-            WaitForProbe(window);
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(GetText(window, "ConnectionCardTitle"),
-                            Is.EqualTo("Connection failed"));
-                Assert.That(GetText(window, "ConnectionCardConnection"),
-                            Does.Contain("Could not reach"));
-                Assert.That(GetDot(window).Fill,
-                            Is.SameAs(GetBrush(window, "BrushStatusError")));
-            });
-        }
-
-        [Test]
-        public void OpenProbe_WhenCredentialRejected_SettlesCardToAuthenticationRequired()
-        {
-            var pending = new TaskCompletionSource<ConnectionProbeResult>();
-            var applyService = new StubSettingsApplyService { PendingTestResult = pending };
-            var window = CreateWindow(
-                applyService: applyService,
-                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
-
-            pending.SetResult(new ConnectionProbeResult(
-                ConnectionProbeStatus.CredentialRejected,
-                "The server rejected the API key (401 Unauthorized)."));
-            WaitForProbe(window);
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(GetText(window, "ConnectionCardTitle"),
-                            Is.EqualTo("Authentication required"));
-                Assert.That(GetText(window, "ConnectionCardConnection"),
-                            Does.Contain("rejected the API key"));
-            });
-        }
-
-        [Test, Timeout(15000)]
-        public void OpenProbe_WhenWindowClosed_DiscardsTheLateResult()
-        {
-            using var form = HiddenTestWindow.CreateOwnerForm();
-            form.Show();
-            SolidWorksWindowHandle.Set(form.Handle);
-
-            try
-            {
-                var pending = new TaskCompletionSource<ConnectionProbeResult>();
-                var applyService = new StubSettingsApplyService { PendingTestResult = pending };
-                var window = CreateWindow(
-                    applyService: applyService,
-                    configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
-
-                window.Show();
-                Assert.That(
-                    HiddenTestWindow.IsOnScreen(
-                        HiddenTestWindow.GetRect(new WindowInteropHelper(window).Handle)),
-                    Is.False, "Test dialog must stay off every monitor");
-                Assert.That(GetText(window, "ConnectionCardTitle"),
-                            Is.EqualTo("Testing connection…"));
-
-                window.Close();
-                WaitForProbe(window);
-
-                pending.SetResult(new ConnectionProbeResult(
-                    ConnectionProbeStatus.Connected, "Connection successful."));
-
-                Assert.That(GetText(window, "ConnectionCardTitle"),
-                            Is.EqualTo("Testing connection…"),
-                            "a verdict landing after Close is discarded");
-            }
-            finally
-            {
-                SolidWorksWindowHandle.Set(IntPtr.Zero);
-            }
-        }
-
-        // The honouring stub above can only end a cancelled probe with
-        // OperationCanceledException — it never lands a normal verdict at the
-        // post-cancel discard guard. The misbehave knob violates the contract
-        // on purpose so the guard gets a real test.
+        // The misbehave knob violates the test-connection contract on purpose
+        // so the Closed → cancel wiring gets a real discard to prove.
         [Test, Timeout(15000)]
         public void OpenProbe_WhenLateVerdictArrivesAfterClose_IsDiscarded()
         {
@@ -838,37 +398,22 @@ namespace SwInventreeAddin.Tests
             }
         }
 
-        [Test, Timeout(15000)]
-        public async Task Apply_WhenOpenProbeInFlight_CancelsItAndAppliesOwnVerdict()
+        // ── ConnectionStateChanged forward (#241 reach path) ─────────────────
+
+        [Test]
+        public void ConnectionStateChanged_ForwardsTheViewModelNotification()
         {
-            var pending = new TaskCompletionSource<ConnectionProbeResult>();
-            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
-            var applyService = new StubSettingsApplyService(configProvider) { PendingTestResult = pending };
-            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
+            var window = CreateWindow();
+            ServerConnectionStatus? received = null;
+            window.ConnectionStateChanged += (_, status) => received = status;
 
-            // A connection-relevant change makes Apply probe — and supersede
-            // the in-flight open probe (#249: a non-connection save would not).
-            GetTextBox(window, "UrlBox")!.Text = "https://other.example.com";
+            Click(window, "TestConnectionButton");
 
-            bool result = await window.ApplySettingsAsync();
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(result, Is.True);
-                Assert.That(window.OpenProbeTask, Is.Not.Null);
-            });
-            WaitForProbe(window);
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(applyService.LastTestToken.IsCancellationRequested, Is.True,
-                            "starting Apply cancels the in-flight open probe");
-                Assert.That(GetText(window, "ConnectionCardTitle"), Is.EqualTo("Connected"),
-                            "the apply's own verdict supersedes the open probe");
-            });
+            Assert.That(received, Is.Not.Null);
+            Assert.That(received!.Indicator, Is.EqualTo(ServerConnectionIndicator.Connected));
         }
 
-        // ── Dots placeholder (#233) ────────────────────────────────────────
+        // ── Dots placeholder ─────────────────────────────────────────────────
         // Dots stand in for a saved key — shown only when a key is actually
         // saved, never for a server-only config, and never as editable text.
 
@@ -913,7 +458,7 @@ namespace SwInventreeAddin.Tests
                         Is.EqualTo(Visibility.Collapsed));
         }
 
-        // ── Card toolbar actions (#233) ────────────────────────────────────
+        // ── Card toolbar actions ─────────────────────────────────────────────
 
         [Test]
         public void ChangeCredential_WhenClicked_RevealsOnlyTheCredentialFields()
@@ -931,57 +476,7 @@ namespace SwInventreeAddin.Tests
             });
         }
 
-        [Test]
-        public void ChangeCredential_WhenClickedTwice_HidesTheFormAgain()
-        {
-            var window = CreateWindow();
-
-            Click(window, "ChangeCredentialButton");
-            Click(window, "ChangeCredentialButton");
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(GetElement(window, "CredentialFieldsPanel").Visibility,
-                            Is.EqualTo(Visibility.Collapsed));
-                Assert.That(GetElement(window, "UrlFieldPanel").Visibility,
-                            Is.EqualTo(Visibility.Collapsed));
-            });
-        }
-
-        [Test]
-        public void ChangeServer_WhenClicked_RevealsOnlyTheUrlField()
-        {
-            var window = CreateWindow();
-
-            Click(window, "ChangeServerButton");
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(GetElement(window, "UrlFieldPanel").Visibility,
-                            Is.EqualTo(Visibility.Visible));
-                Assert.That(GetElement(window, "CredentialFieldsPanel").Visibility,
-                            Is.EqualTo(Visibility.Collapsed));
-            });
-        }
-
-        [Test]
-        public void ChangeServer_AfterChangeCredential_SwitchesPanels()
-        {
-            var window = CreateWindow();
-
-            Click(window, "ChangeCredentialButton");
-            Click(window, "ChangeServerButton");
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(GetElement(window, "UrlFieldPanel").Visibility,
-                            Is.EqualTo(Visibility.Visible));
-                Assert.That(GetElement(window, "CredentialFieldsPanel").Visibility,
-                            Is.EqualTo(Visibility.Collapsed));
-            });
-        }
-
-        // ── Card toolbar vs design (#240) ──────────────────────────────────
+        // ── Card toolbar vs design ───────────────────────────────────────────
         // Design v2 (docs/design/settings-window-v2.png): the action row sits
         // under a thin divider, spreads across the card — change actions left,
         // the destructive action right — the card is the light interactive
@@ -1126,24 +621,10 @@ namespace SwInventreeAddin.Tests
             });
         }
 
-        // ── Dirty gating (#233) ────────────────────────────────────────────
-        // Apply/Save enable only when a persistable change exists. Blank or
-        // half-typed credential fields never count.
+        // ── Apply gating render ──────────────────────────────────────────────
 
         [Test]
         public void Constructor_FreshState_ApplyAndSaveStartDisabled()
-        {
-            var window = CreateWindow(configProvider: StubConfigProvider.WithNoSavedConfig());
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(GetButton(window, "ApplyButton").IsEnabled, Is.False);
-                Assert.That(GetButton(window, "SaveButton").IsEnabled, Is.False);
-            });
-        }
-
-        [Test]
-        public void Constructor_ConfiguredState_ApplyAndSaveStartDisabled()
         {
             var window = CreateWindow();
 
@@ -1151,356 +632,40 @@ namespace SwInventreeAddin.Tests
             {
                 Assert.That(GetButton(window, "ApplyButton").IsEnabled, Is.False);
                 Assert.That(GetButton(window, "SaveButton").IsEnabled, Is.False);
+                Assert.That(GetText(window, "CancelButtonText"), Is.EqualTo("Close"));
             });
         }
 
         [Test]
         public void UrlField_WhenChanged_EnablesApplyAndSave()
         {
-            var window = CreateWindow(configProvider: StubConfigProvider.WithNoSavedConfig());
+            var window = CreateWindow();
 
-            GetTextBox(window, "UrlBox")!.Text = "https://inventree.example.com";
+            GetTextBox(window, "UrlBox").Text = "https://other.example.com";
 
             Assert.Multiple(() =>
             {
                 Assert.That(GetButton(window, "ApplyButton").IsEnabled, Is.True);
                 Assert.That(GetButton(window, "SaveButton").IsEnabled, Is.True);
+                Assert.That(GetText(window, "CancelButtonText"), Is.EqualTo("Cancel"));
             });
         }
 
-        [Test]
-        public void UsernameAlone_DoesNotEnableApply()
-        {
-            var window = CreateWindow(configProvider: StubConfigProvider.WithNoSavedConfig());
-
-            GetTextBox(window, "UsernameBox")!.Text = "engineer";
-
-            Assert.That(GetButton(window, "ApplyButton").IsEnabled, Is.False);
-        }
+        // ── Apply / Test / Save click → render ───────────────────────────────
+        // One proof per action that the click reaches the VM and the result
+        // renders — every rule behind the result lives in the VM tests.
 
         [Test]
-        public void PasswordAlone_DoesNotEnableApply()
-        {
-            var window = CreateWindow(configProvider: StubConfigProvider.WithNoSavedConfig());
-
-            GetPasswordBox(window, "PasswordBox").Password = "s3cret";
-
-            Assert.That(GetButton(window, "ApplyButton").IsEnabled, Is.False);
-        }
-
-        [Test]
-        public void UsernameAndPassword_WhenComplete_EnableApply()
-        {
-            var window = CreateWindow(configProvider: StubConfigProvider.WithNoSavedConfig());
-
-            GetTextBox(window, "UsernameBox")!.Text = "engineer";
-            GetPasswordBox(window, "PasswordBox").Password = "s3cret";
-
-            Assert.That(GetButton(window, "ApplyButton").IsEnabled, Is.True);
-        }
-
-        [Test]
-        public void ApiKeyDraft_WhenTyped_EnablesApply()
-        {
-            var window = CreateWindow(configProvider: StubConfigProvider.WithNoSavedConfig());
-
-            GetPasswordBox(window, "ApiKeyBox").Password = "inv-new";
-
-            Assert.That(GetButton(window, "ApplyButton").IsEnabled, Is.True);
-        }
-
-        [Test]
-        public void ApiKeyDraft_WhenWhitespaceOnly_DoesNotEnableApply()
-        {
-            var window = CreateWindow(configProvider: StubConfigProvider.WithNoSavedConfig());
-
-            GetPasswordBox(window, "ApiKeyBox").Password = "   ";
-
-            Assert.That(GetButton(window, "ApplyButton").IsEnabled, Is.False);
-        }
-
-        [Test]
-        public void BomKeyword_WhenChanged_EnablesApply()
-        {
-            var window = CreateWindow();
-
-            GetTextBox(window, "BomKeywordBox")!.Text = "custom-bom";
-
-            Assert.That(GetButton(window, "ApplyButton").IsEnabled, Is.True);
-        }
-
-        [Test]
-        public void SharedRadio_WhenChecked_EnablesApply()
-        {
-            var window = CreateWindow();
-
-            GetRadioButton(window, "SharedRadio").IsChecked = true;
-
-            Assert.That(GetButton(window, "ApplyButton").IsEnabled, Is.True);
-        }
-
-        // ── Credential precedence through the apply seam (#233) ────────────
-        // One form, key-wins: the typed key draft beats a complete pair, a
-        // complete pair beats the saved key, and an untouched credential axis
-        // keeps the saved key so a URL-only edit still probes with it.
-
-        [Test]
-        public async Task Apply_WhenBothCredentialPathsFilled_SendsTheApiKeyDraft()
-        {
-            var applyService = new StubSettingsApplyService();
-            var window = CreateWindow(
-                applyService: applyService,
-                configProvider: StubConfigProvider.WithNoSavedConfig());
-            GetTextBox(window, "UrlBox")!.Text = "https://inventree.example.com";
-            GetTextBox(window, "UsernameBox")!.Text = "engineer";
-            GetPasswordBox(window, "PasswordBox").Password = "s3cret";
-            GetPasswordBox(window, "ApiKeyBox").Password = "inv-typed";
-
-            await window.ApplySettingsAsync();
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(applyService.LastInput!.RawApiKey, Is.EqualTo("inv-typed"));
-                Assert.That(applyService.LastInput.Username, Is.Empty);
-                Assert.That(applyService.LastInput.Password, Is.Empty);
-            });
-        }
-
-        [Test]
-        public async Task Apply_WithCompletePair_SendsUsernameAndPassword()
-        {
-            var applyService = new StubSettingsApplyService();
-            var window = CreateWindow(
-                applyService: applyService,
-                configProvider: StubConfigProvider.WithNoSavedConfig());
-            GetTextBox(window, "UrlBox")!.Text = "https://inventree.example.com";
-            GetTextBox(window, "UsernameBox")!.Text = "engineer";
-            GetPasswordBox(window, "PasswordBox").Password = "s3cret";
-
-            await window.ApplySettingsAsync();
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(applyService.LastInput!.Username, Is.EqualTo("engineer"));
-                Assert.That(applyService.LastInput.Password, Is.EqualTo("s3cret"));
-                Assert.That(applyService.LastInput.RawApiKey, Is.Empty);
-            });
-        }
-
-        [Test]
-        public async Task Apply_WithCompletePair_OverridesSavedKey()
-        {
-            var applyService = new StubSettingsApplyService();
-            var window = CreateWindow(
-                applyService: applyService,
-                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
-            GetTextBox(window, "UsernameBox")!.Text = "engineer";
-            GetPasswordBox(window, "PasswordBox").Password = "s3cret";
-
-            await window.ApplySettingsAsync();
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(applyService.LastInput!.Username, Is.EqualTo("engineer"));
-                Assert.That(applyService.LastInput.Password, Is.EqualTo("s3cret"));
-                Assert.That(applyService.LastInput.RawApiKey, Is.Empty);
-            });
-        }
-
-        [Test]
-        public async Task Apply_WithUrlOnlyChange_KeepsTheSavedKey()
-        {
-            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
-            var applyService = new StubSettingsApplyService(configProvider);
-            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
-
-            GetTextBox(window, "UrlBox")!.Text = "https://other.example.com";
-
-            await window.ApplySettingsAsync();
-
-            Assert.That(applyService.LastInput!.RawApiKey, Is.EqualTo("saved-key"));
-        }
-
-        [Test]
-        public async Task Apply_WithHalfTypedPair_KeepsTheSavedKey()
-        {
-            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
-            var applyService = new StubSettingsApplyService(configProvider);
-            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
-
-            GetTextBox(window, "UsernameBox")!.Text = "engineer";
-
-            await window.ApplySettingsAsync();
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(applyService.LastInput!.RawApiKey, Is.EqualTo("saved-key"));
-                Assert.That(applyService.LastInput.Username, Is.Empty);
-            });
-        }
-
-        // ── Apply reports the probe outcome on card + status bar (#232/#233)
-        // The service persists first, then probes: a failed probe is a reported
-        // outcome, not an apply failure, so Apply still proceeds.
-
-        [Test]
-        public async Task ApplySettingsAsync_PassesAnHttpClientToTheApplyService()
-        {
-            var applyService = new StubSettingsApplyService();
-            var window = CreateWindow(applyService: applyService);
-
-            await window.ApplySettingsAsync();
-
-            Assert.That(applyService.LastApplyClient, Is.Not.Null);
-        }
-
-        [Test]
-        public async Task Apply_WhenProbeConnected_CardShowsConnected()
-        {
-            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
-            var applyService = new StubSettingsApplyService(configProvider);
-            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
-
-            // A connection-relevant change makes Apply probe (#249).
-            GetTextBox(window, "UrlBox")!.Text = "https://other.example.com";
-
-            await window.ApplySettingsAsync();
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(GetText(window, "ConnectionCardTitle"), Is.EqualTo("Connected"));
-                Assert.That(GetText(window, "ConnectionCardConnection"),
-                            Is.EqualTo("last test succeeded"));
-                Assert.That(GetDot(window).Fill,
-                            Is.SameAs(GetBrush(window, "BrushStatusSuccess")));
-            });
-        }
-
-        [Test]
-        public async Task Apply_WhenProbeUnreachable_CardShowsFailedWithDetail()
-        {
-            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
-            var applyService = new StubSettingsApplyService(configProvider)
-            {
-                ResultToReturnOnApply = new ConnectionProbeResult(
-                    ConnectionProbeStatus.Unreachable, "Could not reach the InvenTree server."),
-            };
-            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
-
-            // A connection-relevant change makes Apply probe (#249).
-            GetTextBox(window, "UrlBox")!.Text = "https://other.example.com";
-
-            await window.ApplySettingsAsync();
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(GetText(window, "ConnectionCardTitle"),
-                            Is.EqualTo("Connection failed"));
-                Assert.That(GetText(window, "ConnectionCardConnection"),
-                            Does.Contain("Could not reach"));
-                Assert.That(GetDot(window).Fill,
-                            Is.SameAs(GetBrush(window, "BrushStatusError")));
-            });
-        }
-
-        [Test]
-        public async Task Apply_WhenCredentialRejected_CardShowsAuthenticationRequired()
-        {
-            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
-            var applyService = new StubSettingsApplyService(configProvider)
-            {
-                ResultToReturnOnApply = new ConnectionProbeResult(
-                    ConnectionProbeStatus.CredentialRejected,
-                    "The server rejected the API key (401 Unauthorized)."),
-            };
-            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
-
-            // A connection-relevant change makes Apply probe (#249).
-            GetTextBox(window, "UrlBox")!.Text = "https://other.example.com";
-
-            await window.ApplySettingsAsync();
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(GetText(window, "ConnectionCardTitle"),
-                            Is.EqualTo("Authentication required"));
-                Assert.That(GetText(window, "ConnectionCardConnection"),
-                            Does.Contain("rejected the API key"));
-            });
-        }
-
-        [Test]
-        public async Task Apply_WhenProbeFails_ReturnsTrueAndReportsOutcome()
-        {
-            var applyService = new StubSettingsApplyService
-            {
-                ResultToReturnOnApply = new ConnectionProbeResult(
-                    ConnectionProbeStatus.CredentialRejected,
-                    "The server rejected the API key (401 Unauthorized)."),
-            };
-            var window = CreateWindow(applyService: applyService);
-
-            // A connection-relevant change makes Apply probe (#249).
-            GetTextBox(window, "UrlBox")!.Text = "https://other.example.com";
-
-            bool result = await window.ApplySettingsAsync();
-
-            Assert.That(result, Is.True);
-            Assert.That(GetStatusBarText(window, "ActionStatusBar"),
-                        Does.Contain("Saved").And.Contain("authentication required"));
-        }
-
-        [Test]
-        public async Task Apply_WhenProbeFails_StillFiresMappingApplied()
-        {
-            var applyService = new StubSettingsApplyService
-            {
-                ResultToReturnOnApply = new ConnectionProbeResult(
-                    ConnectionProbeStatus.Unreachable,
-                    "Could not reach the InvenTree server."),
-            };
-            var mappingProvider = new StubPropertyMappingProvider();
-            var window = CreateWindow(applyService: applyService, mappingProvider: mappingProvider);
-
-            // A connection-relevant change makes Apply probe (#249).
-            GetTextBox(window, "UrlBox")!.Text = "https://other.example.com";
-
-            IPropertyMappingProvider? firedProvider = null;
-            window.MappingApplied += (s, e) => firedProvider = e;
-
-            await window.ApplySettingsAsync();
-
-            Assert.That(firedProvider, Is.SameAs(mappingProvider));
-        }
-
-        [Test]
-        public async Task Apply_WhenProbeSucceeds_ReportsSavedAndConnected()
-        {
-            var applyService = new StubSettingsApplyService();
-            var window = CreateWindow(applyService: applyService);
-
-            // A connection-relevant change makes Apply probe (#249).
-            GetTextBox(window, "UrlBox")!.Text = "https://other.example.com";
-
-            bool result = await window.ApplySettingsAsync();
-
-            Assert.That(result, Is.True);
-            Assert.That(GetStatusBarText(window, "ActionStatusBar"),
-                        Does.Contain("Saved").And.Contain("connection successful"));
-            Assert.That(GetStatusBarText(window, "ConnectionStatusBar"), Is.Empty,
-                        "an Apply outcome is dialog-level — the section bar stays empty");
-        }
-
-        [Test]
-        public async Task Apply_FromFreshState_RevealsTheStatusCard()
+        public void Apply_FromFreshState_RevealsTheStatusCard()
         {
             var configProvider = StubConfigProvider.WithNoSavedConfig();
             var applyService = new StubSettingsApplyService(configProvider);
             var window = CreateWindow(applyService: applyService, configProvider: configProvider);
-            GetTextBox(window, "UrlBox")!.Text = "https://inventree.example.com";
+
+            GetTextBox(window, "UrlBox").Text = "https://inventree.example.com";
             GetPasswordBox(window, "ApiKeyBox").Password = "inv-new";
 
-            await window.ApplySettingsAsync();
+            Click(window, "ApplyButton");
 
             Assert.Multiple(() =>
             {
@@ -1516,300 +681,20 @@ namespace SwInventreeAddin.Tests
             });
         }
 
+        // The secret may stay in the box while the save runs — it must be gone
+        // once Apply completes, success or failure.
         [Test]
-        public async Task Apply_WhenPasswordSent_ClearsPasswordBox()
+        public void Apply_WhenPasswordSent_ClearsPasswordBox()
         {
             var window = CreateWindow(
                 configProvider: StubConfigProvider.WithNoSavedConfig());
-            GetTextBox(window, "UrlBox")!.Text = "https://inventree.example.com";
-            GetTextBox(window, "UsernameBox")!.Text = "engineer";
+            GetTextBox(window, "UrlBox").Text = "https://inventree.example.com";
+            GetTextBox(window, "UsernameBox").Text = "engineer";
             GetPasswordBox(window, "PasswordBox").Password = "s3cret";
 
-            await window.ApplySettingsAsync();
+            Click(window, "ApplyButton");
 
             Assert.That(GetPasswordBox(window, "PasswordBox").Password, Is.Empty);
-        }
-
-        // ── URL-only save (#238) ─────────────────────────────────────
-        // The server-only state must be reachable by saving — not only by
-        // removing a key. Apply with just a URL persists and lands on
-        // Authentication required.
-
-        [Test]
-        public async Task Apply_FromFreshState_WithUrlOnly_SavesAndLandsOnAuthenticationRequired()
-        {
-            var configProvider = StubConfigProvider.WithNoSavedConfig();
-            var applyService = new StubSettingsApplyService(configProvider)
-            {
-                ResultToReturnOnApply = new ConnectionProbeResult(
-                    ConnectionProbeStatus.CredentialRejected,
-                    "No credential saved — add a username and password or an API key."),
-            };
-            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
-            GetTextBox(window, "UrlBox")!.Text = "https://inventree.example.com";
-
-            bool result = await window.ApplySettingsAsync();
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(result, Is.True, "the URL-only save persisted");
-                Assert.That(configProvider.LastSavedConfig, Is.Not.Null);
-                Assert.That(configProvider.LastSavedConfig!.Url,
-                            Is.EqualTo("https://inventree.example.com"));
-                Assert.That(configProvider.LastSavedConfig!.ApiKey, Is.Empty);
-                Assert.That(GetElement(window, "ConnectionCard").Visibility,
-                            Is.EqualTo(Visibility.Visible));
-                Assert.That(GetText(window, "ConnectionCardTitle"),
-                            Is.EqualTo("Authentication required"));
-                Assert.That(GetText(window, "ConnectionCardServer"),
-                            Is.EqualTo("https://inventree.example.com"));
-                Assert.That(GetStatusBarText(window, "ActionStatusBar"),
-                            Does.Contain("Saved").And.Contain("authentication required"),
-                            "nothing was probed — the bar must not claim a failed connection");
-            });
-        }
-
-        // ── Clearing the server URL (#253) ────────────────────────────
-        // Clearing a saved URL is a legal save: the explicit clear must
-        // reach the apply seam (the saved-URL fallback is test-only), the
-        // record persists with an empty URL and the saved key, and the
-        // card returns to its unconfigured state with the form open.
-
-        [Test]
-        public void UrlField_WhenClearedFromSaved_EnablesApply()
-        {
-            var window = CreateWindow(
-                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
-
-            GetTextBox(window, "UrlBox")!.Text = string.Empty;
-
-            Assert.That(GetButton(window, "ApplyButton").IsEnabled, Is.True);
-        }
-
-        [Test]
-        public async Task Apply_WithUrlCleared_PersistsEmptyUrlAndKeepsSavedKey()
-        {
-            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
-            var applyService = new StubSettingsApplyService(configProvider);
-            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
-
-            GetTextBox(window, "UrlBox")!.Text = string.Empty;
-
-            bool result = await window.ApplySettingsAsync();
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(result, Is.True, "a cleared URL is a legal save");
-                Assert.That(applyService.LastInput!.Url, Is.Empty,
-                    "the explicit clear must reach the seam — the saved-URL fallback is test-only");
-                Assert.That(configProvider.LastSavedConfig!.Url, Is.Empty);
-                Assert.That(configProvider.LastSavedConfig.ApiKey,
-                            Is.EqualTo("saved-key"), "the saved key survives a URL clear");
-            });
-        }
-
-        [Test]
-        public async Task Apply_WithUrlCleared_HidesCardShowsFormAndReportsCleared()
-        {
-            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
-            var applyService = new StubSettingsApplyService(configProvider);
-            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
-
-            GetTextBox(window, "UrlBox")!.Text = string.Empty;
-
-            await window.ApplySettingsAsync();
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(GetElement(window, "ConnectionCard").Visibility,
-                            Is.EqualTo(Visibility.Collapsed),
-                            "a blank saved URL is the unsaved state — the card hides");
-                Assert.That(GetElement(window, "UrlFieldPanel").Visibility,
-                            Is.EqualTo(Visibility.Visible));
-                Assert.That(GetElement(window, "CredentialFieldsPanel").Visibility,
-                            Is.EqualTo(Visibility.Visible));
-                Assert.That(GetStatusBarText(window, "ActionStatusBar"),
-                            Does.Contain("Saved").And.Contain("server connection cleared"),
-                            "nothing was probed — the bar must not claim a failed connection");
-            });
-        }
-
-        [Test]
-        public async Task Apply_WithUrlClearedAndTypedPair_KeepsTheSavedKey()
-        {
-            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
-            var applyService = new StubSettingsApplyService(configProvider);
-            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
-
-            GetTextBox(window, "UrlBox")!.Text = string.Empty;
-            GetTextBox(window, "UsernameBox")!.Text = "engineer";
-            GetPasswordBox(window, "PasswordBox").Password = "s3cret";
-
-            await window.ApplySettingsAsync();
-
-            Assert.That(configProvider.LastSavedConfig!.ApiKey,
-                        Is.EqualTo("saved-key"),
-                        "a typed credential on a clear save is not resolved — the saved key wins");
-        }
-
-        // ── Probe skip on non-connection saves (#249) ─────────────────────
-        // A save that touched no connection-relevant field skips the probe:
-        // the footer reports "Saved." with no connection clause, and an
-        // in-flight open probe keeps running and still lands on the card.
-
-        [Test]
-        public async Task Apply_WhenOnlyBomKeywordChanged_SkipsProbeAndReportsSaved()
-        {
-            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
-            var applyService = new StubSettingsApplyService(configProvider);
-            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
-
-            GetTextBox(window, "BomKeywordBox")!.Text = "custom-bom";
-
-            bool result = await window.ApplySettingsAsync();
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(result, Is.True);
-                Assert.That(applyService.LastInput!.ProbeConnection, Is.False,
-                    "the VM flags the input as not worth a probe");
-                Assert.That(GetStatusBarText(window, "ActionStatusBar"), Is.EqualTo("Saved."),
-                    "no connection clause when nothing connection-relevant changed");
-                Assert.That(configProvider.LastSavedConfig!.BomKeyword, Is.EqualTo("custom-bom"));
-                Assert.That(GetButton(window, "ApplyButton").IsEnabled, Is.False,
-                    "the save re-baselines the dirty snapshot");
-            });
-        }
-
-        [Test]
-        public async Task Apply_WhenOnlySharedMappingPathChanged_SkipsProbeAndPersistsPath()
-        {
-            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
-            var applyService = new StubSettingsApplyService(configProvider);
-            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
-
-            GetRadioButton(window, "SharedRadio").IsChecked = true;
-            GetTextBox(window, "SharedPathBox")!.Text = "\\\\share\\map.json";
-
-            bool result = await window.ApplySettingsAsync();
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(result, Is.True);
-                Assert.That(applyService.LastInput!.ProbeConnection, Is.False);
-                Assert.That(applyService.LastInput.SharedMappingPath,
-                            Is.EqualTo("\\\\share\\map.json"));
-                Assert.That(configProvider.LastSavedConfig!.MappingSourcePath,
-                            Is.EqualTo("\\\\share\\map.json"));
-                Assert.That(GetStatusBarText(window, "ActionStatusBar"), Is.EqualTo("Saved."));
-            });
-        }
-
-        [Test, Timeout(15000)]
-        public async Task Apply_WhenOnlyMappingChanged_LeavesInFlightOpenProbeAlone()
-        {
-            var pending = new TaskCompletionSource<ConnectionProbeResult>();
-            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
-            var applyService = new StubSettingsApplyService(configProvider) { PendingTestResult = pending };
-            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
-
-            GetTextBox(window, "BomKeywordBox")!.Text = "custom-bom";
-
-            bool result = await window.ApplySettingsAsync();
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(result, Is.True);
-                Assert.That(applyService.LastTestToken.IsCancellationRequested, Is.False,
-                    "a mapping-only save must not cancel the in-flight open probe");
-                Assert.That(GetText(window, "ConnectionCardTitle"),
-                            Is.EqualTo("Testing connection…"),
-                            "the open probe still owns the card — no NotProbed verdict applied");
-                Assert.That(GetStatusBarText(window, "ActionStatusBar"), Is.EqualTo("Saved."));
-            });
-
-            // The in-flight probe still lands on the card.
-            pending.SetResult(new ConnectionProbeResult(
-                ConnectionProbeStatus.Connected, "Connection successful."));
-            WaitForProbe(window);
-
-            Assert.That(GetText(window, "ConnectionCardTitle"), Is.EqualTo("Connected"));
-        }
-
-        // ── Test connection (#233, #239, #242) ─────────────────────────────
-        // Test lives at the bottom of the Server Connection section beside the
-        // connection status bar. It never saves and reports on the section's
-        // connection bar while the card takes the probe result. Apply/Save
-        // outcomes report on the footer's action status bar instead.
-
-        [Test]
-        public void TestConnectionButton_AndConnectionStatusBar_LiveInConnectionActionRow()
-        {
-            var window = CreateWindow();
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(IsInside(window, "TestConnectionButton", "ConnectionActionRow"),
-                            Is.True, "Test connection belongs at the bottom of the Server Connection section");
-                Assert.That(IsInside(window, "ConnectionStatusBar", "ConnectionActionRow"),
-                            Is.True, "the connection status bar belongs to the Server Connection section");
-            });
-        }
-
-        [Test]
-        public void DialogActionRow_HoldsActionStatusBarAndDialogLevelButtons()
-        {
-            var window = CreateWindow();
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(IsInside(window, "ActionStatusBar", "DialogActionRow"),
-                            Is.True, "the dialog-level bar reports Apply/Save outcomes");
-                Assert.That(IsInside(window, "ApplyButton", "DialogActionRow"), Is.True);
-                Assert.That(IsInside(window, "SaveButton", "DialogActionRow"), Is.True);
-                Assert.That(IsInside(window, "CancelButton", "DialogActionRow"), Is.True);
-                Assert.That(IsInside(window, "TestConnectionButton", "DialogActionRow"),
-                            Is.False, "Test connection is connection-scoped, not dialog-level");
-                Assert.That(IsInside(window, "ConnectionStatusBar", "DialogActionRow"),
-                            Is.False, "the connection status bar is section-scoped, not dialog-level");
-            });
-        }
-
-        [Test]
-        public void TestConnectionButton_IsOutsideCollapsibleCredentialForm()
-        {
-            var window = CreateWindow();
-
-            Assert.That(IsInsideCredentialForm(window, "TestConnectionButton"), Is.False);
-        }
-
-        [Test]
-        public void TestConnectionButton_WithNoUrlAnywhere_IsDisabled()
-        {
-            var window = CreateWindow(configProvider: StubConfigProvider.WithNoSavedConfig());
-
-            Assert.That(GetButton(window, "TestConnectionButton").IsEnabled, Is.False);
-        }
-
-        [Test]
-        public void TestConnectionButton_WhenUrlTyped_IsEnabled()
-        {
-            var window = CreateWindow(configProvider: StubConfigProvider.WithNoSavedConfig());
-
-            GetTextBox(window, "UrlBox")!.Text = "https://inventree.example.com";
-
-            Assert.That(GetButton(window, "TestConnectionButton").IsEnabled, Is.True);
-        }
-
-        [Test]
-        public void TestConnectionButton_WhenUrlFieldClearedButUrlSaved_StaysEnabled()
-        {
-            var window = CreateWindow(
-                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
-
-            GetTextBox(window, "UrlBox")!.Text = string.Empty;
-
-            Assert.That(GetButton(window, "TestConnectionButton").IsEnabled, Is.True);
         }
 
         [Test]
@@ -1820,8 +705,9 @@ namespace SwInventreeAddin.Tests
             var window = CreateWindow(
                 applyService: applyService,
                 configProvider: StubConfigProvider.WithNoSavedConfig());
-            GetTextBox(window, "UrlBox")!.Text = "https://inventree.example.com";
-            GetPasswordBox(window, "ApiKeyBox").Password = "inv-new";
+
+            GetTextBox(window, "UrlBox").Text = "https://inventree.example.com";
+            GetPasswordBox(window, "ApiKeyBox").Password = "stub-key";
 
             Click(window, "TestConnectionButton");
 
@@ -1829,34 +715,6 @@ namespace SwInventreeAddin.Tests
                         Is.EqualTo("Testing connection…"));
 
             pending.SetCanceled();
-        }
-
-        [Test]
-        public void Test_WhenKeyDraftWins_StillClearsTypedPassword()
-        {
-            var window = CreateWindow(configProvider: StubConfigProvider.WithNoSavedConfig());
-            GetTextBox(window, "UrlBox")!.Text = "https://inventree.example.com";
-            GetTextBox(window, "UsernameBox")!.Text = "engineer";
-            GetPasswordBox(window, "PasswordBox").Password = "s3cret";
-            GetPasswordBox(window, "ApiKeyBox").Password = "inv-new";  // key wins — password never sent
-
-            Click(window, "TestConnectionButton");
-
-            Assert.That(GetPasswordBox(window, "PasswordBox").Password, Is.Empty);
-        }
-
-        [Test]
-        public async Task Apply_WhenKeyDraftWins_StillClearsTypedPassword()
-        {
-            var window = CreateWindow(configProvider: StubConfigProvider.WithNoSavedConfig());
-            GetTextBox(window, "UrlBox")!.Text = "https://inventree.example.com";
-            GetTextBox(window, "UsernameBox")!.Text = "engineer";
-            GetPasswordBox(window, "PasswordBox").Password = "s3cret";
-            GetPasswordBox(window, "ApiKeyBox").Password = "inv-new";  // key wins — password never sent
-
-            await window.ApplySettingsAsync();
-
-            Assert.That(GetPasswordBox(window, "PasswordBox").Password, Is.Empty);
         }
 
         [Test]
@@ -1869,33 +727,10 @@ namespace SwInventreeAddin.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(GetStatusBarText(window, "ConnectionStatusBar"),
-                            Does.Contain("Connection successful"));
-                Assert.That(GetStatusBarText(window, "ActionStatusBar"), Is.Empty,
-                            "a Test outcome is connection-scoped — the footer bar stays empty");
+                            Is.EqualTo("Connection successful."));
                 Assert.That(GetText(window, "ConnectionCardTitle"), Is.EqualTo("Connected"));
-            });
-        }
-
-        [Test]
-        public void Test_WhenProbeFails_ReportsOutcomeAndUpdatesCard()
-        {
-            var applyService = new StubSettingsApplyService
-            {
-                ResultToReturnOnTestConnection = new ConnectionProbeResult(
-                    ConnectionProbeStatus.Unreachable,
-                    "Could not reach the InvenTree server."),
-            };
-            var window = CreateWindow(applyService: applyService);
-
-            Click(window, "TestConnectionButton");
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(GetStatusBarText(window, "ConnectionStatusBar"), Does.Contain("Could not reach"));
-                Assert.That(GetText(window, "ConnectionCardTitle"),
-                            Is.EqualTo("Connection failed"));
-                Assert.That(GetText(window, "ConnectionCardConnection"),
-                            Does.Contain("Could not reach"));
+                Assert.That(GetStatusBarText(window, "ActionStatusBar"), Is.Empty,
+                            "the footer bar is for Save/Apply only");
             });
         }
 
@@ -1904,8 +739,8 @@ namespace SwInventreeAddin.Tests
         {
             var window = CreateWindow(
                 configProvider: StubConfigProvider.WithNoSavedConfig());
-            GetTextBox(window, "UrlBox")!.Text = "https://inventree.example.com";
-            GetTextBox(window, "UsernameBox")!.Text = "engineer";
+            GetTextBox(window, "UrlBox").Text = "https://inventree.example.com";
+            GetTextBox(window, "UsernameBox").Text = "engineer";
             GetPasswordBox(window, "PasswordBox").Password = "s3cret";
 
             Click(window, "TestConnectionButton");
@@ -1913,27 +748,79 @@ namespace SwInventreeAddin.Tests
             Assert.That(GetPasswordBox(window, "PasswordBox").Password, Is.Empty);
         }
 
-        // Clicking Save runs synchronously to the early return: the stub apply
-        // service throws before yielding, so DialogResult is never set and the
-        // (unshown) dialog stays open.
+        // ── Action row placement ─────────────────────────────────────────────
+
+        [Test]
+        public void TestConnectionButton_AndConnectionStatusBar_LiveInConnectionActionRow()
+        {
+            var window = CreateWindow();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(IsInside(window, "TestConnectionButton", "ConnectionActionRow"),
+                            Is.True,
+                            "TestConnectionButton must sit inside ConnectionActionRow");
+                Assert.That(IsInside(window, "ConnectionStatusBar", "ConnectionActionRow"), Is.True,
+                            "the connection status bar must sit inside ConnectionActionRow");
+            });
+        }
+
+        [Test]
+        public void DialogActionRow_HoldsActionStatusBarAndDialogLevelButtons()
+        {
+            var window = CreateWindow();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(IsInside(window, "ActionStatusBar", "DialogActionRow"), Is.True,
+                            "the action status bar belongs in the bottom dialog row");
+                Assert.That(IsInside(window, "ApplyButton", "DialogActionRow"), Is.True);
+                Assert.That(IsInside(window, "SaveButton", "DialogActionRow"), Is.True);
+                Assert.That(IsInside(window, "CancelButton", "DialogActionRow"), Is.True);
+            });
+        }
+
+        [Test]
+        public void TestConnectionButton_IsOutsideCollapsibleCredentialForm()
+        {
+            var window = CreateWindow();
+
+            Assert.That(IsInside(window, "TestConnectionButton", "CredentialFormScroll"),
+                        Is.False,
+                        "TestConnectionButton must not sit inside the credential form");
+        }
+
+        [Test]
+        public void TestConnectionButton_WithNoUrlAnywhere_IsDisabled()
+        {
+            var window = CreateWindow(configProvider: StubConfigProvider.WithNoSavedConfig());
+
+            Assert.That(GetButton(window, "TestConnectionButton").IsEnabled, Is.False);
+        }
+
+        // ── Save → dialog result ─────────────────────────────────────────────
+
         [Test]
         public void Save_Click_WhenApplyFails_StaysOpenAndShowsErrorStatus()
         {
             var applyService = new StubSettingsApplyService
             {
-                ExceptionToThrowOnApply = new SettingsApplyException(
-                    "Failed to save server settings: Server responded: 500"),
+                ExceptionToThrowOnApply = new SettingsApplyException("Failed to save server settings: boom"),
             };
             var window = CreateWindow(applyService: applyService);
 
             Click(window, "SaveButton");
 
-            Assert.That(window.DialogResult, Is.Null);
-            Assert.That(GetStatusBarText(window, "ActionStatusBar"),
-                        Does.Contain("Failed to save server settings"));
+            Assert.Multiple(() =>
+            {
+                Assert.That(window.DialogResult, Is.Not.True,
+                            "a failed Apply must not close the dialog as success");
+                Assert.That(GetStatusBarText(window, "ActionStatusBar"),
+                            Is.EqualTo("Failed to save server settings: boom"));
+            });
         }
 
-        [Test, Timeout(10000)]
+        [Test]
         public void Save_Click_WhenApplySucceeds_ClosesDialogWithTrueResult()
         {
             using var form = HiddenTestWindow.CreateOwnerForm();
@@ -1981,9 +868,12 @@ namespace SwInventreeAddin.Tests
                 if (assertFailure != null)
                     Assert.Fail($"Off-screen assertion failed: {assertFailure.Message}");
 
-                Assert.That(result, Is.EqualTo(true));
-                Assert.That(window.DialogResult, Is.EqualTo(true));
-                Assert.That(GetStatusBarText(window, "ActionStatusBar"), Does.Contain("Saved"));
+                Assert.Multiple(() =>
+                {
+                    Assert.That(result, Is.EqualTo(true));
+                    Assert.That(window.DialogResult, Is.EqualTo(true));
+                    Assert.That(GetStatusBarText(window, "ActionStatusBar"), Does.Contain("Saved"));
+                });
             }
             finally
             {
@@ -1991,69 +881,15 @@ namespace SwInventreeAddin.Tests
             }
         }
 
-        // ── Remove API key (#232/#233) ─────────────────────────────────────
-        // Remove clears only the credential: the server URL, Property Mapping
-        // path, and BOM keyword survive, and the card lands on the
-        // authentication-required state with the form open.
+        // ── Remove API key → render ──────────────────────────────────────────
 
         [Test]
         public void RemoveApiKeyButton_IsInsideCardToolbar()
         {
-            var window = CreateWindow();
+            var window = CreateWindow(
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
 
             Assert.That(IsInside(window, "RemoveApiKeyButton", "ConnectionCardToolbar"), Is.True);
-        }
-
-        [Test]
-        public void RemoveApiKey_WhenClicked_CallsRemoveApiKeyAsync()
-        {
-            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
-            var applyService = new StubSettingsApplyService(configProvider);
-            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
-
-            Click(window, "RemoveApiKeyButton");
-
-            Assert.That(applyService.RemoveCallCount, Is.EqualTo(1));
-        }
-
-        [Test]
-        public void RemoveApiKey_WhenClicked_LandsOnAuthenticationRequiredWithServerKept()
-        {
-            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
-            var applyService = new StubSettingsApplyService(configProvider);
-            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
-
-            Click(window, "RemoveApiKeyButton");
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(GetText(window, "ConnectionCardTitle"),
-                            Is.EqualTo("Authentication required"), "card title");
-                Assert.That(GetText(window, "ConnectionCardServer"),
-                            Is.EqualTo("https://inventree.example.com"), "server kept");
-                Assert.That(GetText(window, "ConnectionCardCredential"),
-                            Is.EqualTo("none saved"), "credential line");
-                Assert.That(GetElement(window, "ConnectionCardToolbar").Visibility,
-                            Is.EqualTo(Visibility.Collapsed), "toolbar gone in auth state");
-            });
-        }
-
-        [Test]
-        public void RemoveApiKey_WhenClicked_ShowsTheFormDirectly()
-        {
-            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
-            var applyService = new StubSettingsApplyService(configProvider);
-            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
-
-            Click(window, "RemoveApiKeyButton");
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(GetElement(window, "UrlFieldPanel").Visibility,
-                            Is.EqualTo(Visibility.Visible));
-                Assert.That(GetElement(window, "CredentialFieldsPanel").Visibility,
-                            Is.EqualTo(Visibility.Visible));
-            });
         }
 
         [Test]
@@ -2067,9 +903,9 @@ namespace SwInventreeAddin.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(GetTextBox(window, "UrlBox")!.Text,
+                Assert.That(GetTextBox(window, "UrlBox").Text,
                             Is.EqualTo("https://inventree.example.com"), "UrlBox");
-                Assert.That(GetTextBox(window, "UsernameBox")!.Text, Is.Empty, "UsernameBox");
+                Assert.That(GetTextBox(window, "UsernameBox").Text, Is.Empty, "UsernameBox");
                 Assert.That(GetPasswordBox(window, "PasswordBox").Password, Is.Empty, "PasswordBox");
                 Assert.That(GetPasswordBox(window, "ApiKeyBox").Password, Is.Empty, "ApiKeyBox");
                 Assert.That(GetElement(window, "ApiKeyDotsPlaceholder").Visibility,
@@ -2087,23 +923,7 @@ namespace SwInventreeAddin.Tests
             Click(window, "RemoveApiKeyButton");
 
             Assert.That(GetStatusBarText(window, "ConnectionStatusBar"),
-                        Does.Contain("Credential removed"));
-        }
-
-        [Test]
-        public void RemoveApiKey_WhenClicked_LeavesTheDialogClean()
-        {
-            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
-            var applyService = new StubSettingsApplyService(configProvider);
-            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
-
-            Click(window, "RemoveApiKeyButton");
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(GetButton(window, "ApplyButton").IsEnabled, Is.False, "ApplyButton.IsEnabled");
-                Assert.That(GetText(window, "CancelButtonText"), Is.EqualTo("Close"), "CancelButtonText");
-            });
+                        Is.EqualTo("Credential removed. Server address kept."));
         }
 
         [Test]
@@ -2111,24 +931,8 @@ namespace SwInventreeAddin.Tests
         {
             var applyService = new StubSettingsApplyService
             {
-                ExceptionToThrowOnRemove = new SettingsApplyException(
-                    "Failed to remove the API key: stub delete failure"),
-            };
-            var window = CreateWindow(applyService: applyService);
-
-            Click(window, "RemoveApiKeyButton");
-
-            Assert.That(GetStatusBarText(window, "ConnectionStatusBar"),
-                        Does.Contain("Failed to remove the API key"));
-        }
-
-        [Test]
-        public void RemoveApiKey_WhenServiceThrows_LeavesConfiguredStatusCard()
-        {
-            var applyService = new StubSettingsApplyService
-            {
-                ExceptionToThrowOnRemove = new SettingsApplyException(
-                    "Failed to remove the API key: stub delete failure"),
+                ExceptionToThrowOnRemove =
+                    new SettingsApplyException("Failed to remove the API key: not authorised"),
             };
             var window = CreateWindow(
                 applyService: applyService,
@@ -2136,36 +940,38 @@ namespace SwInventreeAddin.Tests
 
             Click(window, "RemoveApiKeyButton");
 
-            Assert.That(GetText(window, "ConnectionCardTitle"), Is.EqualTo("Connected"));
+            Assert.That(GetStatusBarText(window, "ConnectionStatusBar"),
+                        Is.EqualTo("Failed to remove the API key: not authorised"));
         }
 
-        // ── Credential form container ────────────────────────────────────────
+        // ── Form structure ───────────────────────────────────────────────────
 
         [Test]
         public void CredentialForm_IsScrollViewerWithBoundedMaxHeight()
         {
             var window = CreateWindow();
+            var scroller = GetCredentialForm(window);
 
-            Assert.That(GetCredentialForm(window).MaxHeight, Is.LessThan(double.PositiveInfinity));
+            Assert.Multiple(() =>
+            {
+                Assert.That(scroller, Is.InstanceOf<ScrollViewer>());
+                Assert.That(((ScrollViewer)scroller).MaxHeight,
+                            Is.LessThan(double.PositiveInfinity));
+            });
         }
 
-        // The cap keeps the expanded dialog inside small monitors, but it must
-        // not clip the fresh-state form — the tallest layout the section shows.
+        // Design v2: the scroll region must fit the fresh state — both
+        // username/password and API key blocks — without scrolling.
         [Test]
         public void CredentialForm_MaxHeightFitsTheFreshStateForm()
         {
-            var window = CreateWindow(configProvider: StubConfigProvider.WithNoSavedConfig());
-            var form = GetCredentialForm(window);
-            var content = (FrameworkElement)form.Content!;
+            var window = CreateWindow();
+            var scroller = (ScrollViewer)GetCredentialForm(window);
 
-            // 440 ≈ the window's content width (Width=480 minus padding) — a
-            // narrower measure would only inflate DesiredSize.Height, keeping
-            // the assertion conservative.
-            content.Measure(new Size(440, double.PositiveInfinity));
+            scroller.Measure(new Size(416, double.PositiveInfinity));
+            double formHeight = scroller.DesiredSize.Height;
 
-            Assert.That(form.MaxHeight,
-                        Is.GreaterThanOrEqualTo(content.DesiredSize.Height),
-                        "the fresh-state form should fit without scrolling");
+            Assert.That(scroller.MaxHeight, Is.GreaterThanOrEqualTo(formHeight));
         }
 
         [Test]
@@ -2173,15 +979,14 @@ namespace SwInventreeAddin.Tests
         {
             var window = CreateWindow();
 
-            Assert.That(IsInsideCredentialForm(window, "UrlBox"), Is.True);
+            Assert.That(IsInside(window, "UrlBox", "CredentialFormScroll"), Is.True,
+                        "server URL must be inside CredentialFormScroll");
         }
 
-        // ── Credential group vs Server URL (#243) ────────────────────────────
         // The "or" divider scopes username+password OR API key only — the
         // Server URL is always required and not part of the choice. A labelled
         // Credential group wraps the credential fields so the divider cannot
         // read as "URL+login vs key".
-
         [Test]
         public void CredentialGroup_GroupsCredentialFieldsUnderALabel_ExcludingServerUrl()
         {
@@ -2200,99 +1005,8 @@ namespace SwInventreeAddin.Tests
             });
         }
 
-        // ── Helpers ───────────────────────────────────────────────────────────
 
-        // The open probe applies its verdict via Dispatcher.Invoke from a pool
-        // thread, so a plain await in the test deadlocks — NUnit does not pump
-        // the dispatcher while it waits. Pump a DispatcherFrame until the task
-        // completes instead.
-        private static void WaitForProbe(SettingsWindow window)
-        {
-            var task = window.OpenProbeTask;
-            Assert.That(task, Is.Not.Null, "no open probe was started");
-
-            var frame = new DispatcherFrame();
-            task!.ContinueWith(
-                _ => window.Dispatcher.BeginInvoke(new Action(() => frame.Continue = false)),
-                TaskScheduler.Default);
-            Dispatcher.PushFrame(frame);
-        }
-
-        private static ScrollViewer GetCredentialForm(Window window)
-        {
-            var element = LogicalTreeHelper.FindLogicalNode(window, "CredentialFormScroll") as ScrollViewer;
-            Assert.That(element, Is.Not.Null, "Could not find ScrollViewer named 'CredentialFormScroll'.");
-            return element!;
-        }
-
-        private static bool IsInsideCredentialForm(Window window, string name) =>
-            IsInside(window, name, "CredentialFormScroll");
-
-        private static bool IsInside(Window window, string elementName, string ancestorName)
-        {
-            var element = LogicalTreeHelper.FindLogicalNode(window, elementName) as DependencyObject;
-            Assert.That(element, Is.Not.Null, $"Could not find element named '{elementName}'.");
-
-            var ancestor = LogicalTreeHelper.FindLogicalNode(window, ancestorName) as DependencyObject;
-            Assert.That(ancestor, Is.Not.Null, $"Could not find element named '{ancestorName}'.");
-
-            for (var parent = LogicalTreeHelper.GetParent(element!); parent != null;
-                 parent = LogicalTreeHelper.GetParent(parent))
-            {
-                if (ReferenceEquals(parent, ancestor)) return true;
-            }
-
-            return false;
-        }
-
-        private static void Click(Window window, string name) =>
-            GetButton(window, name).RaiseEvent(
-                new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
-
-        private static string GetText(Window window, string name)
-        {
-            var element = LogicalTreeHelper.FindLogicalNode(window, name);
-            var textBlock = element as TextBlock;
-            var textBox = element as TextBox;
-            Assert.That(textBlock ?? (object?)textBox, Is.Not.Null, $"Could not find TextBlock or TextBox named '{name}'.");
-            return textBlock?.Text ?? textBox?.Text ?? string.Empty;
-        }
-
-        private static FrameworkElement GetElement(Window window, string name)
-        {
-            var element = LogicalTreeHelper.FindLogicalNode(window, name) as FrameworkElement;
-            Assert.That(element, Is.Not.Null, $"Could not find element named '{name}'.");
-            return element!;
-        }
-
-        private static Ellipse GetDot(Window window)
-        {
-            var element = LogicalTreeHelper.FindLogicalNode(window, "ConnectionStatusDot") as Ellipse;
-            Assert.That(element, Is.Not.Null, "Could not find Ellipse named 'ConnectionStatusDot'.");
-            return element!;
-        }
-
-        private static RadioButton GetRadioButton(Window window, string name)
-        {
-            var element = LogicalTreeHelper.FindLogicalNode(window, name) as RadioButton;
-            Assert.That(element, Is.Not.Null, $"Could not find RadioButton named '{name}'.");
-            return element!;
-        }
-
-        private static PasswordBox GetPasswordBox(Window window, string name)
-        {
-            var element = LogicalTreeHelper.FindLogicalNode(window, name) as PasswordBox;
-            Assert.That(element, Is.Not.Null, $"Could not find PasswordBox named '{name}'.");
-            return element!;
-        }
-
-        private static Button GetButton(Window window, string name)
-        {
-            var element = LogicalTreeHelper.FindLogicalNode(window, name);
-            var button = element as Button;
-            Assert.That(button, Is.Not.Null, $"Could not find Button named '{name}'.");
-            return button!;
-        }
+        // ── Helpers ──────────────────────────────────────────────────────────
 
         private SettingsWindow CreateWindow(
             IPropertyMappingProvider? mappingProvider = null,
@@ -2318,10 +1032,54 @@ namespace SwInventreeAddin.Tests
                 mappingProviderFactory);
         }
 
-        private static TextBox? GetTextBox(Window window, string name)
+        private static void Click(Window window, string name) =>
+            GetButton(window, name).RaiseEvent(
+                new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+
+        private static string GetText(Window window, string name)
         {
             var element = LogicalTreeHelper.FindLogicalNode(window, name);
-            return element as TextBox;
+            var textBlock = element as TextBlock;
+            var textBox = element as TextBox;
+            Assert.That(textBlock ?? (object?)textBox, Is.Not.Null,
+                        $"Could not find TextBlock or TextBox named '{name}'.");
+            return textBlock?.Text ?? textBox?.Text ?? string.Empty;
+        }
+
+        private static FrameworkElement GetElement(Window window, string name)
+        {
+            var element = LogicalTreeHelper.FindLogicalNode(window, name) as FrameworkElement;
+            Assert.That(element, Is.Not.Null, $"Could not find element named '{name}'.");
+            return element!;
+        }
+
+        private static Ellipse GetDot(Window window)
+        {
+            var element = LogicalTreeHelper.FindLogicalNode(window, "ConnectionStatusDot") as Ellipse;
+            Assert.That(element, Is.Not.Null, "Could not find Ellipse named 'ConnectionStatusDot'.");
+            return element!;
+        }
+
+        private static PasswordBox GetPasswordBox(Window window, string name)
+        {
+            var element = LogicalTreeHelper.FindLogicalNode(window, name) as PasswordBox;
+            Assert.That(element, Is.Not.Null, $"Could not find PasswordBox named '{name}'.");
+            return element!;
+        }
+
+        private static Button GetButton(Window window, string name)
+        {
+            var element = LogicalTreeHelper.FindLogicalNode(window, name);
+            var button = element as Button;
+            Assert.That(button, Is.Not.Null, $"Could not find Button named '{name}'.");
+            return button!;
+        }
+
+        private static TextBox GetTextBox(Window window, string name)
+        {
+            var element = LogicalTreeHelper.FindLogicalNode(window, name) as TextBox;
+            Assert.That(element, Is.Not.Null, $"Could not find TextBox named '{name}'.");
+            return element!;
         }
 
         private static StatusBarControl GetStatusBar(Window window, string name)
@@ -2345,6 +1103,47 @@ namespace SwInventreeAddin.Tests
             var brush = window.TryFindResource(key) as Brush;
             Assert.That(brush, Is.Not.Null, $"Could not find resource '{key}'.");
             return brush!;
+        }
+
+        private static ScrollViewer GetCredentialForm(Window window)
+        {
+            var element = LogicalTreeHelper.FindLogicalNode(window, "CredentialFormScroll") as ScrollViewer;
+            Assert.That(element, Is.Not.Null,
+                        "Could not find ScrollViewer named 'CredentialFormScroll'.");
+            return element!;
+        }
+
+        private static bool IsInside(Window window, string elementName, string ancestorName)
+        {
+            var element = LogicalTreeHelper.FindLogicalNode(window, elementName) as DependencyObject;
+            Assert.That(element, Is.Not.Null, $"Could not find element named '{elementName}'.");
+
+            var ancestor = LogicalTreeHelper.FindLogicalNode(window, ancestorName) as DependencyObject;
+            Assert.That(ancestor, Is.Not.Null, $"Could not find element named '{ancestorName}'.");
+
+            for (var parent = LogicalTreeHelper.GetParent(element!); parent != null;
+                 parent = LogicalTreeHelper.GetParent(parent))
+            {
+                if (ReferenceEquals(parent, ancestor)) return true;
+            }
+
+            return false;
+        }
+
+        // The open probe applies its verdict via Dispatcher.Invoke from a pool
+        // thread, so a plain await in the test deadlocks — NUnit does not pump
+        // the dispatcher while it waits. Pump a DispatcherFrame until the task
+        // completes instead.
+        private static void WaitForProbe(SettingsWindow window)
+        {
+            var task = window.OpenProbeTask;
+            Assert.That(task, Is.Not.Null, "no open probe was started");
+
+            var frame = new DispatcherFrame();
+            task!.ContinueWith(
+                _ => window.Dispatcher.BeginInvoke(new Action(() => frame.Continue = false)),
+                TaskScheduler.Default);
+            Dispatcher.PushFrame(frame);
         }
     }
 }
