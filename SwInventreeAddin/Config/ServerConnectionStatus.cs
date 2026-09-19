@@ -1,3 +1,5 @@
+using System;
+
 namespace SwInventreeAddin.Config
 {
     /// <summary>
@@ -6,7 +8,7 @@ namespace SwInventreeAddin.Config
     /// (<see cref="ConnectionProbeResult"/>, session-only). No produced string ever
     /// contains the API key (ADR-0022). Wording matches prototype 1b.
     /// </summary>
-    public class ServerConnectionStatus
+    public class ServerConnectionStatus : IEquatable<ServerConnectionStatus>
     {
         private ServerConnectionStatus(
             bool isSaved,
@@ -88,7 +90,10 @@ namespace SwInventreeAddin.Config
                     serverLine, credentialLine, "testing\u2026");
             }
 
-            if (lastProbe == null)
+            // A NotProbed result is a no-verdict placeholder (#249 — the save
+            // skipped the probe): the card renders it exactly like "no probe
+            // verdict yet", never as a failure.
+            if (lastProbe == null || lastProbe.Status == ConnectionProbeStatus.NotProbed)
             {
                 return new ServerConnectionStatus(
                     isSaved: true, isComplete: true,
@@ -123,6 +128,41 @@ namespace SwInventreeAddin.Config
                         isSaved: true, isComplete: true,
                         ServerConnectionIndicator.Failed, "Connection failed",
                         serverLine, credentialLine, lastProbe.Message);
+            }
+        }
+
+        /// <summary>
+        /// Value equality over every projected member — consumers gate
+        /// change-notification on a real state move, so a field added later
+        /// joins the comparison here rather than silently never registering.
+        /// </summary>
+        public bool Equals(ServerConnectionStatus? other) =>
+            other != null &&
+            IsSaved == other.IsSaved &&
+            IsComplete == other.IsComplete &&
+            Indicator == other.Indicator &&
+            string.Equals(Title, other.Title, StringComparison.Ordinal) &&
+            string.Equals(ServerLine, other.ServerLine, StringComparison.Ordinal) &&
+            string.Equals(CredentialLine, other.CredentialLine, StringComparison.Ordinal) &&
+            string.Equals(ConnectionLine, other.ConnectionLine, StringComparison.Ordinal);
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj) => Equals(obj as ServerConnectionStatus);
+
+        /// <inheritdoc/>
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                int hash = 17;
+                hash = (hash * 31) + IsSaved.GetHashCode();
+                hash = (hash * 31) + IsComplete.GetHashCode();
+                hash = (hash * 31) + Indicator.GetHashCode();
+                hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(Title);
+                hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(ServerLine);
+                hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(CredentialLine);
+                hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(ConnectionLine);
+                return hash;
             }
         }
     }

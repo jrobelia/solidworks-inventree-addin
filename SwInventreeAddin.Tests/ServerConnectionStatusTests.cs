@@ -166,6 +166,27 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public void From_NotProbedResult_RendersNoVerdictNotFailed()
+        {
+            // #260: the skip-probe save returns a no-verdict result — the card
+            // must render it exactly like "no probe yet", never as a failure.
+            var status = ServerConnectionStatus.From(
+                SavedConfig(), Probe(ConnectionProbeStatus.NotProbed));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(status.Indicator,
+                            Is.EqualTo(ServerConnectionIndicator.NotTested));
+                Assert.That(status.Indicator,
+                            Is.Not.EqualTo(ServerConnectionIndicator.Failed),
+                            "a no-verdict result must never render the failure dot");
+                Assert.That(status.Title, Is.EqualTo("Not tested"));
+                Assert.That(status.IsComplete, Is.True);
+                Assert.That(status.ConnectionLine, Is.EqualTo("not tested yet"));
+            });
+        }
+
+        [Test]
         public void From_MissingKey_WinsOverLastProbe()
         {
             // A stale probe result must not hide that the credential is gone —
@@ -267,6 +288,90 @@ namespace SwInventreeAddin.Tests
                 Assert.That(status.CredentialLine, Does.Not.Contain("super-secret-key"));
                 Assert.That(status.ConnectionLine, Does.Not.Contain("super-secret-key"));
             });
+        }
+
+        // ── Value equality — the #241 event gates on a real state move ──
+
+        [Test]
+        public void Equals_IdenticalValues_AreEqual()
+        {
+            var a = ServerConnectionStatus.From(
+                SavedConfig(), Probe(ConnectionProbeStatus.Connected));
+            var b = ServerConnectionStatus.From(
+                SavedConfig(), Probe(ConnectionProbeStatus.Connected));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(a.Equals(b), Is.True);
+                Assert.That(a.Equals((object)b), Is.True);
+                Assert.That(a, Is.EqualTo(b));
+                Assert.That(a.GetHashCode(), Is.EqualTo(b.GetHashCode()),
+                            "equal values must hash alike — dictionary lookups depend on it");
+            });
+        }
+
+        // Every member feeds equality: a status that differs in the named
+        // member is not equal to the baseline. From couples some members —
+        // a missing key also moves Indicator/Title — so the named member is
+        // the one guaranteed to differ, not necessarily the only one.
+        [TestCase(nameof(ServerConnectionStatus.IsSaved))]
+        [TestCase(nameof(ServerConnectionStatus.IsComplete))]
+        [TestCase(nameof(ServerConnectionStatus.Indicator))]
+        [TestCase(nameof(ServerConnectionStatus.Title))]
+        [TestCase(nameof(ServerConnectionStatus.ServerLine))]
+        [TestCase(nameof(ServerConnectionStatus.CredentialLine))]
+        [TestCase(nameof(ServerConnectionStatus.ConnectionLine))]
+        public void Equals_StatusDifferingInMember_IsNotEqual(string member)
+        {
+            var baseline = ServerConnectionStatus.From(SavedConfig());
+            var other = StatusDifferingIn(member);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(baseline.Equals(other), Is.False);
+                Assert.That(baseline, Is.Not.EqualTo(other));
+            });
+        }
+
+        [Test]
+        public void Equals_NullAndForeignType_AreNotEqual()
+        {
+            var status = ServerConnectionStatus.From(SavedConfig());
+
+            ServerConnectionStatus? nullStatus = null;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(status.Equals(nullStatus), Is.False);
+                Assert.That(status.Equals((object?)nullStatus), Is.False);
+                Assert.That(status.Equals((object)"not a status"), Is.False);
+                Assert.That(status, Is.Not.EqualTo(null));
+            });
+        }
+
+        private static ServerConnectionStatus StatusDifferingIn(string member)
+        {
+            switch (member)
+            {
+                case nameof(ServerConnectionStatus.IsSaved):
+                    return ServerConnectionStatus.From(null);
+                case nameof(ServerConnectionStatus.IsComplete):
+                case nameof(ServerConnectionStatus.CredentialLine):
+                    return ServerConnectionStatus.From(SavedConfig(apiKey: string.Empty));
+                case nameof(ServerConnectionStatus.Indicator):
+                    return ServerConnectionStatus.From(SavedConfig(), probeInFlight: true);
+                case nameof(ServerConnectionStatus.Title):
+                    return ServerConnectionStatus.From(
+                        SavedConfig(), Probe(ConnectionProbeStatus.Connected));
+                case nameof(ServerConnectionStatus.ServerLine):
+                    return ServerConnectionStatus.From(
+                        SavedConfig(url: "https://other.example.com"));
+                case nameof(ServerConnectionStatus.ConnectionLine):
+                    return ServerConnectionStatus.From(
+                        SavedConfig(), Probe(ConnectionProbeStatus.Unreachable));
+                default:
+                    throw new System.ArgumentOutOfRangeException(nameof(member), member, null);
+            }
         }
     }
 }

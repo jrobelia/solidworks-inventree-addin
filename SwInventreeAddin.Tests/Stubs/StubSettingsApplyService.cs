@@ -117,6 +117,15 @@ namespace SwInventreeAddin.Tests.Stubs
                     "Server URL cleared — the saved API key was kept. Nothing was probed."));
             }
 
+            // Mirror the real service's probe skip (#249): the input persisted
+            // above, but no connection-relevant field changed — no verdict.
+            if (!input.ProbeConnection)
+            {
+                return Task.FromResult(new ConnectionProbeResult(
+                    ConnectionProbeStatus.NotProbed,
+                    "Settings saved — the connection was not probed."));
+            }
+
             return Task.FromResult(ResultToReturnOnApply);
         }
 
