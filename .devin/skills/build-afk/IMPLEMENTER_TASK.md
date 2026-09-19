@@ -62,7 +62,7 @@ Your granted toolset is `read`, `edit`, `exec`, `grep`, `glob` (shown in your fu
 
 ## Loop
 
-1. Orient: the ticket, the seam note, `git -C {{worktree_path}} log -n 5 --oneline`.
+1. Orient: the ticket, the seam note, `git -C {{worktree_path}} log -n 5 --oneline`. Grep the `Stub*` knobs and XAML `x:Name`s your tests will consume — member names come from the code, never from a guess.
 2. Red: one failing test at the confirmed seam. Run it and confirm it fails before writing production code — a test that passes immediately is testing existing behaviour.
 3. Green: the smallest change that passes. Refactor after green.
 4. Feedback loops — all green before the commit:
