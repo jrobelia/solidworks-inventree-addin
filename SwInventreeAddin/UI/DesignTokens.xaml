@@ -96,6 +96,8 @@
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="2"
                             Padding="{TemplateBinding Padding}">
                         <ContentPresenter HorizontalAlignment="Center"
@@ -112,6 +114,16 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <!-- Destructive action (e.g. Remove API key): error-red text and outline
+         on the surface fill — the named danger role, not a severity report. -->
+    <Style x:Key="DangerButtonStyle" TargetType="Button"
+           BasedOn="{StaticResource SecondaryButtonStyle}">
+        <Setter Property="Background"      Value="Transparent" />
+        <Setter Property="Foreground"      Value="{StaticResource BrushStatusError}" />
+        <Setter Property="BorderBrush"     Value="{StaticResource BrushStatusError}" />
+        <Setter Property="BorderThickness" Value="1" />
     </Style>
 
     <!-- ── TextBox styles ─────────────────────────────────────────────────── -->

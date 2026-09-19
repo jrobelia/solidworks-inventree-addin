@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -910,6 +911,99 @@ namespace SwInventreeAddin.Tests
                             Is.EqualTo(Visibility.Visible));
                 Assert.That(GetElement(window, "CredentialFieldsPanel").Visibility,
                             Is.EqualTo(Visibility.Collapsed));
+            });
+        }
+
+        // ── Card toolbar vs design (#240) ──────────────────────────────────
+        // Prototype 1b: the action row sits under a thin divider, spreads
+        // across the card — change actions left, the destructive action
+        // right — secondary buttons contrast against the card grey, and
+        // Remove API key carries the error-red destructive treatment.
+
+        [Test]
+        public void CardToolbar_ChangeButtons_ContrastAgainstTheCardFill()
+        {
+            var window = CreateWindow(
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            var cardFill = GetBrush(window, "BrushSectionHeader");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetButton(window, "ChangeServerButton").Background,
+                            Is.Not.SameAs(cardFill),
+                            "Change server must not wear the card's grey");
+                Assert.That(GetButton(window, "ChangeCredentialButton").Background,
+                            Is.Not.SameAs(cardFill),
+                            "Change credential must not wear the card's grey");
+                // Interactive surfaces are white — chrome grey is the card's job.
+                var changeServerFill = (SolidColorBrush)GetButton(window, "ChangeServerButton").Background;
+                Assert.That(changeServerFill.Color, Is.EqualTo(Colors.White));
+                var changeCredentialFill = (SolidColorBrush)GetButton(window, "ChangeCredentialButton").Background;
+                Assert.That(changeCredentialFill.Color, Is.EqualTo(Colors.White));
+            });
+        }
+
+        [Test]
+        public void CardToolbar_RemoveApiKeyButton_UsesDestructiveStyling()
+        {
+            var window = CreateWindow(
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            var button = GetButton(window, "RemoveApiKeyButton");
+            var error = GetBrush(window, "BrushStatusError");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(button.Foreground, Is.SameAs(error),
+                            "the destructive action's text is error red");
+                Assert.That(button.BorderBrush, Is.SameAs(error),
+                            "the destructive action's outline is error red");
+                Assert.That(button.BorderThickness, Is.EqualTo(new Thickness(1)),
+                            "the red outline must actually render");
+            });
+        }
+
+        [Test]
+        public void CardToolbar_Layout_SpreadsAcrossTheCardUnderADivider()
+        {
+            var window = CreateWindow(
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            var divider = LogicalTreeHelper.FindLogicalNode(window, "ConnectionCardToolbarDivider")
+                          as FrameworkElement;
+            Assert.That(divider, Is.InstanceOf<Separator>(),
+                        "a thin divider separates the status lines from the action row");
+
+            var changeServer = GetButton(window, "ChangeServerButton");
+            var changeCredential = GetButton(window, "ChangeCredentialButton");
+            var remove = GetButton(window, "RemoveApiKeyButton");
+
+            var row = LogicalTreeHelper.GetParent(remove) as Grid;
+            Assert.That(row, Is.Not.Null, "the action row is a Grid so it can span the card");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(IsInside(window, "ChangeServerButton", "ConnectionCardToolbar"), Is.True);
+                Assert.That(IsInside(window, "ChangeCredentialButton", "ConnectionCardToolbar"), Is.True);
+                Assert.That(IsInside(window, "RemoveApiKeyButton", "ConnectionCardToolbar"), Is.True);
+                Assert.That(IsInside(window, "ConnectionCardToolbarDivider", "ConnectionCardToolbar"),
+                            Is.True, "the divider collapses with the toolbar");
+                Assert.That(Grid.GetRow(divider!), Is.LessThan(Grid.GetRow(row!)),
+                            "the divider sits above the button row");
+
+                // A * column between the change pair and the destructive action
+                // spreads the row: changes left-of-center, remove at the right.
+                int removeColumn = Grid.GetColumn(remove);
+                int lastChangeColumn = Math.Max(
+                    Grid.GetColumn(changeServer), Grid.GetColumn(changeCredential));
+                bool starBetween = row!.ColumnDefinitions
+                    .Where((c, i) => i > lastChangeColumn && i < removeColumn)
+                    .Any(c => c.Width.IsStar);
+                Assert.That(starBetween, Is.True,
+                            "a * column pushes Remove API key to the card's right edge");
+                Assert.That(removeColumn, Is.EqualTo(row!.ColumnDefinitions.Count - 1),
+                            "Remove API key anchors the right edge");
             });
         }
 
