@@ -600,7 +600,8 @@ namespace SwInventreeAddin.UI
                     Raise(nameof(LocalMappingPath));
 
                     // The save persisted — re-read the saved config so the
-                    // radios and the card reflect what is now on disk.
+                    // card reflects what is now on disk. The radios already
+                    // hold the just-persisted drafts.
                     ReloadPersistedConfig();
                     healthOk = ProjectMappingStatus();
 
@@ -760,10 +761,12 @@ namespace SwInventreeAddin.UI
 
         private void OnMappingChanged() => RefreshMappingStatus();
 
-        // Re-projects the mapping status pair, the Edit Mappings enabled/label,
-        // and the radios from the current provider and the persisted source
-        // path. Returns whether the resolved mapping is usable — a false
-        // return feeds ApplyAsync's merged footer outcome.
+        // Re-projects the mapping status pair and the Edit Mappings
+        // enabled/label from the current provider. The radios are the user's
+        // draft — seeded from the saved source on open and left alone here,
+        // so a refresh never discards an unapplied choice (#266). Returns
+        // whether the resolved mapping is usable — a false return feeds
+        // ApplyAsync's merged footer outcome.
         private bool ProjectMappingStatus()
         {
             try
@@ -775,10 +778,6 @@ namespace SwInventreeAddin.UI
                     result.Source == MappingSource.Local
                         ? "Edit Local Mappings"
                         : "Edit Shared Mappings";
-
-                // The radios always land on the saved source — a refresh
-                // discards an unapplied radio draft.
-                UseSharedMapping = !string.IsNullOrEmpty(_savedConfig?.MappingSourcePath);
 
                 MappingStatusText = result.FullStatusMessage;
                 MappingStatusSeverity = result.Health switch

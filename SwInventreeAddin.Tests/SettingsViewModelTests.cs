@@ -1745,7 +1745,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void MappingChanged_ResetsTheRadiosToTheSavedSource()
+        public void MappingChanged_PreservesAnUnappliedRadioDraft()
         {
             var provider = new StubConfigProvider("https://inventree.example.com", "saved-key");
             provider.Config!.MappingSourcePath = "\\\\share\\map.json";
@@ -1753,11 +1753,68 @@ namespace SwInventreeAddin.Tests
             var vm = CreateVm(provider, mappingProvider: mappingProvider);
             Assert.That(vm.UseSharedMapping, Is.True);
 
-            vm.UseSharedMapping = false;   // a mid-edit radio draft
+            vm.UseSharedMapping = false;   // a mid-edit radio draft — e.g. recovering a bad saved path
             mappingProvider.RaiseMappingChanged();
 
-            Assert.That(vm.UseSharedMapping, Is.True,
-                "a mapping-changed refresh resets the radios to the saved source even mid-edit");
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.UseSharedMapping, Is.False,
+                    "#266: the pending radio choice is the user's draft — a refresh must not discard it");
+                Assert.That(vm.IsDirty, Is.True,
+                    "the recovery action must stay saveable");
+            });
+        }
+
+        [Test]
+        public async Task ApplyAsync_AfterInvalidSharedApply_LocalSelectionStillRecovers()
+        {
+            // #266 — the reported trap: a bad shared path persists, the user
+            // selects Local to recover, a mapping-changed refresh lands, and
+            // the fix must still be saveable.
+            var shared = "\\\\share\\missing.json";
+            var provider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var applyService = new StubSettingsApplyService(provider);
+            var invalidShared = new StubPropertyMappingProvider
+            {
+                Health = MappingHealth.Invalid,
+                Message = $"The configured Property Mapping file was not found: {shared}",
+                SourceFilePath = shared,
+            };
+            var healthyLocal = new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion },
+            };
+            var vm = CreateVm(provider, applyService, healthyLocal,
+                new StubMappingProviderFactory
+                {
+                    Factory = path => string.IsNullOrEmpty(path)
+                        ? healthyLocal
+                        : invalidShared,
+                });
+
+            vm.UseSharedMapping = true;
+            vm.SharedMappingPath = shared;
+            Assert.That(await vm.ApplyAsync(), Is.False,
+                "the bad shared path persists but the mapping is invalid");
+
+            vm.UseSharedMapping = false;          // the recovery choice
+            invalidShared.RaiseMappingChanged();  // a refresh lands mid-edit
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.UseSharedMapping, Is.False,
+                    "the pending Local choice survives the refresh");
+                Assert.That(vm.IsDirty, Is.True, "Apply/Save stay enabled");
+            });
+
+            Assert.That(await vm.ApplyAsync(), Is.True, "the Local save succeeds");
+            Assert.Multiple(() =>
+            {
+                Assert.That(provider.Config!.MappingSourcePath, Is.Null,
+                    "the persisted source path cleared");
+                Assert.That(vm.IsDirty, Is.False);
+                Assert.That(vm.UseSharedMapping, Is.False);
+            });
         }
 
         [Test]
