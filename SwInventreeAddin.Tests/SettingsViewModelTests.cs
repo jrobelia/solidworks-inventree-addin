@@ -16,9 +16,12 @@ namespace SwInventreeAddin.Tests
     [TestFixture]
     public class SettingsViewModelTests
     {
-        private static SettingsViewModel CreateVm(IConfigProvider? configProvider = null) =>
+        private static SettingsViewModel CreateVm(
+            IConfigProvider? configProvider = null,
+            StubSettingsApplyService? applyService = null) =>
             new SettingsViewModel(
-                configProvider ?? new StubConfigProvider("https://inventree.example.com", "saved-key"));
+                configProvider ?? new StubConfigProvider("https://inventree.example.com", "saved-key"),
+                applyService ?? new StubSettingsApplyService());
 
         private static void SetDraft(SettingsViewModel vm, string field, string value)
         {
@@ -269,9 +272,9 @@ namespace SwInventreeAddin.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(vm.UrlFieldVisible, Is.True);
-                Assert.That(vm.CredentialFieldsVisible, Is.True);
-                Assert.That(vm.CredentialFormVisible, Is.True);
+                Assert.That(vm.UrlSliceOpen, Is.True);
+                Assert.That(vm.CredentialSliceOpen, Is.True);
+                Assert.That(vm.CredentialFormOpen, Is.True);
             });
         }
 
@@ -282,8 +285,8 @@ namespace SwInventreeAddin.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(vm.UrlFieldVisible, Is.True);
-                Assert.That(vm.CredentialFieldsVisible, Is.True);
+                Assert.That(vm.UrlSliceOpen, Is.True);
+                Assert.That(vm.CredentialSliceOpen, Is.True);
             });
         }
 
@@ -294,41 +297,41 @@ namespace SwInventreeAddin.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(vm.UrlFieldVisible, Is.False);
-                Assert.That(vm.CredentialFieldsVisible, Is.False);
-                Assert.That(vm.CredentialFormVisible, Is.False);
+                Assert.That(vm.UrlSliceOpen, Is.False);
+                Assert.That(vm.CredentialSliceOpen, Is.False);
+                Assert.That(vm.CredentialFormOpen, Is.False);
             });
         }
 
         [Test]
-        public void ToggleUrlEditing_WhenConfigComplete_OpensOnlyTheUrlSlice()
+        public void ToggleUrlSlice_WhenConfigComplete_OpensOnlyTheUrlSlice()
         {
             var vm = CreateVm();
 
-            vm.ToggleUrlEditing();
+            vm.ToggleUrlSlice();
 
             Assert.Multiple(() =>
             {
-                Assert.That(vm.UrlFieldVisible, Is.True);
-                Assert.That(vm.CredentialFieldsVisible, Is.False);
+                Assert.That(vm.UrlSliceOpen, Is.True);
+                Assert.That(vm.CredentialSliceOpen, Is.False);
             });
 
-            vm.ToggleUrlEditing();
+            vm.ToggleUrlSlice();
 
-            Assert.That(vm.CredentialFormVisible, Is.False);
+            Assert.That(vm.CredentialFormOpen, Is.False);
         }
 
         [Test]
-        public void ToggleCredentialEditing_WhenConfigComplete_OpensOnlyTheCredentialSlice()
+        public void ToggleCredentialSlice_WhenConfigComplete_OpensOnlyTheCredentialSlice()
         {
             var vm = CreateVm();
 
-            vm.ToggleCredentialEditing();
+            vm.ToggleCredentialSlice();
 
             Assert.Multiple(() =>
             {
-                Assert.That(vm.CredentialFieldsVisible, Is.True);
-                Assert.That(vm.UrlFieldVisible, Is.False);
+                Assert.That(vm.CredentialSliceOpen, Is.True);
+                Assert.That(vm.UrlSliceOpen, Is.False);
             });
         }
 
@@ -337,13 +340,13 @@ namespace SwInventreeAddin.Tests
         {
             var vm = CreateVm();
 
-            vm.ToggleCredentialEditing();
-            vm.ToggleUrlEditing();
+            vm.ToggleCredentialSlice();
+            vm.ToggleUrlSlice();
 
             Assert.Multiple(() =>
             {
-                Assert.That(vm.UrlFieldVisible, Is.True);
-                Assert.That(vm.CredentialFieldsVisible, Is.False);
+                Assert.That(vm.UrlSliceOpen, Is.True);
+                Assert.That(vm.CredentialSliceOpen, Is.False);
             });
         }
 
@@ -352,13 +355,13 @@ namespace SwInventreeAddin.Tests
         {
             var vm = CreateVm(new StubConfigProvider("https://inventree.example.com", string.Empty));
 
-            vm.ToggleUrlEditing();
-            vm.ToggleCredentialEditing();
+            vm.ToggleUrlSlice();
+            vm.ToggleCredentialSlice();
 
             Assert.Multiple(() =>
             {
-                Assert.That(vm.UrlFieldVisible, Is.True);
-                Assert.That(vm.CredentialFieldsVisible, Is.True);
+                Assert.That(vm.UrlSliceOpen, Is.True);
+                Assert.That(vm.CredentialSliceOpen, Is.True);
             });
         }
 
@@ -372,7 +375,7 @@ namespace SwInventreeAddin.Tests
             vm.Url = "https://other.example.com";
             vm.ApiKeyDraft = "inv-new";
             vm.Password = "s3cret";
-            vm.ToggleUrlEditing();
+            vm.ToggleUrlSlice();
 
             // Mirror the persist ApplyAsync just performed.
             provider.SaveServerConfig(new ServerConfig
@@ -392,7 +395,7 @@ namespace SwInventreeAddin.Tests
                 Assert.That(vm.Password, Is.Empty, "the password never lingers");
                 Assert.That(vm.IsDirty, Is.False);
                 Assert.That(vm.CancelLabel, Is.EqualTo("Close"));
-                Assert.That(vm.CredentialFormVisible, Is.False,
+                Assert.That(vm.CredentialFormOpen, Is.False,
                     "both slices collapse onto the card");
             });
         }
@@ -429,7 +432,7 @@ namespace SwInventreeAddin.Tests
             vm.Username = "engineer";
             vm.Password = "s3cret";
             vm.ApiKeyDraft = "inv-new";
-            vm.ToggleCredentialEditing();
+            vm.ToggleCredentialSlice();
 
             // Mirror RemoveApiKeyAsync: the saved key is cleared, the URL survives.
             provider.SaveServerConfig(new ServerConfig
@@ -447,9 +450,9 @@ namespace SwInventreeAddin.Tests
                 Assert.That(vm.Username, Is.Empty);
                 Assert.That(vm.Password, Is.Empty);
                 Assert.That(vm.IsDirty, Is.False);
-                Assert.That(vm.UrlFieldVisible, Is.True,
+                Assert.That(vm.UrlSliceOpen, Is.True,
                     "the incomplete saved state forces the form open");
-                Assert.That(vm.CredentialFieldsVisible, Is.True);
+                Assert.That(vm.CredentialSliceOpen, Is.True);
             });
         }
 
@@ -530,7 +533,7 @@ namespace SwInventreeAddin.Tests
             {
                 Assert.That(vm.SavedConfig, Is.Null);
                 Assert.That(vm.HasSavedApiKey, Is.False);
-                Assert.That(vm.UrlFieldVisible, Is.True,
+                Assert.That(vm.UrlSliceOpen, Is.True,
                     "an unreadable config is incomplete — the form opens");
                 Assert.That(vm.IsDirty, Is.False);
             });
@@ -633,6 +636,396 @@ namespace SwInventreeAddin.Tests
                 Assert.That(result.Succeeded, Is.False);
                 Assert.That(provider.LastSavedConfig!.BomKeyword, Is.EqualTo("custom-bom"),
                     "the save still persists through the stub's provider");
+            });
+        }
+
+        // ── Status card projection (ADR-0023) ───────────────────────────
+        // The card is a pure projection: the saved-config axis crossed with
+        // the session's probe axis. The window renders these outputs
+        // mechanically — IsSaved → card visibility, IsComplete → toolbar
+        // visibility, Indicator → dot brush — and never re-derives them.
+
+        [TestCase(null, null, false, false,
+            ServerConnectionIndicator.NotTested, "Not tested",
+            "not saved", "none saved", "—")]
+        // A cleared URL keeps the saved key (#253): the record exists but the
+        // card still hides — the projection reports the unsaved state.
+        [TestCase("", "saved-key", false, false,
+            ServerConnectionIndicator.NotTested, "Not tested",
+            "not saved", "API key saved", "—")]
+        [TestCase("https://inventree.example.com", "", true, false,
+            ServerConnectionIndicator.AuthenticationRequired, "Authentication required",
+            "https://inventree.example.com", "none saved", "—")]
+        public void StatusCard_ProjectsTheSavedConfigAxis(
+            string? url, string? apiKey,
+            bool expectedSaved, bool expectedComplete,
+            ServerConnectionIndicator expectedIndicator, string expectedTitle,
+            string expectedServer, string expectedCredential, string expectedConnection)
+        {
+            var provider = url == null
+                ? StubConfigProvider.WithNoSavedConfig()
+                : new StubConfigProvider(url, apiKey!);
+            var vm = CreateVm(provider);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.StatusCard.IsSaved, Is.EqualTo(expectedSaved));
+                Assert.That(vm.StatusCard.IsComplete, Is.EqualTo(expectedComplete));
+                Assert.That(vm.StatusCard.Indicator, Is.EqualTo(expectedIndicator));
+                Assert.That(vm.StatusCard.Title, Is.EqualTo(expectedTitle));
+                Assert.That(vm.StatusCard.ServerLine, Is.EqualTo(expectedServer));
+                Assert.That(vm.StatusCard.CredentialLine, Is.EqualTo(expectedCredential));
+                Assert.That(vm.StatusCard.ConnectionLine, Is.EqualTo(expectedConnection));
+            });
+        }
+
+        [TestCase(ConnectionProbeStatus.Connected, "detail",
+            "Connected", ServerConnectionIndicator.Connected, "last test succeeded")]
+        [TestCase(ConnectionProbeStatus.CredentialRejected, "The server rejected the API key (401 Unauthorized).",
+            "Authentication required", ServerConnectionIndicator.AuthenticationRequired,
+            "The server rejected the API key (401 Unauthorized).")]
+        [TestCase(ConnectionProbeStatus.Unreachable, "Could not reach the InvenTree server.",
+            "Connection failed", ServerConnectionIndicator.Failed,
+            "Could not reach the InvenTree server.")]
+        [TestCase(ConnectionProbeStatus.ServerError, "Server responded: 500",
+            "Connection failed", ServerConnectionIndicator.Failed, "Server responded: 500")]
+        public async Task StatusCard_ProjectsTheSettledProbeVerdict(
+            ConnectionProbeStatus status, string message,
+            string expectedTitle, ServerConnectionIndicator expectedIndicator,
+            string expectedConnection)
+        {
+            var pending = new TaskCompletionSource<ConnectionProbeResult>();
+            var applyService = new StubSettingsApplyService { PendingTestResult = pending };
+            var vm = CreateVm(applyService: applyService);
+
+            Assert.That(vm.StatusCard.Title, Is.EqualTo("Testing connection…"),
+                "the card reports the in-flight probe");
+
+            pending.SetResult(new ConnectionProbeResult(status, message));
+            await vm.OpenProbeTask!;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.StatusCard.Title, Is.EqualTo(expectedTitle));
+                Assert.That(vm.StatusCard.Indicator, Is.EqualTo(expectedIndicator));
+                Assert.That(vm.StatusCard.ConnectionLine, Is.EqualTo(expectedConnection));
+                Assert.That(vm.StatusCard.IsSaved, Is.True);
+                Assert.That(vm.StatusCard.IsComplete, Is.True);
+            });
+        }
+
+        [Test]
+        public async Task StatusCard_WhenProbeReportsNotConfigured_HidesTheCard()
+        {
+            var pending = new TaskCompletionSource<ConnectionProbeResult>();
+            var applyService = new StubSettingsApplyService { PendingTestResult = pending };
+            var vm = CreateVm(applyService: applyService);
+
+            pending.SetResult(new ConnectionProbeResult(
+                ConnectionProbeStatus.NotConfigured, "Server connection cleared."));
+            await vm.OpenProbeTask!;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.StatusCard.IsSaved, Is.False);
+                Assert.That(vm.StatusCard.Title, Is.EqualTo("Not tested"));
+            });
+        }
+
+        // ── Probe on open: lifecycle in the VM ──────────────────────────
+        // A complete saved config starts the open probe inside the
+        // constructor; OpenProbeTask is the deterministic settle point.
+
+        [Test]
+        public void Constructor_WhenConfigComplete_StartsOpenProbeWithSavedValues()
+        {
+            var applyService = new StubSettingsApplyService();
+            var vm = CreateVm(applyService: applyService);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.OpenProbeTask, Is.Not.Null);
+                Assert.That(applyService.TestCallCount, Is.EqualTo(1));
+                Assert.That(applyService.LastTestInput!.Url,
+                            Is.EqualTo("https://inventree.example.com"));
+                Assert.That(applyService.LastTestInput.RawApiKey, Is.EqualTo("saved-key"));
+                Assert.That(applyService.LastTestInput.Username, Is.Empty);
+                Assert.That(applyService.LastTestInput.Password, Is.Empty);
+            });
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Constructor_WhenConfigIncomplete_DoesNotProbe(bool nothingSaved)
+        {
+            var provider = nothingSaved
+                ? StubConfigProvider.WithNoSavedConfig()
+                : new StubConfigProvider("https://inventree.example.com", string.Empty);
+            var applyService = new StubSettingsApplyService();
+
+            var vm = CreateVm(provider, applyService);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.OpenProbeTask, Is.Null);
+                Assert.That(applyService.TestCallCount, Is.EqualTo(0));
+            });
+        }
+
+        [Test]
+        public async Task OpenProbe_WhenServiceThrows_SettlesCardToFailedWithoutFaulting()
+        {
+            var applyService = new StubSettingsApplyService
+            {
+                ExceptionToThrowOnTestConnection = new InvalidOperationException("saved URL unparsable"),
+            };
+            var vm = CreateVm(applyService: applyService);
+
+            await vm.OpenProbeTask!;   // never faults — the settle point must always complete
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.StatusCard.Indicator, Is.EqualTo(ServerConnectionIndicator.Failed));
+                Assert.That(vm.StatusCard.Title, Is.EqualTo("Connection failed"));
+                Assert.That(vm.StatusCard.ConnectionLine, Does.Contain("unparsable"));
+            });
+        }
+
+        [Test]
+        public async Task OpenProbe_WhenCancelled_SettlesSilentlyLeavingTheTestingCard()
+        {
+            var applyService = new StubSettingsApplyService
+            {
+                ExceptionToThrowOnTestConnection = new OperationCanceledException(),
+            };
+            var vm = CreateVm(applyService: applyService);
+
+            await vm.OpenProbeTask!;
+
+            Assert.That(vm.StatusCard.Title, Is.EqualTo("Testing connection…"));
+        }
+
+        // ── Supersede + discard-late-verdict ────────────────────────────
+        // Any newer user-initiated probe cancels the open probe's token; a
+        // verdict arriving after cancellation is discarded, never applied.
+
+        [Test]
+        public async Task OpenProbe_WhenSupersededByUserProbe_DiscardsItsVerdict()
+        {
+            var pending = new TaskCompletionSource<ConnectionProbeResult>();
+            var applyService = new StubSettingsApplyService
+            {
+                PendingTestResult = pending,
+                // Delivers a normal verdict past the cancelled token so the
+                // discard guard — not the cancellation race — is exercised.
+                IgnoreCallerCancellation = true,
+            };
+            var vm = CreateVm(applyService: applyService);
+
+            vm.BeginUserProbe();
+
+            Assert.That(applyService.LastTestToken.IsCancellationRequested, Is.True,
+                "a newer user-initiated probe supersedes the open probe");
+
+            pending.SetResult(new ConnectionProbeResult(
+                ConnectionProbeStatus.Connected, "Connection successful."));
+            await vm.OpenProbeTask!;
+
+            Assert.That(vm.StatusCard.Title, Is.EqualTo("Testing connection…"),
+                "the discarded verdict leaves the in-flight user probe owning the card");
+        }
+
+        [Test]
+        public async Task OpenProbe_WhenVerdictArrivesAfterCancel_IsDiscarded()
+        {
+            var pending = new TaskCompletionSource<ConnectionProbeResult>();
+            var applyService = new StubSettingsApplyService
+            {
+                PendingTestResult = pending,
+                IgnoreCallerCancellation = true,
+            };
+            var vm = CreateVm(applyService: applyService);
+            Assert.That(vm.StatusCard.Title, Is.EqualTo("Testing connection…"));
+
+            // The Closed-path cancel: idempotent, and a late verdict is still discarded.
+            vm.CancelOpenProbe();
+            vm.CancelOpenProbe();
+
+            pending.SetResult(new ConnectionProbeResult(
+                ConnectionProbeStatus.Connected, "Connection successful."));
+            await vm.OpenProbeTask!;
+
+            Assert.That(vm.StatusCard.Title, Is.EqualTo("Testing connection…"),
+                "a verdict landing after cancellation is discarded, never applied to the card");
+        }
+
+        // ── User probe axis ─────────────────────────────────────────────
+
+        [Test]
+        public void EndUserProbe_RecordsTheVerdictOnTheCard()
+        {
+            var pending = new TaskCompletionSource<ConnectionProbeResult>();
+            var vm = CreateVm(applyService: new StubSettingsApplyService { PendingTestResult = pending });
+
+            vm.BeginUserProbe();
+            vm.EndUserProbe(new ConnectionProbeResult(
+                ConnectionProbeStatus.Unreachable, "Could not reach the InvenTree server."));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.StatusCard.Title, Is.EqualTo("Connection failed"));
+                Assert.That(vm.StatusCard.Indicator, Is.EqualTo(ServerConnectionIndicator.Failed));
+                Assert.That(vm.StatusCard.ConnectionLine,
+                            Is.EqualTo("Could not reach the InvenTree server."));
+            });
+
+            pending.SetCanceled();
+        }
+
+        [Test]
+        public void EndUserProbe_WhenNull_ClearsInFlightWithoutRecordingAVerdict()
+        {
+            var pending = new TaskCompletionSource<ConnectionProbeResult>();
+            var vm = CreateVm(applyService: new StubSettingsApplyService { PendingTestResult = pending });
+
+            vm.BeginUserProbe();
+            vm.EndUserProbe(null);   // the exception path — nothing to record
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.StatusCard.Title, Is.EqualTo("Not tested"));
+                Assert.That(vm.StatusCard.Indicator, Is.EqualTo(ServerConnectionIndicator.NotTested));
+                Assert.That(vm.StatusCard.ConnectionLine, Is.EqualTo("not tested yet"));
+            });
+
+            pending.SetCanceled();
+        }
+
+        [Test]
+        public async Task ClearProbeVerdict_DropsTheSessionVerdictFromTheCard()
+        {
+            var vm = CreateVm();   // the synchronous stub settles the open probe to Connected
+            await vm.OpenProbeTask!;
+            Assert.That(vm.StatusCard.Title, Is.EqualTo("Connected"));
+
+            vm.ClearProbeVerdict();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.StatusCard.Title, Is.EqualTo("Not tested"));
+                Assert.That(vm.StatusCard.Indicator, Is.EqualTo(ServerConnectionIndicator.NotTested));
+                Assert.That(vm.StatusCard.ConnectionLine, Is.EqualTo("not tested yet"));
+            });
+        }
+
+        // ── Form commands ───────────────────────────────────────────────
+
+        [Test]
+        public void ToggleUrlSlice_ReturnsWhetherTheSliceIsNowOpen()
+        {
+            var vm = CreateVm();
+
+            Assert.That(vm.ToggleUrlSlice(), Is.True);
+            Assert.That(vm.ToggleUrlSlice(), Is.False);
+        }
+
+        [Test]
+        public void ToggleCredentialSlice_ReturnsWhetherTheSliceIsNowOpen()
+        {
+            var vm = CreateVm();
+
+            Assert.That(vm.ToggleCredentialSlice(), Is.True);
+            Assert.That(vm.ToggleCredentialSlice(), Is.False);
+        }
+
+        [Test]
+        public void CollapseCredentialForm_ClosesBothSlices()
+        {
+            var vm = CreateVm();
+            vm.ToggleCredentialSlice();
+
+            vm.CollapseCredentialForm();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.UrlSliceOpen, Is.False);
+                Assert.That(vm.CredentialSliceOpen, Is.False);
+                Assert.That(vm.CredentialFormOpen, Is.False);
+            });
+        }
+
+        [Test]
+        public void CollapseCredentialForm_WhenConfigIncomplete_CannotCloseTheForcedForm()
+        {
+            var vm = CreateVm(new StubConfigProvider("https://inventree.example.com", string.Empty));
+
+            vm.CollapseCredentialForm();
+
+            Assert.That(vm.CredentialFormOpen, Is.True,
+                "the forced-open rule outranks the collapse — nothing to summarise yet");
+        }
+
+        // ── Coherent notifications + saved-config re-read ───────────────
+
+        [Test]
+        public void StateChange_RaisesStatusCardAndAllFormOutputsTogether()
+        {
+            var vm = CreateVm();
+            var fired = new List<string?>();
+            vm.PropertyChanged += (_, e) => fired.Add(e.PropertyName);
+
+            vm.ToggleUrlSlice();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(fired, Does.Contain(nameof(SettingsViewModel.StatusCard)));
+                Assert.That(fired, Does.Contain(nameof(SettingsViewModel.UrlSliceOpen)));
+                Assert.That(fired, Does.Contain(nameof(SettingsViewModel.CredentialSliceOpen)));
+                Assert.That(fired, Does.Contain(nameof(SettingsViewModel.CredentialFormOpen)));
+            });
+        }
+
+        [Test]
+        public void MarkPersisted_RecomputesStatusCardFromTheNewSavedConfig()
+        {
+            var provider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var vm = CreateVm(provider);
+
+            provider.SaveServerConfig(new ServerConfig
+            {
+                Url = "https://other.example.com",
+                ApiKey = string.Empty,
+            });
+            vm.MarkPersisted();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.StatusCard.ServerLine, Is.EqualTo("https://other.example.com"));
+                Assert.That(vm.StatusCard.Title, Is.EqualTo("Authentication required"),
+                    "a missing saved key always wins over the session verdict");
+                Assert.That(vm.StatusCard.IsComplete, Is.False);
+            });
+        }
+
+        [Test]
+        public void ReloadPersistedConfig_RecomputesStatusCardAndForcedOpenOutputs()
+        {
+            var provider = StubConfigProvider.WithNoSavedConfig();
+            var vm = CreateVm(provider);
+
+            provider.SaveServerConfig(new ServerConfig
+            {
+                Url = "https://inventree.example.com",
+                ApiKey = "saved-key",
+            });
+            vm.ReloadPersistedConfig();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.StatusCard.IsSaved, Is.True);
+                Assert.That(vm.StatusCard.IsComplete, Is.True);
+                Assert.That(vm.CredentialFormOpen, Is.False,
+                    "a complete saved config lifts the forced-open rule");
             });
         }
     }

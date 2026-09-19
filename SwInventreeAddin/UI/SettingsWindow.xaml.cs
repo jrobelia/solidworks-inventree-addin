@@ -24,22 +24,14 @@ namespace SwInventreeAddin.UI
         private readonly IMappingProviderFactory _mappingProviderFactory;
         private IPropertyMappingProvider _mappingProvider;
 
-        private ConnectionProbeResult? _lastProbe;
-        private bool _probeInFlight;
-
         private MappingChangedSubscription? _mappingChangedSubscription;
         private string? _mappingStatusDetail;
 
-        // Lifecycle for the probe fired on open: Closed cancels it, and so does
-        // any newer user-initiated probe whose verdict supersedes it.
-        private readonly CancellationTokenSource _openProbeCts = new CancellationTokenSource();
-
         /// <summary>
-        /// The probe fired on open when a full config is saved — null when no
-        /// probe started. Never faults; completes once the verdict is applied
-        /// or discarded. Tests await it for a deterministic settle point.
+        /// The probe fired on open when a full config is saved — owned by the
+        /// VM; forwarded here so tests keep their deterministic settle point.
         /// </summary>
-        internal Task? OpenProbeTask { get; private set; }
+        internal Task? OpenProbeTask => _vm.OpenProbeTask;
 
         /// <summary>
         /// Raised after Apply successfully saves settings, so the caller can update
@@ -53,7 +45,7 @@ namespace SwInventreeAddin.UI
                                 ISettingsApplyService settingsApplyService,
                                 IMappingProviderFactory mappingProviderFactory)
         {
-            _vm = new SettingsViewModel(configProvider);
+            _vm = new SettingsViewModel(configProvider, settingsApplyService);
             _mappingProvider = mappingProvider;
             _versionInfo = versionInfo;
             _settingsApplyService = settingsApplyService;
@@ -61,6 +53,23 @@ namespace SwInventreeAddin.UI
             DataContext = _versionInfo;
 
             InitializeComponent();
+
+            // VM state changes re-render the card and the form: every change
+            // raises StatusCard and the three form outputs together, so one
+            // pass is always coherent.
+            _vm.PropertyChanged += (_, e) =>
+            {
+                switch (e.PropertyName)
+                {
+                    case nameof(SettingsViewModel.StatusCard):
+                    case nameof(SettingsViewModel.UrlSliceOpen):
+                    case nameof(SettingsViewModel.CredentialSliceOpen):
+                    case nameof(SettingsViewModel.CredentialFormOpen):
+                        RefreshStatusCard();
+                        RenderCredentialForm();
+                        break;
+                }
+            };
 
             // Field events push drafts into the VM; every VM read below pulls
             // the derived outputs back out for enablement, labels, and visibility.
@@ -92,16 +101,13 @@ namespace SwInventreeAddin.UI
             AttachMappingChanged();
             Closed += (_, __) =>
             {
-                // IsCancellationRequested stays readable after Dispose, so a
-                // late probe continuation still discards cleanly.
-                _openProbeCts.Cancel();
-                _openProbeCts.Dispose();
+                // The VM cancels and disposes the open probe; a late verdict
+                // landing after this is still discarded.
+                _vm.CancelOpenProbe();
                 DetachMappingChanged();
             };
 
             RefreshButtonStates();
-
-            StartOpenProbe();
         }
 
         // ── Dirty-state tracking ───────────────────────────────────────────────
@@ -117,13 +123,13 @@ namespace SwInventreeAddin.UI
 
         // ── Connection status card ─────────────────────────────────────────────
 
-        // The card holds the persistent state: what is saved plus the session's
-        // probe axis. The connection section's status bar reports what the last
-        // action did — they are deliberately separate (prototype 1b). The VM owns
-        // the saved-config read; this only renders.
+        // The card holds the persistent state: what is saved crossed with the
+        // session's probe axis — the VM computes that projection; this only
+        // renders it. The connection section's status bar reports what the
+        // last action did — they are deliberately separate (prototype 1b).
         private void RefreshStatusCard()
         {
-            var status = ServerConnectionStatus.From(_vm.SavedConfig, _lastProbe, _probeInFlight);
+            var status = _vm.StatusCard;
 
             ConnectionCard.Visibility = status.IsSaved ? Visibility.Visible : Visibility.Collapsed;
             ConnectionCardTitle.Text = status.Title;
@@ -164,74 +170,6 @@ namespace SwInventreeAddin.UI
             }
         }
 
-        // ── Probe on open (#234) ─────────────────────────────────────────────
-        // A complete saved config gets a live probe on every open — the card
-        // reports a real verdict, never a stale saved claim. The probe runs
-        // against the saved values, not the form fields, and its lifecycle is
-        // the window's: Close and any newer probe cancel it, and a late
-        // verdict is discarded.
-
-        private void StartOpenProbe()
-        {
-            if (!ServerConnectionStatus.From(_vm.SavedConfig).IsComplete)
-                return;
-
-            var input = new SettingsApplyInput
-            {
-                Url = _vm.SavedConfig!.Url,
-                RawApiKey = _vm.SavedConfig.ApiKey,
-            };
-
-            _probeInFlight = true;
-            RefreshStatusCard();
-            OpenProbeTask = RunOpenProbeAsync(input);
-        }
-
-        private async Task RunOpenProbeAsync(SettingsApplyInput input)
-        {
-            ConnectionProbeResult? result;
-            try
-            {
-                using (var client = new HttpClient())
-                {
-                    result = await _settingsApplyService
-                        .TestConnectionAsync(input, client, _openProbeCts.Token)
-                        .ConfigureAwait(false);
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                // Closed or superseded by a newer probe — discard silently.
-                return;
-            }
-            catch (Exception ex)
-            {
-                // The probe could not run to a verdict (e.g. an unparsable saved
-                // URL) — surface it like any other failure instead of leaving
-                // the card on Testing forever.
-                result = new ConnectionProbeResult(ConnectionProbeStatus.Unreachable, ex.Message);
-            }
-
-            try
-            {
-                this.Dispatcher.Invoke(() =>
-                {
-                    // Closed or superseded between verdict and application —
-                    // the newer probe owns the card now.
-                    if (_openProbeCts.IsCancellationRequested)
-                        return;
-
-                    _lastProbe = result;
-                    _probeInFlight = false;
-                    RefreshStatusCard();
-                });
-            }
-            catch (Exception)
-            {
-                // The window's dispatcher is gone — nothing left to report to.
-            }
-        }
-
         // ── Single credential form ───────────────────────────────────────────
 
         // When the saved config is incomplete the form is always open — there is
@@ -240,38 +178,33 @@ namespace SwInventreeAddin.UI
         private void RenderCredentialForm()
         {
             CredentialFormScroll.Visibility =
-                _vm.CredentialFormVisible ? Visibility.Visible : Visibility.Collapsed;
+                _vm.CredentialFormOpen ? Visibility.Visible : Visibility.Collapsed;
             UrlFieldPanel.Visibility =
-                _vm.UrlFieldVisible ? Visibility.Visible : Visibility.Collapsed;
+                _vm.UrlSliceOpen ? Visibility.Visible : Visibility.Collapsed;
             CredentialFieldsPanel.Visibility =
-                _vm.CredentialFieldsVisible ? Visibility.Visible : Visibility.Collapsed;
+                _vm.CredentialSliceOpen ? Visibility.Visible : Visibility.Collapsed;
         }
 
         // Shared tail for paths that persist or remove the saved config: the
-        // key draft is dropped (saved keys are never re-shown) and everything
-        // re-renders from VM state — the VM lifecycle call that rebaselines
-        // happens at the call site.
+        // key draft is dropped (saved keys are never re-shown) and the field
+        // chrome re-renders — card and form re-render on the VM's own
+        // notifications, and the lifecycle call that rebaselines happens at
+        // the call site.
         private void CollapseFormAndRefresh()
         {
             ApiKeyBox.Clear();
-            RefreshStatusCard();
-            RenderCredentialForm();
             UpdateApiKeyPlaceholders();
             RefreshButtonStates();
         }
 
         private void ChangeServer_Click(object sender, RoutedEventArgs e)
         {
-            _vm.ToggleUrlEditing();
-            RenderCredentialForm();
-            if (_vm.UrlFieldVisible) UrlBox.Focus();
+            if (_vm.ToggleUrlSlice()) UrlBox.Focus();
         }
 
         private void ChangeCredential_Click(object sender, RoutedEventArgs e)
         {
-            _vm.ToggleCredentialEditing();
-            RenderCredentialForm();
-            if (_vm.CredentialFieldsVisible) ApiKeyBox.Focus();
+            if (_vm.ToggleCredentialSlice()) ApiKeyBox.Focus();
         }
 
         // ── API key field: write-once draft + placeholders ───────────────────
@@ -318,7 +251,7 @@ namespace SwInventreeAddin.UI
             this.Dispatcher.Invoke(() =>
             {
                 _vm.OnCredentialRemoved();
-                _lastProbe = null;
+                _vm.ClearProbeVerdict();
                 UsernameBox.Clear();
                 PasswordBox.Clear();
                 CollapseFormAndRefresh();
@@ -470,15 +403,13 @@ namespace SwInventreeAddin.UI
 
             // #249: a save that changed nothing connection-relevant skips the
             // probe. The open probe — if still in flight — keeps its claim on
-            // the card: it is not cancelled, _probeInFlight is not raised, and
-            // the NotProbed result never reaches _lastProbe or the card.
+            // the card: it is not cancelled, the in-flight axis is not raised,
+            // and the NotProbed result never becomes the card's verdict.
             bool probing = input.ProbeConnection;
             if (probing)
             {
                 // The apply's own probe verdict supersedes the open probe's.
-                _openProbeCts.Cancel();
-                _probeInFlight = true;
-                RefreshStatusCard();
+                _vm.BeginUserProbe();
                 // The save happens inside ApplyAsync — the interim status bar must
                 // not claim a save that a pre-persistence failure would disprove.
                 ActionStatusBar.SetStatus("Saving settings and testing connection\u2026", StatusSeverity.None);
@@ -502,20 +433,15 @@ namespace SwInventreeAddin.UI
             }
             catch (SettingsApplyException ex)
             {
-                if (probing) _probeInFlight = false;
+                if (probing) _vm.EndUserProbe(null);
                 this.Dispatcher.Invoke(() =>
                 {
-                    RefreshStatusCard();
                     ActionStatusBar.SetStatus(ex.Message, StatusSeverity.Error);
                 });
                 return false;
             }
 
-            if (probing)
-            {
-                _probeInFlight = false;
-                _lastProbe = probe;
-            }
+            if (probing) _vm.EndUserProbe(probe);
 
             // The password never lingers — whether it was sent for token
             // resolution or shadowed by a winning key draft.
@@ -565,9 +491,6 @@ namespace SwInventreeAddin.UI
                     // the Invalid result keeps Part Sync gated off on its own.
                     MappingApplied?.Invoke(this, _mappingProvider);
                     _vm.ReloadPersistedConfig();
-                    // The probe already resolved — re-render the card so it
-                    // leaves the Testing state instead of staying blue.
-                    RefreshStatusCard();
                     ActionStatusBar.SetStatus(failure.Text, failure.Severity);
                 });
                 return false;
@@ -609,14 +532,11 @@ namespace SwInventreeAddin.UI
         // on the section status bar while the card takes the probe outcome.
         private async void Test_Click(object sender, RoutedEventArgs e)
         {
-            // A user-initiated probe supersedes the open probe — the card
-            // should settle on the freshest verdict.
-            _openProbeCts.Cancel();
-
             var input = _vm.BuildTestInput();
 
-            _probeInFlight = true;
-            RefreshStatusCard();
+            // A user-initiated probe supersedes the open probe — the card
+            // should settle on the freshest verdict.
+            _vm.BeginUserProbe();
             ConnectionStatusBar.SetStatus("Testing connection\u2026", StatusSeverity.None);
 
             try
@@ -629,13 +549,10 @@ namespace SwInventreeAddin.UI
                         .ConfigureAwait(false);
                 }
 
-                _probeInFlight = false;
-                _lastProbe = result;
+                _vm.EndUserProbe(result);
 
                 this.Dispatcher.Invoke(() =>
                 {
-                    RefreshStatusCard();
-                    RenderCredentialForm();
                     ConnectionStatusBar.SetStatus(
                         result.Succeeded ? result.Message : $"Connection failed. {result.Message}",
                         result.Succeeded ? StatusSeverity.Success : StatusSeverity.Error);
@@ -648,19 +565,17 @@ namespace SwInventreeAddin.UI
             }
             catch (InvalidOperationException ex)
             {
-                _probeInFlight = false;
+                _vm.EndUserProbe(null);
                 this.Dispatcher.Invoke(() =>
                 {
-                    RefreshStatusCard();
                     ConnectionStatusBar.SetStatus(ex.Message, StatusSeverity.Error);
                 });
             }
             catch (Exception ex)
             {
-                _probeInFlight = false;
+                _vm.EndUserProbe(null);
                 this.Dispatcher.Invoke(() =>
                 {
-                    RefreshStatusCard();
                     ConnectionStatusBar.SetStatus($"Connection failed: {ex.Message}", StatusSeverity.Error);
                 });
             }

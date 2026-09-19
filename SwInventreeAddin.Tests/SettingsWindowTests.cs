@@ -23,17 +23,29 @@ namespace SwInventreeAddin.Tests
     public class SettingsWindowTests
     {
         private string _localMappingPath = null!;
+        private SynchronizationContext? _previousContext;
 
         [SetUp]
         public void SetUp()
         {
             _localMappingPath = Path.Combine(Path.GetTempPath(),
                 $"settings_window_mapping_{Guid.NewGuid():N}.json");
+
+            // The VM marshals UI-bound updates through SynchronizationContext.Send.
+            // NUnit's STA context queues Sends where only NUnit's own wait loop
+            // drains them — a Dispatcher.PushFrame inside a test would deadlock.
+            // The WPF dispatcher's context is pumped by any frame (and by
+            // NUnit's STA pump), matching what the VM captures in production.
+            _previousContext = SynchronizationContext.Current;
+            SynchronizationContext.SetSynchronizationContext(
+                new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
         }
 
         [TearDown]
         public void TearDown()
         {
+            SynchronizationContext.SetSynchronizationContext(_previousContext);
+
             if (File.Exists(_localMappingPath))
                 File.Delete(_localMappingPath);
         }
