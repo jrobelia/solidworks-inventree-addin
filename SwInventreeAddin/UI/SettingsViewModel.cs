@@ -490,8 +490,7 @@ namespace SwInventreeAddin.UI
             _savedConfig = TryGetConfig();
             _credentialState = CredentialEditorState.FromSavedConfig(_savedConfig);
             _password = string.Empty;
-            _editingUrl = false;
-            _showCredentialForm = false;
+            CollapseCredentialForm();
             _savedSnapshot = CaptureSnapshot();
             RaiseAllChanged();
         });
@@ -1040,21 +1039,12 @@ namespace SwInventreeAddin.UI
         private void EmitConnectionStateIfChanged()
         {
             var current = ConnectionState;
-            if (SameConnectionState(_emittedConnectionState, current))
+            if (_emittedConnectionState.Equals(current))
                 return;
 
             _emittedConnectionState = current;
             ConnectionStateChanged?.Invoke(this, current);
         }
-
-        private static bool SameConnectionState(ServerConnectionStatus a, ServerConnectionStatus b) =>
-            a.IsSaved == b.IsSaved &&
-            a.IsComplete == b.IsComplete &&
-            a.Indicator == b.Indicator &&
-            string.Equals(a.Title, b.Title, StringComparison.Ordinal) &&
-            string.Equals(a.ServerLine, b.ServerLine, StringComparison.Ordinal) &&
-            string.Equals(a.CredentialLine, b.CredentialLine, StringComparison.Ordinal) &&
-            string.Equals(a.ConnectionLine, b.ConnectionLine, StringComparison.Ordinal);
 
         // Post-persistence transitions can touch any derived output at once —
         // raise the full set so subscribers see a coherent state.
