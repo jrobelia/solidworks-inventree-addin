@@ -471,16 +471,27 @@ namespace SwInventreeAddin.UI
         private readonly SynchronizationContext? _uiContext
             = SynchronizationContext.Current;
 
+        // Captured alongside _uiContext so "already on the UI thread" is a
+        // thread check, not a context check — inside a Dispatcher.Invoke
+        // callback SynchronizationContext.Current is a fresh
+        // DispatcherSynchronizationContext wrapper that never reference-equals
+        // the captured context, and Post would marshal into a context whose
+        // pump is not running — silently dropping the update.
+        private readonly int _uiThreadId
+            = Environment.CurrentManagedThreadId;
+
         /// <summary>
-        /// Posts <paramref name="action"/> to the captured UI context.
-        /// Runs inline when no context was captured or when already on the captured context.
+        /// Runs <paramref name="action"/> on the UI thread. Same-thread callers
+        /// execute inline; off-thread callers marshal through Post (fire-and-
+        /// forget) so they are never blocked on the UI pump. Falls back to
+        /// inline execution when no context was captured (unit tests).
         /// </summary>
         private void RunOnUiThread(Action action)
         {
-            if (_uiContext != null && SynchronizationContext.Current != _uiContext)
-                _uiContext.Post(_ => action(), null);
-            else
+            if (Environment.CurrentManagedThreadId == _uiThreadId || _uiContext == null)
                 action();
+            else
+                _uiContext.Post(_ => action(), null);
         }
     }
 }

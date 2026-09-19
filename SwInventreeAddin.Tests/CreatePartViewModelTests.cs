@@ -603,6 +603,68 @@ namespace SwInventreeAddin.Tests
                 "GetPartByIpnAsync must not be called when the mapping is invalid.");
         }
 
+        [Test]
+        public void CreateAsync_OffThread_MarshalsThroughTheCapturedSyncContext()
+        {
+            var stubContext = new StubSynchronizationContext();
+            var previous = SynchronizationContext.Current;
+            SynchronizationContext.SetSynchronizationContext(stubContext);
+            try
+            {
+                // An invalid mapping reaches RunOnUiThread in CreateAsync's
+                // synchronous prefix — before any await, so no pump is needed.
+                var mappingProvider = new StubPropertyMappingProvider
+                {
+                    Health = MappingHealth.Invalid,
+                };
+                var vm = CreateVm(mappingProvider: mappingProvider);
+                vm.SelectedCategory = MakeNode(pk: 7);
+
+                // A caller on another thread marshals through Post.
+                Task.Run(() => vm.CreateAsync()).Wait();
+
+                Assert.That(stubContext.PostCount, Is.GreaterThan(0));
+            }
+            finally
+            {
+                SynchronizationContext.SetSynchronizationContext(previous);
+            }
+        }
+
+        [Test]
+        public void CreateAsync_OnTheCapturedThread_RunsInline()
+        {
+            // Same-thread callers must not Post: inside a WPF Dispatcher.Invoke
+            // the current context is a fresh DispatcherSynchronizationContext
+            // wrapper that never reference-equals the captured one — a Post
+            // there would queue into a context whose pump is not running,
+            // silently dropping the update.
+            var stubContext = new StubSynchronizationContext();
+            var previous = SynchronizationContext.Current;
+            SynchronizationContext.SetSynchronizationContext(stubContext);
+            try
+            {
+                var mappingProvider = new StubPropertyMappingProvider
+                {
+                    Health = MappingHealth.Invalid,
+                };
+                var vm = CreateVm(mappingProvider: mappingProvider);
+                vm.SelectedCategory = MakeNode(pk: 7);
+
+                // Simulate Dispatcher.Invoke: the same thread now runs under a
+                // different SynchronizationContext instance than the captured one.
+                SynchronizationContext.SetSynchronizationContext(new StubSynchronizationContext());
+
+                vm.CreateAsync().Wait();
+
+                Assert.That(stubContext.PostCount, Is.EqualTo(0));
+            }
+            finally
+            {
+                SynchronizationContext.SetSynchronizationContext(previous);
+            }
+        }
+
         [TestCase("2", "Property Mapping Schema is out of date")]
         [TestCase("4", "Property Mapping Schema is newer")]
         public async Task CreateAsync_NonHealthyMapping_HaltsAndDoesNotWriteDocProperties(

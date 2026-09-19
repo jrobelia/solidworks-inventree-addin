@@ -440,6 +440,11 @@ namespace SwInventreeAddin.Tests
                 "Unpushed New row should still be selectable");
         }
 
+        // Off-thread marshalling is the only RunOnUiThread direction reachable
+        // through the public surface — every call site sits behind
+        // await Task.Run(...), so no public member invokes it on the caller's
+        // thread and a same-thread "runs inline" test cannot distinguish the
+        // mechanism (#264). This test stands as the off-thread regression.
         [Test]
         public async Task PushAsync_MarshalsUiUpdatesToSynchronizationContext()
         {
