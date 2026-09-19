@@ -32,7 +32,7 @@ Each finding gets a disposition at the batch gate — record the disposition and
 
 ### Contract and tool reality
 
-- The dispatch contract is profile + filled task template → structured status JSON. Templates: `IMPLEMENTER_TASK.md` (implementers), `DESIGNER_TASK.md` (designer). Fill every `{{slot}}`.
+- The dispatch contract is profile + filled task template → structured status JSON. Templates: `IMPLEMENTER_TASK.md` (implementers), `DESIGNER_TASK.md` (designer). Fill every `{{slot}}`, then scan the filled template for leftover `{{` markers and interleaved fragments before dispatch — a garbled ruling inside `{{extra_context}}` is applied as settled spec, silently.
 - Profiles: `build-implementer` (`swe-2-high`, rounds 1–3), `build-implementer-max` (`swe-2-max`, rounds 4–5), `build-designer` (`swe-2-high`, read-only), `review-spec` (`swe-2-max`).
 - Subagents get five tools — `read`, `edit`, `exec`, `grep`, `glob` (exposed as `find_file_by_name`) — and `edit` cannot create files. New files go through `exec` heredoc or `git apply`; `IMPLEMENTER_TASK.md` `## Tool reality` carries this for the implementer. `skill` and `ask_user_question` are unreachable inside a subagent — every context pointer is a file to read, and a question is a `BLOCKED`.
 
@@ -56,7 +56,7 @@ Each finding gets a disposition at the batch gate — record the disposition and
 
 `.scratch/build-afk/<run>/` — `<run>` is the batch slug (e.g. `spec-208-213-214`):
 
-- `STATUS.json` — machine-readable state: batch branch, `PRE_BUILD_SHA`, per-ticket `{phase, status, branch, worktree, commit, fix_round, blocked_kind}` plus `entered_at` — an ISO-8601 stamp recording when the current phase began; the full transition trail lives in `PROGRESS.md`'s timestamped entries, so dispatch-to-artifact gaps are queryable without git archaeology.
+- `STATUS.json` — machine-readable state: batch branch, `PRE_BUILD_SHA`, per-ticket `{phase, status, branch, worktree, commit, fix_round, blocked_kind}` plus `entered_at` — an ISO-8601 stamp recording when the current phase began, validated to parse on write (a corrupt stamp defeats the dispatch-gap queries it exists for); the full transition trail lives in `PROGRESS.md`'s timestamped entries, so dispatch-to-artifact gaps are queryable without git archaeology.
 - `PROGRESS.md` — the ledger. First line names the spec. Every entry carries an `HH:MM` local (or ISO-8601) timestamp prefix — merges, review verdicts, fix rounds, gate decisions; a timestamp on write, no timing machinery — a real stamp, never a placeholder: the field exists to make dispatch-to-artifact gaps queryable. `Task <N>: complete` per merged ticket. A trailing `Task <N>: fix round <R>` line means resume mid-ladder at round `R+1`.
 - `seams/<ticket>.md` — designer output, persisted verbatim.
 - `reports/` — implementer reports, reviewer output (`<N>-review-<round>.md` per ticket, `<axis>-review-<pass>.md` for the final review), adjudication rulings, `run-retro.md`.

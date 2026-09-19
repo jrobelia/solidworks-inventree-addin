@@ -50,4 +50,4 @@ Only the declaration — the orchestrator persists it verbatim to `seams/{{ticke
 <each candidate under the same declaration fields>
 ```
 
-Self-check before returning: every test your Test adapter declaration names must have the stub capability it needs declared in the same field — "needs no change" beside a test that requires a new stub surface is a contradiction, not a shortcut. Keep the declaration to multiple shorter lines — a single line past ~2,000 chars defeats read/grep for the read-only agents that consume it.
+Self-check before returning: every test your Test adapter declaration names must have the stub capability it needs declared in the same field — "needs no change" beside a test that requires a new stub surface is a contradiction, not a shortcut. Every declared member names its consuming call site — a member reachable only from tests, or only from a sibling member that already does the work, is speculative: fold it in. A rename declares "replaces X". Pin instance-vs-static or mark it open. Keep the declaration to multiple shorter lines — a single line past ~2,000 chars defeats read/grep for the read-only agents that consume it.

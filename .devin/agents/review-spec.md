@@ -26,6 +26,7 @@ The caller will pass you a `REVIEW_BASE`, a `SPEC:` block, and any of the option
 
 1. Diff: run `git diff <REVIEW_BASE>...<REVIEW_HEAD>` — `HEAD` when `REVIEW_HEAD` is absent.
 2. Commit list: run `git log <REVIEW_BASE>..<REVIEW_HEAD> --oneline`.
+3. Format: run `dotnet format "Solidworks Inventree Add-In.sln" --verify-no-changes` at `REVIEW_HEAD` — mandatory, one exec, deterministic. Record the verdict in your findings; a failure is a review item, not a footnote.
 
 ## Your task
 
