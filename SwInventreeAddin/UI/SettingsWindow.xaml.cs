@@ -617,6 +617,7 @@ namespace SwInventreeAddin.UI
                 {
                     ConnectionProbeStatus.Connected => "connection successful",
                     ConnectionProbeStatus.CredentialRejected => $"authentication required ({probe.Message})",
+                    ConnectionProbeStatus.NotConfigured => "server connection cleared",
                     _ => $"connection failed ({probe.Message})",
                 };
                 this.Dispatcher.Invoke(() =>
@@ -650,6 +651,8 @@ namespace SwInventreeAddin.UI
                             ("Saved \u2014 connection successful.", StatusSeverity.Success),
                         ConnectionProbeStatus.CredentialRejected =>
                             ($"Saved \u2014 authentication required ({probe.Message})", StatusSeverity.Warning),
+                        ConnectionProbeStatus.NotConfigured =>
+                            ("Saved \u2014 server connection cleared.", StatusSeverity.Success),
                         _ => ($"Saved \u2014 but the connection failed ({probe.Message})", StatusSeverity.Error),
                     };
                     ActionStatusBar.SetStatus(outcome, outcomeSeverity);

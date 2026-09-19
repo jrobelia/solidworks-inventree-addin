@@ -1532,6 +1532,89 @@ namespace SwInventreeAddin.Tests
             });
         }
 
+        // ── Clearing the server URL (#253) ────────────────────────────
+        // Clearing a saved URL is a legal save: the explicit clear must
+        // reach the apply seam (the saved-URL fallback is test-only), the
+        // record persists with an empty URL and the saved key, and the
+        // card returns to its unconfigured state with the form open.
+
+        [Test]
+        public void UrlField_WhenClearedFromSaved_EnablesApply()
+        {
+            var window = CreateWindow(
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            GetTextBox(window, "UrlBox")!.Text = string.Empty;
+
+            Assert.That(GetButton(window, "ApplyButton").IsEnabled, Is.True);
+        }
+
+        [Test]
+        public async Task Apply_WithUrlCleared_PersistsEmptyUrlAndKeepsSavedKey()
+        {
+            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var applyService = new StubSettingsApplyService(configProvider);
+            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
+
+            GetTextBox(window, "UrlBox")!.Text = string.Empty;
+
+            bool result = await window.ApplySettingsAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.True, "a cleared URL is a legal save");
+                Assert.That(applyService.LastInput!.Url, Is.Empty,
+                    "the explicit clear must reach the seam — the saved-URL fallback is test-only");
+                Assert.That(configProvider.LastSavedConfig!.Url, Is.Empty);
+                Assert.That(configProvider.LastSavedConfig.ApiKey,
+                            Is.EqualTo("saved-key"), "the saved key survives a URL clear");
+            });
+        }
+
+        [Test]
+        public async Task Apply_WithUrlCleared_HidesCardShowsFormAndReportsCleared()
+        {
+            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var applyService = new StubSettingsApplyService(configProvider);
+            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
+
+            GetTextBox(window, "UrlBox")!.Text = string.Empty;
+
+            await window.ApplySettingsAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetElement(window, "ConnectionCard").Visibility,
+                            Is.EqualTo(Visibility.Collapsed),
+                            "a blank saved URL is the unsaved state — the card hides");
+                Assert.That(GetElement(window, "UrlFieldPanel").Visibility,
+                            Is.EqualTo(Visibility.Visible));
+                Assert.That(GetElement(window, "CredentialFieldsPanel").Visibility,
+                            Is.EqualTo(Visibility.Visible));
+                Assert.That(GetStatusBarText(window, "ActionStatusBar"),
+                            Does.Contain("Saved").And.Contain("server connection cleared"),
+                            "nothing was probed — the bar must not claim a failed connection");
+            });
+        }
+
+        [Test]
+        public async Task Apply_WithUrlClearedAndTypedPair_KeepsTheSavedKey()
+        {
+            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var applyService = new StubSettingsApplyService(configProvider);
+            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
+
+            GetTextBox(window, "UrlBox")!.Text = string.Empty;
+            GetTextBox(window, "UsernameBox")!.Text = "engineer";
+            GetPasswordBox(window, "PasswordBox").Password = "s3cret";
+
+            await window.ApplySettingsAsync();
+
+            Assert.That(configProvider.LastSavedConfig!.ApiKey,
+                        Is.EqualTo("saved-key"),
+                        "a typed credential on a clear save is not resolved — the saved key wins");
+        }
+
         // ── Test connection (#233, #239, #242) ─────────────────────────────
         // Test lives at the bottom of the Server Connection section beside the
         // connection status bar. It never saves and reports on the section's

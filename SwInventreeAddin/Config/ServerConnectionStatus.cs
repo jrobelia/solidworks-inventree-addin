@@ -58,7 +58,7 @@ namespace SwInventreeAddin.Config
             bool probeInFlight = false)
         {
             string url = (config?.Url ?? string.Empty).Trim();
-            bool isSaved = url.Length > 0;
+            bool isSaved = config?.IsConfigured == true;
             bool hasKey = !string.IsNullOrWhiteSpace(config?.ApiKey);
 
             string serverLine = isSaved ? url : "not saved";
@@ -109,6 +109,14 @@ namespace SwInventreeAddin.Config
                         isSaved: true, isComplete: true,
                         ServerConnectionIndicator.AuthenticationRequired, "Authentication required",
                         serverLine, credentialLine, lastProbe.Message);
+
+                // "saved OK with no URL, nothing probed" — the unconfigured
+                // state, identical to a blank saved URL, never a failure.
+                case ConnectionProbeStatus.NotConfigured:
+                    return new ServerConnectionStatus(
+                        isSaved: false, isComplete: false,
+                        ServerConnectionIndicator.NotTested, "Not tested",
+                        "not saved", credentialLine, "\u2014");
 
                 default:
                     return new ServerConnectionStatus(

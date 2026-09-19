@@ -133,13 +133,7 @@ namespace SwInventreeAddin.AddIn
                 _configProvider = configProvider;
                 var config = configProvider.GetServerConfig();
 
-                IInventreeClient? inventreeClient = null;
-                if (config != null)
-                {
-                    _httpClient = new System.Net.Http.HttpClient();
-                    _httpClient.BaseAddress = new System.Uri(config.Url);
-                    inventreeClient = new InventreeHttpClient(_httpClient, config.ApiKey);
-                }
+                IInventreeClient? inventreeClient = RebuildClient(config);
 
                 var propertyService = new SwDocumentPropertyService(_swApp);
                 var viewportService = new SwViewportCaptureService(_swApp);
@@ -344,15 +338,28 @@ namespace SwInventreeAddin.AddIn
                 if (!settingsApplied) return;
 
                 var newConfig = _configProvider.GetServerConfig();
-                if (newConfig == null) return;
-
-                _httpClient?.Dispose();
-                _httpClient = new System.Net.Http.HttpClient();
-                _httpClient.BaseAddress = new System.Uri(newConfig.Url);
-                var newClient = new InventreeHttpClient(_httpClient, newConfig.ApiKey);
-                _taskPaneControl?.UpdateClient(newClient);
-                _taskPaneControl?.UpdateWaitForServerAssignedIpn(newConfig.WaitForServerAssignedIpn);
+                _taskPaneControl?.UpdateClient(RebuildClient(newConfig));
+                _taskPaneControl?.UpdateWaitForServerAssignedIpn(newConfig?.WaitForServerAssignedIpn ?? true);
             }
+        }
+
+        // A saved config is "configured" only when its URL is non-empty — a
+        // cleared URL is a legal save (#253) and must never reach Uri
+        // construction. The Task Pane tracks the cleared state through a null
+        // client, so it shows its unconfigured state.
+        private IInventreeClient? RebuildClient(ServerConfig? config)
+        {
+            _httpClient?.Dispose();
+            _httpClient = null;
+
+            if (config?.IsConfigured != true)
+                return null;
+
+            _httpClient = new System.Net.Http.HttpClient
+            {
+                BaseAddress = new System.Uri(config.Url),
+            };
+            return new InventreeHttpClient(_httpClient, config.ApiKey);
         }
     }
 }
