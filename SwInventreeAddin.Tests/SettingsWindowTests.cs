@@ -56,67 +56,8 @@ namespace SwInventreeAddin.Tests
         }
 
         // ── Mapping section rendering ────────────────────────────────────────
-
-        [Test]
-        public void Constructor_WhenMappingProviderThrowsOnGetMappingResult_SetsRedMappingStatusAndDoesNotCrash()
-        {
-            var mappingProvider = new StubPropertyMappingProvider
-            {
-                LocalFilePath = _localMappingPath,
-                ThrowOnGet = new InvalidOperationException("Failed to load mapping file: C:\\temp\\missing.json"),
-            };
-
-            var window = CreateWindow(mappingProvider: mappingProvider);
-
-            Assert.That(GetStatusBarText(window, "MappingStatusBar"), Does.Contain("The Property Mapping file is invalid."));
-            Assert.That(GetStripeBrush(window), Is.SameAs(GetBrush(window, "BrushStatusError")));
-        }
-
-        [Test]
-        public void Constructor_HealthyMapping_ShowsGreenStatusWithUpToDateMessage()
-        {
-            var mappingProvider = new StubPropertyMappingProvider
-            {
-                LocalFilePath = _localMappingPath,
-                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion }
-            };
-
-            var window = CreateWindow(mappingProvider: mappingProvider);
-
-            Assert.That(GetStatusBarText(window, "MappingStatusBar"), Does.Contain("up to date").IgnoreCase);
-            Assert.That(GetStripeBrush(window), Is.SameAs(GetBrush(window, "BrushStatusSuccess")));
-        }
-
-        [Test]
-        public void Constructor_InvalidMapping_DisablesEditMappingsButton()
-        {
-            var mappingProvider = new StubPropertyMappingProvider
-            {
-                LocalFilePath = _localMappingPath,
-                Health = MappingHealth.Invalid,
-            };
-
-            var window = CreateWindow(mappingProvider: mappingProvider);
-
-            var button = GetButton(window, "EditMappingsButton");
-            Assert.That(button.IsEnabled, Is.False);
-        }
-
-        [Test]
-        public void Constructor_LocalHealthyMapping_ShowsEditLocalMappingsButtonAndEnabled()
-        {
-            var mappingProvider = new StubPropertyMappingProvider
-            {
-                LocalFilePath = _localMappingPath,
-                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion }
-            };
-
-            var window = CreateWindow(mappingProvider: mappingProvider);
-
-            var button = GetButton(window, "EditMappingsButton");
-            Assert.That(button.IsEnabled, Is.True);
-            Assert.That(GetText(window, "EditMappingsButtonText"), Is.EqualTo("Edit Local Mappings"));
-        }
+        // The health→severity/label/enabled projection lives in the VM tests;
+        // what remains here proves the status bar's chrome forwards the pair.
 
         [Test]
         public void MappingStatusText_LongMessage_ToolTipContainsFullMessage()
@@ -134,23 +75,6 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(textBox.ToolTip, Is.InstanceOf<string>());
             Assert.That((string)textBox.ToolTip, Does.Contain(longMessage));
-            Assert.That(textBox.ToolTip, Is.EqualTo(textBox.Text));
-        }
-
-        [Test]
-        public void MappingStatusText_NeedsUpgrade_MatchesToolTipAndShowsFullMessage()
-        {
-            var mappingProvider = new StubPropertyMappingProvider
-            {
-                LocalFilePath = _localMappingPath,
-                Config = new PropertyMappingConfig { SchemaVersion = "2" }
-            };
-
-            var window = CreateWindow(mappingProvider: mappingProvider);
-            var textBox = GetStatusBarTextBox(window, "MappingStatusBar");
-
-            Assert.That(textBox.Text, Does.Contain("The Property Mapping Schema is out of date."));
-            Assert.That(textBox.Text, Does.Contain("Edit the Property Mapping and save to enable Part Sync."));
             Assert.That(textBox.ToolTip, Is.EqualTo(textBox.Text));
         }
 
@@ -215,60 +139,6 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void Constructor_WithServerOnlySaved_ShowsAuthenticationRequiredCard()
-        {
-            var window = CreateWindow(
-                configProvider: new StubConfigProvider("https://inventree.example.com", string.Empty));
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(GetElement(window, "ConnectionCard").Visibility,
-                            Is.EqualTo(Visibility.Visible));
-                Assert.That(GetText(window, "ConnectionCardTitle"),
-                            Is.EqualTo("Authentication required"));
-                Assert.That(GetText(window, "ConnectionCardServer"),
-                            Is.EqualTo("https://inventree.example.com"));
-                Assert.That(GetText(window, "ConnectionCardCredential"),
-                            Is.EqualTo("none saved"));
-            });
-        }
-
-        [Test]
-        public void Constructor_WithServerOnlySaved_UsesAmberDot()
-        {
-            var window = CreateWindow(
-                configProvider: new StubConfigProvider("https://inventree.example.com", string.Empty));
-
-            Assert.That(GetDot(window).Fill, Is.SameAs(GetBrush(window, "BrushStatusWarning")));
-        }
-
-        [Test]
-        public void Constructor_WithFullConfig_ShowsTestingCardWhileProbeInFlight()
-        {
-            var pending = new TaskCompletionSource<ConnectionProbeResult>();
-            var applyService = new StubSettingsApplyService { PendingTestResult = pending };
-            var window = CreateWindow(
-                applyService: applyService,
-                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(GetText(window, "ConnectionCardTitle"), Is.EqualTo("Testing connection…"));
-                Assert.That(GetText(window, "ConnectionCardServer"),
-                            Is.EqualTo("https://inventree.example.com"));
-                Assert.That(GetText(window, "ConnectionCardCredential"),
-                            Is.EqualTo("API key saved"));
-                Assert.That(GetText(window, "ConnectionCardConnection"),
-                            Is.EqualTo("testing…"));
-                Assert.That(GetDot(window).Fill,
-                            Is.SameAs(GetBrush(window, "BrushAccentBlue")),
-                            "the in-flight probe renders the testing-blue dot");
-            });
-
-            pending.SetCanceled();
-        }
-
-        [Test]
         public void Constructor_WithFullConfig_HidesTheForm()
         {
             var window = CreateWindow(
@@ -324,33 +194,8 @@ namespace SwInventreeAddin.Tests
         }
 
         // ── Open probe → card render ─────────────────────────────────────────
-
-        [Test]
-        public void OpenProbe_WhenConnected_SettlesCardToConnected()
-        {
-            var pending = new TaskCompletionSource<ConnectionProbeResult>();
-            var applyService = new StubSettingsApplyService { PendingTestResult = pending };
-            var window = CreateWindow(
-                applyService: applyService,
-                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
-
-            pending.SetResult(new ConnectionProbeResult(
-                ConnectionProbeStatus.Connected, "Connection successful."));
-            WaitForProbe(window);
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(GetText(window, "ConnectionCardTitle"), Is.EqualTo("Connected"));
-                Assert.That(GetText(window, "ConnectionCardConnection"),
-                            Is.EqualTo("last test succeeded"));
-                Assert.That(GetDot(window).Fill,
-                            Is.SameAs(GetBrush(window, "BrushStatusSuccess")));
-                Assert.That(GetStatusBarText(window, "ActionStatusBar"), Is.Empty,
-                            "the open probe writes to the card only, never the footer status bar");
-                Assert.That(GetStatusBarText(window, "ConnectionStatusBar"), Is.Empty,
-                            "the open probe writes to the card only, never the connection status bar");
-            });
-        }
+        // The verdict→card projection is a VM rule (SettingsViewModelTests);
+        // what stays here proves the Close → cancel wiring only.
 
         // The misbehave knob violates the test-connection contract on purpose
         // so the Closed → cancel wiring gets a real discard to prove.
@@ -621,36 +466,6 @@ namespace SwInventreeAddin.Tests
             });
         }
 
-        // ── Apply gating render ──────────────────────────────────────────────
-
-        [Test]
-        public void Constructor_FreshState_ApplyAndSaveStartDisabled()
-        {
-            var window = CreateWindow();
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(GetButton(window, "ApplyButton").IsEnabled, Is.False);
-                Assert.That(GetButton(window, "SaveButton").IsEnabled, Is.False);
-                Assert.That(GetText(window, "CancelButtonText"), Is.EqualTo("Close"));
-            });
-        }
-
-        [Test]
-        public void UrlField_WhenChanged_EnablesApplyAndSave()
-        {
-            var window = CreateWindow();
-
-            GetTextBox(window, "UrlBox").Text = "https://other.example.com";
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(GetButton(window, "ApplyButton").IsEnabled, Is.True);
-                Assert.That(GetButton(window, "SaveButton").IsEnabled, Is.True);
-                Assert.That(GetText(window, "CancelButtonText"), Is.EqualTo("Cancel"));
-            });
-        }
-
         // ── Apply / Test / Save click → render ───────────────────────────────
         // One proof per action that the click reaches the VM and the result
         // renders — every rule behind the result lives in the VM tests.
@@ -672,6 +487,9 @@ namespace SwInventreeAddin.Tests
                 Assert.That(GetElement(window, "ConnectionCard").Visibility,
                             Is.EqualTo(Visibility.Visible));
                 Assert.That(GetText(window, "ConnectionCardTitle"), Is.EqualTo("Connected"));
+                Assert.That(GetDot(window).Fill,
+                            Is.SameAs(GetBrush(window, "BrushStatusSuccess")),
+                            "the indicator→brush switch is window logic — this is its proof");
                 Assert.That(GetElement(window, "CredentialFieldsPanel").Visibility,
                             Is.EqualTo(Visibility.Collapsed),
                             "a complete config collapses the form back to the card");
@@ -679,22 +497,6 @@ namespace SwInventreeAddin.Tests
                             Is.EqualTo(Visibility.Visible),
                             "the freshly saved key shows as dots");
             });
-        }
-
-        // The secret may stay in the box while the save runs — it must be gone
-        // once Apply completes, success or failure.
-        [Test]
-        public void Apply_WhenPasswordSent_ClearsPasswordBox()
-        {
-            var window = CreateWindow(
-                configProvider: StubConfigProvider.WithNoSavedConfig());
-            GetTextBox(window, "UrlBox").Text = "https://inventree.example.com";
-            GetTextBox(window, "UsernameBox").Text = "engineer";
-            GetPasswordBox(window, "PasswordBox").Password = "s3cret";
-
-            Click(window, "ApplyButton");
-
-            Assert.That(GetPasswordBox(window, "PasswordBox").Password, Is.Empty);
         }
 
         [Test]
@@ -715,37 +517,6 @@ namespace SwInventreeAddin.Tests
                         Is.EqualTo("Testing connection…"));
 
             pending.SetCanceled();
-        }
-
-        [Test]
-        public void Test_WhenProbeSucceeds_ReportsSuccessAndUpdatesCard()
-        {
-            var window = CreateWindow();
-
-            Click(window, "TestConnectionButton");
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(GetStatusBarText(window, "ConnectionStatusBar"),
-                            Is.EqualTo("Connection successful."));
-                Assert.That(GetText(window, "ConnectionCardTitle"), Is.EqualTo("Connected"));
-                Assert.That(GetStatusBarText(window, "ActionStatusBar"), Is.Empty,
-                            "the footer bar is for Save/Apply only");
-            });
-        }
-
-        [Test]
-        public void Test_WhenPasswordSent_ClearsPasswordBox()
-        {
-            var window = CreateWindow(
-                configProvider: StubConfigProvider.WithNoSavedConfig());
-            GetTextBox(window, "UrlBox").Text = "https://inventree.example.com";
-            GetTextBox(window, "UsernameBox").Text = "engineer";
-            GetPasswordBox(window, "PasswordBox").Password = "s3cret";
-
-            Click(window, "TestConnectionButton");
-
-            Assert.That(GetPasswordBox(window, "PasswordBox").Password, Is.Empty);
         }
 
         // ── Action row placement ─────────────────────────────────────────────
@@ -788,14 +559,6 @@ namespace SwInventreeAddin.Tests
             Assert.That(IsInside(window, "TestConnectionButton", "CredentialFormScroll"),
                         Is.False,
                         "TestConnectionButton must not sit inside the credential form");
-        }
-
-        [Test]
-        public void TestConnectionButton_WithNoUrlAnywhere_IsDisabled()
-        {
-            var window = CreateWindow(configProvider: StubConfigProvider.WithNoSavedConfig());
-
-            Assert.That(GetButton(window, "TestConnectionButton").IsEnabled, Is.False);
         }
 
         // ── Save → dialog result ─────────────────────────────────────────────
@@ -892,8 +655,11 @@ namespace SwInventreeAddin.Tests
             Assert.That(IsInside(window, "RemoveApiKeyButton", "ConnectionCardToolbar"), Is.True);
         }
 
+        // The only click→render proof of the RemoveApiKey forward: the click
+        // reaches _vm.RemoveApiKeyAsync and the outcome renders — the field
+        // clears, message text, and card landing are VM rules tested there.
         [Test]
-        public void RemoveApiKey_WhenClicked_ResetsCredentialFieldsButKeepsServerUrl()
+        public void RemoveApiKey_WhenClicked_ForwardsToTheViewModelAndRenders()
         {
             var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
             var applyService = new StubSettingsApplyService(configProvider);
@@ -903,45 +669,11 @@ namespace SwInventreeAddin.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(GetTextBox(window, "UrlBox").Text,
-                            Is.EqualTo("https://inventree.example.com"), "UrlBox");
-                Assert.That(GetTextBox(window, "UsernameBox").Text, Is.Empty, "UsernameBox");
-                Assert.That(GetPasswordBox(window, "PasswordBox").Password, Is.Empty, "PasswordBox");
-                Assert.That(GetPasswordBox(window, "ApiKeyBox").Password, Is.Empty, "ApiKeyBox");
-                Assert.That(GetElement(window, "ApiKeyDotsPlaceholder").Visibility,
-                            Is.EqualTo(Visibility.Collapsed), "no dots without a saved key");
+                Assert.That(applyService.RemoveCallCount, Is.EqualTo(1),
+                            "the click must reach _vm.RemoveApiKeyAsync");
+                Assert.That(GetStatusBarText(window, "ConnectionStatusBar"), Is.Not.Empty,
+                            "the command's outcome renders on the connection status bar");
             });
-        }
-
-        [Test]
-        public void RemoveApiKey_WhenClicked_ReportsCredentialRemovedInConnectionStatus()
-        {
-            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
-            var applyService = new StubSettingsApplyService(configProvider);
-            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
-
-            Click(window, "RemoveApiKeyButton");
-
-            Assert.That(GetStatusBarText(window, "ConnectionStatusBar"),
-                        Is.EqualTo("Credential removed. Server address kept."));
-        }
-
-        [Test]
-        public void RemoveApiKey_WhenServiceThrows_ShowsErrorInConnectionStatus()
-        {
-            var applyService = new StubSettingsApplyService
-            {
-                ExceptionToThrowOnRemove =
-                    new SettingsApplyException("Failed to remove the API key: not authorised"),
-            };
-            var window = CreateWindow(
-                applyService: applyService,
-                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
-
-            Click(window, "RemoveApiKeyButton");
-
-            Assert.That(GetStatusBarText(window, "ConnectionStatusBar"),
-                        Is.EqualTo("Failed to remove the API key: not authorised"));
         }
 
         // ── Form structure ───────────────────────────────────────────────────
@@ -1094,9 +826,6 @@ namespace SwInventreeAddin.Tests
 
         private static TextBox GetStatusBarTextBox(Window window, string name) =>
             GetStatusBar(window, name).StatusText;
-
-        private static Brush GetStripeBrush(Window window) =>
-            GetStatusBar(window, "MappingStatusBar").StatusStripe.Background;
 
         private static Brush GetBrush(Window window, string key)
         {

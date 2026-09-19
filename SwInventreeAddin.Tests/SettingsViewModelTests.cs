@@ -98,11 +98,11 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void IsDirty_WhenUseLocalMappingToggles_IsTrue()
+        public void IsDirty_WhenUseSharedMappingToggles_IsTrue()
         {
             var vm = CreateVm();
 
-            vm.UseLocalMapping = false;
+            vm.UseSharedMapping = true;
 
             Assert.That(vm.IsDirty, Is.True);
         }
@@ -184,7 +184,7 @@ namespace SwInventreeAddin.Tests
         {
             var vm = CreateVm();
 
-            vm.UseLocalMapping = false;
+            vm.UseSharedMapping = true;
             vm.SharedMappingPath = @"\share\map.json";
             vm.BomKeyword = "custom-bom";
 
@@ -206,7 +206,7 @@ namespace SwInventreeAddin.Tests
             var vm = CreateVm();
 
             vm.SharedMappingPath = @"\share\map.json";
-            // UseLocalMapping stays true — the path box content is ignored.
+            // UseSharedMapping stays false — the path box content is ignored.
 
             Assert.That(vm.BuildApplyInput().SharedMappingPath, Is.Null);
         }
@@ -216,7 +216,7 @@ namespace SwInventreeAddin.Tests
         {
             var vm = CreateVm();
 
-            vm.UseLocalMapping = false;
+            vm.UseSharedMapping = true;
             vm.SharedMappingPath = "   ";
 
             Assert.That(vm.BuildApplyInput().SharedMappingPath, Is.Null);
@@ -1292,7 +1292,7 @@ namespace SwInventreeAddin.Tests
             var provider = new StubConfigProvider("https://inventree.example.com", "saved-key");
             var applyService = new StubSettingsApplyService(provider);
             var vm = CreateVm(provider, applyService, mappingProviderFactory: factory);
-            vm.UseLocalMapping = false;
+            vm.UseSharedMapping = true;
             vm.SharedMappingPath = "\\\\share\\map.json";
 
             await vm.ApplyAsync();
@@ -1304,7 +1304,7 @@ namespace SwInventreeAddin.Tests
                 Assert.That(vm.MappingProvider, Is.SameAs(newProvider));
                 Assert.That(provider.LastSavedConfig!.MappingSourcePath,
                             Is.EqualTo("\\\\share\\map.json"));
-                Assert.That(vm.UseLocalMapping, Is.False,
+                Assert.That(vm.UseSharedMapping, Is.True,
                     "the persisted shared path keeps the Shared radio checked");
             });
         }
@@ -1316,12 +1316,12 @@ namespace SwInventreeAddin.Tests
             provider.Config!.MappingSourcePath = "\\\\share\\old.json";
             var applyService = new StubSettingsApplyService(provider);
             var vm = CreateVm(provider, applyService);
-            Assert.That(vm.UseLocalMapping, Is.False, "seeded from the saved source path");
+            Assert.That(vm.UseSharedMapping, Is.True, "seeded from the saved source path");
 
-            vm.UseLocalMapping = true;
+            vm.UseSharedMapping = false;
             await vm.ApplyAsync();
 
-            Assert.That(vm.UseLocalMapping, Is.True,
+            Assert.That(vm.UseSharedMapping, Is.False,
                 "the persisted null source lands the radio back on Local");
         }
 
@@ -1751,12 +1751,12 @@ namespace SwInventreeAddin.Tests
             provider.Config!.MappingSourcePath = "\\\\share\\map.json";
             var mappingProvider = new StubPropertyMappingProvider();
             var vm = CreateVm(provider, mappingProvider: mappingProvider);
-            Assert.That(vm.UseLocalMapping, Is.False);
+            Assert.That(vm.UseSharedMapping, Is.True);
 
-            vm.UseLocalMapping = true;   // a mid-edit radio draft
+            vm.UseSharedMapping = false;   // a mid-edit radio draft
             mappingProvider.RaiseMappingChanged();
 
-            Assert.That(vm.UseLocalMapping, Is.False,
+            Assert.That(vm.UseSharedMapping, Is.True,
                 "a mapping-changed refresh resets the radios to the saved source even mid-edit");
         }
 

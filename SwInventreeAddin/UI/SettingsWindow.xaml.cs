@@ -76,8 +76,8 @@ namespace SwInventreeAddin.UI
             ApiKeyBox.PasswordChanged += (_, __) => _vm.ApiKeyDraft = ApiKeyBox.Password;
             SharedPathBox.TextChanged += (_, __) => _vm.SharedMappingPath = SharedPathBox.Text;
             BomKeywordBox.TextChanged += (_, __) => _vm.BomKeyword = BomKeywordBox.Text;
-            LocalRadio.Checked += (_, __) => _vm.UseLocalMapping = true;
-            SharedRadio.Checked += (_, __) => _vm.UseLocalMapping = false;
+            LocalRadio.Checked += (_, __) => _vm.UseSharedMapping = false;
+            SharedRadio.Checked += (_, __) => _vm.UseSharedMapping = true;
 
             WindowCentering.Attach(this, SolidWorksWindowHandle.Get());
 
@@ -144,9 +144,9 @@ namespace SwInventreeAddin.UI
                     LocalPathBox.Text = _vm.LocalMappingPath;
                     break;
 
-                case nameof(SettingsViewModel.UseLocalMapping):
-                    LocalRadio.IsChecked = _vm.UseLocalMapping;
-                    SharedRadio.IsChecked = !_vm.UseLocalMapping;
+                case nameof(SettingsViewModel.UseSharedMapping):
+                    LocalRadio.IsChecked = !_vm.UseSharedMapping;
+                    SharedRadio.IsChecked = _vm.UseSharedMapping;
                     break;
 
                 case nameof(SettingsViewModel.Username):
@@ -245,8 +245,8 @@ namespace SwInventreeAddin.UI
         private void RenderMappingSection()
         {
             LocalPathBox.Text = _vm.LocalMappingPath;
-            LocalRadio.IsChecked = _vm.UseLocalMapping;
-            SharedRadio.IsChecked = !_vm.UseLocalMapping;
+            LocalRadio.IsChecked = !_vm.UseSharedMapping;
+            SharedRadio.IsChecked = _vm.UseSharedMapping;
             EditMappingsButton.IsEnabled = _vm.EditMappingsEnabled;
             EditMappingsButtonText.Text = _vm.EditMappingsLabel;
             MappingStatusBar.SetStatus(_vm.MappingStatusText, _vm.MappingStatusSeverity);
