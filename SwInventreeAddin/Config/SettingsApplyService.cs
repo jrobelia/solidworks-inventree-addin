@@ -32,6 +32,12 @@ namespace SwInventreeAddin.Config
             if (client == null)
                 throw new ArgumentNullException(nameof(client));
 
+            // A cleared URL is a legal save — "no server configured". It never
+            // reaches ResolveApiKeyAsync: there is no server to resolve a
+            // credential against or to probe.
+            if (string.IsNullOrWhiteSpace(input.Url))
+                return ApplyClear(input);
+
             string apiKey;
             try
             {
@@ -44,16 +50,8 @@ namespace SwInventreeAddin.Config
 
             try
             {
-                _configProvider.SaveServerConfig(new ServerConfig
-                {
-                    Url = input.Url.Trim(),
-                    ApiKey = apiKey,
-                    MappingSourcePath = input.SharedMappingPath,
-                    BomKeyword = string.IsNullOrWhiteSpace(input.BomKeyword)
-                                            ? "inventree"
-                                            : input.BomKeyword.Trim(),
-                    WaitForServerAssignedIpn = input.WaitForServerAssignedIpn,
-                });
+                _configProvider.SaveServerConfig(
+                    BuildConfig(input.Url.Trim(), apiKey, input));
             }
             catch (Exception ex)
             {
@@ -109,6 +107,40 @@ namespace SwInventreeAddin.Config
         }
 
         // ── Private helpers ───────────────────────────────────────────────────
+
+        // The URL-clear save: the previously saved key is kept — a typed
+        // credential is ignored because there is no server to resolve it
+        // against — the rest of the input persists exactly as a normal save,
+        // and the unconfigured outcome is reported without probing.
+        private ConnectionProbeResult ApplyClear(SettingsApplyInput input)
+        {
+            try
+            {
+                var prior = _configProvider.GetServerConfig();
+                _configProvider.SaveServerConfig(
+                    BuildConfig(string.Empty, prior?.ApiKey ?? string.Empty, input));
+            }
+            catch (Exception ex)
+            {
+                throw ConfigError(ex);
+            }
+
+            return new ConnectionProbeResult(
+                ConnectionProbeStatus.NotConfigured,
+                "Server URL cleared — the saved API key was kept. Nothing was probed.");
+        }
+
+        private static ServerConfig BuildConfig(string url, string apiKey, SettingsApplyInput input) =>
+            new ServerConfig
+            {
+                Url = url,
+                ApiKey = apiKey,
+                MappingSourcePath = input.SharedMappingPath,
+                BomKeyword = string.IsNullOrWhiteSpace(input.BomKeyword)
+                                        ? "inventree"
+                                        : input.BomKeyword.Trim(),
+                WaitForServerAssignedIpn = input.WaitForServerAssignedIpn,
+            };
 
         // Apply and Test Connection share the same probe so both report the same
         // outcome for the same credential. Validation happens before this runs, so

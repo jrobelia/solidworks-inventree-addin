@@ -18,7 +18,12 @@ namespace SwInventreeAddin.Config
         /// credential at all, the URL-only config is still persisted ("server only" is
         /// a valid saved state); the returned result reports
         /// <see cref="ConnectionProbeStatus.CredentialRejected"/> without a probe being
-        /// made. Throws <see cref="ArgumentNullException"/>
+        /// made. An empty or whitespace <see cref="SettingsApplyInput.Url"/> is legal
+        /// input meaning "clear the saved server": the record persists with an empty
+        /// URL and the previously saved API key — the input's credential fields are
+        /// ignored because there is no server to resolve against — and the returned
+        /// result reports <see cref="ConnectionProbeStatus.NotConfigured"/>; nothing is
+        /// probed. Throws <see cref="ArgumentNullException"/>
         /// when <paramref name="client"/> is null. Throws <see cref="SettingsApplyException"/>
         /// when any pre-persistence step fails — validation, credential resolution, or
         /// the config write; the message begins with "Failed to save server settings" and

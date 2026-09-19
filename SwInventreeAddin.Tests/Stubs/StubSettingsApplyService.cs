@@ -64,14 +64,29 @@ namespace SwInventreeAddin.Tests.Stubs
             // return means the settings were saved, so a re-read of the provider
             // must observe them. A complete username+password pair resolves to a
             // stand-in token, as the real token service would produce.
+            bool clearing = string.IsNullOrWhiteSpace(input.Url);
+
             if (ConfigProvider != null)
             {
-                string apiKey = !string.IsNullOrWhiteSpace(input.RawApiKey)
-                    ? input.RawApiKey.Trim()
-                    : (!string.IsNullOrWhiteSpace(input.Username) &&
-                       !string.IsNullOrWhiteSpace(input.Password))
-                        ? "stub-resolved-token"
-                        : (ConfigProvider.GetServerConfig()?.ApiKey ?? string.Empty);
+                string apiKey;
+                if (clearing)
+                {
+                    // The clear path ignores input credentials — the saved key wins.
+                    apiKey = ConfigProvider.GetServerConfig()?.ApiKey ?? string.Empty;
+                }
+                else if (!string.IsNullOrWhiteSpace(input.RawApiKey))
+                {
+                    apiKey = input.RawApiKey.Trim();
+                }
+                else if (!string.IsNullOrWhiteSpace(input.Username) &&
+                         !string.IsNullOrWhiteSpace(input.Password))
+                {
+                    apiKey = "stub-resolved-token";
+                }
+                else
+                {
+                    apiKey = ConfigProvider.GetServerConfig()?.ApiKey ?? string.Empty;
+                }
 
                 ConfigProvider.SaveServerConfig(new ServerConfig
                 {
@@ -81,6 +96,13 @@ namespace SwInventreeAddin.Tests.Stubs
                     BomKeyword = input.BomKeyword,
                     WaitForServerAssignedIpn = input.WaitForServerAssignedIpn,
                 });
+            }
+
+            if (clearing)
+            {
+                return Task.FromResult(new ConnectionProbeResult(
+                    ConnectionProbeStatus.NotConfigured,
+                    "Server URL cleared — the saved API key was kept. Nothing was probed."));
             }
 
             return Task.FromResult(ResultToReturnOnApply);
