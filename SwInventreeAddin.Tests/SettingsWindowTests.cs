@@ -990,6 +990,32 @@ namespace SwInventreeAddin.Tests
             });
         }
 
+        // The destructive action's hover is the design's light-red tint, not
+        // the shared grey — a style trigger on DangerButtonStyle overrides the
+        // inherited template hover (style triggers outrank template triggers).
+        [Test]
+        public void CardToolbar_RemoveApiKeyButton_HoverUsesTheDangerTint()
+        {
+            var window = CreateWindow(
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            var dangerStyle = window.TryFindResource("DangerButtonStyle") as Style;
+            Assert.That(dangerStyle, Is.Not.Null,
+                        "DesignTokens.xaml must define DangerButtonStyle");
+
+            var hover = dangerStyle!.Triggers.OfType<Trigger>()
+                .FirstOrDefault(t => t.Property == UIElement.IsMouseOverProperty);
+            Assert.That(hover, Is.Not.Null,
+                        "DangerButtonStyle needs a style-level IsMouseOver trigger — otherwise the inherited template hover paints it grey");
+
+            var fill = hover!.Setters.OfType<Setter>()
+                .FirstOrDefault(s => s.Property == Control.BackgroundProperty);
+            Assert.That(fill, Is.Not.Null, "the hover trigger must set Background");
+            Assert.That(((SolidColorBrush)fill!.Value).Color,
+                        Is.EqualTo(Color.FromArgb(0xFF, 0xFD, 0xEC, 0xEA)),
+                        "the destructive hover tint is the design's light red #FDECEA");
+        }
+
         [Test]
         public void CardToolbar_Layout_SpreadsAcrossTheCardUnderADivider()
         {

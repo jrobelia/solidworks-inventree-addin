@@ -127,13 +127,20 @@
     </Style>
 
     <!-- Destructive action (e.g. Remove API key): error-red text and outline
-         on the surface fill — the named danger role, not a severity report. -->
+         on the surface fill — the named danger role, not a severity report.
+         The style-level IsMouseOver trigger overrides the inherited grey
+         template hover with the design's light-red tint. -->
     <Style x:Key="DangerButtonStyle" TargetType="Button"
            BasedOn="{StaticResource SecondaryButtonStyle}">
         <Setter Property="Background"      Value="Transparent" />
         <Setter Property="Foreground"      Value="{StaticResource BrushStatusError}" />
         <Setter Property="BorderBrush"     Value="{StaticResource BrushStatusError}" />
         <Setter Property="BorderThickness" Value="1" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="#FFFDECEA" />
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <!-- ── TextBox styles ─────────────────────────────────────────────────── -->

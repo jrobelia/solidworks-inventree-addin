@@ -40,7 +40,7 @@ Tokens are defined in `SwInventreeAddin/UI/DesignTokens.xaml` — this doc says 
 
 - `PrimaryButtonStyle` (InvenTree blue) — exactly one per dialog: the commit action (`Save`, `IsDefault`).
 - `SecondaryButtonStyle` (chrome grey) — everything else. 28px normally, 24px inside card toolbars.
-- `DangerButtonStyle` — the destructive role: `BrushStatusError` text and a 1px `BrushStatusError` outline on a transparent fill. Reserved for actions that discard something saved (e.g. Remove API key on the status card).
+- `DangerButtonStyle` — the destructive role: `BrushStatusError` text and a 1px `BrushStatusError` outline on a transparent fill, with a `#FDECEA` light-red hover tint (style-level `IsMouseOver` trigger — it outranks the inherited grey template hover). Reserved for actions that discard something saved (e.g. Remove API key on the status card).
 - Icon pattern: label `TextBlock` followed by a Segoe MDL2 glyph `TextBlock` at `FontSize="13"`, `Margin="6,0,0,0"`. The glyph map lives in ADR-0009.
 - Button rows use a `Grid` with `*` / `8` / `Auto` columns — a status bar or stretchy content on the left, buttons on the right separated by 8px columns.
 - `CardToolbarButtonStyle` — a `SecondaryButtonStyle` carrying only the 24px/0-margin card-toolbar chrome (standard grey fill — buttons match other buttons). A card's action row (e.g. the Server Connection card toolbar) sits under a 1px `BrushBorder` divider and spans the card: change actions grouped left on this style, the destructive action anchored right.
