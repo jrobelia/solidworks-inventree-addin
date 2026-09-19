@@ -46,6 +46,18 @@ namespace SwInventreeAddin.Tests.Stubs
         public TaskCompletionSource<ConnectionProbeResult>? PendingTestResult { get; set; }
 
         /// <summary>
+        /// Deliberate contract violation for exercising guard clauses: when
+        /// true, TestConnectionAsync ignores the caller's cancellation token
+        /// and keeps waiting on <see cref="PendingTestResult"/>, so a test can
+        /// deliver a normal verdict after the caller cancelled — e.g. the
+        /// SettingsWindow guard that discards an open-probe result landing
+        /// after Close. The real service always honours the token, so leave
+        /// this false unless a test exists to prove a guard discards the late
+        /// result. Meaningful only when PendingTestResult is set.
+        /// </summary>
+        public bool IgnoreCallerCancellation { get; set; }
+
+        /// <summary>
         /// Optional provider the remove call delegates to, mirroring the real
         /// service's read-modify-write, so UI tests can observe the
         /// cleared-credential post-state.
@@ -100,6 +112,12 @@ namespace SwInventreeAddin.Tests.Stubs
 
             if (PendingTestResult != null)
             {
+                // Misbehave knob: skip the cancellation race entirely so the
+                // pending source's normal result is delivered even after the
+                // caller's token has fired.
+                if (IgnoreCallerCancellation)
+                    return await PendingTestResult.Task.ConfigureAwait(false);
+
                 var cancelled = Task.Delay(Timeout.Infinite, cancellationToken);
                 if (await Task.WhenAny(PendingTestResult.Task, cancelled).ConfigureAwait(false) == cancelled)
                     throw new OperationCanceledException();
