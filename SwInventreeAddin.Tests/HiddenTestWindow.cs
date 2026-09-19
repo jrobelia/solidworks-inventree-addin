@@ -74,10 +74,11 @@ namespace SwInventreeAddin.Tests
 
         /// <summary>
         /// Polls on the dialog's dispatcher until the dialog's native rectangle is
-        /// centered on the owner's (within 5 px on both axes) and still off every
-        /// monitor, then closes the dialog so a blocking <c>ShowDialog()</c> unwinds.
-        /// Faults the task with an <see cref="AssertionException"/> carrying the
-        /// last-observed rects when the timeout elapses first (8 s when omitted).
+        /// centered on the owner's (within <see cref="CenteredTolerancePx"/> pixels on
+        /// both axes) and still off every monitor, then closes the dialog so a
+        /// blocking <c>ShowDialog()</c> unwinds. Faults the task with an
+        /// <see cref="AssertionException"/> carrying the last-observed rects when
+        /// <see cref="DefaultCenteredTimeout"/> elapses first.
         /// </summary>
         /// <remarks>
         /// Safe to call before the window has a native handle — the poll runs on
@@ -88,11 +89,10 @@ namespace SwInventreeAddin.Tests
         /// <c>wait.GetAwaiter().GetResult()</c> after <c>ShowDialog()</c> returns so
         /// the assertion is not wrapped in an <see cref="AggregateException"/>.
         /// </remarks>
-        internal static Task WaitForCenteredOnOwnerAsync(Window dialog, IntPtr ownerHandle, TimeSpan? timeout = null)
+        internal static Task WaitForCenteredOnOwnerAsync(Window dialog, IntPtr ownerHandle)
         {
             var tcs = new TaskCompletionSource<bool>();
-            var effectiveTimeout = timeout ?? DefaultCenteredTimeout;
-            var deadline = DateTime.UtcNow + effectiveTimeout;
+            var deadline = DateTime.UtcNow + DefaultCenteredTimeout;
             var helper = new WindowInteropHelper(dialog);
 
             var timer = new DispatcherTimer(DispatcherPriority.Background, dialog.Dispatcher)
@@ -123,7 +123,7 @@ namespace SwInventreeAddin.Tests
                     timer.Stop();
                     dialog.Close();
                     tcs.SetException(new AssertionException(
-                        $"Dialog was not centered on its owner within {effectiveTimeout.TotalSeconds:0.#}s " +
+                        $"Dialog was not centered on its owner within {DefaultCenteredTimeout.TotalSeconds:0.#}s " +
                         $"(last offset {dx},{dy} px). " +
                         $"Owner rect: {ownerRect}. Dialog rect: {dialogRect}."));
                 }
