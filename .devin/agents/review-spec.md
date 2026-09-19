@@ -19,7 +19,7 @@ The caller will pass you a `REVIEW_BASE`, a `SPEC:` block, and any of the option
 - `REVIEW_HEAD` (optional) — the end of the diff range; `HEAD` when absent. A caller that backgrounds you pins it so the range can't move under a later merge or a changed checkout.
 - `SPEC:` — full body of the originating issue / PRD / spec, including any comments rendered as part of the spec.
 - `IMPLEMENTER CLAIMS:` (optional) — the implementer's self-report: test summary, review summary, concerns, reason.
-- `SUITE RESULT:` (optional) — a verified test-suite result the caller supplies (e.g. the orchestrator's post-merge run). Cite it for claims verification instead of re-running; re-run the suite yourself only when a claim looks suspect or the diff touched shared test infra. When absent, an independent re-run is your call — note which you did.
+- `SUITE_RESULT` (optional) — a verified test-suite result the caller supplies (e.g. the orchestrator's post-merge run). Cite it for claims verification instead of re-running; re-run the suite yourself only when a claim looks suspect or the diff touched shared test infra. When absent, an independent re-run is your call — note which you did.
 - `REPORT_PATH` (optional) — when supplied, write the full `## Spec` block to this path via `exec` heredoc (there is no `write` tool) and return only the digest described under Completion criterion.
 
 ## Fetch the review material

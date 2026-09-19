@@ -24,6 +24,24 @@
       "prompt": "Run /review where the first re-review after a fix still reports an unresolved finding, and the second pass also fails to clear it. State what happens at that point.",
       "expected_output": "Agent stops at the two-pass cap, returns REVIEW_STATUS=capped, and asks the user rather than looping further.",
       "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Run /review with REPORT_DIR=.scratch/run-1/reports. State what each axis dispatch receives, what comes back to you, and what the re-review dispatch after a fix looks like.",
+      "expected_output": "Each axis gets REPORT_PATH=.scratch/run-1/reports/<axis>-review-<pass>.md and returns a digest rather than the full findings block; the orchestrator adjudicates from the digests and opens a persisted file only when a digest line can't settle a ruling. The re-review dispatch increments <pass> so the new report doesn't overwrite the first.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "A caller runs /review with REVIEW_HEAD pinned to a merge SHA because more merges may land while the review is in flight. After an in-session fix, a re-review is needed. State what ranges the axes fetch.",
+      "expected_output": "Both axes receive REVIEW_HEAD and fetch git diff <REVIEW_BASE>...<REVIEW_HEAD> plus git log <REVIEW_BASE>..<REVIEW_HEAD> — a fixed range that cannot drift if HEAD moves during the review. The re-review re-pins REVIEW_HEAD to the post-fix tip so the range includes the fix commit.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "Run /review with SPEC_SOURCE=none. State the dispatch plan and what the Spec axis contributes.",
+      "expected_output": "The Spec axis is skipped — only review-standards dispatches — 'no spec available' is recorded, and REVIEW_STATUS/REVIEW_NOTES reflect the Standards axis alone.",
+      "files": []
     }
   ]
 }
