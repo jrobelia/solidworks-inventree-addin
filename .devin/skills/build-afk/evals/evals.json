@@ -3,14 +3,14 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "/build-afk spec #900, whose children are #901 (routine seam), #902 (architectural seam, unblocked), and #903 (blocked by #902). After the batch gate confirms the batch, walk through what happens until the first implementer dispatch. Name the exact run_subagent calls.",
-      "expected_output": "Design pass dispatches run_subagent(profile=\"build-designer\") once per ticket, at most 5 concurrent; each declaration persists to seams/<ticket>.md. #902's architectural proposal joins one consolidated seam gate before any implementer runs. The first implementer dispatch is run_subagent(profile=\"build-implementer\", is_background=false) for #902 — the riskiest unblocked ticket — not #901. No implementer dispatch for #903 until #902 merges.",
+      "prompt": "/build-afk spec #900, whose children are #901 (routine seam), #902 (architectural seam, unblocked), and #903 (blocked by #902). The session has exec and edit grants for every profile. After the batch gate confirms the batch, walk through what happens until the first implementer dispatch. Name the exact run_subagent calls.",
+      "expected_output": "Design pass dispatches run_subagent(profile=\"build-designer\", is_background=true) once per ticket — all at once, since a read-only profile can't be denied; each declaration persists to seams/<ticket>.md. #902's architectural proposal joins one consolidated seam gate before any implementer runs. Implementer dispatches are run_subagent(profile=\"build-implementer\", is_background=true) — #902 first as the riskiest unblocked ticket, with #901 alongside within the cap. No implementer dispatch for #903 until #902 merges.",
       "files": [],
       "expectations": [
-        "build-designer dispatches once per ticket with cap 5 concurrent, before any implementer",
+        "build-designer dispatches once per ticket in the background — a read-only profile can't be denied — before any implementer",
         "seam notes persist verbatim to seams/<ticket>.md",
         "architectural proposals reach the maintainer in one consolidated seam gate — the last planned interruption before implementation",
-        "the first build-implementer dispatch is foreground (is_background=false) and targets #902 as the riskiest unblocked ticket",
+        "build-implementer dispatches are background (is_background=true) once grants exist, with #902 first as the riskiest unblocked ticket",
         "#903 receives no implementer dispatch while its blocker is unresolved"
       ]
     },
@@ -35,22 +35,23 @@
       "expectations": [
         "STATUS.json records #902 as BLOCKED with blocked_kind=ambiguity",
         "#903 is marked blocked-by-predecessor (blocked_kind=context) without a dispatch attempt",
-        "the next run_subagent call is a foreground build-implementer dispatch for #904",
+        "the next run_subagent call is a build-implementer dispatch for #904 — background under the default posture",
         "the run summary surfaces the blocked ticket and its kind"
       ]
     },
     {
       "id": 4,
       "prompt": "Ticket #901 merges into the batch branch and its per-ticket review keeps returning findings. Walk the five-round fix ladder: which calls happen at each round, and how do open findings get adjudicated?",
-      "expected_output": "Each round dispatches review-spec on the merged diff (REVIEW_BASE = batch SHA before the merge, SPEC = ticket body+comments, IMPLEMENTER CLAIMS = the implementer's status JSON, SUITE RESULT = the post-merge dotnet test line, REPORT_PATH = reports/901-review-<round>.md — the reviewer writes its full findings there itself and returns an adjudication digest). Rounds 1–3 resume the implementer via run_subagent's resume param; rounds 4–5 dispatch a fresh build-implementer-max (swe-2-max). Open findings are adjudicated against coding-standards.md's own tests with YAGNI load-bearing; contested or non-load-bearing findings park with a written ruling in reports/ citing the standard. The loop stops for the maintainer only when every path forward is a guess.",
+      "expected_output": "Each round dispatches review-spec on the merged diff (REVIEW_BASE = batch SHA before the merge, REVIEW_HEAD = the merge SHA re-pinned to the new tip each round, SPEC = ticket body+comments, IMPLEMENTER CLAIMS = the implementer's status JSON, SUITE RESULT = the post-merge dotnet test line, REPORT_PATH = reports/901-review-<round>.md — the reviewer writes its full findings there itself and returns an adjudication digest). Rounds 1–3 resume the implementer via run_subagent's resume param (always foreground); rounds 4–5 dispatch a fresh build-implementer-max (swe-2-max) in the background. Open findings are adjudicated against coding-standards.md's own tests with YAGNI load-bearing; contested or non-load-bearing findings park with a written ruling in reports/ citing the standard. The loop stops for the maintainer only when every path forward is a guess.",
       "files": [],
       "expectations": [
-        "review-spec runs with REVIEW_BASE equal to the batch SHA before the merge and carries the ticket body plus comments as SPEC",
+        "review-spec runs with REVIEW_BASE equal to the batch SHA before the merge and REVIEW_HEAD pinned so a backgrounded reviewer diffs a fixed range, re-pinned to the new tip each round",
+        "review-spec carries the ticket body plus comments as SPEC",
         "IMPLEMENTER CLAIMS and the post-merge SUITE RESULT are passed to the reviewer",
         "the dispatch passes REPORT_PATH=reports/<N>-review-<round>.md and the reviewer self-persists its full findings there",
         "the reviewer returns an adjudication digest — severity, file:line, and spec quote per finding — rather than the full block",
-        "rounds 1–3 resume the same implementer subagent",
-        "rounds 4–5 dispatch a fresh build-implementer-max",
+        "rounds 1–3 resume the same implementer subagent — resume always runs foreground",
+        "rounds 4–5 dispatch a fresh build-implementer-max in the background",
         "non-load-bearing findings park with a written ruling citing the standard; the YAGNI test decides load-bearing status",
         "minor findings never enter the ladder and park for the final review"
       ]
@@ -161,12 +162,13 @@
     {
       "id": 13,
       "prompt": "A /build-afk session has no exec tool grants for any subagent profile. What does the batch gate say about dispatch, and what happens at setup?",
-      "expected_output": "The batch gate states 'serial dispatch this run' plainly — the skill never implies fan-out that can't happen. At setup the orchestrator surfaces exec grants for the designer, implementer, and reviewer profiles before the design pass — requesting them from the maintainer if missing. A grant confirmed there upgrades the serial declaration; without one the run stays serial and the outcome is recorded in the ledger.",
+      "expected_output": "The batch gate states 'serial dispatch this run' plainly — the skill never implies fan-out that can't happen. At setup the orchestrator confirms the grants each profile needs — exec+edit for implementers, exec for reviewers; the read-only designer needs none — against .devin/config*.json and session grants, requesting them from the maintainer where coverage is missing. A grant confirmed there upgrades the serial declaration; without one the run either dispatches affected profiles foreground once to acquire grants inline, or stays serial if the maintainer won't grant — the outcome is recorded in the ledger.",
       "files": [],
       "expectations": [
         "an ungranted run states 'serial dispatch this run' at the batch gate rather than implying fan-out",
-        "setup surfaces the tool grants each subagent profile needs (exec for implementers and reviewers, read/grep/glob for the designer) before the design pass",
+        "setup confirms grants per profile — exec+edit for implementers, exec for reviewers, nothing for the read-only designer — against .devin/config*.json and session grants",
         "a grant confirmed at setup upgrades the gate's serial declaration",
+        "a profile missing its grants either dispatches foreground once to acquire them or the run stays serial when the maintainer won't grant",
         "the grant outcome is recorded in the run ledger"
       ]
     },

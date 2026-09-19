@@ -30,12 +30,26 @@ Each finding gets a disposition at the batch gate — record the disposition and
 
 ## Dispatch mechanics
 
+### Contract and tool reality
+
 - The dispatch contract is profile + filled task template → structured status JSON. Templates: `IMPLEMENTER_TASK.md` (implementers), `DESIGNER_TASK.md` (designer). Fill every `{{slot}}`.
 - Profiles: `build-implementer` (`swe-2-high`, rounds 1–3), `build-implementer-max` (`swe-2-max`, rounds 4–5), `build-designer` (`swe-2-high`, read-only), `review-spec` (`swe-2-max`).
 - Subagents get five tools — `read`, `edit`, `exec`, `grep`, `glob` (exposed as `find_file_by_name`) — and `edit` cannot create files. New files go through `exec` heredoc or `git apply`; `IMPLEMENTER_TASK.md` `## Tool reality` carries this for the implementer. `skill` and `ask_user_question` are unreachable inside a subagent — every context pointer is a file to read, and a question is a `BLOCKED`.
-- Foreground is the default. A backgrounded subagent auto-denies ungranted tools: pre-approve each profile's tools in-session before dispatching it in the background — `exec` for implementers and `review-spec` (a backgrounded reviewer without the grant stalls on its first `git diff`), the designer's read/grep/glob set. When a denial stalls a background subagent, foreground it from the subagent panel (`f` on the running entry) or resume it — resume always runs foreground.
-- Concurrency caps: designers fan out to 5 — read-only, they cannot conflict. Background implementers cap at 3, raised to 5 across an *independent* set: no `## Blocked by` path between the tickets and, in batch mode, disjoint `seams/<ticket>.md` footprints — no shared top-level module or consumed interface. Queue tickets are structurally independent — separate branches and PRs — so a queue runs at the higher cap without the seam test. Dependents still wait for their blockers to merge, so the frontier bounds concurrency before the cap does; merges and the post-merge `dotnet test` serialize in ticket order regardless of dispatch order.
+
+### Mode and grants
+
+- Background is the default: a unit dispatches `is_background: true` as soon as it's eligible, within the caps below. Foreground is the exception — `resume` dispatches (below), and a profile whose needed grants are missing, which either dispatches foreground once to surface the prompts or drops the run to declared serial when the maintainer won't grant.
+- Grants are checked mechanically before a background dispatch, because a backgrounded subagent auto-denies ungranted tools: a `build-implementer` needs `exec` + `edit`, `review-spec`/`review-standards` need `exec` — confirmed against `.devin/config*.json` allow rules plus session grants. `build-designer` and the retro agent need nothing — read-only tools auto-approve in every mode, so they background unconditionally. When a denial stalls a background subagent, foreground it from the subagent panel (`f` on the running entry) or resume it.
 - `resume` a subagent (`resume` param with its agent id) for fix-ladder rounds 1–3 and for merge-conflict rebases — it always runs foreground, so previously denied grants can be approved inline.
+
+### Concurrency and the serial spine
+
+- Concurrency caps: designers fan out to 5 — read-only, they cannot conflict. Background implementers cap at 3, raised to 5 across an *independent* set: no `## Blocked by` path between the tickets and, in batch mode, disjoint `seams/<ticket>.md` footprints — no shared top-level module or consumed interface. Queue tickets are structurally independent — separate branches and PRs — so a queue runs at the higher cap without the seam test. Dependents still wait for their blockers to merge, so the frontier bounds concurrency before the cap does.
+- The serial spine: merges happen in ticket order — a later finisher waits for its predecessors — and each batch merge is followed by `dotnet test` on the batch branch. A red run holds further merges and fresh ticket dispatches while the fix ladder clears it; in-flight work continues, and a queue ticket's red holds only itself.
+- A backgrounded reviewer never diffs a moving HEAD: pin the end of the range with `REVIEW_HEAD` — the merge SHA for a batch per-ticket review, the ticket tip for a queue review, the batch tip for the final review. Fix-ladder re-reviews re-pin to the new tip each round.
+
+### Routing
+
 - The implementer's status JSON routes the loop: `COMPLETE`/`COMPLETE_WITH_CONCERNS` → merge; `BLOCKED` → record `blocked_kind` (`context` | `capability` | `size` | `ambiguity`), mark its dependents blocked-by-predecessor (`context`), continue with unblocked tickets. Persist the implementer's full report under `reports/` and reference it by path.
 
 ## Run state
@@ -43,7 +57,7 @@ Each finding gets a disposition at the batch gate — record the disposition and
 `.scratch/build-afk/<run>/` — `<run>` is the batch slug (e.g. `spec-208-213-214`):
 
 - `STATUS.json` — machine-readable state: batch branch, `PRE_BUILD_SHA`, per-ticket `{phase, status, branch, worktree, commit, fix_round, blocked_kind}` plus `entered_at` — an ISO-8601 stamp recording when the current phase began; the full transition trail lives in `PROGRESS.md`'s timestamped entries, so dispatch-to-artifact gaps are queryable without git archaeology.
-- `PROGRESS.md` — the ledger. First line names the spec. Every entry carries an `HH:MM` local (or ISO-8601) timestamp prefix — merges, review verdicts, fix rounds, gate decisions; a timestamp on write, no timing machinery. `Task <N>: complete` per merged ticket. A trailing `Task <N>: fix round <R>` line means resume mid-ladder at round `R+1`.
+- `PROGRESS.md` — the ledger. First line names the spec. Every entry carries an `HH:MM` local (or ISO-8601) timestamp prefix — merges, review verdicts, fix rounds, gate decisions; a timestamp on write, no timing machinery — a real stamp, never a placeholder: the field exists to make dispatch-to-artifact gaps queryable. `Task <N>: complete` per merged ticket. A trailing `Task <N>: fix round <R>` line means resume mid-ladder at round `R+1`.
 - `seams/<ticket>.md` — designer output, persisted verbatim.
 - `reports/` — implementer reports, reviewer output (`<N>-review-<round>.md` per ticket, `<axis>-review-<pass>.md` for the final review), adjudication rulings, `run-retro.md`.
 
@@ -51,19 +65,19 @@ After compaction or a session break, trust the ledger and `git log` over session
 
 ## Per-ticket review
 
-Queue tickets never merge into a batch branch — for them this review and the final review collapse into one `AXES=both` `/review` on `PARENT...build/issue-<N>` with `REPORT_DIR` = the run's `reports/`; the fix ladder, adjudication, and rulings below apply unchanged.
+Queue tickets never merge into a batch branch — for them this review and the final review collapse into one `AXES=both` `/review` on `PARENT...build/issue-<N>` with `REVIEW_HEAD` = the ticket tip (so the range doesn't depend on the orchestrator's checkout) and `REPORT_DIR` = the run's `reports/`; the fix ladder, adjudication, and rulings below apply unchanged.
 
 After a ticket merges into the batch branch:
 
-1. Dispatch `review-spec` with `REVIEW_BASE` = the batch SHA before the merge, `SPEC` = the ticket body plus comments, `IMPLEMENTER CLAIMS` = the implementer's status JSON and concerns, `SUITE RESULT` = the post-merge `dotnet test` result line, and `REPORT_PATH` = `reports/<N>-review-<round>.md` — the reviewer writes its full findings there itself and returns an adjudication digest (severity + file:line + spec quote per finding), so review text never re-transits the orchestrator's context.
-2. Fix ladder, at most five rounds: rounds 1–3 `resume` the implementer with the findings; rounds 4–5 dispatch a fresh `build-implementer-max`. Each round re-reviews the new diff against the same base. Once `afk/<N>` has merged into the batch branch, fix rounds add new commits — never amend or rebase the merged tip — and `STATUS.json`'s `commit` records the batch-branch merge SHA, not the worktree tip.
+1. Dispatch `review-spec` in the background with `REVIEW_BASE` = the batch SHA before the merge, `REVIEW_HEAD` = the merge SHA, `SPEC` = the ticket body plus comments, `IMPLEMENTER CLAIMS` = the implementer's status JSON and concerns, `SUITE RESULT` = the post-merge `dotnet test` result line, and `REPORT_PATH` = `reports/<N>-review-<round>.md` — the reviewer writes its full findings there itself and returns an adjudication digest (severity + file:line + spec quote per finding), so review text never re-transits the orchestrator's context.
+2. Fix ladder, at most five rounds: rounds 1–3 `resume` the implementer with the findings; rounds 4–5 dispatch a fresh `build-implementer-max`. Each round re-reviews the new diff against the same base, re-pinning `REVIEW_HEAD` to the new tip. Once `afk/<N>` has merged into the batch branch, fix rounds add new commits — never amend or rebase the merged tip — and `STATUS.json`'s `commit` records the batch-branch merge SHA, not the worktree tip.
 3. Adjudicate every open finding against `docs/agents/coding-standards.md`'s own tests. YAGNI is the load-bearing test: a finding whose benefit only materializes once the code shows a real need is non-load-bearing by definition. Contested or non-load-bearing findings park with a written ruling in `reports/` citing the standard. Load-bearing findings get the smallest change that unblocks dependents.
 4. Minor findings never enter the ladder; park them for the final `/review`.
 5. Stop for the maintainer only when every path forward is a guess.
 
 ## Run retro
 
-After the final review, dispatch a read-only subagent (`build-designer` or `subagent_explore`) over the run directory — `STATUS.json`, `PROGRESS.md`, `seams/`, `reports/` — to write `reports/run-retro.md`: severity-ordered improvement candidates in the spirit of `.agents/skills/retro/SKILL.md`'s categories, plus the run-specific signals:
+After the final review, dispatch a read-only subagent (`build-designer` or `subagent_explore`) in the background — it needs no grant and overlaps the closeout — over the run directory — `STATUS.json`, `PROGRESS.md`, `seams/`, `reports/` — to write `reports/run-retro.md`: severity-ordered improvement candidates in the spirit of `.agents/skills/retro/SKILL.md`'s categories, plus the run-specific signals:
 
 - `blocked_kind` clusters — under-specified tickets feed back to `/to-tickets`.
 - Per-ticket fix-round counts — repeated round 4–5 escalations evidence the tier floor is wrong.

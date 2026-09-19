@@ -7,7 +7,7 @@ Dispatch one per ticket during the up-front design pass (cap 5 concurrent). Fill
 ```
 run_subagent(
   profile: "build-designer",
-  is_background: false,             # or background — cap 5 — once tool grants exist
+  is_background: true,              # always background — read-only tools can't be denied; cap 5
   title: "Seam for ticket {{ticket}}",
   task: <this file, slots filled>
 )
@@ -49,3 +49,5 @@ Only the declaration — the orchestrator persists it verbatim to `seams/{{ticke
 ### Candidates (only when architectural with two equally-good seams)
 <each candidate under the same declaration fields>
 ```
+
+Self-check before returning: every test your Test adapter declaration names must have the stub capability it needs declared in the same field — "needs no change" beside a test that requires a new stub surface is a contradiction, not a shortcut. Keep the declaration to multiple shorter lines — a single line past ~2,000 chars defeats read/grep for the read-only agents that consume it.

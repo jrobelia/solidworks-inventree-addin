@@ -16,6 +16,7 @@ The caller will pass you a `REVIEW_BASE`, a `SPEC:` block, and any of the option
 ## Inputs
 
 - `REVIEW_BASE` — base commit for the review.
+- `REVIEW_HEAD` (optional) — the end of the diff range; `HEAD` when absent. A caller that backgrounds you pins it so the range can't move under a later merge or a changed checkout.
 - `SPEC:` — full body of the originating issue / PRD / spec, including any comments rendered as part of the spec.
 - `IMPLEMENTER CLAIMS:` (optional) — the implementer's self-report: test summary, review summary, concerns, reason.
 - `SUITE RESULT:` (optional) — a verified test-suite result the caller supplies (e.g. the orchestrator's post-merge run). Cite it for claims verification instead of re-running; re-run the suite yourself only when a claim looks suspect or the diff touched shared test infra. When absent, an independent re-run is your call — note which you did.
@@ -23,8 +24,8 @@ The caller will pass you a `REVIEW_BASE`, a `SPEC:` block, and any of the option
 
 ## Fetch the review material
 
-1. Diff: run `git diff <REVIEW_BASE>...HEAD`.
-2. Commit list: run `git log <REVIEW_BASE>..HEAD --oneline`.
+1. Diff: run `git diff <REVIEW_BASE>...<REVIEW_HEAD>` — `HEAD` when `REVIEW_HEAD` is absent.
+2. Commit list: run `git log <REVIEW_BASE>..<REVIEW_HEAD> --oneline`.
 
 ## Your task
 

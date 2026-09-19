@@ -16,19 +16,20 @@ The caller will pass you a `REVIEW_BASE`. Use `exec` to fetch the diff and commi
 ## Inputs
 
 - `REVIEW_BASE` — base commit for the review.
+- `REVIEW_HEAD` (optional) — the end of the diff range; `HEAD` when absent. A caller that backgrounds you pins it so the range can't move under a later merge or a changed checkout.
 - `SUITE RESULT:` (optional) — a verified test-suite result the caller supplies. Cite it rather than re-running; re-run the suite yourself only when a claim looks suspect or the diff touched shared test infra.
 - `REPORT_PATH` (optional) — when supplied, write the full `## Standards` block to this path via `exec` heredoc (there is no `write` tool) and return only the digest described under Completion criterion.
 
 ## Fetch the review material
 
-1. Diff: run `git diff <REVIEW_BASE>...HEAD`.
-2. Commit list: run `git log <REVIEW_BASE>..HEAD --oneline`.
+1. Diff: run `git diff <REVIEW_BASE>...<REVIEW_HEAD>` — `HEAD` when `REVIEW_HEAD` is absent.
+2. Commit list: run `git log <REVIEW_BASE>..<REVIEW_HEAD> --oneline`.
 3. Standards: `read` the file `docs/agents/coding-standards.md`.
 
 ## Fowler smell baseline
 
 - **Mysterious Name** — a function, variable, or type whose name doesn't reveal what it does or holds. → rename it; if no honest name comes, the design's murky.
-- **Duplicated Code** — the same logic shape appears in more than one hunk or file in the change. → extract the shared shape, call it from both.
+- **Duplicated Code** — the same logic shape appears in more than one hunk or file in the change. → extract the shared shape, call it from both. Calibrate on what repeats: a duplicated *decision* — predicates, status mappings, defaults, tuples two sites must keep identical — is fixable, because only convention stops them drifting apart. *Mandated scaffolding* — test-arrange boilerplate, per-element XAML attribute conventions, stub literals, a `Stub*` re-encoding its seam contract — is note-only GREEN: the shape is dictated, not chosen. A file-wide idiom the diff merely joins is out of scope for the change.
 - **Feature Envy** — a method that reaches into another object's data more than its own. → move the method onto the data it envies.
 - **Data Clumps** — the same few fields or params keep travelling together (a type wanting to be born). → bundle them into one type, pass that.
 - **Primitive Obsession** — a primitive or string standing in for a domain concept that deserves its own type. → give the concept its own small type.

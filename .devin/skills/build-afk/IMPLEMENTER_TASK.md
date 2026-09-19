@@ -2,12 +2,12 @@
 
 Dispatch one per ticket. Fill every `{{slot}}`; the implementer profile body already carries the loop, the seam discipline, and the status contract — this template carries the per-ticket specifics and the pointers.
 
-`{{extra_context}}` carries the outcomes of the tickets this one was blocked on plus any spec rulings confirmed at the batch gate that govern this ticket — write rulings as settled spec, not as open questions. Write `None.` when empty.
+`{{ticket_body_and_comments}}` carries the full issue body and all comments — paste them, not a fetch the grants may not permit. `{{extra_context}}` carries the outcomes of the tickets this one was blocked on plus any spec rulings confirmed at the batch gate that govern this ticket — write rulings as settled spec, not as open questions. Write `None.` when empty.
 
 ```
 run_subagent(
   profile: "build-implementer",     # rounds 4-5 of a fix ladder: "build-implementer-max"
-  is_background: false,             # serial foreground by default; background within REFERENCE.md's concurrency caps once tool grants exist
+  is_background: true,              # background by default within REFERENCE.md's caps; foreground once to acquire missing exec+edit grants
   title: "Ticket {{ticket}}: {{ticket_title}}",
   task: <this file, slots filled>
 )
@@ -19,10 +19,10 @@ You are implementing ticket #{{ticket}}: {{ticket_title}}
 
 ## Ticket
 
-Fetch the body and **all comments** first — comments are part of the spec (`docs/agents/issue-tracker.md` `## Comments are part of the spec`):
+The body and comments below are the spec — read all of it; comments are part of the spec (`docs/agents/issue-tracker.md` `## Comments are part of the spec`).
 
 ```
-gh issue view {{ticket}} --json title,body,comments,labels
+{{ticket_body_and_comments}}
 ```
 
 {{extra_context}}

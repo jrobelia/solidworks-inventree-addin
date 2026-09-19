@@ -29,6 +29,7 @@ Check: `dotnet format "Solidworks Inventree Add-In.sln" --verify-no-changes` —
 Notes:
 - All commands above use `--disable-build-servers` and `UseSharedCompilation=false` in `Directory.Build.props` to stop long-running `dotnet` and `VBCSCompiler` processes from holding file locks.
 - `dotnet test` emits ~50 lines of pre-existing `warning CS8618` noise before the result line on every run. When only the verdict matters, append `2>&1 | grep -v "warning CS"` so a green run costs a few lines of context.
+- `NUnitEngineUnloadException` may appear in test output at process exit — a known NUnit 3.14 + net48 testhost domain-unload race. Pre-existing noise, not a failure; don't re-diagnose it per run.
 
 ---
 
