@@ -1,18 +1,21 @@
 using System;
 using System.ComponentModel;
+using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
 using SwInventreeAddin.Config;
 
 namespace SwInventreeAddin.UI
 {
     /// <summary>
-    /// Credential state, dirty gating, and form-view-state for the Settings
-    /// window — the rules that used to live in its code-behind. Pure C# with no
-    /// WPF types, so tests construct it without STA. The window pushes field
-    /// edits into the draft properties and reads the derived outputs for
-    /// enablement, labels, and visibility; credential precedence and the
-    /// probe-skip decision (#249) resolve inside <see cref="BuildApplyInput"/>.
+    /// Credential state, dirty gating, the status-card projection, the
+    /// open-probe lifecycle, and form-view-state for the Settings window — the
+    /// rules that used to live in its code-behind. Pure C# with no WPF types,
+    /// so tests construct it without STA. The window pushes field edits into
+    /// the draft properties and reads the derived outputs for enablement,
+    /// labels, and visibility; credential precedence and the probe-skip
+    /// decision (#249) resolve inside <see cref="BuildApplyInput"/>.
     /// </summary>
     public class SettingsViewModel : INotifyPropertyChanged
     {
@@ -32,6 +35,7 @@ namespace SwInventreeAddin.UI
         // ── Dependencies ──────────────────────────────────────────────────────
 
         private readonly IConfigProvider _configProvider;
+        private readonly ISettingsApplyService _settingsApplyService;
 
         /// <summary>
         /// UI-thread synchronisation context captured at construction. Null when
@@ -67,16 +71,35 @@ namespace SwInventreeAddin.UI
         private bool _editingUrl;
         private bool _showCredentialForm;
 
+        // The session's connection axis (ADR-0023): the last probe verdict plus
+        // the in-flight flag, and the lifecycle for the probe fired on open —
+        // CancelOpenProbe and any newer user-initiated probe cancel it, and a
+        // verdict landing after cancellation is discarded.
+        private ConnectionProbeResult? _lastProbe;
+        private bool _probeInFlight;
+        private readonly CancellationTokenSource _openProbeCts = new CancellationTokenSource();
+
+        /// <summary>
+        /// The probe fired on open when a full config is saved — null when no
+        /// probe started. Never faults; completes once the verdict is applied
+        /// or discarded. Tests await it for a deterministic settle point.
+        /// </summary>
+        internal Task? OpenProbeTask { get; private set; }
+
         // ── Constructor ───────────────────────────────────────────────────────
 
         /// <summary>
         /// Reads the saved <see cref="ServerConfig"/> once — a throwing provider
         /// reads as "nothing saved" — seeds every draft, builds the credential
-        /// state, and baselines the dirty snapshot.
+        /// state, and baselines the dirty snapshot. A complete saved config
+        /// also starts the open probe: no caller call, so
+        /// <see cref="OpenProbeTask"/> is non-null from then on.
         /// </summary>
-        public SettingsViewModel(IConfigProvider configProvider)
+        public SettingsViewModel(IConfigProvider configProvider,
+                                 ISettingsApplyService settingsApplyService)
         {
             _configProvider = configProvider;
+            _settingsApplyService = settingsApplyService;
             _uiContext = SynchronizationContext.Current;
             _uiThreadId = Environment.CurrentManagedThreadId;
 
@@ -93,6 +116,8 @@ namespace SwInventreeAddin.UI
             }
 
             _savedSnapshot = CaptureSnapshot();
+
+            StartOpenProbe();
         }
 
         // ── Draft inputs ──────────────────────────────────────────────────────
@@ -190,43 +215,71 @@ namespace SwInventreeAddin.UI
         public bool HasSavedApiKey => _credentialState.HasSavedApiKey;
 
         /// <summary>
-        /// The persisted config — feeds the window's
-        /// <see cref="ServerConnectionStatus.From"/> card render and the open-probe input.
+        /// The persisted config — feeds <see cref="StatusCard"/> and the
+        /// window's mapping-radio refresh.
         /// </summary>
         public ServerConfig? SavedConfig => _savedConfig;
+
+        // ── Status card ───────────────────────────────────────────────────────
+        // The card holds the persistent state: what is saved crossed with the
+        // session's probe axis (ADR-0023). The projection is computed here;
+        // the window renders it mechanically — text, IsSaved/IsComplete →
+        // Visibility, Indicator → dot brush — and never re-derives it.
+
+        /// <summary>
+        /// The whole status-card projection: title, the three lines, the dot
+        /// state, and card/toolbar visibility. Never null; recomputed whenever
+        /// the saved config or the probe axis moves.
+        /// </summary>
+        public ServerConnectionStatus StatusCard =>
+            ServerConnectionStatus.From(_savedConfig, _lastProbe, _probeInFlight);
 
         // ── Form view-state ───────────────────────────────────────────────────
         // The form is forced open while the saved config is incomplete — there
         // is nothing to summarise yet. Once complete, the card toolbar reveals
         // just the slice being changed (mutual exclusion).
 
-        private bool ForcedOpen => !ServerConnectionStatus.From(_savedConfig).IsComplete;
+        private bool ForcedOpen => !StatusCard.IsComplete;
 
         /// <summary>The Server URL slice renders when forced open or being edited.</summary>
-        public bool UrlFieldVisible => ForcedOpen || _editingUrl;
+        public bool UrlSliceOpen => ForcedOpen || _editingUrl;
 
         /// <summary>The credential slice renders when forced open or being edited.</summary>
-        public bool CredentialFieldsVisible => ForcedOpen || _showCredentialForm;
+        public bool CredentialSliceOpen => ForcedOpen || _showCredentialForm;
 
         /// <summary>The credential form container renders when either slice does.</summary>
-        public bool CredentialFormVisible => UrlFieldVisible || CredentialFieldsVisible;
+        public bool CredentialFormOpen => UrlSliceOpen || CredentialSliceOpen;
 
-        // ── Commands ──────────────────────────────────────────────────────────
+        // ── Form commands ─────────────────────────────────────────────────────
 
-        /// <summary>Toggles the URL slice; the credential slice closes — the two never show together.</summary>
-        public void ToggleUrlEditing()
+        /// <summary>Toggles the URL slice; the credential slice closes — the two never show together. Returns whether the slice is now open.</summary>
+        internal bool ToggleUrlSlice()
         {
             _editingUrl = !_editingUrl;
             _showCredentialForm = false;
-            OnFormFlagsChanged();
+            RaiseCardAndFormChanged();
+            return UrlSliceOpen;
         }
 
-        /// <summary>Toggles the credential slice; the URL slice closes — the two never show together.</summary>
-        public void ToggleCredentialEditing()
+        /// <summary>Toggles the credential slice; the URL slice closes — the two never show together. Returns whether the slice is now open.</summary>
+        internal bool ToggleCredentialSlice()
         {
             _showCredentialForm = !_showCredentialForm;
             _editingUrl = false;
-            OnFormFlagsChanged();
+            RaiseCardAndFormChanged();
+            return CredentialSliceOpen;
+        }
+
+        /// <summary>
+        /// Clears both edit flags — the post-apply/remove landing. The
+        /// forced-open rule is unaffected: an incomplete saved config keeps
+        /// the form open.
+        /// </summary>
+        internal void CollapseCredentialForm()
+        {
+            _editingUrl = false;
+            _showCredentialForm = false;
+            RaiseCardAndFormChanged();
         }
 
         // ── Apply seam ────────────────────────────────────────────────────────
@@ -314,8 +367,9 @@ namespace SwInventreeAddin.UI
             Raise(nameof(SavedConfig));
             Raise(nameof(EffectiveUrl));
             Raise(nameof(TestConnectionEnabled));
-            // Form flags deliberately not raised: this path does not re-render
-            // the form — it stays open on the user's drafts.
+            // The saved-config axis moved — the card and the forced-open rule
+            // re-derive from it; the user's edit flags are untouched.
+            RaiseCardAndFormChanged();
         });
 
         /// <summary>
@@ -331,6 +385,130 @@ namespace SwInventreeAddin.UI
 
         /// <summary>Clears the password draft — the Test path calls this so the password never lingers.</summary>
         public void ClearSecrets() => RunOnUiThread(() => Password = string.Empty);
+
+        // ── Probe lifecycle ───────────────────────────────────────────────────
+        // The probe fired on open reports a live verdict instead of a stale
+        // saved claim. The window's Test/Apply paths begin a user probe that
+        // supersedes it; Closed cancels it; a verdict landing after
+        // cancellation is discarded.
+
+        /// <summary>
+        /// A user-initiated probe (Test connection, a probing Apply) is
+        /// starting: cancels the open probe — its verdict, if it ever lands,
+        /// is discarded — and raises the in-flight axis so the card reads
+        /// Testing. Called before the probe's await.
+        /// </summary>
+        internal void BeginUserProbe() => RunOnUiThread(() =>
+        {
+            if (!_openProbeCts.IsCancellationRequested)
+                _openProbeCts.Cancel();
+            _probeInFlight = true;
+            RaiseCardAndFormChanged();
+        });
+
+        /// <summary>
+        /// The user probe settled: clears the in-flight axis and records
+        /// <paramref name="verdict"/> as the session's connection state. A null
+        /// verdict records nothing — the exception exit paths call this so the
+        /// card cannot stick on Testing.
+        /// </summary>
+        internal void EndUserProbe(ConnectionProbeResult? verdict) => RunOnUiThread(() =>
+        {
+            _probeInFlight = false;
+            if (verdict != null)
+                _lastProbe = verdict;
+            RaiseCardAndFormChanged();
+        });
+
+        /// <summary>
+        /// The <see cref="ISettingsApplyService.RemoveApiKeyAsync"/> landing:
+        /// drops the session verdict so the card re-derives from the
+        /// configuration axis alone.
+        /// </summary>
+        internal void ClearProbeVerdict() => RunOnUiThread(() =>
+        {
+            _lastProbe = null;
+            RaiseCardAndFormChanged();
+        });
+
+        /// <summary>
+        /// Idempotent cancel-on-close: cancels and disposes the open-probe
+        /// CTS while <see cref="CancellationTokenSource.IsCancellationRequested"/>
+        /// stays readable, so a late verdict is still discarded.
+        /// </summary>
+        internal void CancelOpenProbe()
+        {
+            if (_openProbeCts.IsCancellationRequested)
+                return;
+            _openProbeCts.Cancel();
+            _openProbeCts.Dispose();
+        }
+
+        // ── Probe on open (#234) ──────────────────────────────────────────────
+        // A complete saved config gets a live probe on every open. The probe
+        // runs against the saved values, not the form fields; cancellation is
+        // silent, any other failure surfaces as an Unreachable verdict rather
+        // than leaving the card on Testing forever.
+
+        private void StartOpenProbe()
+        {
+            if (!StatusCard.IsComplete)
+                return;
+
+            var input = new SettingsApplyInput
+            {
+                Url = _savedConfig!.Url,
+                RawApiKey = _savedConfig.ApiKey,
+            };
+
+            _probeInFlight = true;
+            OpenProbeTask = RunOpenProbeAsync(input);
+        }
+
+        private async Task RunOpenProbeAsync(SettingsApplyInput input)
+        {
+            ConnectionProbeResult? result;
+            try
+            {
+                using (var client = new HttpClient())
+                {
+                    result = await _settingsApplyService
+                        .TestConnectionAsync(input, client, _openProbeCts.Token)
+                        .ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Closed or superseded by a newer probe — discard silently.
+                return;
+            }
+            catch (Exception ex)
+            {
+                // The probe could not run to a verdict (e.g. an unparsable
+                // saved URL) — surface it like any other failure instead of
+                // leaving the card on Testing forever.
+                result = new ConnectionProbeResult(ConnectionProbeStatus.Unreachable, ex.Message);
+            }
+
+            try
+            {
+                RunOnUiThread(() =>
+                {
+                    // Closed or superseded between verdict and application —
+                    // the newer probe owns the card now.
+                    if (_openProbeCts.IsCancellationRequested)
+                        return;
+
+                    _lastProbe = result;
+                    _probeInFlight = false;
+                    RaiseCardAndFormChanged();
+                });
+            }
+            catch (Exception)
+            {
+                // The window's dispatcher is gone — nothing left to report to.
+            }
+        }
 
         // ── Outcome text ──────────────────────────────────────────────────────
 
@@ -402,11 +580,15 @@ namespace SwInventreeAddin.UI
             Raise(nameof(TestConnectionEnabled));
         }
 
-        private void OnFormFlagsChanged()
+        // Every card-affecting change raises the card and all three form
+        // outputs together so one re-render is always coherent — the
+        // forced-open rule derives from StatusCard.IsComplete.
+        private void RaiseCardAndFormChanged()
         {
-            Raise(nameof(UrlFieldVisible));
-            Raise(nameof(CredentialFieldsVisible));
-            Raise(nameof(CredentialFormVisible));
+            Raise(nameof(StatusCard));
+            Raise(nameof(UrlSliceOpen));
+            Raise(nameof(CredentialSliceOpen));
+            Raise(nameof(CredentialFormOpen));
         }
 
         // Post-persistence transitions can touch any derived output at once —
@@ -419,7 +601,7 @@ namespace SwInventreeAddin.UI
             Raise(nameof(Username));
             Raise(nameof(Password));
             OnDraftsChanged();
-            OnFormFlagsChanged();
+            RaiseCardAndFormChanged();
         }
 
         /// <summary>
