@@ -668,6 +668,99 @@ namespace SwInventreeAddin.Tests
             Assert.That(ex!.Message, Does.Contain("Failed to remove the API key"));
         }
 
+        // ── Probe skip (#249) ───────────────────────────────────────────
+        // A save that changed nothing connection-relevant still validates,
+        // resolves, and persists — but returns the no-verdict NotProbed
+        // result instead of paying probe latency.
+
+        [Test]
+        public async Task ApplyAsync_WhenProbeConnectionFalse_PersistsWithoutProbing()
+        {
+            var configProvider = new StubConfigProvider("https://example.com", "key");
+            var tokenService = new StubInventreeTokenService { TokenToReturn = "token" };
+            var service = new SettingsApplyService(configProvider, tokenService);
+
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "[]");
+            using var client = new HttpClient(handler);
+
+            var input = CreateInput();
+            input.ProbeConnection = false;
+
+            var result = await service.ApplyAsync(input, client);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(configProvider.LastSavedConfig, Is.Not.Null,
+                    "the save still persists");
+                Assert.That(configProvider.LastSavedConfig!.ApiKey, Is.EqualTo("api-key"));
+                Assert.That(handler.LastRequest, Is.Null,
+                    "no probe request is issued");
+                Assert.That(result.Status, Is.EqualTo(ConnectionProbeStatus.NotProbed));
+                Assert.That(result.Succeeded, Is.False);
+            });
+        }
+
+        [Test]
+        public void ApplyAsync_WhenProbeConnectionFalse_StillValidatesBeforePersisting()
+        {
+            var configProvider = new StubConfigProvider("https://example.com", "key");
+            var tokenService = new StubInventreeTokenService { TokenToReturn = "token" };
+            var service = new SettingsApplyService(configProvider, tokenService);
+
+            var input = CreateInput();
+            input.Url = "http://example.com";
+            input.ProbeConnection = false;
+
+            var ex = Assert.ThrowsAsync<SettingsApplyException>(
+                () => service.ApplyAsync(input, OkClient()));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(ex!.Message, Does.Contain("https://"),
+                    "the skip is post-persistence only — validation still runs");
+                Assert.That(configProvider.LastSavedConfig, Is.Null);
+            });
+        }
+
+        [Test]
+        public async Task ApplyAsync_WhenProbeConnectionFalseAndUrlCleared_StillReportsNotConfigured()
+        {
+            var configProvider = new StubConfigProvider("https://example.com", "saved-key");
+            var tokenService = new StubInventreeTokenService { TokenToReturn = "token" };
+            var service = new SettingsApplyService(configProvider, tokenService);
+
+            var input = CreateInput();
+            input.Url = string.Empty;
+            input.ProbeConnection = false;
+
+            var result = await service.ApplyAsync(input, OkClient());
+
+            Assert.That(result.Status, Is.EqualTo(ConnectionProbeStatus.NotConfigured),
+                "the URL-clear path is unchanged by the skip flag");
+        }
+
+        // The stub mirrors the skip so window- and VM-level tests cross the
+        // same apply-seam contract as the real service.
+        [Test]
+        public async Task StubApplyService_WhenProbeConnectionFalse_PersistsAndReturnsNotProbed()
+        {
+            var configProvider = new StubConfigProvider("https://example.com", "key");
+            var stub = new StubSettingsApplyService(configProvider);
+
+            var input = CreateInput();
+            input.ProbeConnection = false;
+
+            var result = await stub.ApplyAsync(input, OkClient());
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(configProvider.LastSavedConfig, Is.Not.Null,
+                    "the stub still persists through its provider");
+                Assert.That(result.Status, Is.EqualTo(ConnectionProbeStatus.NotProbed));
+                Assert.That(result.Succeeded, Is.False);
+            });
+        }
+
         private static HttpClient OkClient() =>
             new HttpClient(new StubHttpMessageHandler(HttpStatusCode.OK, "[]"));
 

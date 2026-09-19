@@ -23,7 +23,11 @@ namespace SwInventreeAddin.Config
         /// URL and the previously saved API key — the input's credential fields are
         /// ignored because there is no server to resolve against — and the returned
         /// result reports <see cref="ConnectionProbeStatus.NotConfigured"/>; nothing is
-        /// probed. Throws <see cref="ArgumentNullException"/>
+        /// probed. When <see cref="SettingsApplyInput.ProbeConnection"/> is
+        /// <c>false</c> the method still validates, resolves, and persists, but skips
+        /// the probe entirely and returns
+        /// <see cref="ConnectionProbeStatus.NotProbed"/> — a no-verdict result for a
+        /// save that changed nothing connection-relevant (#249). Throws <see cref="ArgumentNullException"/>
         /// when <paramref name="client"/> is null. Throws <see cref="SettingsApplyException"/>
         /// when any pre-persistence step fails — validation, credential resolution, or
         /// the config write; the message begins with "Failed to save server settings" and
