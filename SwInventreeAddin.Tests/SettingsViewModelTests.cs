@@ -1380,6 +1380,42 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public async Task ApplyAsync_WhenMappingInvalid_ReadsCleanSinceTheSavePersisted()
+        {
+            // #267 — persist-then-probe: a mapping-invalid Apply still wrote
+            // the config, so the fields on screen are saved state, not
+            // pending changes. "Cancel" would promise a discard that closing
+            // cannot deliver.
+            var invalidShared = new StubPropertyMappingProvider
+            {
+                Health = MappingHealth.Invalid,
+                Message = "The configured Property Mapping file was not found: C:\\no\\such\\map.json",
+            };
+            var provider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var applyService = new StubSettingsApplyService(provider);
+            var vm = CreateVm(provider, applyService,
+                mappingProviderFactory:
+                    new StubMappingProviderFactory { Factory = _ => invalidShared });
+
+            vm.UseSharedMapping = true;
+            vm.SharedMappingPath = "C:\\no\\such\\map.json";
+            Assert.That(await vm.ApplyAsync(), Is.False, "the mapping failure still returns false");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(provider.Config!.MappingSourcePath,
+                            Is.EqualTo("C:\\no\\such\\map.json"),
+                            "the bad path really is on disk — closing cannot undo it");
+                Assert.That(vm.IsDirty, Is.False, "the Apply persisted — nothing is pending");
+                Assert.That(vm.CancelLabel, Is.EqualTo("Close"));
+            });
+
+            // A fresh edit — the #266 recovery — re-dirties normally.
+            vm.UseSharedMapping = false;
+            Assert.That(vm.IsDirty, Is.True);
+        }
+
+        [Test]
         public async Task ApplyAsync_WhenFactoryThrows_PropagatesThePriorProvider()
         {
             var priorProvider = new StubPropertyMappingProvider();

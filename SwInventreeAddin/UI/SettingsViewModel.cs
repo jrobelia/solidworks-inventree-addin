@@ -496,9 +496,9 @@ namespace SwInventreeAddin.UI
         });
 
         /// <summary>
-        /// For the apply-succeeded-but-mapping-failed path: re-reads the saved
-        /// config only — drafts and the dirty baseline stay, so the dialog keeps
-        /// its pending changes.
+        /// Re-reads the saved config without touching drafts or the dirty
+        /// baseline — ApplyAsync calls it after the provider rebuild so the
+        /// card reflects the just-persisted state before the health check.
         /// </summary>
         public void ReloadPersistedConfig() => RunOnUiThread(() =>
         {
@@ -521,6 +521,21 @@ namespace SwInventreeAddin.UI
             _username = string.Empty;
             MarkPersisted();
         });
+
+        // Both apply outcomes end identically: the rebuilt provider propagates
+        // to the add-in — it is swapped even when the file is invalid, since
+        // the add-in and Task Pane must track the saved source path and the
+        // Invalid result keeps Part Sync gated off on its own — the persisted
+        // state becomes the dirty baseline so the dialog reads clean and the
+        // cancel button honestly says Close (#267), and the footer reports the
+        // merged outcome.
+        private void FinishPersistedApply((string Text, StatusSeverity Severity) outcome) =>
+            RunOnUiThread(() =>
+            {
+                MappingApplied?.Invoke(this, _mappingProvider);
+                MarkPersisted();
+                SetActionStatus(outcome.Text, outcome.Severity);
+            });
 
         /// <summary>Clears the password draft — the Test path calls this so the password never lingers.</summary>
         public void ClearSecrets() => RunOnUiThread(() => Password = string.Empty);
@@ -625,32 +640,13 @@ namespace SwInventreeAddin.UI
                 // The save persisted; the mapping bar carries the detail. The
                 // footer aggregates both facts — the probe verdict and the
                 // mapping failure — so the line is truthful on its own.
-                var failure = FormatApplyOutcome(probe, mappingOk: false);
-                RunOnUiThread(() =>
-                {
-                    // The provider was swapped even though the file is invalid —
-                    // the add-in and Task Pane must track the saved source path;
-                    // the Invalid result keeps Part Sync gated off on its own.
-                    MappingApplied?.Invoke(this, _mappingProvider);
-                    ReloadPersistedConfig();
-                    SetActionStatus(failure.Text, failure.Severity);
-                });
+                FinishPersistedApply(FormatApplyOutcome(probe, mappingOk: false));
                 return false;
             }
 
             try
             {
-                var outcome = FormatApplyOutcome(probe, mappingOk: true);
-                RunOnUiThread(() =>
-                {
-                    MappingApplied?.Invoke(this, _mappingProvider);
-
-                    // Persist happened: re-read so the card, credential state,
-                    // and placeholders reflect what is now on disk. A typed key
-                    // draft is cleared — saved keys are never re-shown.
-                    MarkPersisted();
-                    SetActionStatus(outcome.Text, outcome.Severity);
-                });
+                FinishPersistedApply(FormatApplyOutcome(probe, mappingOk: true));
                 return true;
             }
             catch (Exception ex)
