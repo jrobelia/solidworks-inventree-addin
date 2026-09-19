@@ -133,7 +133,7 @@ namespace SwInventreeAddin.AddIn
                 _configProvider = configProvider;
                 var config = configProvider.GetServerConfig();
 
-                IInventreeClient? inventreeClient = BuildClient(config);
+                IInventreeClient? inventreeClient = RebuildClient(config);
 
                 var propertyService = new SwDocumentPropertyService(_swApp);
                 var viewportService = new SwViewportCaptureService(_swApp);
@@ -338,7 +338,7 @@ namespace SwInventreeAddin.AddIn
                 if (!settingsApplied) return;
 
                 var newConfig = _configProvider.GetServerConfig();
-                _taskPaneControl?.UpdateClient(BuildClient(newConfig));
+                _taskPaneControl?.UpdateClient(RebuildClient(newConfig));
                 _taskPaneControl?.UpdateWaitForServerAssignedIpn(newConfig?.WaitForServerAssignedIpn ?? true);
             }
         }
@@ -347,7 +347,7 @@ namespace SwInventreeAddin.AddIn
         // cleared URL is a legal save (#253) and must never reach Uri
         // construction. The Task Pane tracks the cleared state through a null
         // client, so it shows its unconfigured state.
-        private IInventreeClient? BuildClient(ServerConfig? config)
+        private IInventreeClient? RebuildClient(ServerConfig? config)
         {
             _httpClient?.Dispose();
             _httpClient = null;
