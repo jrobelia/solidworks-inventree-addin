@@ -112,17 +112,13 @@
                             </Grid.ColumnDefinitions>
                             <Button x:Name="ChangeServerButton"
                                     Grid.Column="0"
-                                    Style="{StaticResource SecondaryButtonStyle}"
-                                    Background="White"
-                                    Height="24" Margin="0"
+                                    Style="{StaticResource CardToolbarButtonStyle}"
                                     Click="ChangeServer_Click">
                                 <TextBlock Text="Change server" VerticalAlignment="Center" />
                             </Button>
                             <Button x:Name="ChangeCredentialButton"
                                     Grid.Column="2"
-                                    Style="{StaticResource SecondaryButtonStyle}"
-                                    Background="White"
-                                    Height="24" Margin="0"
+                                    Style="{StaticResource CardToolbarButtonStyle}"
                                     Click="ChangeCredential_Click">
                                 <TextBlock Text="Change credential" VerticalAlignment="Center" />
                             </Button>

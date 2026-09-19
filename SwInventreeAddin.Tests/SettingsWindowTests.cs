@@ -944,6 +944,32 @@ namespace SwInventreeAddin.Tests
             });
         }
 
+        // The white fill must come from a style setter, not a local value:
+        // a local Background outranks SecondaryButtonStyle's IsMouseOver
+        // trigger and silently removes the hover feedback.
+        [Test]
+        public void CardToolbar_ChangeButtons_TakeTheirFillFromTheCardToolbarStyle()
+        {
+            var window = CreateWindow(
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            var cardToolbarStyle = window.TryFindResource("CardToolbarButtonStyle") as Style;
+            Assert.That(cardToolbarStyle, Is.Not.Null,
+                        "DesignTokens.xaml must define CardToolbarButtonStyle");
+
+            Assert.Multiple(() =>
+            {
+                foreach (var name in new[] { "ChangeServerButton", "ChangeCredentialButton" })
+                {
+                    var button = GetButton(window, name);
+                    Assert.That(button.Style, Is.SameAs(cardToolbarStyle), name);
+                    Assert.That(button.ReadLocalValue(Button.BackgroundProperty),
+                                Is.EqualTo(DependencyProperty.UnsetValue),
+                                $"{name}: a local Background would beat the hover trigger");
+                }
+            });
+        }
+
         [Test]
         public void CardToolbar_RemoveApiKeyButton_UsesDestructiveStyling()
         {
