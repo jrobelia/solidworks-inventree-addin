@@ -92,3 +92,25 @@ This ADR replaces that design with the model landed across #232, #233, and #234
 - ADR-0022's status card, mode switcher, key reveal, Remove-deletes-config, and
   test-before-save decisions are superseded; its DPAPI storage and
   no-key-in-UI-text decisions remain in effect.
+
+## Addendum — ownership moves to `SettingsViewModel` (#244, completed by #262)
+
+The two-axis model above is unchanged; where it lives moved. `SettingsViewModel`
+now owns everything this ADR attributes to the window: the session
+`ConnectionProbeResult`, the in-flight flag, the open-probe lifecycle
+(`OpenProbeTask`, cancel-on-close via `OnClosed`, discard-late-verdict), the
+status-bar text/severity pairs, and the Apply / Test connection /
+Remove API key orchestration (`ApplyAsync`, `TestConnectionAsync`,
+`RemoveApiKeyAsync`). It also owns the Property Mapping projection and the
+provider rebuild/re-subscription that used to run in the window's Apply path;
+`MappingApplied` now originates on the view model and the window merely
+re-raises it for `SwAddin`. `SettingsWindow.xaml.cs` is reduced to event
+wiring, rendering, the browse dialog, shared-path styling, and the mapping
+editor launch.
+
+The card's read-model is also publicly reachable:
+`SettingsViewModel.ConnectionState` exposes the same
+`ServerConnectionStatus` the card derives from, with
+`ConnectionStateChanged` firing only when a field actually moves — the reach
+path a Task Pane consumer needs (#241) without committing either deferred
+integration option.
