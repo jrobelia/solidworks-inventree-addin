@@ -7,7 +7,7 @@ Dispatch one per ticket. Fill every `{{slot}}`; the implementer profile body alr
 ```
 run_subagent(
   profile: "build-implementer",     # rounds 4-5 of a fix ladder: "build-implementer-max"
-  is_background: false,             # serial foreground by default; cap 2 once tool grants exist
+  is_background: false,             # serial foreground by default; background within REFERENCE.md's concurrency caps once tool grants exist
   title: "Ticket {{ticket}}: {{ticket_title}}",
   task: <this file, slots filled>
 )

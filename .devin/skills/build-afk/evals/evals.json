@@ -4,10 +4,10 @@
     {
       "id": 1,
       "prompt": "/build-afk spec #900, whose children are #901 (routine seam), #902 (architectural seam, unblocked), and #903 (blocked by #902). After the batch gate confirms the batch, walk through what happens until the first implementer dispatch. Name the exact run_subagent calls.",
-      "expected_output": "Design pass dispatches run_subagent(profile=\"build-designer\") once per ticket, at most 2 concurrent; each declaration persists to seams/<ticket>.md. #902's architectural proposal joins one consolidated seam gate before any implementer runs. The first implementer dispatch is run_subagent(profile=\"build-implementer\", is_background=false) for #902 — the riskiest unblocked ticket — not #901. No implementer dispatch for #903 until #902 merges.",
+      "expected_output": "Design pass dispatches run_subagent(profile=\"build-designer\") once per ticket, at most 5 concurrent; each declaration persists to seams/<ticket>.md. #902's architectural proposal joins one consolidated seam gate before any implementer runs. The first implementer dispatch is run_subagent(profile=\"build-implementer\", is_background=false) for #902 — the riskiest unblocked ticket — not #901. No implementer dispatch for #903 until #902 merges.",
       "files": [],
       "expectations": [
-        "build-designer dispatches once per ticket with cap 2 concurrent, before any implementer",
+        "build-designer dispatches once per ticket with cap 5 concurrent, before any implementer",
         "seam notes persist verbatim to seams/<ticket>.md",
         "architectural proposals reach the maintainer in one consolidated seam gate — the last planned interruption before implementation",
         "the first build-implementer dispatch is foreground (is_background=false) and targets #902 as the riskiest unblocked ticket",
@@ -168,6 +168,19 @@
         "setup surfaces the tool grants each subagent profile needs (exec for implementers and reviewers, read/grep/glob for the designer) before the design pass",
         "a grant confirmed at setup upgrades the gate's serial declaration",
         "the grant outcome is recorded in the run ledger"
+      ]
+    },
+    {
+      "id": 14,
+      "prompt": "A /build-afk run has exec grants for every subagent profile. The batch holds five tickets: #901–#903 are unblocked with disjoint seams, #904 is blocked by #901, and #905's seam shares a consumed interface with #902's. What runs concurrently during implementation?",
+      "expected_output": "Background implementers cap at 3 by default and rise to 5 only across an independent set — no ## Blocked by path between the tickets and, in batch mode, disjoint seams/<ticket>.md footprints (no shared top-level module or consumed interface). #904 is not dispatched until #901 merges — the frontier bounds concurrency before the cap does. #905 does not overlap #902 because their seams share a consumed interface, though it may overlap #901 and #903. Merges and the post-merge dotnet test still serialize in ticket order regardless of dispatch order.",
+      "files": [],
+      "expectations": [
+        "background implementers cap at 3 by default, rising to 5 only across an independent set",
+        "independent means no ## Blocked by path between the tickets and disjoint seams/<ticket>.md footprints — no shared top-level module or consumed interface",
+        "the blocked ticket is not dispatched until its blocker merges — the frontier bounds concurrency before the cap does",
+        "the ticket sharing a consumed interface does not overlap its conflict partner",
+        "merges and the post-merge dotnet test serialize in ticket order regardless of dispatch order"
       ]
     }
   ]

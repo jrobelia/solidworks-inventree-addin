@@ -1,13 +1,13 @@
 # /build-afk designer task template
 
-Dispatch one per ticket during the up-front design pass (cap 2 concurrent). Fill every `{{slot}}`; the designer profile body already carries the declaration format and the flag rules — this template carries the ticket and its context.
+Dispatch one per ticket during the up-front design pass (cap 5 concurrent). Fill every `{{slot}}`; the designer profile body already carries the declaration format and the flag rules — this template carries the ticket and its context.
 
 `{{blocker_context}}` carries the outcomes of the tickets this one was blocked on plus any spec rulings confirmed at the batch gate that govern this ticket — write rulings as settled spec (a parent↔child contradiction or precedence call the maintainer already ruled), not as open questions. Write `None.` when empty.
 
 ```
 run_subagent(
   profile: "build-designer",
-  is_background: false,             # or background with cap 2 once tool grants exist
+  is_background: false,             # or background — cap 5 — once tool grants exist
   title: "Seam for ticket {{ticket}}",
   task: <this file, slots filled>
 )
