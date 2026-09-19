@@ -39,7 +39,7 @@
             <Border x:Name="ConnectionCard"
                     Margin="0,8,0,0"
                     Padding="10,8"
-                    Background="{StaticResource BrushSectionHeader}"
+                    Background="White"
                     BorderBrush="{StaticResource BrushBorder}"
                     BorderThickness="1"
                     Visibility="Collapsed">
@@ -86,30 +86,51 @@
                     </Grid>
 
                     <!-- Toolbar exists only while the card summarizes a complete
-                         config — in the auth state the form below is already open. -->
-                    <StackPanel x:Name="ConnectionCardToolbar"
-                                Orientation="Horizontal"
-                                Margin="0,8,0,0"
-                                Visibility="Collapsed">
-                        <Button x:Name="ChangeServerButton"
-                                Style="{StaticResource SecondaryButtonStyle}"
-                                Height="24" Margin="0,0,6,0"
-                                Click="ChangeServer_Click">
-                            <TextBlock Text="Change server" VerticalAlignment="Center" />
-                        </Button>
-                        <Button x:Name="ChangeCredentialButton"
-                                Style="{StaticResource SecondaryButtonStyle}"
-                                Height="24" Margin="0,0,6,0"
-                                Click="ChangeCredential_Click">
-                            <TextBlock Text="Change credential" VerticalAlignment="Center" />
-                        </Button>
-                        <Button x:Name="RemoveApiKeyButton"
-                                Style="{StaticResource SecondaryButtonStyle}"
-                                Height="24" Margin="0"
-                                Click="RemoveApiKey_Click">
-                            <TextBlock Text="Remove API key" VerticalAlignment="Center" />
-                        </Button>
-                    </StackPanel>
+                         config — in the auth state the form below is already open.
+                         A divider separates it from the status lines; the change
+                         actions sit left-of-center in standard chrome and the
+                         destructive action anchors the right edge. -->
+                    <Grid x:Name="ConnectionCardToolbar"
+                          Margin="0,10,0,0"
+                          Visibility="Collapsed">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <Separator x:Name="ConnectionCardToolbarDivider"
+                                   Grid.Row="0"
+                                   Background="{StaticResource BrushBorder}" />
+
+                        <Grid Grid.Row="1" Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="8" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Button x:Name="ChangeServerButton"
+                                    Grid.Column="0"
+                                    Style="{StaticResource CardToolbarButtonStyle}"
+                                    Click="ChangeServer_Click">
+                                <TextBlock Text="Change server" VerticalAlignment="Center" />
+                            </Button>
+                            <Button x:Name="ChangeCredentialButton"
+                                    Grid.Column="2"
+                                    Style="{StaticResource CardToolbarButtonStyle}"
+                                    Click="ChangeCredential_Click">
+                                <TextBlock Text="Change credential" VerticalAlignment="Center" />
+                            </Button>
+                            <Button x:Name="RemoveApiKeyButton"
+                                    Grid.Column="4"
+                                    Style="{StaticResource DangerButtonStyle}"
+                                    Height="24" Margin="0"
+                                    Click="RemoveApiKey_Click">
+                                <TextBlock Text="Remove API key" VerticalAlignment="Center" />
+                            </Button>
+                        </Grid>
+                    </Grid>
                 </StackPanel>
             </Border>
 

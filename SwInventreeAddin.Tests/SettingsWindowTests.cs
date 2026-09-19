@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -958,6 +959,151 @@ namespace SwInventreeAddin.Tests
                             Is.EqualTo(Visibility.Visible));
                 Assert.That(GetElement(window, "CredentialFieldsPanel").Visibility,
                             Is.EqualTo(Visibility.Collapsed));
+            });
+        }
+
+        // ── Card toolbar vs design (#240) ──────────────────────────────────
+        // Design v2 (docs/design/settings-window-v2.png): the action row sits
+        // under a thin divider, spreads across the card — change actions left,
+        // the destructive action right — the card is the light interactive
+        // surface, the change buttons wear standard chrome grey, and
+        // Remove API key carries the error-red destructive treatment.
+
+        [Test]
+        public void CardToolbar_ChangeButtons_WearStandardChromeOnTheLightCard()
+        {
+            var window = CreateWindow(
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            var card = GetElement(window, "ConnectionCard") as Border;
+            var chrome = GetBrush(window, "BrushSectionHeader");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(((SolidColorBrush)card!.Background).Color,
+                            Is.EqualTo(Colors.White),
+                            "the card is the light interactive surface");
+                Assert.That(GetButton(window, "ChangeServerButton").Background,
+                            Is.SameAs(chrome),
+                            "Change server wears the standard secondary chrome");
+                Assert.That(GetButton(window, "ChangeCredentialButton").Background,
+                            Is.SameAs(chrome),
+                            "Change credential wears the standard secondary chrome");
+            });
+        }
+
+        // Any fill must come from the style, not a local value: a local
+        // Background outranks SecondaryButtonStyle's IsMouseOver trigger and
+        // silently removes the hover feedback.
+        [Test]
+        public void CardToolbar_ChangeButtons_SetNoLocalFillSoHoverSurvives()
+        {
+            var window = CreateWindow(
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            var cardToolbarStyle = window.TryFindResource("CardToolbarButtonStyle") as Style;
+            Assert.That(cardToolbarStyle, Is.Not.Null,
+                        "DesignTokens.xaml must define CardToolbarButtonStyle");
+
+            Assert.Multiple(() =>
+            {
+                foreach (var name in new[] { "ChangeServerButton", "ChangeCredentialButton" })
+                {
+                    var button = GetButton(window, name);
+                    Assert.That(button.Style, Is.SameAs(cardToolbarStyle), name);
+                    Assert.That(button.ReadLocalValue(Button.BackgroundProperty),
+                                Is.EqualTo(DependencyProperty.UnsetValue),
+                                $"{name}: a local Background would beat the hover trigger");
+                }
+            });
+        }
+
+        [Test]
+        public void CardToolbar_RemoveApiKeyButton_UsesDestructiveStyling()
+        {
+            var window = CreateWindow(
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            var button = GetButton(window, "RemoveApiKeyButton");
+            var error = GetBrush(window, "BrushStatusError");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(button.Foreground, Is.SameAs(error),
+                            "the destructive action's text is error red");
+                Assert.That(button.BorderBrush, Is.SameAs(error),
+                            "the destructive action's outline is error red");
+                Assert.That(button.BorderThickness, Is.EqualTo(new Thickness(1)),
+                            "the red outline must actually render");
+            });
+        }
+
+        // The destructive action's hover is the design's light-red tint, not
+        // the shared grey — a style trigger on DangerButtonStyle overrides the
+        // inherited template hover (style triggers outrank template triggers).
+        [Test]
+        public void CardToolbar_RemoveApiKeyButton_HoverUsesTheDangerTint()
+        {
+            var window = CreateWindow(
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            var dangerStyle = window.TryFindResource("DangerButtonStyle") as Style;
+            Assert.That(dangerStyle, Is.Not.Null,
+                        "DesignTokens.xaml must define DangerButtonStyle");
+
+            var hover = dangerStyle!.Triggers.OfType<Trigger>()
+                .FirstOrDefault(t => t.Property == UIElement.IsMouseOverProperty);
+            Assert.That(hover, Is.Not.Null,
+                        "DangerButtonStyle needs a style-level IsMouseOver trigger — otherwise the inherited template hover paints it grey");
+
+            var fill = hover!.Setters.OfType<Setter>()
+                .FirstOrDefault(s => s.Property == Control.BackgroundProperty);
+            Assert.That(fill, Is.Not.Null, "the hover trigger must set Background");
+            Assert.That(((SolidColorBrush)fill!.Value).Color,
+                        Is.EqualTo(Color.FromArgb(0xFF, 0xFD, 0xEC, 0xEA)),
+                        "the destructive hover tint is the design's light red #FDECEA");
+        }
+
+        [Test]
+        public void CardToolbar_Layout_SpreadsAcrossTheCardUnderADivider()
+        {
+            var window = CreateWindow(
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            var divider = LogicalTreeHelper.FindLogicalNode(window, "ConnectionCardToolbarDivider")
+                          as FrameworkElement;
+            Assert.That(divider, Is.InstanceOf<Separator>(),
+                        "a thin divider separates the status lines from the action row");
+
+            var changeServer = GetButton(window, "ChangeServerButton");
+            var changeCredential = GetButton(window, "ChangeCredentialButton");
+            var remove = GetButton(window, "RemoveApiKeyButton");
+
+            var row = LogicalTreeHelper.GetParent(remove) as Grid;
+            Assert.That(row, Is.Not.Null, "the action row is a Grid so it can span the card");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(IsInside(window, "ChangeServerButton", "ConnectionCardToolbar"), Is.True);
+                Assert.That(IsInside(window, "ChangeCredentialButton", "ConnectionCardToolbar"), Is.True);
+                Assert.That(IsInside(window, "RemoveApiKeyButton", "ConnectionCardToolbar"), Is.True);
+                Assert.That(IsInside(window, "ConnectionCardToolbarDivider", "ConnectionCardToolbar"),
+                            Is.True, "the divider collapses with the toolbar");
+                Assert.That(Grid.GetRow(divider!), Is.LessThan(Grid.GetRow(row!)),
+                            "the divider sits above the button row");
+
+                // A * column between the change pair and the destructive action
+                // spreads the row: changes left-of-center, remove at the right.
+                int removeColumn = Grid.GetColumn(remove);
+                int lastChangeColumn = Math.Max(
+                    Grid.GetColumn(changeServer), Grid.GetColumn(changeCredential));
+                bool starBetween = row!.ColumnDefinitions
+                    .Where((c, i) => i > lastChangeColumn && i < removeColumn)
+                    .Any(c => c.Width.IsStar);
+                Assert.That(starBetween, Is.True,
+                            "a * column pushes Remove API key to the card's right edge");
+                Assert.That(removeColumn, Is.EqualTo(row!.ColumnDefinitions.Count - 1),
+                            "Remove API key anchors the right edge");
             });
         }
 
