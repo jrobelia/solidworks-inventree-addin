@@ -96,6 +96,8 @@
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="2"
                             Padding="{TemplateBinding Padding}">
                         <ContentPresenter HorizontalAlignment="Center"
@@ -112,6 +114,33 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <!-- Secondary button inside a card's action row: standard chrome grey on
+         the card's light interactive surface — buttons match other buttons,
+         the card matches other white surfaces. Keeps the base style's
+         IsMouseOver trigger; a local Background would outrank it. -->
+    <Style x:Key="CardToolbarButtonStyle" TargetType="Button"
+           BasedOn="{StaticResource SecondaryButtonStyle}">
+        <Setter Property="Height" Value="24" />
+        <Setter Property="Margin" Value="0" />
+    </Style>
+
+    <!-- Destructive action (e.g. Remove API key): error-red text and outline
+         on the surface fill — the named danger role, not a severity report.
+         The style-level IsMouseOver trigger overrides the inherited grey
+         template hover with the design's light-red tint. -->
+    <Style x:Key="DangerButtonStyle" TargetType="Button"
+           BasedOn="{StaticResource SecondaryButtonStyle}">
+        <Setter Property="Background"      Value="Transparent" />
+        <Setter Property="Foreground"      Value="{StaticResource BrushStatusError}" />
+        <Setter Property="BorderBrush"     Value="{StaticResource BrushStatusError}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="#FFFDECEA" />
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <!-- ── TextBox styles ─────────────────────────────────────────────────── -->

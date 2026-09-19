@@ -2,7 +2,8 @@ namespace SwInventreeAddin.Config
 {
     /// <summary>
     /// How a probe of the InvenTree server ended. <see cref="Unreachable"/> means the
-    /// request never got a response; the other values mean the server answered.
+    /// request never got a response; <see cref="NotConfigured"/> means no probe ran
+    /// at all; the other values mean the server answered.
     /// </summary>
     public enum ConnectionProbeStatus
     {
@@ -17,5 +18,10 @@ namespace SwInventreeAddin.Config
 
         /// <summary>The server answered with any other non-success status.</summary>
         ServerError,
+
+        /// <summary>
+        /// No server URL was saved, so nothing was probed — the add-in is unconfigured.
+        /// </summary>
+        NotConfigured,
     }
 }

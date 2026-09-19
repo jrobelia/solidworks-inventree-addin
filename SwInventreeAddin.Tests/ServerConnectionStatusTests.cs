@@ -143,6 +143,29 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public void From_NotConfiguredProbe_IsUnconfiguredNotFailed()
+        {
+            // A clear-URL save returns NotConfigured — "saved OK with no URL,
+            // nothing probed" (#253). It is not a failure: the status must
+            // render the unconfigured state exactly as a blank URL does.
+            var status = ServerConnectionStatus.From(
+                SavedConfig(), Probe(ConnectionProbeStatus.NotConfigured));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(status.IsSaved, Is.False);
+                Assert.That(status.IsComplete, Is.False);
+                Assert.That(status.Indicator,
+                            Is.EqualTo(ServerConnectionIndicator.NotTested));
+                Assert.That(status.Title, Is.EqualTo("Not tested"));
+                Assert.That(status.ServerLine, Is.EqualTo("not saved"));
+                Assert.That(status.CredentialLine, Is.EqualTo("API key saved"),
+                            "the key survives a URL clear \u2014 the line stays accurate");
+                Assert.That(status.ConnectionLine, Is.EqualTo("\u2014"));
+            });
+        }
+
+        [Test]
         public void From_MissingKey_WinsOverLastProbe()
         {
             // A stale probe result must not hide that the credential is gone —

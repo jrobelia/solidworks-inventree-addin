@@ -10,6 +10,7 @@ namespace SwInventreeAddin.Tests.Stubs
         public int DeleteCallCount { get; private set; }
         public System.Exception? ThrowOnSave { get; set; }
         public System.Exception? ThrowOnDelete { get; set; }
+        public System.Exception? ThrowOnGet { get; set; }
 
         /// <summary>
         /// The config returned by GetServerConfig — mutable so tests can change saved values.
@@ -30,7 +31,13 @@ namespace SwInventreeAddin.Tests.Stubs
         /// <summary>A provider that behaves as if no server settings have ever been saved.</summary>
         public static StubConfigProvider WithNoSavedConfig() => new StubConfigProvider((ServerConfig?)null);
 
-        public ServerConfig? GetServerConfig() => _config;
+        public ServerConfig? GetServerConfig()
+        {
+            if (ThrowOnGet != null)
+                throw ThrowOnGet;
+
+            return _config;
+        }
 
         public void SaveServerConfig(ServerConfig config)
         {

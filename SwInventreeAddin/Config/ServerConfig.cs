@@ -23,5 +23,13 @@
         /// so the Create Part dialog waits for a server-assigned IPN on first run.
         /// </summary>
         public bool WaitForServerAssignedIpn { get; set; } = true;
+
+        /// <summary>
+        /// True when a non-empty server URL is saved — the single "is the add-in
+        /// configured" check for client construction. A saved record with an empty
+        /// URL is legal (#253): the API key is kept, but there is no server to
+        /// build a client against.
+        /// </summary>
+        public bool IsConfigured => !string.IsNullOrWhiteSpace(Url);
     }
 }

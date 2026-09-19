@@ -478,6 +478,139 @@ namespace SwInventreeAddin.Tests
             });
         }
 
+        // ── Clearing the server URL (#253) ────────────────────────────
+        // An empty URL is a legal save — "clear the saved server". The
+        // record persists with an empty URL and the previously saved key,
+        // input credentials are ignored, and nothing is probed.
+
+        [Test]
+        public async Task ApplyAsync_WhenUrlCleared_PersistsEmptyUrlAndKeepsSavedKey()
+        {
+            var configProvider = new StubConfigProvider("https://example.com", "saved-key");
+            var tokenService = new StubInventreeTokenService { TokenToReturn = "token" };
+            var service = new SettingsApplyService(configProvider, tokenService);
+
+            var input = CreateInput();
+            input.Url = string.Empty;
+            input.RawApiKey = string.Empty;
+
+            var result = await service.ApplyAsync(input, OkClient());
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(configProvider.LastSavedConfig, Is.Not.Null,
+                    "a cleared URL still persists the record");
+                Assert.That(configProvider.LastSavedConfig!.Url, Is.Empty);
+                Assert.That(configProvider.LastSavedConfig.ApiKey,
+                            Is.EqualTo("saved-key"), "the saved key survives a URL clear");
+                Assert.That(configProvider.LastSavedConfig.IsConfigured, Is.False);
+                Assert.That(result.Status, Is.EqualTo(ConnectionProbeStatus.NotConfigured));
+                Assert.That(result.Succeeded, Is.False);
+            });
+        }
+
+        [Test]
+        public async Task ApplyAsync_WhenUrlCleared_IgnoresTypedCredentialsAndSkipsProbe()
+        {
+            var configProvider = new StubConfigProvider("https://example.com", "saved-key");
+            var tokenService = new StubInventreeTokenService { TokenToReturn = "should-not-be-used" };
+            var service = new SettingsApplyService(configProvider, tokenService);
+
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "[]");
+            using var client = new HttpClient(handler);
+
+            var input = CreateInput();
+            input.Url = "   ";
+            input.Username = "user";
+            input.Password = "pass";
+            input.RawApiKey = "typed-key";
+
+            await service.ApplyAsync(input, client);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(tokenService.LastUrl, Is.Null,
+                    "no server to resolve against — the token service must not run");
+                Assert.That(handler.LastRequest, Is.Null,
+                    "a cleared URL never probes");
+                Assert.That(configProvider.LastSavedConfig!.ApiKey,
+                            Is.EqualTo("saved-key"),
+                            "the saved key wins — a typed credential on a clear save is not resolved");
+            });
+        }
+
+        [Test]
+        public async Task ApplyAsync_WhenUrlCleared_PersistsMappingFieldsFromInput()
+        {
+            var configProvider = new StubConfigProvider("https://example.com", "saved-key");
+            configProvider.Config!.MappingSourcePath = "\\\\share\\old.json";
+
+            var tokenService = new StubInventreeTokenService { TokenToReturn = "token" };
+            var service = new SettingsApplyService(configProvider, tokenService);
+
+            var input = CreateInput();
+            input.Url = string.Empty;
+            input.RawApiKey = string.Empty;
+            input.SharedMappingPath = "\\\\share\\mapping.json";
+            input.BomKeyword = "custom-bom";
+            input.WaitForServerAssignedIpn = false;
+
+            await service.ApplyAsync(input, OkClient());
+
+            var saved = configProvider.LastSavedConfig!;
+            Assert.Multiple(() =>
+            {
+                Assert.That(saved.MappingSourcePath, Is.EqualTo("\\\\share\\mapping.json"));
+                Assert.That(saved.BomKeyword, Is.EqualTo("custom-bom"));
+                Assert.That(saved.WaitForServerAssignedIpn, Is.False);
+            });
+        }
+
+        [Test]
+        public async Task ApplyAsync_WhenUrlClearedWithNothingSaved_PersistsEmptyKey()
+        {
+            var configProvider = StubConfigProvider.WithNoSavedConfig();
+            var tokenService = new StubInventreeTokenService { TokenToReturn = "token" };
+            var service = new SettingsApplyService(configProvider, tokenService);
+
+            var input = CreateInput();
+            input.Url = string.Empty;
+            input.RawApiKey = string.Empty;
+
+            var result = await service.ApplyAsync(input, OkClient());
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(configProvider.LastSavedConfig!.ApiKey, Is.Empty);
+                Assert.That(result.Status, Is.EqualTo(ConnectionProbeStatus.NotConfigured));
+            });
+        }
+
+        [Test]
+        public void ApplyAsync_WhenUrlClearedAndProviderReadFails_ThrowsSettingsApplyException()
+        {
+            var configProvider = new StubConfigProvider("https://example.com", "saved-key")
+            {
+                ThrowOnGet = new InvalidOperationException("read failed"),
+            };
+            var tokenService = new StubInventreeTokenService { TokenToReturn = "token" };
+            var service = new SettingsApplyService(configProvider, tokenService);
+
+            var input = CreateInput();
+            input.Url = string.Empty;
+
+            var ex = Assert.ThrowsAsync<SettingsApplyException>(
+                () => service.ApplyAsync(input, OkClient()));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(ex!.Message, Does.Contain("Failed to save server settings"));
+                Assert.That(ex.Message, Does.Contain("read failed"),
+                    "the provider read on the clear path is wrapped like any other pre-persistence failure");
+                Assert.That(configProvider.LastSavedConfig, Is.Null);
+            });
+        }
+
         // ── RemoveApiKeyAsync (#232) ────────────────────────────────────
         // Remove clears only the credential: the saved URL, Property Mapping
         // path, BOM keyword, and IPN flag all survive.
