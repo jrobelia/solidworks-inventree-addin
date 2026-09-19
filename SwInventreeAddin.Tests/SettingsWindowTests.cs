@@ -774,6 +774,54 @@ namespace SwInventreeAddin.Tests
             }
         }
 
+        // The honouring stub above can only end a cancelled probe with
+        // OperationCanceledException — it never lands a normal verdict at the
+        // post-cancel discard guard. The misbehave knob violates the contract
+        // on purpose so the guard gets a real test.
+        [Test, Timeout(15000)]
+        public void OpenProbe_WhenLateVerdictArrivesAfterClose_IsDiscarded()
+        {
+            using var form = HiddenTestWindow.CreateOwnerForm();
+            form.Show();
+            SolidWorksWindowHandle.Set(form.Handle);
+
+            try
+            {
+                var pending = new TaskCompletionSource<ConnectionProbeResult>();
+                var applyService = new StubSettingsApplyService
+                {
+                    PendingTestResult = pending,
+                    IgnoreCallerCancellation = true,
+                };
+                var window = CreateWindow(
+                    applyService: applyService,
+                    configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+                window.Show();
+                Assert.That(
+                    HiddenTestWindow.IsOnScreen(
+                        HiddenTestWindow.GetRect(new WindowInteropHelper(window).Handle)),
+                    Is.False, "Test dialog must stay off every monitor");
+                Assert.That(GetText(window, "ConnectionCardTitle"),
+                            Is.EqualTo("Testing connection…"));
+
+                // Close cancels the probe's token, but the stub ignores it and
+                // still delivers a normal verdict — the window must discard it.
+                window.Close();
+                pending.SetResult(new ConnectionProbeResult(
+                    ConnectionProbeStatus.Connected, "Connection successful."));
+                WaitForProbe(window);
+
+                Assert.That(GetText(window, "ConnectionCardTitle"),
+                            Is.EqualTo("Testing connection…"),
+                            "a verdict landing after Close is discarded, never applied to the card");
+            }
+            finally
+            {
+                SolidWorksWindowHandle.Set(IntPtr.Zero);
+            }
+        }
+
         [Test, Timeout(15000)]
         public async Task Apply_WhenOpenProbeInFlight_CancelsItAndAppliesOwnVerdict()
         {

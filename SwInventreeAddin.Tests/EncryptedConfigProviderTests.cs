@@ -5,8 +5,11 @@ using SwInventreeAddin.Config;
 
 namespace SwInventreeAddin.Tests
 {
-    // ── Fixture 1: EncryptedConfigProvider ────────────────────────────────────
-    // Uses a temp file so real APPDATA is never touched during tests.
+    // Uses a temp file so real APPDATA is never touched during tests. The
+    // IConfigProvider contract runs here and against StubConfigProvider —
+    // one suite pins the semantics every adapter must mirror, so only
+    // file-backed specifics stay below: corrupt and locked files, legacy key
+    // migration, and physical file removal on delete.
     [TestFixture]
     public class EncryptedConfigProviderTests
     {
@@ -27,26 +30,29 @@ namespace SwInventreeAddin.Tests
                 File.Delete(_tempFilePath);
         }
 
-        [Test]
-        public void GetServerConfig_WhenFileDoesNotExist_ReturnsNull()
-        {
-            var result = _provider.GetServerConfig();
-
-            Assert.That(result, Is.Null);
-        }
+        // ── IConfigProvider contract ──────────────────────────────────────
 
         [Test]
-        public void SaveThenGet_RoundTripsUrlAndApiKey()
-        {
-            var config = new ServerConfig { Url = "http://example.com", ApiKey = "my-api-key" };
+        public void Get_WhenNothingSaved_ReturnsNull() =>
+            ConfigProviderContract.Get_WhenNothingSaved_ReturnsNull(_provider);
 
-            _provider.SaveServerConfig(config);
-            var result = _provider.GetServerConfig();
+        [Test]
+        public void SaveThenGet_RoundTripsSavedValues() =>
+            ConfigProviderContract.SaveThenGet_RoundTripsSavedValues(_provider);
 
-            Assert.That(result, Is.Not.Null);
-            Assert.That(result!.Url, Is.EqualTo("http://example.com"));
-            Assert.That(result.ApiKey, Is.EqualTo("my-api-key"));
-        }
+        [Test]
+        public void Save_Overwrite_LastWriteWins() =>
+            ConfigProviderContract.Save_Overwrite_LastWriteWins(_provider);
+
+        [Test]
+        public void Delete_AfterSave_GetReturnsNull() =>
+            ConfigProviderContract.Delete_AfterSave_GetReturnsNull(_provider);
+
+        [Test]
+        public void Delete_WhenNothingSaved_IsANoOp() =>
+            ConfigProviderContract.Delete_WhenNothingSaved_IsANoOp(_provider);
+
+        // ── File-backed specifics ─────────────────────────────────────────
 
         [Test]
         public void GetServerConfig_WhenFileIsCorrupt_ThrowsInvalidOperationException()
@@ -55,23 +61,6 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(() => _provider.GetServerConfig(),
                 Throws.TypeOf<InvalidOperationException>());
-        }
-
-        [Test]
-        public void SaveThenGet_RoundTripsMappingSourcePath()
-        {
-            var config = new ServerConfig
-            {
-                Url = "http://example.com",
-                ApiKey = "key",
-                MappingSourcePath = @"\\server\share\mapping.json",
-            };
-
-            _provider.SaveServerConfig(config);
-            var result = _provider.GetServerConfig();
-
-            Assert.That(result, Is.Not.Null);
-            Assert.That(result!.MappingSourcePath, Is.EqualTo(@"\\server\share\mapping.json"));
         }
 
         [Test]
@@ -86,23 +75,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void SaveThenGet_RoundTripsWaitForServerAssignedIpn()
-        {
-            var config = new ServerConfig
-            {
-                Url = "http://example.com",
-                ApiKey = "key",
-                WaitForServerAssignedIpn = false,
-            };
-
-            _provider.SaveServerConfig(config);
-            var result = _provider.GetServerConfig();
-
-            Assert.That(result!.WaitForServerAssignedIpn, Is.False);
-        }
-
-        [Test]
-        public void DeleteServerConfig_WhenFileExists_RemovesFileAndGetReturnsNull()
+        public void DeleteServerConfig_WhenFileExists_RemovesTheSettingsFile()
         {
             _provider.SaveServerConfig(new ServerConfig { Url = "http://example.com", ApiKey = "key" });
             Assert.That(File.Exists(_tempFilePath), Is.True);
@@ -110,14 +83,6 @@ namespace SwInventreeAddin.Tests
             _provider.DeleteServerConfig();
 
             Assert.That(File.Exists(_tempFilePath), Is.False);
-            Assert.That(_provider.GetServerConfig(), Is.Null);
-        }
-
-        [Test]
-        public void DeleteServerConfig_WhenNoFileExists_IsANoOp()
-        {
-            Assert.DoesNotThrow(() => _provider.DeleteServerConfig());
-            Assert.That(_provider.GetServerConfig(), Is.Null);
         }
 
         [Test]

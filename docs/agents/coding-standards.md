@@ -62,6 +62,8 @@ Rules:
 - ViewModels must be constructable in tests without STA threads, WinForms, or WPF controls.
 - Live-window tests that `Show()` a real window must keep it off every monitor via `HiddenTestWindow`. Park the owner with `CreateOwnerForm()` and assert the dialog rect stays off-screen with `IsOnScreen`. Never hide with `Opacity` (it stops rendering and leaves an unpainted black window) or with a maximized on-screen owner (it snaps back onto a monitor).
 - Use `[SetUp]` to construct stubs; use a private factory method (e.g. `CreateVm(...)`) to construct the subject under test.
+- Stub adapters mirror production semantics — writes apply, reads reflect writes, deletes remove — never merely record calls. A recording-only stub hides re-read bugs and bends the production code it stands behind into compensating for the stub (the #232 `StubConfigProvider.SaveServerConfig` bug). Adapters sharing a seam run one contract suite — e.g. `ConfigProviderContract`, executed by `StubConfigProviderContractTests` and `EncryptedConfigProviderTests` — so a divergence fails a named behaviour.
+- Every guard clause implies a stub that can violate it. A stub that only honours the contract leaves the guard dead code, so give the stub a misbehave knob — e.g. `StubSettingsApplyService.IgnoreCallerCancellation` delivers a normal result after the caller's token fires — and test the guard through it.
 
 ---
 
