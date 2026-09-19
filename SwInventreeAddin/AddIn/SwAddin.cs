@@ -146,7 +146,7 @@ namespace SwInventreeAddin.AddIn
                 _taskPaneControl.SettingsRequested += OnSettingsRequested;
 
                 _taskPaneControl.UpdateBomState(new SwAssemblyBomService(_swApp));
-                _taskPaneControl.UpdateWaitForServerAssignedIpn(config?.WaitForServerAssignedIpn ?? true);
+                _taskPaneControl.UpdateWaitForServerAssignedIpn(config?.WaitForServerAssignedIpn ?? ServerConfig.DefaultWaitForServerAssignedIpn);
 
                 // Refresh the PartNo field whenever the user opens or switches documents.
                 // OnIdleNotify detects when the last document is closed (ActiveDoc becomes null).
@@ -339,7 +339,7 @@ namespace SwInventreeAddin.AddIn
 
                 var newConfig = _configProvider.GetServerConfig();
                 _taskPaneControl?.UpdateClient(RebuildClient(newConfig));
-                _taskPaneControl?.UpdateWaitForServerAssignedIpn(newConfig?.WaitForServerAssignedIpn ?? true);
+                _taskPaneControl?.UpdateWaitForServerAssignedIpn(newConfig?.WaitForServerAssignedIpn ?? ServerConfig.DefaultWaitForServerAssignedIpn);
             }
         }
 

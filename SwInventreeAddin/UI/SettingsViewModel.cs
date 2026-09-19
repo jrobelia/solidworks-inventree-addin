@@ -80,7 +80,7 @@ namespace SwInventreeAddin.UI
         private ServerConfig? _savedConfig;
         private CredentialEditorState _credentialState;
         private SettingsSnapshot _savedSnapshot;
-        private readonly bool _savedWaitForServerAssignedIpn = true;
+        private readonly bool _savedWaitForServerAssignedIpn = ServerConfig.DefaultWaitForServerAssignedIpn;
 
         private string _url = string.Empty;
         private string _username = string.Empty;

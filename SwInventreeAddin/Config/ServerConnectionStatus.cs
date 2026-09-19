@@ -63,16 +63,14 @@ namespace SwInventreeAddin.Config
             bool isSaved = config?.IsConfigured == true;
             bool hasKey = !string.IsNullOrWhiteSpace(config?.ApiKey);
 
-            string serverLine = isSaved ? url : "not saved";
             string credentialLine = hasKey ? "API key saved" : "none saved";
 
             if (!isSaved)
             {
-                return new ServerConnectionStatus(
-                    isSaved: false, isComplete: false,
-                    ServerConnectionIndicator.NotTested, "Not tested",
-                    serverLine, credentialLine, "\u2014");
+                return Unconfigured(credentialLine);
             }
+
+            string serverLine = url;
 
             if (!hasKey)
             {
@@ -115,13 +113,10 @@ namespace SwInventreeAddin.Config
                         ServerConnectionIndicator.AuthenticationRequired, "Authentication required",
                         serverLine, credentialLine, lastProbe.Message);
 
-                // "saved OK with no URL, nothing probed" — the unconfigured
-                // state, identical to a blank saved URL, never a failure.
+                // "saved OK with no URL, nothing probed" (#253) — the
+                // unconfigured state, never a failure.
                 case ConnectionProbeStatus.NotConfigured:
-                    return new ServerConnectionStatus(
-                        isSaved: false, isComplete: false,
-                        ServerConnectionIndicator.NotTested, "Not tested",
-                        "not saved", credentialLine, "\u2014");
+                    return Unconfigured(credentialLine);
 
                 default:
                     return new ServerConnectionStatus(
@@ -130,6 +125,17 @@ namespace SwInventreeAddin.Config
                         serverLine, credentialLine, lastProbe.Message);
             }
         }
+
+        /// <summary>
+        /// The single unconfigured projection — shared by the <c>!isSaved</c>
+        /// early return and the <see cref="ConnectionProbeStatus.NotConfigured"/>
+        /// probe arm so the two paths cannot drift apart (#259).
+        /// </summary>
+        private static ServerConnectionStatus Unconfigured(string credentialLine) =>
+            new ServerConnectionStatus(
+                isSaved: false, isComplete: false,
+                ServerConnectionIndicator.NotTested, "Not tested",
+                "not saved", credentialLine, "\u2014");
 
         /// <summary>
         /// Value equality over every projected member — consumers gate

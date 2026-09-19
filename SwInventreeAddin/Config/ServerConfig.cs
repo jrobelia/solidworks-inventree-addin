@@ -18,11 +18,18 @@
         public string BomKeyword { get; set; } = "inventree";
 
         /// <summary>
+        /// The declared default of <see cref="WaitForServerAssignedIpn"/> — the single
+        /// statement of the value, shared by the property initializer and every
+        /// null-config fallback so they cannot drift apart (#259).
+        /// </summary>
+        public const bool DefaultWaitForServerAssignedIpn = true;
+
+        /// <summary>
         /// When true, the Create Part flow polls InvenTree after creation, waiting
         /// for a server-assigned IPN. When false, the poll is skipped. Defaults to true
         /// so the Create Part dialog waits for a server-assigned IPN on first run.
         /// </summary>
-        public bool WaitForServerAssignedIpn { get; set; } = true;
+        public bool WaitForServerAssignedIpn { get; set; } = DefaultWaitForServerAssignedIpn;
 
         /// <summary>
         /// True when a non-empty server URL is saved — the single "is the add-in

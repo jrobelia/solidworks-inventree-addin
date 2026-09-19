@@ -166,6 +166,19 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public void From_NotConfiguredProbe_EqualsTheBlankUrlUnconfiguredState()
+        {
+            // #259: the NotConfigured probe arm and the blank-URL early return
+            // are one decision — for the same credential state (a saved key)
+            // they must produce the identical unconfigured tuple.
+            var fromProbe = ServerConnectionStatus.From(
+                SavedConfig(), Probe(ConnectionProbeStatus.NotConfigured));
+            var fromBlankUrl = ServerConnectionStatus.From(SavedConfig(url: "   "));
+
+            Assert.That(fromProbe, Is.EqualTo(fromBlankUrl));
+        }
+
+        [Test]
         public void From_NotProbedResult_RendersNoVerdictNotFailed()
         {
             // #260: the skip-probe save returns a no-verdict result — the card
