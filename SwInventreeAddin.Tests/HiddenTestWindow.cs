@@ -1,7 +1,12 @@
 using System;
 using System.Drawing;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Forms;
+using System.Windows.Interop;
+using System.Windows.Threading;
+using NUnit.Framework;
 using SwInventreeAddin.UI;
 
 namespace SwInventreeAddin.Tests
@@ -59,5 +64,71 @@ namespace SwInventreeAddin.Tests
             }
             return false;
         }
+
+        /// <summary>
+        /// Polls on the dialog's dispatcher until the dialog's native rectangle is
+        /// centered on the owner's (within 5 px on both axes) and still off every
+        /// monitor, then closes the dialog so a blocking <c>ShowDialog()</c> unwinds.
+        /// Faults the task with an <see cref="AssertionException"/> carrying the
+        /// last-observed rects when <paramref name="timeout"/> elapses first.
+        /// </summary>
+        /// <remarks>
+        /// Safe to call before the window has a native handle — the poll runs on
+        /// <paramref name="dialog"/>'s dispatcher, which only pumps once
+        /// <c>ShowDialog()</c> runs. The verdict never depends on a fixed wall-clock
+        /// interval racing dispatcher work: every tick re-observes the native rects,
+        /// so machine load only delays completion, never changes it. Consume with
+        /// <c>wait.GetAwaiter().GetResult()</c> after <c>ShowDialog()</c> returns so
+        /// the assertion is not wrapped in an <see cref="AggregateException"/>.
+        /// </remarks>
+        internal static Task WaitForCenteredOnOwnerAsync(Window dialog, IntPtr ownerHandle, TimeSpan timeout)
+        {
+            var tcs = new TaskCompletionSource<bool>();
+            var deadline = DateTime.UtcNow + timeout;
+
+            var timer = new DispatcherTimer(DispatcherPriority.Background, dialog.Dispatcher)
+            {
+                Interval = TimeSpan.FromMilliseconds(CenteringPollIntervalMs),
+            };
+
+            timer.Tick += (s, e) =>
+            {
+                var ownerRect = GetRect(ownerHandle);
+                var dialogRect = GetRect(new WindowInteropHelper(dialog).Handle);
+
+                var dx = Math.Abs(CenterX(dialogRect) - CenterX(ownerRect));
+                var dy = Math.Abs(CenterY(dialogRect) - CenterY(ownerRect));
+
+                if (dx < CenteredTolerancePx && dy < CenteredTolerancePx && !IsOnScreen(dialogRect))
+                {
+                    timer.Stop();
+                    TestContext.WriteLine(
+                        $"Centered: owner rect {ownerRect}, dialog rect {dialogRect} (off by {dx},{dy} px)");
+                    dialog.Close();
+                    tcs.SetResult(true);
+                    return;
+                }
+
+                if (DateTime.UtcNow >= deadline)
+                {
+                    timer.Stop();
+                    dialog.Close();
+                    tcs.SetException(new AssertionException(
+                        $"Dialog was not centered on its owner within {timeout.TotalSeconds:0.#}s " +
+                        $"(last offset {dx},{dy} px). " +
+                        $"Owner rect: {ownerRect}. Dialog rect: {dialogRect}."));
+                }
+            };
+
+            timer.Start();
+            return tcs.Task;
+        }
+
+        private const int CenteredTolerancePx = 5;
+        private const int CenteringPollIntervalMs = 50;
+
+        private static int CenterX(Rectangle rect) => rect.Left + rect.Width / 2;
+
+        private static int CenterY(Rectangle rect) => rect.Top + rect.Height / 2;
     }
 }
