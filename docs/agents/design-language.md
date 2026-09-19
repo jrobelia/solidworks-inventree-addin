@@ -27,7 +27,7 @@ Tokens are defined in `SwInventreeAddin/UI/DesignTokens.xaml` — this doc says 
 
 - **Task Pane section header** — a grey band (`BrushSectionHeader`, `Padding="6,4"`) with a 3px `BrushAccentBlue` stripe down its left edge and a SemiBold `FontSizeHeading` title.
 - **Settings section header** — a plain SemiBold `BrushForeground` line; sections are separated by `Separator` + `BrushBorder` (`Margin="0,14,0,0"`).
-- **Card** — a `Border` with `BrushSectionHeader` background, `BrushBorder` 1px, `Padding="10,8"`, `Margin="0,8,0,0"`, headed by a SemiBold label. The card is the *summary* surface — a saved-state digest like the Server Connection status card. Grey marks "read this"; it does not mark "edit here".
+- **Card** — a `Border` with `BrushBorder` 1px, `Padding="10,8"`, `Margin="0,8,0,0"`, headed by a SemiBold label, on the white canvas color — the *summary* surface for a saved-state digest like the Server Connection status card. A card that carries an action row takes the white interactive surface (design v2): buttons stay standard chrome, the surface lightens — contrast comes from light card vs grey buttons, never a one-off button fill.
 - **Bordered group** — same chrome (`BrushBorder` 1px, `Padding="10,8"`, `Margin="0,8,0,0"`, SemiBold label) but `Background="White"` — the canvas color. Use it to fence one logical *choice or edit region* (the credential group — username+password OR API key). White keeps it distinct from a grey summary card when the two stack, and matches the field-fill convention: interactive surfaces are white, chrome is grey.
 
 ## Fields and input
@@ -43,7 +43,7 @@ Tokens are defined in `SwInventreeAddin/UI/DesignTokens.xaml` — this doc says 
 - `DangerButtonStyle` — the destructive role: `BrushStatusError` text and a 1px `BrushStatusError` outline on a transparent fill. Reserved for actions that discard something saved (e.g. Remove API key on the status card).
 - Icon pattern: label `TextBlock` followed by a Segoe MDL2 glyph `TextBlock` at `FontSize="13"`, `Margin="6,0,0,0"`. The glyph map lives in ADR-0009.
 - Button rows use a `Grid` with `*` / `8` / `Auto` columns — a status bar or stretchy content on the left, buttons on the right separated by 8px columns.
-- `CardToolbarButtonStyle` — a `SecondaryButtonStyle` with the White interactive fill and the 24px/0-margin card-toolbar chrome. A card's action row (e.g. the Server Connection card toolbar) sits under a 1px `BrushBorder` divider and spans the card: change actions grouped left on this style, the destructive action anchored right.
+- `CardToolbarButtonStyle` — a `SecondaryButtonStyle` carrying only the 24px/0-margin card-toolbar chrome (standard grey fill — buttons match other buttons). A card's action row (e.g. the Server Connection card toolbar) sits under a 1px `BrushBorder` divider and spans the card: change actions grouped left on this style, the destructive action anchored right.
 
 ## Status — color means severity
 

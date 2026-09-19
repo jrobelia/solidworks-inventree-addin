@@ -915,40 +915,40 @@ namespace SwInventreeAddin.Tests
         }
 
         // ── Card toolbar vs design (#240) ──────────────────────────────────
-        // Prototype 1b: the action row sits under a thin divider, spreads
-        // across the card — change actions left, the destructive action
-        // right — secondary buttons contrast against the card grey, and
+        // Design v2 (docs/design/settings-window-v2.png): the action row sits
+        // under a thin divider, spreads across the card — change actions left,
+        // the destructive action right — the card is the light interactive
+        // surface, the change buttons wear standard chrome grey, and
         // Remove API key carries the error-red destructive treatment.
 
         [Test]
-        public void CardToolbar_ChangeButtons_ContrastAgainstTheCardFill()
+        public void CardToolbar_ChangeButtons_WearStandardChromeOnTheLightCard()
         {
             var window = CreateWindow(
                 configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
 
-            var cardFill = GetBrush(window, "BrushSectionHeader");
+            var card = GetElement(window, "ConnectionCard") as Border;
+            var chrome = GetBrush(window, "BrushSectionHeader");
 
             Assert.Multiple(() =>
             {
+                Assert.That(((SolidColorBrush)card!.Background).Color,
+                            Is.EqualTo(Colors.White),
+                            "the card is the light interactive surface");
                 Assert.That(GetButton(window, "ChangeServerButton").Background,
-                            Is.Not.SameAs(cardFill),
-                            "Change server must not wear the card's grey");
+                            Is.SameAs(chrome),
+                            "Change server wears the standard secondary chrome");
                 Assert.That(GetButton(window, "ChangeCredentialButton").Background,
-                            Is.Not.SameAs(cardFill),
-                            "Change credential must not wear the card's grey");
-                // Interactive surfaces are white — chrome grey is the card's job.
-                var changeServerFill = (SolidColorBrush)GetButton(window, "ChangeServerButton").Background;
-                Assert.That(changeServerFill.Color, Is.EqualTo(Colors.White));
-                var changeCredentialFill = (SolidColorBrush)GetButton(window, "ChangeCredentialButton").Background;
-                Assert.That(changeCredentialFill.Color, Is.EqualTo(Colors.White));
+                            Is.SameAs(chrome),
+                            "Change credential wears the standard secondary chrome");
             });
         }
 
-        // The white fill must come from a style setter, not a local value:
-        // a local Background outranks SecondaryButtonStyle's IsMouseOver
-        // trigger and silently removes the hover feedback.
+        // Any fill must come from the style, not a local value: a local
+        // Background outranks SecondaryButtonStyle's IsMouseOver trigger and
+        // silently removes the hover feedback.
         [Test]
-        public void CardToolbar_ChangeButtons_TakeTheirFillFromTheCardToolbarStyle()
+        public void CardToolbar_ChangeButtons_SetNoLocalFillSoHoverSurvives()
         {
             var window = CreateWindow(
                 configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));

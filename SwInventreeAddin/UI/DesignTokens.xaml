@@ -116,14 +116,14 @@
         </Setter>
     </Style>
 
-    <!-- Secondary button inside a card's action row: the white interactive
-         fill contrasts against the card grey. A style setter (not a local
-         value) so the base style's IsMouseOver trigger still wins. -->
+    <!-- Secondary button inside a card's action row: standard chrome grey on
+         the card's light interactive surface — buttons match other buttons,
+         the card matches other white surfaces. Keeps the base style's
+         IsMouseOver trigger; a local Background would outrank it. -->
     <Style x:Key="CardToolbarButtonStyle" TargetType="Button"
            BasedOn="{StaticResource SecondaryButtonStyle}">
-        <Setter Property="Background" Value="White" />
-        <Setter Property="Height"     Value="24" />
-        <Setter Property="Margin"     Value="0" />
+        <Setter Property="Height" Value="24" />
+        <Setter Property="Margin" Value="0" />
     </Style>
 
     <!-- Destructive action (e.g. Remove API key): error-red text and outline
