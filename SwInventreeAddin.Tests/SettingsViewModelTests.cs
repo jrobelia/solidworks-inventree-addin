@@ -18,10 +18,20 @@ namespace SwInventreeAddin.Tests
     {
         private static SettingsViewModel CreateVm(
             IConfigProvider? configProvider = null,
-            StubSettingsApplyService? applyService = null) =>
-            new SettingsViewModel(
+            StubSettingsApplyService? applyService = null,
+            StubPropertyMappingProvider? mappingProvider = null,
+            StubMappingProviderFactory? mappingProviderFactory = null)
+        {
+            mappingProvider ??= new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion },
+            };
+            return new SettingsViewModel(
                 configProvider ?? new StubConfigProvider("https://inventree.example.com", "saved-key"),
-                applyService ?? new StubSettingsApplyService());
+                applyService ?? new StubSettingsApplyService(),
+                mappingProvider,
+                mappingProviderFactory ?? new StubMappingProviderFactory { Factory = _ => mappingProvider });
+        }
 
         private static void SetDraft(SettingsViewModel vm, string field, string value)
         {
@@ -1026,6 +1036,852 @@ namespace SwInventreeAddin.Tests
                 Assert.That(vm.StatusCard.IsComplete, Is.True);
                 Assert.That(vm.CredentialFormOpen, Is.False,
                     "a complete saved config lifts the forced-open rule");
+            });
+        }
+
+        // ── Apply orchestration (#262) ──────────────────────────────────
+        // ApplyAsync owns the persist → rebuild → re-subscribe → notify chain
+        // the window used to orchestrate; failures surface only through the
+        // status pairs, never as throws.
+
+        [Test]
+        public async Task ApplyAsync_WhenServiceThrows_SetsActionStatusAndReturnsFalse()
+        {
+            var applyService = new StubSettingsApplyService
+            {
+                ExceptionToThrowOnApply = new SettingsApplyException(
+                    "Failed to save server settings: stub config failure"),
+            };
+            var vm = CreateVm(applyService: applyService);
+
+            bool result = await vm.ApplyAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.False);
+                Assert.That(vm.ActionStatusText,
+                            Does.Contain("Failed to save server settings"));
+                Assert.That(vm.ActionStatusText, Does.Contain("stub config failure"));
+                Assert.That(vm.ActionStatusSeverity, Is.EqualTo(StatusSeverity.Error));
+            });
+        }
+
+        [Test]
+        public async Task ApplyAsync_WhenServiceThrows_LeavesTheStatusCardUnchanged()
+        {
+            var applyService = new StubSettingsApplyService
+            {
+                ExceptionToThrowOnApply = new SettingsApplyException(
+                    "Failed to save server settings: stub config failure"),
+            };
+            var vm = CreateVm(applyService: applyService);
+            await vm.OpenProbeTask!;   // settle to Connected first
+
+            await vm.ApplyAsync();
+
+            Assert.That(vm.StatusCard.Title, Is.EqualTo("Connected"));
+        }
+
+        [Test]
+        public async Task ApplyAsync_OnSuccess_FiresMappingAppliedOnceWithTheRebuiltProvider()
+        {
+            var newProvider = new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion },
+            };
+            var vm = CreateVm(mappingProviderFactory:
+                new StubMappingProviderFactory { Factory = _ => newProvider });
+            vm.ApiKeyDraft = "inv-new";   // connection-relevant → the apply probes
+            var fired = new List<IPropertyMappingProvider>();
+            vm.MappingApplied += (_, p) => fired.Add(p);
+
+            bool result = await vm.ApplyAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.True);
+                Assert.That(fired, Has.Count.EqualTo(1),
+                    "MappingApplied fires exactly once per persisted save");
+                Assert.That(fired[0], Is.SameAs(newProvider),
+                    "the rebuilt provider propagates to the add-in");
+                Assert.That(vm.MappingProvider, Is.SameAs(newProvider));
+                Assert.That(vm.ActionStatusText, Is.EqualTo("Saved — connection successful."));
+                Assert.That(vm.ActionStatusSeverity, Is.EqualTo(StatusSeverity.Success));
+            });
+        }
+
+        [Test]
+        public async Task ApplyAsync_SendsTheBuiltInputWithAClient()
+        {
+            var provider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var applyService = new StubSettingsApplyService(provider);
+            var vm = CreateVm(provider, applyService);
+            vm.ApiKeyDraft = "inv-typed";
+            vm.Username = "engineer";
+            vm.Password = "s3cret";
+
+            await vm.ApplyAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(applyService.LastInput!.RawApiKey, Is.EqualTo("inv-typed"),
+                    "the key draft wins over the complete pair");
+                Assert.That(applyService.LastInput.Username, Is.Empty);
+                Assert.That(applyService.LastApplyClient, Is.Not.Null);
+            });
+        }
+
+        [Test]
+        public async Task ApplyAsync_WhenProbing_SupersedesTheOpenProbe()
+        {
+            var pending = new TaskCompletionSource<ConnectionProbeResult>();
+            var applyService = new StubSettingsApplyService { PendingTestResult = pending };
+            var vm = CreateVm(applyService: applyService);
+            var openProbeToken = applyService.LastTestToken;
+
+            vm.Url = "https://other.example.com";   // connection-relevant → probes
+            bool result = await vm.ApplyAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.True);
+                Assert.That(openProbeToken.IsCancellationRequested, Is.True,
+                    "a probing apply supersedes the in-flight open probe");
+                Assert.That(vm.StatusCard.Title, Is.EqualTo("Connected"),
+                    "the apply's own verdict lands on the card");
+            });
+
+            await vm.OpenProbeTask!;   // completes as cancelled, verdict discarded
+        }
+
+        [Test]
+        public async Task ApplyAsync_WhenOnlyMappingChanged_LeavesTheOpenProbeAlone()
+        {
+            var pending = new TaskCompletionSource<ConnectionProbeResult>();
+            var provider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var applyService = new StubSettingsApplyService(provider) { PendingTestResult = pending };
+            var vm = CreateVm(provider, applyService);
+            var openProbeToken = applyService.LastTestToken;
+
+            vm.BomKeyword = "custom-bom";
+            bool result = await vm.ApplyAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.True);
+                Assert.That(openProbeToken.IsCancellationRequested, Is.False,
+                    "a non-connection save must not cancel the in-flight open probe");
+                Assert.That(vm.StatusCard.Title, Is.EqualTo("Testing connection…"),
+                    "the open probe keeps its claim on the card — no NotProbed verdict");
+                Assert.That(vm.ActionStatusText, Is.EqualTo("Saved."));
+                Assert.That(provider.LastSavedConfig!.BomKeyword, Is.EqualTo("custom-bom"));
+            });
+
+            // The in-flight probe still lands on the card.
+            pending.SetResult(new ConnectionProbeResult(
+                ConnectionProbeStatus.Connected, "Connection successful."));
+            await vm.OpenProbeTask!;
+
+            Assert.That(vm.StatusCard.Title, Is.EqualTo("Connected"));
+        }
+
+        [Test]
+        public async Task ApplyAsync_ClearsTheStaleConnectionStatus()
+        {
+            var vm = CreateVm();
+            await vm.TestConnectionAsync();   // seeds a connection-scoped line
+            Assert.That(vm.ConnectionStatusText, Does.Contain("Connection successful"));
+
+            await vm.ApplyAsync();
+
+            Assert.That(vm.ConnectionStatusText, Is.Empty,
+                "a new save supersedes any earlier connection-scoped outcome");
+        }
+
+        [Test]
+        public async Task ApplyAsync_ClearsThePasswordDraft()
+        {
+            var vm = CreateVm();
+            vm.Username = "engineer";
+            vm.Password = "s3cret";
+
+            await vm.ApplyAsync();
+
+            Assert.That(vm.Password, Is.Empty, "the password never lingers");
+        }
+
+        [Test]
+        public async Task ApplyAsync_WhenProbeFails_ReturnsTrueAndReportsTheOutcome()
+        {
+            var applyService = new StubSettingsApplyService
+            {
+                ResultToReturnOnApply = new ConnectionProbeResult(
+                    ConnectionProbeStatus.CredentialRejected,
+                    "The server rejected the API key (401 Unauthorized)."),
+            };
+            var vm = CreateVm(applyService: applyService);
+            vm.Url = "https://other.example.com";
+
+            bool result = await vm.ApplyAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.True,
+                    "a failed probe is a reported outcome, not an apply failure");
+                Assert.That(vm.ActionStatusText,
+                            Does.Contain("Saved").And.Contain("authentication required"));
+                Assert.That(vm.StatusCard.Title, Is.EqualTo("Authentication required"));
+            });
+        }
+
+        [Test]
+        public async Task ApplyAsync_WhenProbeFails_StillFiresMappingApplied()
+        {
+            var applyService = new StubSettingsApplyService
+            {
+                ResultToReturnOnApply = new ConnectionProbeResult(
+                    ConnectionProbeStatus.Unreachable, "Could not reach the InvenTree server."),
+            };
+            var newProvider = new StubPropertyMappingProvider();
+            var vm = CreateVm(
+                applyService: applyService,
+                mappingProviderFactory: new StubMappingProviderFactory { Factory = _ => newProvider });
+            vm.Url = "https://other.example.com";
+
+            IPropertyMappingProvider? applied = null;
+            vm.MappingApplied += (_, p) => applied = p;
+
+            await vm.ApplyAsync();
+
+            Assert.That(applied, Is.SameAs(newProvider));
+        }
+
+        [Test]
+        public async Task ApplyAsync_WhenUrlCleared_PersistsTheEmptyUrlAndKeepsTheSavedKey()
+        {
+            var provider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var applyService = new StubSettingsApplyService(provider);
+            var vm = CreateVm(provider, applyService);
+            vm.Url = string.Empty;
+
+            bool result = await vm.ApplyAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.True, "a cleared URL is a legal save");
+                Assert.That(applyService.LastInput!.Url, Is.Empty,
+                    "the explicit clear reaches the seam — the saved-URL fallback is test-only");
+                Assert.That(provider.LastSavedConfig!.Url, Is.Empty);
+                Assert.That(provider.LastSavedConfig.ApiKey, Is.EqualTo("saved-key"));
+                Assert.That(vm.StatusCard.IsSaved, Is.False,
+                    "a blank saved URL is the unsaved state — the card hides");
+                Assert.That(vm.ActionStatusText, Does.Contain("server connection cleared"),
+                    "nothing was probed — the line must not claim a failed connection");
+            });
+        }
+
+        [Test]
+        public async Task ApplyAsync_RebuildsTheProviderThroughTheFactorySeam()
+        {
+            string? capturedPath = "unset";
+            var newProvider = new StubPropertyMappingProvider();
+            var factory = new StubMappingProviderFactory
+            {
+                Factory = sharedPath => { capturedPath = sharedPath; return newProvider; },
+            };
+            var provider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var applyService = new StubSettingsApplyService(provider);
+            var vm = CreateVm(provider, applyService, mappingProviderFactory: factory);
+            vm.UseLocalMapping = false;
+            vm.SharedMappingPath = "\\\\share\\map.json";
+
+            await vm.ApplyAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(capturedPath, Is.EqualTo("\\\\share\\map.json"),
+                    "the effective shared path feeds the provider rebuild");
+                Assert.That(vm.MappingProvider, Is.SameAs(newProvider));
+                Assert.That(provider.LastSavedConfig!.MappingSourcePath,
+                            Is.EqualTo("\\\\share\\map.json"));
+                Assert.That(vm.UseLocalMapping, Is.False,
+                    "the persisted shared path keeps the Shared radio checked");
+            });
+        }
+
+        [Test]
+        public async Task ApplyAsync_WhenSharedSourceCleared_ResetsTheRadiosToLocal()
+        {
+            var provider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            provider.Config!.MappingSourcePath = "\\\\share\\old.json";
+            var applyService = new StubSettingsApplyService(provider);
+            var vm = CreateVm(provider, applyService);
+            Assert.That(vm.UseLocalMapping, Is.False, "seeded from the saved source path");
+
+            vm.UseLocalMapping = true;
+            await vm.ApplyAsync();
+
+            Assert.That(vm.UseLocalMapping, Is.True,
+                "the persisted null source lands the radio back on Local");
+        }
+
+        [Test]
+        public async Task ApplyAsync_WhenMappingProviderThrowsOnRefresh_ReportsFailureAndReturnsFalse()
+        {
+            var throwingProvider = new StubPropertyMappingProvider
+            {
+                ThrowOnGet = new InvalidOperationException(
+                    "Failed to load mapping file: C:\\temp\\bad.json"),
+            };
+            var vm = CreateVm(mappingProviderFactory:
+                new StubMappingProviderFactory { Factory = _ => throwingProvider });
+
+            bool result = await vm.ApplyAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.False, "the save persisted but Save must not close");
+                Assert.That(vm.MappingStatusText, Does.Contain("Failed to load mapping file"));
+                Assert.That(vm.MappingStatusSeverity, Is.EqualTo(StatusSeverity.Error));
+                Assert.That(vm.ActionStatusText, Does.Contain("could not be loaded"),
+                    "the footer carries the merged save + mapping outcome");
+            });
+        }
+
+        [Test]
+        public async Task ApplyAsync_WhenMappingResultInvalid_MergesVerdictAndFailureAndStillPropagates()
+        {
+            var invalidProvider = new StubPropertyMappingProvider
+            {
+                Health = MappingHealth.Invalid,
+                Message = "The configured Property Mapping file was not found: C:\\nonexistent\\map.json",
+            };
+            var vm = CreateVm(mappingProviderFactory:
+                new StubMappingProviderFactory { Factory = _ => invalidProvider });
+            vm.Url = "https://other.example.com";   // probing apply — pays the verdict
+
+            IPropertyMappingProvider? applied = null;
+            vm.MappingApplied += (_, p) => applied = p;
+
+            bool result = await vm.ApplyAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.False);
+                Assert.That(vm.MappingStatusText, Does.Contain("invalid").IgnoreCase);
+                Assert.That(vm.ActionStatusText, Does.Contain("Saved")
+                            .And.Contain("connection successful")
+                            .And.Contain("could not be loaded"));
+                Assert.That(applied, Is.SameAs(invalidProvider),
+                    "the provider swaps with the save even though invalid — the add-in tracks the saved source path");
+                Assert.That(vm.StatusCard.Title, Is.EqualTo("Connected"),
+                    "the probe resolved — the card leaves the Testing state");
+            });
+        }
+
+        [Test]
+        public async Task ApplyAsync_WhenFactoryThrows_PropagatesThePriorProvider()
+        {
+            var priorProvider = new StubPropertyMappingProvider();
+            var vm = CreateVm(
+                mappingProvider: priorProvider,
+                mappingProviderFactory: new StubMappingProviderFactory
+                {
+                    Factory = _ => throw new InvalidOperationException("factory blew up"),
+                });
+
+            IPropertyMappingProvider? applied = null;
+            vm.MappingApplied += (_, p) => applied = p;
+
+            bool result = await vm.ApplyAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.False);
+                Assert.That(applied, Is.SameAs(priorProvider),
+                    "a failed rebuild still fires MappingApplied with the provider in place");
+                Assert.That(vm.ActionStatusText, Does.Contain("could not be loaded"));
+            });
+        }
+
+        [Test]
+        public async Task ApplyAsync_ResubscribesMappingChangedToTheRebuiltProvider()
+        {
+            var newProvider = new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion },
+            };
+            var vm = CreateVm(mappingProviderFactory:
+                new StubMappingProviderFactory { Factory = _ => newProvider });
+            Assert.That(vm.MappingStatusText, Does.Contain("up to date").IgnoreCase);
+
+            await vm.ApplyAsync();
+
+            newProvider.Health = MappingHealth.Invalid;
+            newProvider.Message = "New provider invalid";
+            newProvider.RaiseMappingChanged();
+
+            Assert.That(vm.MappingStatusText, Does.Contain("invalid").IgnoreCase);
+        }
+
+        [Test]
+        public async Task ApplyAsync_DetachesThePreviousProvider()
+        {
+            var originalProvider = new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion },
+            };
+            var vm = CreateVm(
+                mappingProvider: originalProvider,
+                mappingProviderFactory: new StubMappingProviderFactory
+                {
+                    Factory = _ => new StubPropertyMappingProvider
+                    {
+                        Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion },
+                    },
+                });
+
+            await vm.ApplyAsync();
+
+            string before = vm.MappingStatusText;
+            originalProvider.Health = MappingHealth.Invalid;
+            originalProvider.RaiseMappingChanged();
+
+            Assert.That(vm.MappingStatusText, Is.EqualTo(before),
+                "raising on the stale provider must leave the projection unchanged");
+        }
+
+        // ── Test connection orchestration (#262) ─────────────────────────
+        // Test probes the effective credential without saving; the verdict
+        // lands on the card and the connection-scoped status pair.
+
+        [Test]
+        public async Task TestConnectionAsync_WhenSucceeds_ReportsOnTheConnectionStatusAndCard()
+        {
+            var vm = CreateVm();
+            await vm.OpenProbeTask!;
+
+            await vm.TestConnectionAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.ConnectionStatusText, Does.Contain("Connection successful"));
+                Assert.That(vm.ConnectionStatusSeverity, Is.EqualTo(StatusSeverity.Success));
+                Assert.That(vm.StatusCard.Title, Is.EqualTo("Connected"));
+                Assert.That(vm.ActionStatusText, Is.Empty,
+                    "a Test outcome is connection-scoped — the footer stays empty");
+            });
+        }
+
+        [Test]
+        public async Task TestConnectionAsync_WhenProbeFails_ReportsTheOutcome()
+        {
+            var applyService = new StubSettingsApplyService
+            {
+                ResultToReturnOnTestConnection = new ConnectionProbeResult(
+                    ConnectionProbeStatus.Unreachable, "Could not reach the InvenTree server."),
+            };
+            var vm = CreateVm(applyService: applyService);
+            await vm.OpenProbeTask!;
+
+            await vm.TestConnectionAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.ConnectionStatusText,
+                            Is.EqualTo("Connection failed. Could not reach the InvenTree server."));
+                Assert.That(vm.ConnectionStatusSeverity, Is.EqualTo(StatusSeverity.Error));
+                Assert.That(vm.StatusCard.Title, Is.EqualTo("Connection failed"));
+            });
+        }
+
+        [Test]
+        public async Task TestConnectionAsync_WhenServiceThrowsInvalidOperation_ReportsTheRawMessage()
+        {
+            var applyService = new StubSettingsApplyService
+            {
+                ExceptionToThrowOnTestConnection = new InvalidOperationException(
+                    "The saved server URL is not a valid address."),
+            };
+            var vm = CreateVm(applyService: applyService);
+            await vm.OpenProbeTask!;
+
+            await vm.TestConnectionAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.ConnectionStatusText,
+                            Is.EqualTo("The saved server URL is not a valid address."));
+                Assert.That(vm.ConnectionStatusSeverity, Is.EqualTo(StatusSeverity.Error));
+            });
+        }
+
+        [Test]
+        public async Task TestConnectionAsync_WhenServiceThrowsOther_ReportsConnectionFailedPrefix()
+        {
+            var applyService = new StubSettingsApplyService
+            {
+                ExceptionToThrowOnTestConnection = new HttpRequestException("boom"),
+            };
+            var vm = CreateVm(applyService: applyService);
+            await vm.OpenProbeTask!;
+
+            await vm.TestConnectionAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.ConnectionStatusText, Is.EqualTo("Connection failed: boom"));
+                Assert.That(vm.ConnectionStatusSeverity, Is.EqualTo(StatusSeverity.Error));
+            });
+        }
+
+        [Test]
+        public async Task TestConnectionAsync_SupersedesTheOpenProbe()
+        {
+            var pending = new TaskCompletionSource<ConnectionProbeResult>();
+            var applyService = new StubSettingsApplyService { PendingTestResult = pending };
+            var vm = CreateVm(applyService: applyService);
+            var openProbeToken = applyService.LastTestToken;
+
+            var testTask = vm.TestConnectionAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(openProbeToken.IsCancellationRequested, Is.True,
+                    "a user-initiated probe supersedes the open probe");
+                Assert.That(vm.StatusCard.Title, Is.EqualTo("Testing connection…"));
+            });
+
+            pending.SetResult(new ConnectionProbeResult(
+                ConnectionProbeStatus.Connected, "Connection successful."));
+            await testTask;
+            await vm.OpenProbeTask!;   // cancelled — its verdict is discarded
+
+            Assert.That(vm.StatusCard.Title, Is.EqualTo("Connected"),
+                "the user probe's verdict owns the card");
+        }
+
+        [Test]
+        public async Task TestConnectionAsync_ClearsThePasswordDraft()
+        {
+            var vm = CreateVm();
+            vm.Username = "engineer";
+            vm.Password = "s3cret";
+
+            await vm.TestConnectionAsync();
+
+            Assert.That(vm.Password, Is.Empty, "the password never lingers");
+        }
+
+        [Test]
+        public async Task TestConnectionAsync_WritesNothing()
+        {
+            var provider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var vm = CreateVm(provider, new StubSettingsApplyService(provider));
+
+            await vm.TestConnectionAsync();
+
+            Assert.That(provider.LastSavedConfig, Is.Null, "Test probes but never persists");
+        }
+
+        // ── Remove API key orchestration (#262) ──────────────────────────
+
+        [Test]
+        public async Task RemoveApiKeyAsync_OnSuccess_ClearsTheCredentialAndReports()
+        {
+            var provider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var applyService = new StubSettingsApplyService(provider);
+            var vm = CreateVm(provider, applyService);
+            vm.Username = "engineer";
+            vm.Password = "s3cret";
+            vm.ApiKeyDraft = "inv-new";
+
+            await vm.RemoveApiKeyAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(applyService.RemoveCallCount, Is.EqualTo(1));
+                Assert.That(vm.HasSavedApiKey, Is.False);
+                Assert.That(vm.ApiKeyDraft, Is.Empty);
+                Assert.That(vm.Username, Is.Empty);
+                Assert.That(vm.Password, Is.Empty);
+                Assert.That(vm.ConnectionStatusText,
+                            Is.EqualTo("Credential removed. Server address kept."));
+                Assert.That(vm.ConnectionStatusSeverity, Is.EqualTo(StatusSeverity.Success));
+                Assert.That(vm.StatusCard.Title, Is.EqualTo("Authentication required"));
+                Assert.That(vm.StatusCard.ServerLine, Is.EqualTo("https://inventree.example.com"),
+                    "the server URL survives");
+            });
+        }
+
+        [Test]
+        public async Task RemoveApiKeyAsync_WhenServiceThrows_ReportsTheErrorAndKeepsTheState()
+        {
+            var applyService = new StubSettingsApplyService
+            {
+                ExceptionToThrowOnRemove = new SettingsApplyException(
+                    "Failed to remove the API key: stub delete failure"),
+            };
+            var vm = CreateVm(applyService: applyService);
+            await vm.OpenProbeTask!;
+
+            await vm.RemoveApiKeyAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.ConnectionStatusText,
+                            Does.Contain("Failed to remove the API key"));
+                Assert.That(vm.ConnectionStatusSeverity, Is.EqualTo(StatusSeverity.Error));
+                Assert.That(vm.HasSavedApiKey, Is.True, "nothing was cleared");
+                Assert.That(vm.StatusCard.Title, Is.EqualTo("Connected"),
+                    "the configured card is untouched");
+            });
+        }
+
+        // ── Mapping section projection (#262) ────────────────────────────
+        // Mapping Health → severity → Edit Mappings enabled/label, plus the
+        // radio projection re-derived from the persisted source path.
+
+        [Test]
+        public void MappingProjection_WhenHealthy_ProjectsSuccessAndEnablesLocalEdit()
+        {
+            var vm = CreateVm(mappingProvider: new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion },
+            });
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.MappingStatusText, Does.Contain("up to date").IgnoreCase);
+                Assert.That(vm.MappingStatusSeverity, Is.EqualTo(StatusSeverity.Success));
+                Assert.That(vm.EditMappingsEnabled, Is.True);
+                Assert.That(vm.EditMappingsLabel, Is.EqualTo("Edit Local Mappings"));
+            });
+        }
+
+        [TestCase("2", StatusSeverity.Warning, true, "out of date")]     // NeedsUpgrade
+        [TestCase("4", StatusSeverity.Warning, false, "newer")]          // NewerSchema
+        public void MappingProjection_ProjectsHealthToSeverityAndEditability(
+            string schemaVersion, StatusSeverity expectedSeverity,
+            bool expectedEnabled, string expectedText)
+        {
+            var vm = CreateVm(mappingProvider: new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig { SchemaVersion = schemaVersion },
+            });
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.MappingStatusSeverity, Is.EqualTo(expectedSeverity));
+                Assert.That(vm.EditMappingsEnabled, Is.EqualTo(expectedEnabled));
+                Assert.That(vm.MappingStatusText, Does.Contain(expectedText).IgnoreCase);
+            });
+        }
+
+        [Test]
+        public void MappingProjection_WhenSharedSource_UsesTheSharedLabel()
+        {
+            var vm = CreateVm(mappingProvider: new StubPropertyMappingProvider
+            {
+                SourceFilePath = "C:\\shared.json",
+                SourceFileExists = true,
+                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion },
+            });
+
+            Assert.That(vm.EditMappingsLabel, Is.EqualTo("Edit Shared Mappings"));
+        }
+
+        [Test]
+        public void MappingProjection_WhenInvalid_DisablesEditAndReportsError()
+        {
+            var vm = CreateVm(mappingProvider: new StubPropertyMappingProvider
+            {
+                Health = MappingHealth.Invalid,
+            });
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.MappingStatusText,
+                            Does.Contain("The Property Mapping file is invalid."));
+                Assert.That(vm.MappingStatusSeverity, Is.EqualTo(StatusSeverity.Error));
+                Assert.That(vm.EditMappingsEnabled, Is.False);
+            });
+        }
+
+        [Test]
+        public void MappingProjection_WhenProviderThrows_ReportsTheLoadFailure()
+        {
+            var vm = CreateVm(mappingProvider: new StubPropertyMappingProvider
+            {
+                ThrowOnGet = new InvalidOperationException(
+                    "Failed to load mapping file: C:\\temp\\missing.json"),
+            });
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.MappingStatusText,
+                            Does.Contain("The Property Mapping file is invalid."));
+                Assert.That(vm.MappingStatusText, Does.Contain("missing.json"));
+                Assert.That(vm.MappingStatusSeverity, Is.EqualTo(StatusSeverity.Error));
+            });
+        }
+
+        [Test]
+        public void MappingChanged_RefreshesTheProjection()
+        {
+            var mappingProvider = new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion },
+            };
+            var vm = CreateVm(mappingProvider: mappingProvider);
+            Assert.That(vm.MappingStatusText, Does.Contain("up to date").IgnoreCase);
+
+            mappingProvider.Health = MappingHealth.Invalid;
+            mappingProvider.Message = "Invalid after change";
+            mappingProvider.RaiseMappingChanged();
+
+            Assert.That(vm.MappingStatusText,
+                        Does.Contain("The Property Mapping file is invalid."));
+        }
+
+        [Test]
+        public void MappingChanged_ResetsTheRadiosToTheSavedSource()
+        {
+            var provider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            provider.Config!.MappingSourcePath = "\\\\share\\map.json";
+            var mappingProvider = new StubPropertyMappingProvider();
+            var vm = CreateVm(provider, mappingProvider: mappingProvider);
+            Assert.That(vm.UseLocalMapping, Is.False);
+
+            vm.UseLocalMapping = true;   // a mid-edit radio draft
+            mappingProvider.RaiseMappingChanged();
+
+            Assert.That(vm.UseLocalMapping, Is.False,
+                "a mapping-changed refresh resets the radios to the saved source even mid-edit");
+        }
+
+        [Test]
+        public void RefreshMappingStatus_ReprojectsOnDemand()
+        {
+            var mappingProvider = new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion },
+            };
+            var vm = CreateVm(mappingProvider: mappingProvider);
+            Assert.That(vm.MappingStatusText, Does.Contain("up to date").IgnoreCase);
+
+            // An external change that never raised MappingChanged — e.g. the
+            // window's editor-launch path re-projects after the dialog closes.
+            mappingProvider.Health = MappingHealth.Invalid;
+            vm.RefreshMappingStatus();
+
+            Assert.That(vm.MappingStatusText, Does.Contain("invalid").IgnoreCase);
+        }
+
+        [Test]
+        public void LocalMappingPath_ReflectsTheCurrentProvider()
+        {
+            var vm = CreateVm(mappingProvider: new StubPropertyMappingProvider
+            {
+                LocalFilePath = "C:\\local\\map.json",
+            });
+
+            Assert.That(vm.LocalMappingPath, Is.EqualTo("C:\\local\\map.json"));
+        }
+
+        [Test]
+        public void OnClosed_DetachesTheMappingChangedSubscription()
+        {
+            var mappingProvider = new StubPropertyMappingProvider();
+            var vm = CreateVm(mappingProvider: mappingProvider);
+
+            vm.OnClosed();
+
+            string before = vm.MappingStatusText;
+            mappingProvider.Health = MappingHealth.Invalid;
+            mappingProvider.RaiseMappingChanged();
+
+            Assert.That(vm.MappingStatusText, Is.EqualTo(before),
+                "nothing mapping-related outlives the dialog");
+        }
+
+        // ── ConnectionState exposure (#241 reach path) ───────────────────
+        // The same ServerConnectionStatus the card projects, reachable by a
+        // Task Pane consumer — neither #241 consumption option is committed.
+
+        [Test]
+        public async Task ConnectionState_ProjectsTheSameValueAsTheStatusCard()
+        {
+            var vm = CreateVm();
+            await vm.OpenProbeTask!;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.ConnectionState.IsSaved, Is.EqualTo(vm.StatusCard.IsSaved));
+                Assert.That(vm.ConnectionState.IsComplete, Is.EqualTo(vm.StatusCard.IsComplete));
+                Assert.That(vm.ConnectionState.Indicator, Is.EqualTo(vm.StatusCard.Indicator));
+                Assert.That(vm.ConnectionState.Title, Is.EqualTo(vm.StatusCard.Title));
+                Assert.That(vm.ConnectionState.ServerLine, Is.EqualTo(vm.StatusCard.ServerLine));
+            });
+        }
+
+        [Test]
+        public async Task ConnectionStateChanged_FiresWhenTheRecomputedStateDiffers()
+        {
+            var pending = new TaskCompletionSource<ConnectionProbeResult>();
+            var vm = CreateVm(applyService: new StubSettingsApplyService { PendingTestResult = pending });
+            var fired = new List<ServerConnectionStatus>();
+            vm.ConnectionStateChanged += (_, s) => fired.Add(s);
+
+            pending.SetResult(new ConnectionProbeResult(
+                ConnectionProbeStatus.Connected, "Connection successful."));
+            await vm.OpenProbeTask!;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(fired, Has.Count.EqualTo(1));
+                Assert.That(fired[0].Indicator, Is.EqualTo(ServerConnectionIndicator.Connected));
+                Assert.That(fired[0].IsComplete, Is.True);
+            });
+        }
+
+        [Test]
+        public void ConnectionStateChanged_DoesNotFireWhenTheStateIsUnchanged()
+        {
+            var pending = new TaskCompletionSource<ConnectionProbeResult>();
+            var vm = CreateVm(applyService: new StubSettingsApplyService { PendingTestResult = pending });
+            int fired = 0;
+            vm.ConnectionStateChanged += (_, __) => fired++;
+
+            vm.ToggleUrlSlice();   // re-render without a state change
+
+            Assert.That(fired, Is.EqualTo(0));
+
+            pending.SetCanceled();
+        }
+
+        [Test]
+        public async Task ConnectionStateChanged_FiresOnAUserProbeVerdict()
+        {
+            var applyService = new StubSettingsApplyService
+            {
+                ResultToReturnOnTestConnection = new ConnectionProbeResult(
+                    ConnectionProbeStatus.Unreachable, "Could not reach the InvenTree server."),
+            };
+            var vm = CreateVm(applyService: applyService);
+            await vm.OpenProbeTask!;
+            var fired = new List<ServerConnectionStatus>();
+            vm.ConnectionStateChanged += (_, s) => fired.Add(s);
+
+            await vm.TestConnectionAsync();
+
+            Assert.Multiple(() =>
+            {
+                // The read-model moves twice: the in-flight axis lights up on
+                // BeginUserProbe (Testing), then the verdict settles it.
+                Assert.That(fired, Has.Count.EqualTo(2));
+                Assert.That(fired[0].Indicator, Is.EqualTo(ServerConnectionIndicator.Testing));
+                Assert.That(fired[1].Indicator, Is.EqualTo(ServerConnectionIndicator.Failed));
             });
         }
     }

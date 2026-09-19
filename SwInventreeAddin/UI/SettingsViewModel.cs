@@ -9,17 +9,37 @@ using SwInventreeAddin.Config;
 namespace SwInventreeAddin.UI
 {
     /// <summary>
-    /// Credential state, dirty gating, the status-card projection, the
-    /// open-probe lifecycle, and form-view-state for the Settings window — the
-    /// rules that used to live in its code-behind. Pure C# with no WPF types,
-    /// so tests construct it without STA. The window pushes field edits into
-    /// the draft properties and reads the derived outputs for enablement,
-    /// labels, and visibility; credential precedence and the probe-skip
-    /// decision (#249) resolve inside <see cref="BuildApplyInput"/>.
+    /// The Settings window's rules: credential state, dirty gating, the
+    /// status-card projection, the open-probe lifecycle, form-view-state, the
+    /// Apply/Test/Remove orchestration, and the Property Mapping section's
+    /// status projection + provider lifecycle — everything that used to live
+    /// in the code-behind. Pure C# with no WPF types, so tests construct it
+    /// without STA. The window pushes field edits into the draft properties,
+    /// reads the derived outputs for enablement, labels, and visibility, and
+    /// its click handlers only forward to the orchestration commands;
+    /// credential precedence and the probe-skip decision (#249) resolve inside
+    /// <see cref="BuildApplyInput"/>.
     /// </summary>
     public class SettingsViewModel : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler? PropertyChanged;
+
+        /// <summary>
+        /// Raised after a persisted save, exactly once per <see cref="ApplyAsync"/>,
+        /// with the rebuilt mapping provider — or the provider already in place
+        /// when the rebuild threw. Even an invalid mapping result propagates:
+        /// the add-in tracks the saved source path while
+        /// <see cref="MappingHealth.Invalid"/> keeps Part Sync gated.
+        /// </summary>
+        public event EventHandler<IPropertyMappingProvider>? MappingApplied;
+
+        /// <summary>
+        /// Raised whenever the recomputed <see cref="ConnectionState"/> differs
+        /// in any field — the #241 reach path for a Task Pane consumer. Neither
+        /// #241 consumption option is committed; this only makes the state
+        /// reachable.
+        /// </summary>
+        public event EventHandler<ServerConnectionStatus>? ConnectionStateChanged;
 
         private bool Set<T>(ref T field, T value, [CallerMemberName] string? name = null)
         {
@@ -36,6 +56,9 @@ namespace SwInventreeAddin.UI
 
         private readonly IConfigProvider _configProvider;
         private readonly ISettingsApplyService _settingsApplyService;
+        private readonly IMappingProviderFactory _mappingProviderFactory;
+        private IPropertyMappingProvider _mappingProvider;
+        private MappingChangedSubscription? _mappingChangedSubscription;
 
         /// <summary>
         /// UI-thread synchronisation context captured at construction. Null when
@@ -86,20 +109,44 @@ namespace SwInventreeAddin.UI
         /// </summary>
         internal Task? OpenProbeTask { get; private set; }
 
+        // The last <see cref="ConnectionState"/> value handed to
+        // <see cref="ConnectionStateChanged"/> subscribers — the event fires
+        // only when the recomputed projection differs in a field.
+        private ServerConnectionStatus _emittedConnectionState = null!;
+
+        // Status bars: one text + severity pair per bar — the dialog-level
+        // Action bar (Apply/Save outcomes) and the connection-scoped bar
+        // (Test connection, Remove API key).
+        private string _actionStatusText = string.Empty;
+        private StatusSeverity _actionStatusSeverity = StatusSeverity.None;
+        private string _connectionStatusText = string.Empty;
+        private StatusSeverity _connectionStatusSeverity = StatusSeverity.None;
+
+        // Property Mapping section projection.
+        private string _mappingStatusText = string.Empty;
+        private StatusSeverity _mappingStatusSeverity = StatusSeverity.None;
+        private bool _editMappingsEnabled;
+        private string _editMappingsLabel = "Edit Mappings";
+
         // ── Constructor ───────────────────────────────────────────────────────
 
         /// <summary>
         /// Reads the saved <see cref="ServerConfig"/> once — a throwing provider
         /// reads as "nothing saved" — seeds every draft, builds the credential
-        /// state, and baselines the dirty snapshot. A complete saved config
-        /// also starts the open probe: no caller call, so
-        /// <see cref="OpenProbeTask"/> is non-null from then on.
+        /// state, projects the mapping section, subscribes to mapping-changed,
+        /// and baselines the dirty snapshot. A complete saved config also
+        /// starts the open probe: no caller call, so <see cref="OpenProbeTask"/>
+        /// is non-null from then on.
         /// </summary>
         public SettingsViewModel(IConfigProvider configProvider,
-                                 ISettingsApplyService settingsApplyService)
+                                 ISettingsApplyService settingsApplyService,
+                                 IPropertyMappingProvider mappingProvider,
+                                 IMappingProviderFactory mappingProviderFactory)
         {
             _configProvider = configProvider;
             _settingsApplyService = settingsApplyService;
+            _mappingProvider = mappingProvider;
+            _mappingProviderFactory = mappingProviderFactory;
             _uiContext = SynchronizationContext.Current;
             _uiThreadId = Environment.CurrentManagedThreadId;
 
@@ -117,7 +164,12 @@ namespace SwInventreeAddin.UI
 
             _savedSnapshot = CaptureSnapshot();
 
+            ProjectMappingStatus();
+            MappingChangedSubscription.SubscribeTo(
+                ref _mappingChangedSubscription, _mappingProvider, OnMappingChanged);
+
             StartOpenProbe();
+            _emittedConnectionState = ConnectionState;
         }
 
         // ── Draft inputs ──────────────────────────────────────────────────────
@@ -233,6 +285,94 @@ namespace SwInventreeAddin.UI
         /// </summary>
         public ServerConnectionStatus StatusCard =>
             ServerConnectionStatus.From(_savedConfig, _lastProbe, _probeInFlight);
+
+        /// <summary>
+        /// The connection state as a public read-model — the same
+        /// <see cref="ServerConnectionStatus"/> value the status-card
+        /// projection derives from; <see cref="IsSaved"/>,
+        /// <see cref="ServerConnectionStatus.IsComplete"/>, and
+        /// <see cref="ServerConnectionStatus.Indicator"/> are the
+        /// Task-Pane-relevant members. Changes are announced through
+        /// <see cref="ConnectionStateChanged"/>.
+        /// </summary>
+        public ServerConnectionStatus ConnectionState => StatusCard;
+
+        // ── Status bar pairs ─────────────────────────────────────────────
+        // One text + severity pair per status bar. The window forwards each
+        // pair into its StatusBarControl; the commands below are the only
+        // writers, so a failure can never leave the bars stale.
+
+        /// <summary>The dialog-level action bar (Apply/Save outcomes).</summary>
+        public string ActionStatusText
+        {
+            get => _actionStatusText;
+            private set => Set(ref _actionStatusText, value);
+        }
+
+        /// <summary>Severity for <see cref="ActionStatusText"/>.</summary>
+        public StatusSeverity ActionStatusSeverity
+        {
+            get => _actionStatusSeverity;
+            private set => Set(ref _actionStatusSeverity, value);
+        }
+
+        /// <summary>The connection-scoped bar (Test connection, Remove API key).</summary>
+        public string ConnectionStatusText
+        {
+            get => _connectionStatusText;
+            private set => Set(ref _connectionStatusText, value);
+        }
+
+        /// <summary>Severity for <see cref="ConnectionStatusText"/>.</summary>
+        public StatusSeverity ConnectionStatusSeverity
+        {
+            get => _connectionStatusSeverity;
+            private set => Set(ref _connectionStatusSeverity, value);
+        }
+
+        // ── Property Mapping section ─────────────────────────────────────
+        // The mapping-status projection: the current provider's health
+        // crossed with the persisted source path. Re-projected on open, on
+        // mapping-changed, after a save rebuild, and on demand when the
+        // window's editor launch closes.
+
+        /// <summary>
+        /// The mapping provider currently in place — rebuilt through
+        /// <see cref="IMappingProviderFactory"/> on every save, so the
+        /// window's editor launch edits the live one.
+        /// </summary>
+        public IPropertyMappingProvider MappingProvider => _mappingProvider;
+
+        /// <summary>The Property Mapping section's status text.</summary>
+        public string MappingStatusText
+        {
+            get => _mappingStatusText;
+            private set => Set(ref _mappingStatusText, value);
+        }
+
+        /// <summary>Severity for <see cref="MappingStatusText"/>.</summary>
+        public StatusSeverity MappingStatusSeverity
+        {
+            get => _mappingStatusSeverity;
+            private set => Set(ref _mappingStatusSeverity, value);
+        }
+
+        /// <summary>Whether the Edit Mappings button may be used — the mapping must be editable.</summary>
+        public bool EditMappingsEnabled
+        {
+            get => _editMappingsEnabled;
+            private set => Set(ref _editMappingsEnabled, value);
+        }
+
+        /// <summary>"Edit Local Mappings" / "Edit Shared Mappings" per the resolved source.</summary>
+        public string EditMappingsLabel
+        {
+            get => _editMappingsLabel;
+            private set => Set(ref _editMappingsLabel, value);
+        }
+
+        /// <summary>The local mapping file path — re-notified on a provider swap.</summary>
+        public string LocalMappingPath => _mappingProvider.LocalFilePath;
 
         // ── Form view-state ───────────────────────────────────────────────────
         // The form is forced open while the saved config is incomplete — there
@@ -385,6 +525,307 @@ namespace SwInventreeAddin.UI
 
         /// <summary>Clears the password draft — the Test path calls this so the password never lingers.</summary>
         public void ClearSecrets() => RunOnUiThread(() => Password = string.Empty);
+
+        // ── Orchestration commands ──────────────────────────────────────────
+        // Apply/Test/Remove: the window's async-void click handlers only
+        // forward to these. Service, probe, and mapping failures surface only
+        // through the status pairs — the commands never throw for them, so a
+        // forward can never crash the host.
+
+        /// <summary>
+        /// Resolves credentials, persists the server config, rebuilds the
+        /// mapping provider through <see cref="IMappingProviderFactory"/>,
+        /// re-subscribes to mapping-changed, and fires <see cref="MappingApplied"/>
+        /// exactly once. Returns <c>true</c> once the settings are persisted —
+        /// a failed connection probe is reported as the outcome, not an apply
+        /// failure; <c>false</c> only when an error was reported to the user
+        /// (a <see cref="SettingsApplyException"/>, or a mapping
+        /// load/result failure — the save persisted but Save must not close).
+        /// </summary>
+        public async Task<bool> ApplyAsync()
+        {
+            var input = BuildApplyInput();
+
+            // #249: a save that changed nothing connection-relevant skips the
+            // probe. The open probe — if still in flight — keeps its claim on
+            // the card: it is not cancelled, the in-flight axis is not raised,
+            // and the NotProbed result never becomes the card's verdict.
+            bool probing = input.ProbeConnection;
+            if (probing)
+            {
+                // The apply's own probe verdict supersedes the open probe's.
+                BeginUserProbe();
+                // The save happens inside ApplyAsync — the interim status must
+                // not claim a save that a pre-persistence failure would disprove.
+                RunOnUiThread(() => SetActionStatus(
+                    "Saving settings and testing connection…", StatusSeverity.None));
+            }
+            else
+            {
+                RunOnUiThread(() => SetActionStatus("Saving settings…", StatusSeverity.None));
+            }
+            // A new save supersedes any earlier connection-scoped outcome —
+            // leaving it would let the section bar contradict the fresh verdict.
+            RunOnUiThread(() => SetConnectionStatus(string.Empty, StatusSeverity.None));
+
+            ConnectionProbeResult probe;
+            try
+            {
+                using (var client = new HttpClient())
+                {
+                    probe = await _settingsApplyService.ApplyAsync(input, client)
+                                                       .ConfigureAwait(false);
+                }
+            }
+            catch (SettingsApplyException ex)
+            {
+                if (probing) EndUserProbe(null);
+                RunOnUiThread(() => SetActionStatus(ex.Message, StatusSeverity.Error));
+                return false;
+            }
+
+            if (probing) EndUserProbe(probe);
+
+            // The password never lingers — whether it was sent for token
+            // resolution or shadowed by a winning key draft.
+            ClearSecrets();
+
+            bool mappingOk;
+            try
+            {
+                var provider = _mappingProviderFactory.Create(input.SharedMappingPath);
+                bool healthOk = false;
+                RunOnUiThread(() =>
+                {
+                    _mappingProvider = provider;
+                    Raise(nameof(LocalMappingPath));
+
+                    // The save persisted — re-read the saved config so the
+                    // radios and the card reflect what is now on disk.
+                    ReloadPersistedConfig();
+                    healthOk = ProjectMappingStatus();
+
+                    // The rebuilt provider owns the mapping-changed feed now.
+                    MappingChangedSubscription.SubscribeTo(
+                        ref _mappingChangedSubscription, _mappingProvider, OnMappingChanged);
+                });
+                mappingOk = healthOk;
+            }
+            catch (Exception ex)
+            {
+                // Mapping detail stays in the Property Mapping section's own
+                // status bar; the provider in place keeps its subscription.
+                RunOnUiThread(() => ShowInvalidMappingStatus(
+                    $"Failed to load the Property Mapping file: {ex.Message}"));
+                mappingOk = false;
+            }
+
+            if (!mappingOk)
+            {
+                // The save persisted; the mapping bar carries the detail. The
+                // footer aggregates both facts — the probe verdict and the
+                // mapping failure — so the line is truthful on its own.
+                var failure = FormatApplyOutcome(probe, mappingOk: false);
+                RunOnUiThread(() =>
+                {
+                    // The provider was swapped even though the file is invalid —
+                    // the add-in and Task Pane must track the saved source path;
+                    // the Invalid result keeps Part Sync gated off on its own.
+                    MappingApplied?.Invoke(this, _mappingProvider);
+                    ReloadPersistedConfig();
+                    SetActionStatus(failure.Text, failure.Severity);
+                });
+                return false;
+            }
+
+            try
+            {
+                var outcome = FormatApplyOutcome(probe, mappingOk: true);
+                RunOnUiThread(() =>
+                {
+                    MappingApplied?.Invoke(this, _mappingProvider);
+
+                    // Persist happened: re-read so the card, credential state,
+                    // and placeholders reflect what is now on disk. A typed key
+                    // draft is cleared — saved keys are never re-shown.
+                    MarkPersisted();
+                    SetActionStatus(outcome.Text, outcome.Severity);
+                });
+                return true;
+            }
+            catch (Exception ex)
+            {
+                RunOnUiThread(() => SetActionStatus(
+                    $"Failed to apply settings: {ex.Message}", StatusSeverity.Error));
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Probes the <see cref="EffectiveUrl"/> with the effective credential —
+        /// writes nothing. The verdict lands on the connection axis and the
+        /// connection-scoped status pair; the password draft is cleared either
+        /// way. A user-initiated probe supersedes the open probe.
+        /// </summary>
+        public async Task TestConnectionAsync()
+        {
+            var input = BuildTestInput();
+
+            // A user-initiated probe supersedes the open probe — the card
+            // should settle on the freshest verdict.
+            BeginUserProbe();
+            RunOnUiThread(() => SetConnectionStatus("Testing connection…", StatusSeverity.None));
+
+            try
+            {
+                ConnectionProbeResult result;
+                using (var client = new HttpClient())
+                {
+                    result = await _settingsApplyService.TestConnectionAsync(
+                            input, client, CancellationToken.None)
+                        .ConfigureAwait(false);
+                }
+
+                EndUserProbe(result);
+                RunOnUiThread(() =>
+                {
+                    SetConnectionStatus(
+                        result.Succeeded ? result.Message : $"Connection failed. {result.Message}",
+                        result.Succeeded ? StatusSeverity.Success : StatusSeverity.Error);
+
+                    // The password never lingers — whether it was sent for
+                    // token resolution or shadowed by a winning key draft.
+                    Password = string.Empty;
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                EndUserProbe(null);
+                RunOnUiThread(() => SetConnectionStatus(ex.Message, StatusSeverity.Error));
+            }
+            catch (Exception ex)
+            {
+                EndUserProbe(null);
+                RunOnUiThread(() => SetConnectionStatus(
+                    $"Connection failed: {ex.Message}", StatusSeverity.Error));
+            }
+        }
+
+        /// <summary>
+        /// Clears only the saved API key through the apply service so the
+        /// mutation surfaces as a <see cref="SettingsApplyException"/> with a
+        /// consistent prefix. The saved URL, Property Mapping path, and BOM
+        /// keyword survive; the card lands on Authentication required with the
+        /// form open.
+        /// </summary>
+        public async Task RemoveApiKeyAsync()
+        {
+            try
+            {
+                await _settingsApplyService.RemoveApiKeyAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                RunOnUiThread(() => SetConnectionStatus(ex.Message, StatusSeverity.Error));
+                return;
+            }
+
+            RunOnUiThread(() =>
+            {
+                OnCredentialRemoved();
+                ClearProbeVerdict();
+                SetConnectionStatus(
+                    "Credential removed. Server address kept.", StatusSeverity.Success);
+            });
+        }
+
+        // ── Mapping section ───────────────────────────────────────────────
+
+        /// <summary>
+        /// Re-projects the mapping section on demand — the window calls this
+        /// after its editor launch closes. The subscription
+        /// (<see cref="OnMappingChanged"/>) routes here too, so an external
+        /// save and a post-edit refresh take the same path.
+        /// </summary>
+        public void RefreshMappingStatus() => RunOnUiThread(() => ProjectMappingStatus());
+
+        /// <summary>
+        /// The window's Closed hook: cancels the open probe and detaches the
+        /// mapping-changed subscription — nothing outlives the dialog.
+        /// </summary>
+        internal void OnClosed()
+        {
+            CancelOpenProbe();
+            MappingChangedSubscription.UnsubscribeFrom(ref _mappingChangedSubscription);
+        }
+
+        private void OnMappingChanged() => RefreshMappingStatus();
+
+        // Re-projects the mapping status pair, the Edit Mappings enabled/label,
+        // and the radios from the current provider and the persisted source
+        // path. Returns whether the resolved mapping is usable — a false
+        // return feeds ApplyAsync's merged footer outcome.
+        private bool ProjectMappingStatus()
+        {
+            try
+            {
+                var result = _mappingProvider.GetMappingResult();
+
+                EditMappingsEnabled = result.CanEdit;
+                EditMappingsLabel =
+                    result.Source == MappingSource.Local
+                        ? "Edit Local Mappings"
+                        : "Edit Shared Mappings";
+
+                // The radios always land on the saved source — a refresh
+                // discards an unapplied radio draft.
+                UseLocalMapping = string.IsNullOrEmpty(_savedConfig?.MappingSourcePath);
+
+                MappingStatusText = result.FullStatusMessage;
+                MappingStatusSeverity = result.Health switch
+                {
+                    MappingHealth.Healthy => StatusSeverity.Success,
+                    MappingHealth.NeedsUpgrade => StatusSeverity.Warning,
+                    MappingHealth.NewerSchema => StatusSeverity.Warning,
+                    _ => StatusSeverity.Error,
+                };
+                return result.Health != MappingHealth.Invalid;
+            }
+            catch (InvalidOperationException ex)
+            {
+                return ShowInvalidMappingStatus(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return ShowInvalidMappingStatus(
+                    $"Failed to load the Property Mapping file: {ex.Message}");
+            }
+        }
+
+        // An unreadable mapping is an Invalid result for display purposes:
+        // edit stays disabled and the radios keep their current draft.
+        private bool ShowInvalidMappingStatus(string detail)
+        {
+            var result = new MappingResult(MappingHealth.Invalid,
+                                           PropertyMappingConfig.WithDefaults(),
+                                           detail);
+            EditMappingsEnabled = false;
+            MappingStatusText = result.FullStatusMessage;
+            MappingStatusSeverity = StatusSeverity.Error;
+            return false;
+        }
+
+        private void SetActionStatus(string text, StatusSeverity severity)
+        {
+            ActionStatusText = text;
+            ActionStatusSeverity = severity;
+        }
+
+        private void SetConnectionStatus(string text, StatusSeverity severity)
+        {
+            ConnectionStatusText = text;
+            ConnectionStatusSeverity = severity;
+        }
 
         // ── Probe lifecycle ───────────────────────────────────────────────────
         // The probe fired on open reports a live verdict instead of a stale
@@ -585,11 +1026,35 @@ namespace SwInventreeAddin.UI
         // forced-open rule derives from StatusCard.IsComplete.
         private void RaiseCardAndFormChanged()
         {
+            EmitConnectionStateIfChanged();
             Raise(nameof(StatusCard));
+            Raise(nameof(ConnectionState));
             Raise(nameof(UrlSliceOpen));
             Raise(nameof(CredentialSliceOpen));
             Raise(nameof(CredentialFormOpen));
         }
+
+        // The #241 reach path: fire only when the recomputed read-model
+        // actually moved — a re-render that leaves every field equal (e.g. a
+        // slice toggle) is not a state change.
+        private void EmitConnectionStateIfChanged()
+        {
+            var current = ConnectionState;
+            if (SameConnectionState(_emittedConnectionState, current))
+                return;
+
+            _emittedConnectionState = current;
+            ConnectionStateChanged?.Invoke(this, current);
+        }
+
+        private static bool SameConnectionState(ServerConnectionStatus a, ServerConnectionStatus b) =>
+            a.IsSaved == b.IsSaved &&
+            a.IsComplete == b.IsComplete &&
+            a.Indicator == b.Indicator &&
+            string.Equals(a.Title, b.Title, StringComparison.Ordinal) &&
+            string.Equals(a.ServerLine, b.ServerLine, StringComparison.Ordinal) &&
+            string.Equals(a.CredentialLine, b.CredentialLine, StringComparison.Ordinal) &&
+            string.Equals(a.ConnectionLine, b.ConnectionLine, StringComparison.Ordinal);
 
         // Post-persistence transitions can touch any derived output at once —
         // raise the full set so subscribers see a coherent state.
