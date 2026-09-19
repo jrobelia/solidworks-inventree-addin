@@ -29,5 +29,15 @@ namespace SwInventreeAddin.Config
 
         /// <summary>Whether to wait for the server to assign an IPN on part creation.</summary>
         public bool WaitForServerAssignedIpn { get; set; } = true;
+
+        /// <summary>
+        /// Whether <see cref="ISettingsApplyService.ApplyAsync"/> probes the connection
+        /// after persisting. Defaults to <c>true</c>; the caller sets <c>false</c> when
+        /// no connection-relevant field changed since the last save (#249) — the save
+        /// then returns a no-verdict <see cref="ConnectionProbeStatus.NotProbed"/>
+        /// result. Irrelevant to <see cref="ISettingsApplyService.TestConnectionAsync"/>,
+        /// which always probes.
+        /// </summary>
+        public bool ProbeConnection { get; set; } = true;
     }
 }

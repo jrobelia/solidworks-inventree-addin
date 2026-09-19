@@ -130,6 +130,9 @@ namespace SwInventreeAddin.Tests
                 mappingProvider: new StubPropertyMappingProvider(),
                 mappingProviderFactory: new StubMappingProviderFactory { Factory = _ => invalidProvider });
 
+            // A connection-relevant change makes Apply probe — and pay the verdict.
+            GetTextBox(window, "UrlBox")!.Text = "https://other.example.com";
+
             IPropertyMappingProvider? applied = null;
             window.MappingApplied += (s, e) => applied = e;
 
@@ -831,6 +834,10 @@ namespace SwInventreeAddin.Tests
             var applyService = new StubSettingsApplyService(configProvider) { PendingTestResult = pending };
             var window = CreateWindow(applyService: applyService, configProvider: configProvider);
 
+            // A connection-relevant change makes Apply probe — and supersede
+            // the in-flight open probe (#249: a non-connection save would not).
+            GetTextBox(window, "UrlBox")!.Text = "https://other.example.com";
+
             bool result = await window.ApplySettingsAsync();
 
             Assert.Multiple(() =>
@@ -1342,6 +1349,9 @@ namespace SwInventreeAddin.Tests
             var applyService = new StubSettingsApplyService(configProvider);
             var window = CreateWindow(applyService: applyService, configProvider: configProvider);
 
+            // A connection-relevant change makes Apply probe (#249).
+            GetTextBox(window, "UrlBox")!.Text = "https://other.example.com";
+
             await window.ApplySettingsAsync();
 
             Assert.Multiple(() =>
@@ -1364,6 +1374,9 @@ namespace SwInventreeAddin.Tests
                     ConnectionProbeStatus.Unreachable, "Could not reach the InvenTree server."),
             };
             var window = CreateWindow(applyService: applyService, configProvider: configProvider);
+
+            // A connection-relevant change makes Apply probe (#249).
+            GetTextBox(window, "UrlBox")!.Text = "https://other.example.com";
 
             await window.ApplySettingsAsync();
 
@@ -1390,6 +1403,9 @@ namespace SwInventreeAddin.Tests
             };
             var window = CreateWindow(applyService: applyService, configProvider: configProvider);
 
+            // A connection-relevant change makes Apply probe (#249).
+            GetTextBox(window, "UrlBox")!.Text = "https://other.example.com";
+
             await window.ApplySettingsAsync();
 
             Assert.Multiple(() =>
@@ -1412,6 +1428,9 @@ namespace SwInventreeAddin.Tests
             };
             var window = CreateWindow(applyService: applyService);
 
+            // A connection-relevant change makes Apply probe (#249).
+            GetTextBox(window, "UrlBox")!.Text = "https://other.example.com";
+
             bool result = await window.ApplySettingsAsync();
 
             Assert.That(result, Is.True);
@@ -1431,6 +1450,9 @@ namespace SwInventreeAddin.Tests
             var mappingProvider = new StubPropertyMappingProvider();
             var window = CreateWindow(applyService: applyService, mappingProvider: mappingProvider);
 
+            // A connection-relevant change makes Apply probe (#249).
+            GetTextBox(window, "UrlBox")!.Text = "https://other.example.com";
+
             IPropertyMappingProvider? firedProvider = null;
             window.MappingApplied += (s, e) => firedProvider = e;
 
@@ -1444,6 +1466,9 @@ namespace SwInventreeAddin.Tests
         {
             var applyService = new StubSettingsApplyService();
             var window = CreateWindow(applyService: applyService);
+
+            // A connection-relevant change makes Apply probe (#249).
+            GetTextBox(window, "UrlBox")!.Text = "https://other.example.com";
 
             bool result = await window.ApplySettingsAsync();
 
@@ -1613,6 +1638,90 @@ namespace SwInventreeAddin.Tests
             Assert.That(configProvider.LastSavedConfig!.ApiKey,
                         Is.EqualTo("saved-key"),
                         "a typed credential on a clear save is not resolved — the saved key wins");
+        }
+
+        // ── Probe skip on non-connection saves (#249) ─────────────────────
+        // A save that touched no connection-relevant field skips the probe:
+        // the footer reports "Saved." with no connection clause, and an
+        // in-flight open probe keeps running and still lands on the card.
+
+        [Test]
+        public async Task Apply_WhenOnlyBomKeywordChanged_SkipsProbeAndReportsSaved()
+        {
+            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var applyService = new StubSettingsApplyService(configProvider);
+            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
+
+            GetTextBox(window, "BomKeywordBox")!.Text = "custom-bom";
+
+            bool result = await window.ApplySettingsAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.True);
+                Assert.That(applyService.LastInput!.ProbeConnection, Is.False,
+                    "the VM flags the input as not worth a probe");
+                Assert.That(GetStatusBarText(window, "ActionStatusBar"), Is.EqualTo("Saved."),
+                    "no connection clause when nothing connection-relevant changed");
+                Assert.That(configProvider.LastSavedConfig!.BomKeyword, Is.EqualTo("custom-bom"));
+                Assert.That(GetButton(window, "ApplyButton").IsEnabled, Is.False,
+                    "the save re-baselines the dirty snapshot");
+            });
+        }
+
+        [Test]
+        public async Task Apply_WhenOnlySharedMappingPathChanged_SkipsProbeAndPersistsPath()
+        {
+            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var applyService = new StubSettingsApplyService(configProvider);
+            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
+
+            GetRadioButton(window, "SharedRadio").IsChecked = true;
+            GetTextBox(window, "SharedPathBox")!.Text = "\\\\share\\map.json";
+
+            bool result = await window.ApplySettingsAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.True);
+                Assert.That(applyService.LastInput!.ProbeConnection, Is.False);
+                Assert.That(applyService.LastInput.SharedMappingPath,
+                            Is.EqualTo("\\\\share\\map.json"));
+                Assert.That(configProvider.LastSavedConfig!.MappingSourcePath,
+                            Is.EqualTo("\\\\share\\map.json"));
+                Assert.That(GetStatusBarText(window, "ActionStatusBar"), Is.EqualTo("Saved."));
+            });
+        }
+
+        [Test, Timeout(15000)]
+        public async Task Apply_WhenOnlyMappingChanged_LeavesInFlightOpenProbeAlone()
+        {
+            var pending = new TaskCompletionSource<ConnectionProbeResult>();
+            var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var applyService = new StubSettingsApplyService(configProvider) { PendingTestResult = pending };
+            var window = CreateWindow(applyService: applyService, configProvider: configProvider);
+
+            GetTextBox(window, "BomKeywordBox")!.Text = "custom-bom";
+
+            bool result = await window.ApplySettingsAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.True);
+                Assert.That(applyService.LastTestToken.IsCancellationRequested, Is.False,
+                    "a mapping-only save must not cancel the in-flight open probe");
+                Assert.That(GetText(window, "ConnectionCardTitle"),
+                            Is.EqualTo("Testing connection…"),
+                            "the open probe still owns the card — no NotProbed verdict applied");
+                Assert.That(GetStatusBarText(window, "ActionStatusBar"), Is.EqualTo("Saved."));
+            });
+
+            // The in-flight probe still lands on the card.
+            pending.SetResult(new ConnectionProbeResult(
+                ConnectionProbeStatus.Connected, "Connection successful."));
+            WaitForProbe(window);
+
+            Assert.That(GetText(window, "ConnectionCardTitle"), Is.EqualTo("Connected"));
         }
 
         // ── Test connection (#233, #239, #242) ─────────────────────────────

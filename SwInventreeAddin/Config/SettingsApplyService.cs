@@ -60,6 +60,15 @@ namespace SwInventreeAddin.Config
 
             // The save already happened, so a failed probe is reported back to the
             // caller instead of throwing — it must never roll back persisted settings.
+            // The caller asserts no connection-relevant field changed (#249): the
+            // save stands alone — no probe, no verdict.
+            if (!input.ProbeConnection)
+            {
+                return new ConnectionProbeResult(
+                    ConnectionProbeStatus.NotProbed,
+                    "Settings saved — the connection was not probed.");
+            }
+
             // A credential-less save is valid ("server only" on the configuration
             // axis): report it without probing — there is nothing to test with.
             if (apiKey.Length == 0)
