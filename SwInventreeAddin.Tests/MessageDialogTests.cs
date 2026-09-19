@@ -1,4 +1,3 @@
-using System;
 using System.Threading;
 using System.Windows.Forms;
 using NUnit.Framework;
@@ -23,8 +22,7 @@ namespace SwInventreeAddin.Tests
                 MessageBoxButtons.OKCancel,
                 MessageBoxIcon.Warning);
             var dialog = new MessageDialog(vm, form.Handle);
-            var wait = HiddenTestWindow.WaitForCenteredOnOwnerAsync(
-                dialog, form.Handle, TimeSpan.FromSeconds(8));
+            var wait = HiddenTestWindow.WaitForCenteredOnOwnerAsync(dialog, form.Handle);
 
             // Closing without clicking a button resolves to the cancel-equivalent result.
             var result = dialog.ShowDialog();

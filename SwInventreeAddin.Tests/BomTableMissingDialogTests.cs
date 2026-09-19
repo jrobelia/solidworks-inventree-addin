@@ -1,4 +1,3 @@
-using System;
 using System.Threading;
 using NUnit.Framework;
 using SwInventreeAddin.UI;
@@ -17,8 +16,7 @@ namespace SwInventreeAddin.Tests
             form.Show();
 
             var dialog = new BomTableMissingDialog("inventree", form.Handle);
-            var wait = HiddenTestWindow.WaitForCenteredOnOwnerAsync(
-                dialog, form.Handle, TimeSpan.FromSeconds(8));
+            var wait = HiddenTestWindow.WaitForCenteredOnOwnerAsync(dialog, form.Handle);
 
             dialog.ShowDialog();
             wait.GetAwaiter().GetResult();

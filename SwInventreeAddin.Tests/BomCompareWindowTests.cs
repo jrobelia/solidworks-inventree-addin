@@ -48,8 +48,7 @@ namespace SwInventreeAddin.Tests
             var mapping = PropertyMappingConfig.WithDefaults();
             var vm = new BomCompareViewModel(client, bomService, mapping, 1, "inventree");
             var dialog = new BomCompareWindow(vm, "TEST-001", "Test Assembly");
-            var wait = HiddenTestWindow.WaitForCenteredOnOwnerAsync(
-                dialog, form.Handle, TimeSpan.FromSeconds(8));
+            var wait = HiddenTestWindow.WaitForCenteredOnOwnerAsync(dialog, form.Handle);
 
             dialog.ShowDialog();
             wait.GetAwaiter().GetResult();

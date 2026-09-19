@@ -107,8 +107,7 @@ namespace SwInventreeAddin.Tests
                 }), DispatcherPriority.Background);
             };
 
-            var wait = HiddenTestWindow.WaitForCenteredOnOwnerAsync(
-                dialog, form.Handle, TimeSpan.FromSeconds(8));
+            var wait = HiddenTestWindow.WaitForCenteredOnOwnerAsync(dialog, form.Handle);
 
             dialog.ShowDialog();
             wait.GetAwaiter().GetResult();
@@ -163,8 +162,7 @@ namespace SwInventreeAddin.Tests
         {
             WindowCentering.Attach(dialog, form.Handle);
 
-            var wait = HiddenTestWindow.WaitForCenteredOnOwnerAsync(
-                dialog, form.Handle, TimeSpan.FromSeconds(8));
+            var wait = HiddenTestWindow.WaitForCenteredOnOwnerAsync(dialog, form.Handle);
 
             dialog.ShowDialog();
             wait.GetAwaiter().GetResult();

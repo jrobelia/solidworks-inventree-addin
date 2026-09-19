@@ -34,8 +34,7 @@ namespace SwInventreeAddin.Tests
 
             using var image = new Bitmap(100, 100);
             var dialog = new ImageCropWindow(image);
-            var wait = HiddenTestWindow.WaitForCenteredOnOwnerAsync(
-                dialog, form.Handle, TimeSpan.FromSeconds(8));
+            var wait = HiddenTestWindow.WaitForCenteredOnOwnerAsync(dialog, form.Handle);
 
             dialog.ShowDialog();
             wait.GetAwaiter().GetResult();
