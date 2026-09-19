@@ -87,7 +87,7 @@ namespace SwInventreeAddin.UI
         private string _password = string.Empty;
         private string _sharedMappingPath = string.Empty;
         private string _bomKeyword = string.Empty;
-        private bool _useLocalMapping = true;
+        private bool _useSharedMapping = false;
 
         // Configured state only: which slice of the form a toolbar click
         // revealed. Both are forced open whenever the config is incomplete.
@@ -159,7 +159,7 @@ namespace SwInventreeAddin.UI
                 _sharedMappingPath = _savedConfig.MappingSourcePath ?? string.Empty;
                 _bomKeyword = _savedConfig.BomKeyword ?? "inventree";
                 _savedWaitForServerAssignedIpn = _savedConfig.WaitForServerAssignedIpn;
-                _useLocalMapping = string.IsNullOrEmpty(_savedConfig.MappingSourcePath);
+                _useSharedMapping = !string.IsNullOrEmpty(_savedConfig.MappingSourcePath);
             }
 
             _savedSnapshot = CaptureSnapshot();
@@ -228,11 +228,11 @@ namespace SwInventreeAddin.UI
             set { if (Set(ref _bomKeyword, value)) OnDraftsChanged(); }
         }
 
-        /// <summary>True → the local Property Mapping file is used and the shared path persists as null.</summary>
-        public bool UseLocalMapping
+        /// <summary>True → the shared Property Mapping path is used and persisted; false → the local file.</summary>
+        public bool UseSharedMapping
         {
-            get => _useLocalMapping;
-            set { if (Set(ref _useLocalMapping, value)) OnDraftsChanged(); }
+            get => _useSharedMapping;
+            set { if (Set(ref _useSharedMapping, value)) OnDraftsChanged(); }
         }
 
         // ── Derived outputs ───────────────────────────────────────────────────
@@ -432,9 +432,9 @@ namespace SwInventreeAddin.UI
         /// </summary>
         public SettingsApplyInput BuildApplyInput()
         {
-            string? sharedPath = _useLocalMapping
-                ? null
-                : (string.IsNullOrWhiteSpace(_sharedMappingPath) ? null : _sharedMappingPath.Trim());
+            string? sharedPath = _useSharedMapping
+                ? (string.IsNullOrWhiteSpace(_sharedMappingPath) ? null : _sharedMappingPath.Trim())
+                : null;
 
             var input = new SettingsApplyInput
             {
@@ -779,7 +779,7 @@ namespace SwInventreeAddin.UI
 
                 // The radios always land on the saved source — a refresh
                 // discards an unapplied radio draft.
-                UseLocalMapping = string.IsNullOrEmpty(_savedConfig?.MappingSourcePath);
+                UseSharedMapping = !string.IsNullOrEmpty(_savedConfig?.MappingSourcePath);
 
                 MappingStatusText = result.FullStatusMessage;
                 MappingStatusSeverity = result.Health switch
@@ -1008,7 +1008,7 @@ namespace SwInventreeAddin.UI
                 password: _password,
                 sharedPath: _sharedMappingPath.Trim(),
                 bomKeyword: _bomKeyword.Trim(),
-                useLocalMapping: _useLocalMapping,
+                useLocalMapping: !_useSharedMapping,
                 waitForServerAssignedIpn: _savedWaitForServerAssignedIpn);
 
         // Every draft change can flip dirty gating, the Cancel/Close label, and
