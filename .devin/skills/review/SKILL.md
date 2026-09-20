@@ -29,6 +29,14 @@ The production adapters at this seam are the `review-standards` and `review-spec
 
 Callers proceed on `clean`, `resolved`, or `deferred`; stop for the user on `escalated`; and ask the user on `capped`. `REVIEW_NOTES` must reach the PR body under `### Review notes` and `### Deferred and follow-up issues`.
 
+## GUI diffs: surface captures
+
+When the diff touches XAML or GUI-visible code, render the surfaces it touched and hand the PNG paths to the axes — a reviewer can `read` a PNG and check it against `docs/agents/design-language.md`. Grey-on-grey and pattern-mismatch defects are invisible in a XAML diff.
+
+    dotnet test "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj" --disable-build-servers --filter "Name~Capture_<Surface>"
+
+`Name~Capture_` renders the whole catalog; `Name~Capture_<Surface>` scopes to one surface. Captures are `[Explicit]` — the normal suite never runs them. Each render writes `<Surface>-<state>.png` under `SwInventreeAddin.Tests/bin/Debug/net48/Captures/`. The catalog lives in `SwInventreeAddin.Tests/Capture/SurfaceCapture.cs`; registering a new surface or state is one `Entry` plus its stub wiring.
+
 ## Process
 
 Do not move to the next step until the current step's condition holds.
