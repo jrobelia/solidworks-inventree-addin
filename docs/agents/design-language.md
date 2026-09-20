@@ -47,8 +47,10 @@ Tokens are defined in `SwInventreeAddin/UI/DesignTokens.xaml` — this doc says 
 
 ## Status — color means severity
 
+Every status surface displays **Status Entries** — text + severity + persistence class + the domain fact or action it reports (ADR-0024; vocabulary in `CONTEXT.md`). Entries are **Transient** (an action's in-progress phase, then its terminal result) or **Persistent** (a domain fact surfaced only when it needs attention — healthy facts emit no entry). The Task Pane strip is the aggregation surface: it projects the top entry — a reigning transient at any severity, else the highest-severity persistent — and lists suppressed entries in its tooltip. Every other bar is a scoped projection of its own domain. Which domain emits which entries: `docs/agents/status-producer-map.md`.
+
 - The severity palette is `BrushStatusSuccess` / `BrushStatusWarning` / `BrushStatusError` / `BrushStatusNone`, plus `BrushStatusNotTested` (hollow-dot grey) and `BrushAccentBlue` (configured, unprobed).
-- **Status bar** — `StatusBarControl`: a 32px strip with a 4px severity stripe and selectable read-only text (`StatusBarTextStyle`). The stripe carries the severity, the text carries the message. Bars are scoped — each reports its own scope's last action (the Server Connection bar reports connection actions; the footer bar reports Apply/Save).
+- **Status bar** — `StatusBarControl`: a 32px strip with a 4px severity stripe and selectable read-only text (`StatusBarTextStyle`). The stripe carries the severity, the text carries the message. Bars are scoped — each projects its own domain's entries (the Server Connection bar reports connection actions; the footer bar reports Apply/Save).
 - **Status dot** — the 10px ellipse on the Settings status card. Filled severity color for probed states; hollow (`Transparent` fill, `BrushStatusNotTested` stroke) for not-tested; `BrushAccentBlue` for configured-but-unprobed.
 - The Task Pane's own status bar follows the same stripe + severity-icon convention, docked to the bottom.
 
