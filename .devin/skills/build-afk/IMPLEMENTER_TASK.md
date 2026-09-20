@@ -74,6 +74,8 @@ Your granted toolset is `read`, `edit`, `exec`, `grep`, `glob` (shown in your fu
      if ((${#files[@]})); then dotnet format "Solidworks Inventree Add-In.sln" --include "${files[@]}"; fi
      ```
 
+     A stall on workspace load doesn't recover — kill the `dotnet.exe` PID and re-run.
+
    - The WPF smoke harness when the UI pointer fired.
 
    Any loop red: fix it and re-run, or return `BLOCKED` — never commit on red.

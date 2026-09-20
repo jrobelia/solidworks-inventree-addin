@@ -32,3 +32,5 @@ Body template:
 ```
 
 Omit `Failure type` and `PR` when no PR context is present.
+
+When one issue covers several ledger findings, list each finding's observed/expected under What happened. When several issues come from one QA run, cross-reference the related issues under Additional context.

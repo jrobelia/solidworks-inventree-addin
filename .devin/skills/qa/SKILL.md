@@ -10,12 +10,13 @@ Human-in-the-loop verification for the SolidWorks InvenTree Add-In. QA sits afte
 
 `grill-with-docs → to-spec → to-tickets → build-hitl | build-afk → qa`
 
-QA orients from the current branch, proposes Test Groups, builds a GUI-focused test plan, runs the preflight, walks the user through each step, labels verified issues, files failures, and hands off to the `git` skill for merge when QA passes.
+QA orients from the current branch, proposes Test Groups, builds a GUI-focused test plan, runs the preflight, walks the user through each step, records every failure in a per-run findings ledger, resolves each finding's disposition with the user (fix-now, file, wontfix, or park), labels verified issues, and hands off to the `git` skill for merge when QA passes.
 
 ## References
 
 - [TEST-PLAN.md](TEST-PLAN.md) — group and test plan templates
 - [BUG-REPORT.md](BUG-REPORT.md) — failure issue body template
+- [FINDINGS.md](FINDINGS.md) — per-run findings ledger format and dispositions
 - [PREFLIGHT.md](PREFLIGHT.md) — SolidWorks/build/test/registration preflight
 - [CHECKLIST.md](CHECKLIST.md) — severity, step quality, edge cases, anti-patterns
 - `docs/agents/domain.md` and `CONTEXT.md` — domain vocabulary
@@ -98,6 +99,10 @@ After orienting, produce a short internal summary of the changed areas:
 
 Do not paste the raw file list or diff hunks into user-facing text. Use the domain-area summary to justify additional Test Groups and edge cases, in domain language only.
 
+### Run folder
+
+Once the pass's anchor is known, create `.scratch/qa/<run>/`, where `<run>` is `pr-<N>` when oriented from a PR, `issue-<N>` when oriented from issues (first issue number when several), or the branch slug when oriented from the diff. The folder holds the approved plan (`plan.md`) and the findings ledger (`findings.md`) — see [FINDINGS.md](FINDINGS.md). Together they make the pass resumable: a session that stops mid-walk, for a fix-now or anything else, restarts from the ledger.
+
 ## 2. Propose Test Groups
 
 Default: one issue per Test Group. Propose a multi-issue group only when issues share acceptance criteria that cannot be verified in isolation.
@@ -128,6 +133,8 @@ If the change touches the **Task Pane**, a **dialog**, a **control**, or a **dat
 Add a smoke test group at the start of the plan, before the issue-specific groups. Derive the smoke tests from the diff: trace the changed files and methods back to the major user-facing flows they participate in and add one broad check per major flow using the mappings in [CHECKLIST.md](CHECKLIST.md). Do not repeat the specific issue acceptance criteria; the issue groups handle those. If the diff is narrow, fall back to the base list in [CHECKLIST.md](CHECKLIST.md). Present each as a suggestion the engineer can skip; track skipped steps. This group catches regressions in the surrounding general behavior the focused plan may miss.
 
 Present the test plan using the **compact format** in [TEST-PLAN.md](TEST-PLAN.md): group titles and step titles only. The full step detail (preconditions, action, expected) belongs in the detailed format and is used during the walk or when the user asks to expand. Print the compact plan in the chat response first, then ask the user to reply with approve/edit/reorder/expand. Do not use `ask_user_question` for long plan approvals — the question dialog can hide the previous chat and make the plan hard to review.
+
+Write the approved plan to `<run>/plan.md` so the walk can resume from it.
 
 ## 4. Preflight
 
@@ -167,11 +174,12 @@ Interpret the answer. If the result is unclear, confirm before moving on:
 
 ### On Fail
 
-1. Ask for the severity: P0, P1, P2, or P3. See [CHECKLIST.md](CHECKLIST.md).
-2. If a PR is in context, ask whether the failure is **PR-blocking** or **follow-up**. Track this for the end-of-QA decision.
-3. Explore the codebase only to understand the domain area. Write the failure in domain terms from `CONTEXT.md`; leave out file paths, line numbers, and module names.
-4. File the issue immediately using the [BUG-REPORT.md](BUG-REPORT.md) template and `gh issue create`. Apply the labels `bug,needs-triage`.
-5. Continue with the next step.
+1. Ask for the severity (P0–P3, see [CHECKLIST.md](CHECKLIST.md)) and whether to **fix-now or defer** — one `ask_user_question` carrying both. Fix-now is the user's call for quick fixes worth addressing while the failure is fresh; the agent may flag which findings look cheap to fix, but does not choose.
+2. Explore the codebase only to understand the domain area. Write the finding in domain terms from `CONTEXT.md`; leave out file paths, line numbers, and module names.
+3. Record the finding in the run's findings ledger before continuing — see [FINDINGS.md](FINDINGS.md). Every failure becomes a ledger entry with a proposed blocking flag; issues are created later in the disposition pass, when the run's full failure set is visible at once.
+4. If the user picked **fix-now**: pause the walk and fix. `dotnet test` still runs while SolidWorks is open, but a GUI retest needs the add-in rebuilt and reloaded — closing SolidWorks, rebuilding, and relaunching. The ledger and `plan.md` mark where the walk resumes. After a green retest of the failed step (and any same-surface steps it casts doubt on), mark the finding `fixed (<commit>)` and continue.
+5. If the fix-now does not land, return the finding to `pending` for the disposition pass.
+6. Continue with the next step.
 
 ### On Skip
 
@@ -181,7 +189,7 @@ Track skipped steps. When the group completes, ask whether to apply `qa-verified
 
 When a Test Group completes:
 
-- If any step failed, skip `qa-verified` for that group. The failure issue carries the result.
+- If any step failed and its finding was not fixed-and-retested, skip `qa-verified` for that group. The ledger carries the result.
 - If all steps passed and none were skipped, apply `qa-verified` to every issue in the group immediately:
   ```powershell
   gh issue edit <number> --add-label qa-verified
@@ -189,32 +197,49 @@ When a Test Group completes:
 - If any steps were skipped, ask: "Some steps were skipped — mark issue(s) #N (and #M…) as `qa-verified` anyway?" Apply the label based on the answer.
 
 Apply `qa-verified` as each group completes, not at the end of the session.
-Track whether any PR-blocking failure was filed; this blocks the PR from being promoted at the end of QA.
 
-## 7. Ready for review and merge
+## 7. Disposition pass
+
+After the walk, every `pending` finding in the ledger gets a disposition. Print the findings table — finding, severity, proposed blocking, one-line symptom — with a proposed disposition per finding, then let the user confirm or override each:
+
+- **fix-now** — still available for anything the user wants addressed without a ticket; same pause-fix-retest flow as during the walk.
+- **file** — create an issue per [BUG-REPORT.md](BUG-REPORT.md), labeled `bug,needs-triage`. This pass sees the whole run, so shape the issues accordingly: check open issues for duplicates (`gh issue list --state open`), merge findings that share a root cause into one issue, split a compound failure into several, and cross-reference filed issues that belong together. Settle blocking vs follow-up per filed issue here — the judgment is better against the full failure set than at the moment of the fail.
+- **wontfix** — a conscious decision not to fix that could come up again (a future QA run, a reviewer, another reporter). File the issue, label `bug,wontfix`, and close it in the same pass so the decision leaves a searchable record:
+  ```powershell
+  gh issue close <N> --comment "Closed wontfix during QA of <run>: <reason>"
+  ```
+- **park** — accept and forget, for observations not worth any record. Parking leaves no tracker artifact; the ledger in `.scratch` is the only record and dies with it.
+
+Wontfixed and parked findings never block merge — when the user disposes of a finding proposed as blocking either way, confirm the block is being dropped.
+
+Update each ledger entry's disposition as decisions land. When a finding's root cause is the pipeline itself — a test that should exist, a review that should have caught it — name it as a build-afk retro candidate in the pass output; one line, nothing more.
+
+## 8. Ready for review and merge
 
 After all Test Groups are resolved:
 
-- If **no PR-blocking failures** were filed, the PR is eligible to leave draft:
+- If the ledger holds **no blocking findings** — no filed blocking issues, no unresolved fix-nows — the PR is eligible to leave draft:
   1. Run:
      ```powershell
      gh pr ready <number>
      ```
-  2. Ask the user: "QA passed with no blocking issues. Merge this PR now?"
+  2. Ask the user: "QA passed with no blocking findings. Merge this PR now?"
   3. If the user confirms, follow the `git` skill's **Merging a PR** procedure. Do not inline the merge command or branch cleanup here.
   4. If the user declines, stop with the PR marked ready for review.
-- If **any PR-blocking failure** was filed, leave the PR in draft. Summarize the blocking issue(s) and stop without asking to merge.
+- If **any blocking finding** remains — a filed blocking issue or a fix-now that did not land — leave the PR in draft. Summarize the blocking findings and stop without asking to merge.
 
-## 8. End summary
+## 9. End summary
 
-After the PR has been promoted, merged, or left in draft, print a closing summary:
+After the PR has been promoted, merged, or left in draft, generate the closing summary from the ledger:
 
 ```
 Session complete.
   Passed:  N steps
-  Failed:  N steps (N PR-blocking, N follow-up)
+  Failed:  N steps
   Skipped: N steps
+  Findings: N fixed during QA, N filed, N wontfix, N parked
   qa-verified groups: #12, #15/#16
-  Failure issues filed: #34 (PR-blocking: …), #35 (follow-up: …)
+  Issues filed: #34 (blocking: …), #35 (follow-up: …), #36 (wontfix: …)
+  Parked findings: F5 — <symptom>, F7 — <symptom>
   PR status: draft / ready for review / merged
 ```
