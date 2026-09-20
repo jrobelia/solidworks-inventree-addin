@@ -52,6 +52,7 @@ Map every significant item in the diff against **repo standards first**, then th
 - Skip a naming smell when the identifier or string is spec-verbatim — a name dictated by ticket text or an ADR can't be renamed without deviating from spec. A genuine name-versus-behavior contradiction belongs to the spec axis, not this one.
 - Skip anything a tool already enforces.
 - Mark documented-standard breaches as RED when they are hard violations; mark baseline smells as YELLOW (judgement calls) or GREEN (cosmetic).
+- A finding that admits more than one resolution names the preferred one — the smallest-interface fix, consistent with the Speculative Generality test. An unranked menu lets the implementer pick an option a later pass re-flags, spending a fix round on the fix.
 
 ## Completion criterion
 
