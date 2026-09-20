@@ -10,7 +10,7 @@ Human-in-the-loop verification for the SolidWorks InvenTree Add-In. QA sits afte
 
 `grill-with-docs → to-spec → to-tickets → build-hitl | build-afk → qa`
 
-QA orients from the current branch, proposes Test Groups, builds a GUI-focused test plan, runs the preflight, walks the user through each step, records every failure in a per-run findings ledger, resolves each finding's disposition with the user (fix-now, file, wontfix, or park), labels verified issues, and hands off to the `git` skill for merge when QA passes.
+QA orients from the current branch, builds a GUI-focused test plan, runs the preflight, walks the user through each step, records every failure in a per-run findings ledger, resolves each finding's disposition with the user (fix-now, file, wontfix, or park), labels verified issues, and hands off to the `git` skill for merge when QA passes.
 
 ## References
 
@@ -103,19 +103,15 @@ Do not paste the raw file list or diff hunks into user-facing text. Use the doma
 
 Once the pass's anchor is known, create `.scratch/qa/<run>/`, where `<run>` is `pr-<N>` when oriented from a PR, `issue-<N>` when oriented from issues (first issue number when several), or the branch slug when oriented from the diff. The folder holds the approved plan (`plan.md`) and the findings ledger (`findings.md`) — see [FINDINGS.md](FINDINGS.md). Together they make the pass resumable: a session that stops mid-walk, for a fix-now or anything else, restarts from the ledger.
 
-## 2. Propose Test Groups
-
-Default: one issue per Test Group. Propose a multi-issue group only when issues share acceptance criteria that cannot be verified in isolation.
-
-Use the diff summary to check that the proposed groups cover every changed GUI surface and gating condition. If the diff reveals a changed window, dialog, control, data-bound property, or behavior that is not tied to an issue's acceptance criteria, add a diff-driven group named after the surface (e.g. "Task Pane mapping-status tooltip") or add the coverage to the nearest related group. If two issues share a changed surface and cannot be verified in isolation, merge them into one group.
-
-Present the proposed groups using the [TEST-PLAN.md](TEST-PLAN.md) group format. Print the full proposal in the chat response first, then ask the user to reply with approve/edit/merge/split. Do not use `ask_user_question` for long proposal approvals — the question dialog can hide the previous chat and make the proposal hard to review.
-
-## 3. Build the test plan
+## 2. Build the test plan
 
 Read `docs/agents/domain.md` and `CONTEXT.md` first if they exist. Use their vocabulary throughout the plan.
 
-For each approved Test Group, generate test steps from two sources:
+Default: one issue per Test Group. Merge issues into one group only when they share a changed surface or acceptance criteria that cannot be verified in isolation.
+
+Use the diff summary to check that the groups cover every changed GUI surface and gating condition. If the diff reveals a changed window, dialog, control, data-bound property, or behavior that is not tied to an issue's acceptance criteria, add a diff-driven group named after the surface (e.g. "Task Pane mapping-status tooltip") or add the coverage to the nearest related group.
+
+For each Test Group, generate test steps from two sources:
 
 1. **Issues (why)** — the acceptance criteria and expected behavior.
 2. **Diff (what)** — the changed GUI surfaces, controls, and gating logic.
@@ -132,15 +128,17 @@ If the change touches the **Task Pane**, a **dialog**, a **control**, or a **dat
 
 Add a smoke test group at the start of the plan, before the issue-specific groups. Derive the smoke tests from the diff: trace the changed files and methods back to the major user-facing flows they participate in and add one broad check per major flow using the mappings in [CHECKLIST.md](CHECKLIST.md). Do not repeat the specific issue acceptance criteria; the issue groups handle those. If the diff is narrow, fall back to the base list in [CHECKLIST.md](CHECKLIST.md). Present each as a suggestion the engineer can skip; track skipped steps. This group catches regressions in the surrounding general behavior the focused plan may miss.
 
-Present the test plan using the **compact format** in [TEST-PLAN.md](TEST-PLAN.md): group titles and step titles only. The full step detail (preconditions, action, expected) belongs in the detailed format and is used during the walk or when the user asks to expand. Print the compact plan in the chat response first, then ask the user to reply with approve/edit/reorder/expand. Do not use `ask_user_question` for long plan approvals — the question dialog can hide the previous chat and make the plan hard to review.
+### Present for approval
+
+Present the plan once, using the **compact format** in [TEST-PLAN.md](TEST-PLAN.md): group titles and step titles only. The full step detail (preconditions, action, expected) belongs in the detailed format and is used during the walk or when the user asks to expand. Print the compact plan in the chat response first, then ask the user to reply with approve/edit/merge/split/reorder/expand — one approval covers grouping and steps together; on a merge or split reply, regenerate the affected steps and re-present the compact plan. Do not use `ask_user_question` for long plan approvals — the question dialog can hide the previous chat and make the plan hard to review.
 
 Write the approved plan to `<run>/plan.md` so the walk can resume from it.
 
-## 4. Preflight
+## 3. Preflight
 
 Run the preflight in [PREFLIGHT.md](PREFLIGHT.md) before the GUI test pass. Stop if the build or test run fails and ask the user to fix the branch before QA.
 
-## 5. Walk the steps
+## 4. Walk the steps
 
 ### Smoke test pass
 
@@ -185,7 +183,7 @@ Interpret the answer. If the result is unclear, confirm before moving on:
 
 Track skipped steps. When the group completes, ask whether to apply `qa-verified` anyway.
 
-## 6. Label verified groups
+## 5. Label verified groups
 
 When a Test Group completes:
 
@@ -198,7 +196,7 @@ When a Test Group completes:
 
 Apply `qa-verified` as each group completes, not at the end of the session.
 
-## 7. Disposition pass
+## 6. Disposition pass
 
 After the walk, every `pending` finding in the ledger gets a disposition. Print the findings table — finding, severity, proposed blocking, one-line symptom — with a proposed disposition per finding, then let the user confirm or override each:
 
@@ -214,7 +212,7 @@ Wontfixed and parked findings never block merge — when the user disposes of a 
 
 Update each ledger entry's disposition as decisions land. When a finding's root cause is the pipeline itself — a test that should exist, a review that should have caught it — name it as a build-afk retro candidate in the pass output; one line, nothing more.
 
-## 8. Ready for review and merge
+## 7. Ready for review and merge
 
 After all Test Groups are resolved:
 
@@ -228,7 +226,7 @@ After all Test Groups are resolved:
   4. If the user declines, stop with the PR marked ready for review.
 - If **any blocking finding** remains — a filed blocking issue or a fix-now that did not land — leave the PR in draft. Summarize the blocking findings and stop without asking to merge.
 
-## 9. End summary
+## 8. End summary
 
 After the PR has been promoted, merged, or left in draft, generate the closing summary from the ledger:
 

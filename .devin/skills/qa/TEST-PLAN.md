@@ -1,18 +1,6 @@
 # Test Plan Formats
 
-Use these templates when presenting proposals and the full plan. Print the proposal or plan in the chat response; keep the `ask_user_question` prompt concise. Do not put the full plan inside the `ask_user_question` body — a long question box can break the UI.
-
-## Group proposal
-
-```
-Proposed Test Groups (N groups, N issues):
-
-**Group 1: #12 — Add save button**
-**Group 2: #15, #16 — Profile edit and display** (interdependent: display depends on save)
-**Group 3: #18 — Delete account**
-
-Approve this grouping, or merge/split groups before we continue?
-```
+Use these templates when presenting the test plan and walking steps. Print the plan in the chat response; keep the `ask_user_question` prompt concise. Do not put the full plan inside the `ask_user_question` body — a long question box can break the UI.
 
 ## Full test plan
 
@@ -31,7 +19,7 @@ Here is the test plan — N Test Groups, N steps total.
 **Group 2: #15, #16 — Profile edit and display** (5 steps)
 1. ...
 
-Ready to start? Approve, edit, reorder, or expand any group/step.
+Ready to start? Approve, edit, merge/split, reorder, or expand any group/step.
 ```
 
 ### Detailed format
