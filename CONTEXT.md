@@ -86,6 +86,18 @@ Rendering the active SolidWorks 3D viewport to an image file for upload to Inven
 The type of the active SolidWorks document: Part, Assembly, Drawing, or Unknown.
 _Avoid_: file type, SW type
 
+**Status Entry**:
+One unit of add-in status: text + severity + persistence class + the domain fact or action it reports. Status surfaces display a projection of entries — suppressed entries are retained and re-emerge; they are never overwritten. See ADR-0024.
+_Avoid_: status message, status text
+
+**Transient Status**:
+A **Status Entry** class for action lifecycle: an in-progress phase ("Fetching…") then a terminal result ("Fetch complete", "Error: …"). Reigns on the **Task Pane** status strip until the next action result or an invalidating state change, then decays — never on a timer.
+_Avoid_: toast, notification
+
+**Persistent Status**:
+A **Status Entry** class projected from domain facts (server configured, credential saved, last-probe connection verdict, Mapping Health, document/link state). Emitted only when attention is needed — healthy facts emit no entry. An Error-tier entry persists until the condition is remedied.
+_Avoid_: indicator, banner
+
 ## Relationships
 
 - An **IPN** links exactly one SolidWorks document to one InvenTree part
