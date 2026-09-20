@@ -27,6 +27,7 @@ Installer/*.zip
 bin/
 obj/
 bin_unit_test/
+obj_unit_test/
 *.user
 *.suo
 .vs/
