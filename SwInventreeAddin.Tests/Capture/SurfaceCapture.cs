@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls.Primitives;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using NUnit.Framework;
@@ -51,11 +52,10 @@ namespace SwInventreeAddin.Tests.Capture
             new Entry("SettingsWindow", "fresh",
                 () => CreateSettingsWindow(StubConfigProvider.WithNoSavedConfig())),
             new Entry("SettingsWindow", "configured",
-                () => CreateSettingsWindow(new StubConfigProvider("https://inventree.example.com", "saved-key"))),
+                () => CreateSettingsWindow(SavedConfig())),
             new Entry("SettingsWindow", "change-credential", () =>
             {
-                var window = CreateSettingsWindow(
-                    new StubConfigProvider("https://inventree.example.com", "saved-key"));
+                var window = CreateSettingsWindow(SavedConfig());
                 var button = (ButtonBase)LogicalTreeHelper.FindLogicalNode(window, "ChangeCredentialButton")!;
                 button.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
                 return window;
@@ -79,6 +79,10 @@ namespace SwInventreeAddin.Tests.Capture
                 window.Show();
                 window.UpdateLayout();
 
+                var rect = HiddenTestWindow.GetRect(new WindowInteropHelper(window).Handle);
+                Assert.That(HiddenTestWindow.IsOnScreen(rect), Is.False,
+                    $"{entry.Surface}:{entry.State} must render off every monitor (rect {rect})");
+
                 var content = (FrameworkElement)window.Content!;
                 var width = (int)Math.Ceiling(content.ActualWidth);
                 var height = (int)Math.Ceiling(content.ActualHeight);
@@ -97,6 +101,9 @@ namespace SwInventreeAddin.Tests.Capture
 
             return path;
         }
+
+        private static StubConfigProvider SavedConfig()
+            => new StubConfigProvider("https://inventree.example.com", "saved-key");
 
         private static SettingsWindow CreateSettingsWindow(IConfigProvider configProvider)
         {

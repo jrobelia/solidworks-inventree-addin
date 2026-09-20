@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using NUnit.Framework;
@@ -42,6 +43,7 @@ namespace SwInventreeAddin.Tests.Capture
         {
             var path = SurfaceCapture.RenderToPng(entry);
 
+            Assert.That(File.Exists(path), Is.True);
             TestContext.WriteLine(path);
         }
     }

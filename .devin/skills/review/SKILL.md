@@ -35,7 +35,7 @@ When the diff touches XAML or GUI-visible code, render the surfaces it touched a
 
     dotnet test "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj" --disable-build-servers --filter "Name~Capture_<Surface>"
 
-`Name~Capture_` renders the whole catalog; `Name~Capture_<Surface>` scopes to one surface. Captures are `[Explicit]` — the normal suite never runs them. Each render writes `<Surface>-<state>.png` under `SwInventreeAddin.Tests/bin/Debug/net48/Captures/`. The catalog lives in `SwInventreeAddin.Tests/Capture/SurfaceCapture.cs`; registering a new surface or state is one `Entry` plus its stub wiring.
+`Name~Capture_` renders the whole catalog; `Name~Capture_<Surface>` scopes to one surface; `Name~Capture_<Surface>_<state>` scopes to a single state. Captures are `[Explicit]` — the normal suite never runs them. Each render writes `<Surface>-<state>.png` under `SwInventreeAddin.Tests/bin/Debug/net48/Captures/`. The catalog lives in `SwInventreeAddin.Tests/Capture/SurfaceCapture.cs`; registering a new surface or state is one `Entry` plus its stub wiring.
 
 ## Process
 
