@@ -4,7 +4,15 @@
 
 The **Task Pane** status strip is a single-slot surface written through one choke point (`TaskPaneViewModel.SetStatus`, ~59 call sites) carrying three message classes: guidance hints (document/config state), transient action lifecycle ("Fetching…" → result), and persistent health facts (**Mapping Health**, and under #241 the last-known connection verdict). Under last-writer-wins, any transient silently erased a persistent fact until the next refresh — observed when an action result overwrote the mapping-health reading (#271).
 
-Issue #271 asked which model to adopt: spatial partitioning (VS/SolidWorks-style slots per producer) or priority arbitration (one slot, most-important-first). `docs/research/status-surface-hig.md` surveyed the primary sources.
+Issue #271 asked which model to adopt: spatial partitioning (VS/SolidWorks-style slots per producer) or priority arbitration (one slot, most-important-first). The primary-source survey lives in `docs/research/status-surface-hig.md` (a local-only research note — `docs/research/` is gitignored); the load-bearing evidence is inlined below so this ADR stands alone.
+
+The status-line family's own words:
+
+- **Qt `QStatusBar`** (doc.qt.io/qt-6/qstatusbar.html) defines the three classes verbatim: *Temporary* "may be hidden by temporary messages… briefly occupies most of the status bar"; *Normal* "occupies part of the status bar and may be hidden by temporary messages"; *Permanent* "is never hidden". A temporary message hides Normal content, which re-appears when the temporary expires or is replaced.
+- **Eclipse `IStatusLineManager`**: "an error message overrides the current message until the error message is cleared… when the error message is cleared, the non-error message is put back on the status line" — the retention latch with restore.
+- **EEMUA 191** (quoted via the UK HSE technical measure): alarms "prioritised in terms of which… require the most urgent operator attention", with the complement that "low priority alarms are not overlooked" — the suppressed entries remain in the list.
+- **Windows UX Guidelines** (learn.microsoft.com/…/ctrl-status-bars): "Status bars are easy to overlook… users should never have to know what is in the status bar. If users must see it, don't put it in a status bar" — the bar is an ambient surface; criticality belongs elsewhere.
+- **Toast timeouts are a different widget's rule**: Android Snackbar 4 s/10 s, GNOME toast 5 s, PatternFly 8 s — all floating surfaces; no first-party source prescribes wall-clock decay for an inline status line.
 
 ## Decision
 
