@@ -28,7 +28,7 @@ namespace SwInventreeAddin.Config
         public string BomKeyword { get; set; } = "inventree";
 
         /// <summary>Whether to wait for the server to assign an IPN on part creation.</summary>
-        public bool WaitForServerAssignedIpn { get; set; } = true;
+        public bool WaitForServerAssignedIpn { get; set; } = ServerConfig.DefaultWaitForServerAssignedIpn;
 
         /// <summary>
         /// Whether <see cref="ISettingsApplyService.ApplyAsync"/> probes the connection
