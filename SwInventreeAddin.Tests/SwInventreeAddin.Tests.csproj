@@ -24,7 +24,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SwInventreeAddin\SwInventreeAddin.csproj">
-      <Properties>OutputPath=bin_unit_test\net48\</Properties>
+      <Properties>OutputPath=bin_unit_test\net48\;IntermediateOutputPath=obj_unit_test\$(Configuration)\$(TargetFramework)\</Properties>
     </ProjectReference>
   </ItemGroup>
 </Project>

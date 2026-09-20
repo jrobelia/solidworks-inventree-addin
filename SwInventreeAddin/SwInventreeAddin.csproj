@@ -7,6 +7,10 @@
     <AssemblyName>SwInventreeAddin</AssemblyName>
     <Nullable>enable</Nullable>
     <LangVersion>8.0</LangVersion>
+    <!-- The test project's redirected build writes intermediates to obj_unit_test;
+         keep that tree out of this project's compile glob or the two solution
+         build instances compile each other's generated files. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj_unit_test\**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.CSharp" />
