@@ -28,15 +28,15 @@ Written imperatively at each site today; under the model they are projections of
 | --- | --- | --- | --- |
 | `:823` | PK path, start | "Fetching from InvenTree…" | None (in-progress) |
 | `:828` | PK path, client null | "No server configured — click ⚙ Settings…" | Warning |
-| `:853` | PK path, request threw | `Error: {ex.Message}` | Error |
-| `:859` | PK path, part null | `No part found in InvenTree for PK: {pk}` | Warning |
+| `:853` | PK path, request threw | `Error: {pkError.Message}` | Error |
+| `:859` | PK path, part null | `No part found in InvenTree for PK: {_documentPk}` | Warning |
 | `:879` | Link Mismatch declined | "Fetch cancelled — Link Mismatch." | Warning |
 | `:908` | IPN path, start | "Fetching from InvenTree…" | None (in-progress) |
 | `:913` | IPN path, client null | "No server configured — click ⚙ Settings…" | Warning |
-| `:937` | IPN path, request threw | `Error: {ex.Message}` | Error |
+| `:937` | IPN path, request threw | `Error: {fetchError.Message}` | Error |
 | `:943` | IPN path, no results | `No part found in InvenTree for: {ipn}` | Warning |
-| `:967` | duplicate IPNs, no revision match | `{n} parts share IPN '{ipn}' but none match SW revision {rev}. Resolve in InvenTree.` | Error |
-| `:977` | duplicate IPNs, several revision matches | `{n} parts share IPN '{ipn}' and revision {rev}. Resolve duplicates in InvenTree.` | Error |
+| `:967` | duplicate IPNs, no revision match | `{parts.Count} parts share IPN ‘{ipn}’ but none match SW revision {revLabel}. Resolve in InvenTree.` | Error |
+| `:977` | duplicate IPNs, several revision matches | `{parts.Count} parts share IPN ‘{ipn}’ and revision {revLabel}. Resolve duplicates in InvenTree.` | Error |
 
 ### Transient — Create Part result
 
@@ -90,7 +90,7 @@ Every `SetStatus("", None)` is hand-rolled decay; ADR-0024 replaces all of them 
 
 | Site | Trigger | Decays what |
 | --- | --- | --- |
-| `:562` | LINKED-by-PK + client | whatever reigned |
+| `:562` | LINKED-by-PK + client, session differs (`!sessionMatches`) | whatever reigned |
 | `:591` | LINKED-by-IPN + client | whatever reigned |
 | `:630` | `OnDocumentPropertyChanged`, user edit diverges | stale action result |
 | `:895` | PK fetch success | the "Fetching…" in-progress phase — success writes blank |
@@ -99,7 +99,7 @@ Every `SetStatus("", None)` is hand-rolled decay; ADR-0024 replaces all of them 
 
 ## Scoped surfaces
 
-ADR-0024 `## Scope`: every surface is a scoped projection of the one model; these stay scoped to their own domain per ADR-0018 and are listed at producer granularity rather than per call site.
+ADR-0024's scope decision: every surface is a scoped projection of the one model; these stay scoped to their own domain per ADR-0018 and are listed at producer granularity rather than per call site.
 
 | Surface | Producer | Writes | Class |
 | --- | --- | --- | --- |
@@ -110,7 +110,7 @@ ADR-0024 `## Scope`: every surface is a scoped projection of the one model; thes
 | Create Part dialog bar | `CreatePartViewModel.SetStatus` — 12 sites (`:282`, `:290`, `:295`, `:335`, `:361`, `:370`, `:384`, `:392`, `:407`, `:439`, `:453`, `:457`) | category loads, "Creating part…", IPN poll, validation and create errors; `:361` projects Mapping Health into the dialog | Transient — dialog scope |
 | BOM Compare bar | `BomCompareViewModel.StatusText` — 6 writes (`:165`, `:180`, `:196`, `:200`, `:209`, `:295`) | "Loading…", "Pushing selected lines…", per-line result summary | Transient — dialog scope |
 | Mapping editor bar | `MappingEditorViewModel.StatusMessage`/`StatusSeverity` | validation errors/warnings projected from the draft | Persistent — dialog scope |
-| Popups (`MessageDialog`, `PushRevisionConfirmDialog`, `BomTableMissingDialog`, `ImageCropWindow`) | — | none — popups own the critical tier (ADR-0018), outside the strip's lanes | — |
+| Popups (`MessageDialog`, `PushRevisionConfirmDialog`, `BomTableMissingDialog`, `ImageCropWindow`) | — | none — popups own the critical tier (ADR-0024), outside the strip's lanes | — |
 
 `StatusBarControl.SetStatus` and the `SettingsWindow.xaml.cs` forwards are render adapters, not producers — they draw whatever a ViewModel hands them.
 
