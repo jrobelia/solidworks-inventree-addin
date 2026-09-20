@@ -398,6 +398,14 @@ namespace SwInventreeAddin.UI
         /// </summary>
         private readonly SynchronizationContext? _uiContext;
 
+        // Captured alongside _uiContext so "already on the UI thread" is a
+        // thread check, not a context check — inside a Dispatcher.Invoke
+        // callback SynchronizationContext.Current is a fresh
+        // DispatcherSynchronizationContext wrapper that never reference-equals
+        // the captured context, and Send would marshal into a context whose
+        // pump is not running.
+        private readonly int _uiThreadId;
+
         /// <summary>
         /// When true, the Create Part flow polls InvenTree for a server-assigned IPN.
         /// When false (default), the poll is skipped and the dialog closes immediately.
@@ -434,6 +442,7 @@ namespace SwInventreeAddin.UI
             _configProvider = configProvider;
             _validationService = createPartValidator;
             _uiContext = SynchronizationContext.Current;
+            _uiThreadId = Environment.CurrentManagedThreadId;
 
             LoadPartNumber();
             AttachMappingProvider();
@@ -1387,16 +1396,17 @@ namespace SwInventreeAddin.UI
         }
 
         /// <summary>
-        /// Runs <paramref name="action"/> on the UI thread.
-        /// Uses Send (synchronous) so callers see property updates immediately.
-        /// Falls back to inline execution when no context was captured (unit tests).
+        /// Runs <paramref name="action"/> on the UI thread. Same-thread callers
+        /// execute inline; off-thread callers marshal through Send (synchronous)
+        /// so they see property updates immediately. Falls back to inline
+        /// execution when no context was captured (unit tests).
         /// </summary>
         private void RunOnUiThread(Action action)
         {
-            if (_uiContext != null && SynchronizationContext.Current != _uiContext)
-                _uiContext.Send(_ => action(), null);
-            else
+            if (Environment.CurrentManagedThreadId == _uiThreadId || _uiContext == null)
                 action();
+            else
+                _uiContext.Send(_ => action(), null);
         }
 
         /// <summary>

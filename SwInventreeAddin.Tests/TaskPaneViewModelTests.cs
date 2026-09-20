@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using SwInventreeAddin.Config;
@@ -1279,6 +1280,59 @@ namespace SwInventreeAddin.Tests
             oldProvider.SaveMapping(oldProvider.Config);
 
             Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.None));
+        }
+
+        [Test]
+        public void MappingChanged_MarshalsThroughTheCapturedSyncContext()
+        {
+            var stubContext = new StubSynchronizationContext();
+            var previous = SynchronizationContext.Current;
+            SynchronizationContext.SetSynchronizationContext(stubContext);
+            try
+            {
+                var provider = new StubPropertyMappingProvider { Config = PropertyMappingConfig.WithDefaults() };
+                _vm = new TaskPaneViewModel(_client, _propertyService, null, provider,
+                                            createPartValidator: _createPartValidator);
+
+                // A caller on another thread marshals through Send.
+                Task.Run(provider.RaiseMappingChanged).Wait();
+
+                Assert.That(stubContext.SendCount, Is.GreaterThan(0));
+            }
+            finally
+            {
+                SynchronizationContext.SetSynchronizationContext(previous);
+            }
+        }
+
+        [Test]
+        public void MappingChanged_OnTheCapturedThread_RunsInline()
+        {
+            // Same-thread callers must not Send: inside a WPF Dispatcher.Invoke
+            // the current context is a fresh DispatcherSynchronizationContext
+            // wrapper that never reference-equals the captured one — a Send
+            // there would marshal into a context whose pump is not running.
+            var stubContext = new StubSynchronizationContext();
+            var previous = SynchronizationContext.Current;
+            SynchronizationContext.SetSynchronizationContext(stubContext);
+            try
+            {
+                var provider = new StubPropertyMappingProvider { Config = PropertyMappingConfig.WithDefaults() };
+                _vm = new TaskPaneViewModel(_client, _propertyService, null, provider,
+                                            createPartValidator: _createPartValidator);
+
+                // Simulate Dispatcher.Invoke: the same thread now runs under a
+                // different SynchronizationContext instance than the captured one.
+                SynchronizationContext.SetSynchronizationContext(new StubSynchronizationContext());
+
+                provider.RaiseMappingChanged();
+
+                Assert.That(stubContext.SendCount, Is.EqualTo(0));
+            }
+            finally
+            {
+                SynchronizationContext.SetSynchronizationContext(previous);
+            }
         }
 
         // ── Task 4-B: Info panel display properties ────────────────────────────
