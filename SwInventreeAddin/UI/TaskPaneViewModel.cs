@@ -354,6 +354,17 @@ namespace SwInventreeAddin.UI
         private bool _mappingHealthWarningActive;
 
         /// <summary>
+        /// Add-in-originated Document Property writes awaiting their echo:
+        /// mapped property name → written value. SolidWorks reports our own
+        /// writes back through the change-notification callback — possibly
+        /// synchronously during the write — and a follow-up re-read can still
+        /// return the pre-write value, so a matching notification is consumed
+        /// without re-reading. Entries persist until their echo arrives.
+        /// </summary>
+        private readonly Dictionary<string, string> _pendingDocumentWrites =
+            new Dictionary<string, string>(StringComparer.Ordinal);
+
+        /// <summary>
         /// UI-thread synchronisation context captured at construction.
         /// Null when constructed on a thread-pool thread (unit tests) — in
         /// that case RunOnUiThread executes actions inline.
@@ -554,6 +565,12 @@ namespace SwInventreeAddin.UI
         /// </summary>
         public void OnDocumentPropertyChanged(string propertyName, string newValue)
         {
+            // An echo of our own pending write carries no new information —
+            // the substitute-refresh already installed the announced value —
+            // and a re-read could return a stale pre-write value.
+            if (TryConsumePendingWrite(propertyName, newValue))
+                return;
+
             RefreshMappingResult();
 
             if (_session == null || _mappingResult?.Health != MappingHealth.Healthy)
@@ -620,6 +637,33 @@ namespace SwInventreeAddin.UI
 
         private static bool ValuesMatch(string? left, string? right)
             => string.Equals(left?.Trim(), right?.Trim(), StringComparison.Ordinal);
+
+        /// <summary>
+        /// Records an add-in-originated Document Property write so its echo
+        /// notification can be recognized and consumed. Call before the write —
+        /// SolidWorks may raise the notification synchronously during it.
+        /// </summary>
+        private void RegisterPendingWrite(string? propertyName, string? value)
+        {
+            if (string.IsNullOrEmpty(propertyName) || value == null) return;
+            _pendingDocumentWrites[propertyName!] = value;
+        }
+
+        /// <summary>
+        /// Consumes a notification echoing a pending add-in write: same mapped
+        /// property name, same value. Returns false — leaving the entry pending
+        /// for its still-expected echo — when the value differs, i.e. a real
+        /// user or external edit on that property.
+        /// </summary>
+        private bool TryConsumePendingWrite(string propertyName, string newValue)
+        {
+            if (!_pendingDocumentWrites.TryGetValue(propertyName, out var expected))
+                return false;
+            if (!ValuesMatch(expected, newValue))
+                return false;
+            _pendingDocumentWrites.Remove(propertyName);
+            return true;
+        }
 
         private void LightRefreshAfterDocumentChange()
         {
@@ -709,7 +753,10 @@ namespace SwInventreeAddin.UI
                 {
                     var m = GetMappingOrDefault();
                     if (!string.IsNullOrEmpty(m.PkProperty))
+                    {
+                        RegisterPendingWrite(m.PkProperty, part.Pk.ToString());
                         _propertyService.SetCustomProperty(m.PkProperty!, part.Pk.ToString());
+                    }
                     RefreshDocumentSubstituting(pkText: part.Pk.ToString());
                 }
 
@@ -833,6 +880,7 @@ namespace SwInventreeAddin.UI
                     // so the document is linked by IPN going forward without an explicit Apply.
                     if (!string.IsNullOrWhiteSpace(pkPart.Ipn) && string.IsNullOrWhiteSpace(docIpn) && !string.IsNullOrWhiteSpace(m.IpnProperty))
                     {
+                        RegisterPendingWrite(m.IpnProperty, pkPart.Ipn);
                         _propertyService.SetCustomProperty(m.IpnProperty!, pkPart.Ipn);
                         PartNumber = pkPart.Ipn;
                         RefreshDocumentSubstituting(ipn: pkPart.Ipn);
@@ -969,8 +1017,10 @@ namespace SwInventreeAddin.UI
         public void ApplyNameToDocument()
         {
             if (_session == null || _mappingResult?.CanUseForPartSync != true) return;
-            var missing = FindMissingProperties(new[] { GetMappingOrDefault().NameProperty });
+            var nameProperty = GetMappingOrDefault().NameProperty;
+            var missing = FindMissingProperties(new[] { nameProperty });
             if (missing.Count > 0 && !ConfirmMissingProperties(missing)) return;
+            RegisterPendingWrite(nameProperty, _session.Part.Name);
             RefreshDocumentSubstituting(name: _session.ApplyName());
             SetStatus("Name applied.", StatusSeverity.Success);
         }
@@ -979,8 +1029,10 @@ namespace SwInventreeAddin.UI
         public void ApplyNotesToDocument()
         {
             if (_session == null || _mappingResult?.CanUseForPartSync != true) return;
-            var missing = FindMissingProperties(new[] { GetMappingOrDefault().NotesProperty });
+            var notesProperty = GetMappingOrDefault().NotesProperty;
+            var missing = FindMissingProperties(new[] { notesProperty });
             if (missing.Count > 0 && !ConfirmMissingProperties(missing)) return;
+            RegisterPendingWrite(notesProperty, _session.Part.Notes);
             RefreshDocumentSubstituting(notes: _session.ApplyNotes());
             SetStatus("Notes applied.", StatusSeverity.Success);
         }
@@ -989,8 +1041,10 @@ namespace SwInventreeAddin.UI
         public void ApplyDescriptionToDocument()
         {
             if (_session == null || _mappingResult?.CanUseForPartSync != true) return;
-            var missing = FindMissingProperties(new[] { GetMappingOrDefault().DescriptionProperty });
+            var descriptionProperty = GetMappingOrDefault().DescriptionProperty;
+            var missing = FindMissingProperties(new[] { descriptionProperty });
             if (missing.Count > 0 && !ConfirmMissingProperties(missing)) return;
+            RegisterPendingWrite(descriptionProperty, _session.Part.Description);
             RefreshDocumentSubstituting(description: _session.ApplyDescription());
             SetStatus("Description applied.", StatusSeverity.Success);
         }
@@ -999,8 +1053,10 @@ namespace SwInventreeAddin.UI
         public void ApplyPkToDocument()
         {
             if (_session == null || _mappingResult?.CanUseForPartSync != true) return;
-            var missing = FindMissingProperties(new[] { GetMappingOrDefault().PkProperty });
+            var pkProperty = GetMappingOrDefault().PkProperty;
+            var missing = FindMissingProperties(new[] { pkProperty });
             if (missing.Count > 0 && !ConfirmMissingProperties(missing)) return;
+            RegisterPendingWrite(pkProperty, _session.Part.Pk.ToString());
             RefreshDocumentSubstituting(pkText: _session.ApplyPk());
             SetStatus("InvenTree PK applied.", StatusSeverity.Success);
         }
@@ -1231,11 +1287,16 @@ namespace SwInventreeAddin.UI
             if (_session == null) return;
             var doc = _state.Document;
 
-            var keep = _state.Kind == TaskPaneStateKind.Linked && doc != null
-                && (string.IsNullOrEmpty(doc.Ipn)
-                    ? _session.Part.Pk == doc.StampedPartPk
-                    : string.Equals(_session.Part.Ipn, doc.Ipn, StringComparison.Ordinal)
-                      && _session.Part.Pk == doc.StampedPartPk);
+            // An InvenTree Part PK of 0 is never a value — it could only match
+            // a missing stamp — so a positive stamped PK is required in both
+            // branches, not just incidentally via Kind on the blank-IPN one.
+            var pkMatches = doc != null
+                && doc.StampedPartPk > 0
+                && _session.Part.Pk == doc.StampedPartPk;
+
+            var keep = _state.Kind == TaskPaneStateKind.Linked && pkMatches
+                && (string.IsNullOrEmpty(doc!.Ipn)
+                    || string.Equals(_session.Part.Ipn, doc.Ipn, StringComparison.Ordinal));
 
             if (!keep)
                 ClearSession();

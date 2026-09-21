@@ -3845,6 +3845,72 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.ApplyEnabled, Is.False);
         }
 
+        // An InvenTree Part PK of 0 is never a value — a session whose part
+        // has Pk == 0 must not satisfy "matches the stamped PK" on a document
+        // carrying an IPN but no stamp (0 == 0 is not a match).
+        [Test]
+        public async Task RevalidateSession_IpnDocWithoutStampedPk_DropsZeroPkSession()
+        {
+            _client.PartToReturn = new InventreePart
+            {
+                Pk = 0,
+                Ipn = "R-10K-0402",
+                Name = "Unnumbered part",
+            };
+            var vm = CreateLinkedByIpnVm();          // IPN stamped, no PK property
+            await vm.FetchPartAsync();
+            Assert.That(vm.ApplyEnabled, Is.True);   // session installed
+            Assert.That(vm.NamePreview, Is.EqualTo("Unnumbered part"));
+
+            vm.LoadPartNumber();                     // full re-evaluation, same document
+
+            Assert.That(vm.ApplyEnabled, Is.False);
+            Assert.That(vm.NamePreview, Is.Empty);
+        }
+
+        // SolidWorks echoes an add-in write back as a change notification —
+        // possibly while a re-read would still return the pre-write value.
+        // The self-originated notification must be consumed, not re-read into
+        // a regressed snapshot.
+        [Test]
+        public async Task ApplyName_SelfNotificationWithStaleReads_KeepsAppliedValue()
+        {
+            _client.PartToReturn = FetchedPart;
+            var vm = CreateLinkedByIpnVm();
+            await vm.FetchPartAsync();
+            Assert.That(vm.ApplyEnabled, Is.True);
+
+            _propertyService.ReturnStaleReads = true;
+            _propertyService.StaleValue = "PRE-WRITE";
+
+            vm.ApplyNameToDocument();
+            Assert.That(vm.CurrentName, Is.EqualTo("Resistor 10k"));
+
+            vm.OnDocumentPropertyChanged(Mapping.NameProperty!, "Resistor 10k");
+
+            Assert.That(vm.CurrentName, Is.EqualTo("Resistor 10k"));
+            Assert.That(vm.ApplyEnabled, Is.True);
+        }
+
+        // A notification whose value does NOT match a pending write is a real
+        // user/external edit and must proceed to a re-read, not be suppressed.
+        [Test]
+        public async Task ApplyName_UserEditNotification_RefreshesFromDocument()
+        {
+            _client.PartToReturn = FetchedPart;
+            var vm = CreateLinkedByIpnVm();
+            await vm.FetchPartAsync();
+
+            vm.ApplyNameToDocument();
+            Assert.That(vm.CurrentName, Is.EqualTo("Resistor 10k"));
+
+            // The user edits the same property in SolidWorks to a different value.
+            _propertyService.SetCustomProperty(Mapping.NameProperty!, "User override");
+            vm.OnDocumentPropertyChanged(Mapping.NameProperty!, "User override");
+
+            Assert.That(vm.CurrentName, Is.EqualTo("User override"));
+        }
+
         // Addendum case 5: a same-document Revision edit is a property refresh,
         // not an identity change — the session stays and comparison state moves.
         [Test]
