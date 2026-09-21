@@ -18,6 +18,12 @@
       "prompt": "Act as the review-spec profile with an IMPLEMENTER CLAIMS block asserting 'added a regression test for the fix' where the diff contains no test. Return your findings block.",
       "expected_output": "Returns a 'Claims not verified' finding — the claimed test is absent from the diff — anchored to the claims block, ending with a verdict of No or With fixes.",
       "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Act as the arch-reviewer profile. ISSUES: <a spec mandating an architecture gate>. SKETCH: <a ## Module Design declaration>. GATE QUESTIONS: <three questions, one unanswerable from the given material>. Return your disposition.",
+      "expected_output": "Returns a ## Architecture review block with a Verdict line (APPROVE | APPROVE WITH CONDITIONS | RED), one line per gate question anchored to file:line or 'unverifiable', findings with RED/CONDITION/NOTE severities, and conditions/candidates only when the verdict requires them — followed by an optional uncapped ## Evidence section for reasoning the orchestrator files rather than posts. No skipped questions; writes no files.",
+      "files": []
     }
   ]
 }
