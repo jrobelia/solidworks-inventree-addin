@@ -3783,6 +3783,68 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.CurrentPk, Is.EqualTo("77"));
         }
 
+        // ── Document-switch token cases (#91) ────────────────────────────────
+        // ActiveDocumentTokenToReturn models a real SolidWorks document switch:
+        // a different token is an Activated transition (new generation), the
+        // same token is a Refreshed transition.
+
+        // A genuinely different document carrying the same identity stamps keeps
+        // the session — the Part → Assembly same-identity inheritance case.
+        [Test]
+        public async Task DocumentSwitch_SameIdentityStamps_PreservesSession()
+        {
+            _client.PartByPkToReturn = FetchedPart;
+            var vm = CreateLinkedByPkVm();
+            await vm.FetchPartAsync();
+            Assert.That(vm.ApplyEnabled, Is.True);
+
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+            vm.LoadPartNumber();
+
+            Assert.That(vm.ApplyEnabled, Is.True);
+            Assert.That(vm.NamePreview, Is.EqualTo("Resistor 10k"));
+            Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(42));
+        }
+
+        // A genuinely different document with different identity drops the
+        // session — the token, not the caller, decided this was a switch.
+        [Test]
+        public async Task DocumentSwitch_DifferentIdentity_DropsSession()
+        {
+            _client.PartToReturn = FetchedPart;
+            var vm = CreateLinkedByIpnVm();
+            await vm.FetchPartAsync();
+            Assert.That(vm.ApplyEnabled, Is.True);
+
+            _propertyService.Seed(Mapping.IpnProperty!, "OTHER-999");
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+            vm.LoadPartNumber();
+
+            Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(0));
+            Assert.That(vm.NamePreview, Is.Empty);
+            Assert.That(vm.ApplyEnabled, Is.False);
+            Assert.That(vm.PartNumber, Is.EqualTo("OTHER-999"));
+        }
+
+        // A real document switch noticed on a light refresh path still
+        // revalidates strictly — the session cannot ride across documents.
+        [Test]
+        public async Task DocumentSwitch_OnLightRefresh_DropsMismatchedSession()
+        {
+            _client.PartToReturn = FetchedPart;
+            var vm = CreateLinkedByIpnVm();
+            await vm.FetchPartAsync();
+            Assert.That(vm.ApplyEnabled, Is.True);
+
+            _propertyService.Seed(Mapping.IpnProperty!, "OTHER-999");
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+            vm.RefreshCurrentProperties();
+
+            Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(0));
+            Assert.That(vm.NamePreview, Is.Empty);
+            Assert.That(vm.ApplyEnabled, Is.False);
+        }
+
         // Addendum case 5: a same-document Revision edit is a property refresh,
         // not an identity change — the session stays and comparison state moves.
         [Test]

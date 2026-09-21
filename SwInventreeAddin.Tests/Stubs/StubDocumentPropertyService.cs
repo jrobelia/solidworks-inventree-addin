@@ -26,6 +26,13 @@ namespace SwInventreeAddin.Tests.Stubs
         /// <summary>Set this to control what GetDocumentType() returns in tests. Defaults to Part.</summary>
         public DocumentType DocumentTypeToReturn { get; set; } = DocumentType.Part;
 
+        /// <summary>
+        /// Set this to control what GetActiveDocumentToken() returns in tests.
+        /// Change it to model an active-document switch; defaults to "doc-1" so
+        /// repeated loads of the same fixture classify as refreshes.
+        /// </summary>
+        public string? ActiveDocumentTokenToReturn { get; set; } = "doc-1";
+
         /// <summary>When true, GetCustomProperty returns StaleValue to simulate SW's stale read after a set on assemblies.</summary>
         public bool ReturnStaleReads { get; set; }
 
@@ -33,6 +40,9 @@ namespace SwInventreeAddin.Tests.Stubs
         public string StaleValue { get; set; } = string.Empty;
 
         public DocumentType GetDocumentType() => DocumentTypeToReturn;
+
+        public string? GetActiveDocumentToken() =>
+            DocumentTypeToReturn == DocumentType.Unknown ? null : ActiveDocumentTokenToReturn;
 
         public void Seed(string name, string value) => _properties[name] = value;
 

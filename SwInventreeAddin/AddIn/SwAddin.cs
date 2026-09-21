@@ -217,7 +217,7 @@ namespace SwInventreeAddin.AddIn
         {
             _hasActiveDoc = (_swApp?.ActiveDoc != null);
             SubscribeToDocumentEvents();
-            _taskPaneControl?.LoadPartNumber();
+            _taskPaneControl?.NotifyActiveDocumentChanged();
             return 0;
         }
 
@@ -225,7 +225,7 @@ namespace SwInventreeAddin.AddIn
         {
             _hasActiveDoc = true;
             SubscribeToDocumentEvents();
-            _taskPaneControl?.LoadPartNumber();
+            _taskPaneControl?.NotifyActiveDocumentChanged();
             return 0;
         }
 
@@ -239,7 +239,7 @@ namespace SwInventreeAddin.AddIn
         {
             bool hasDoc = (_swApp?.ActiveDoc != null);
             if (_hasActiveDoc && !hasDoc)
-                _taskPaneControl?.ClearAll();
+                _taskPaneControl?.NotifyLastDocumentClosed();
             _hasActiveDoc = hasDoc;
             return 0;
         }
@@ -300,9 +300,7 @@ namespace SwInventreeAddin.AddIn
         { _taskPaneControl?.OnDocumentPropertyChanged(propName, newValue); return 0; }
 
         private int OnDocCustomPropertyDelete(string propName, string configuration, string value, int valueType)
-        { _taskPaneControl?.LoadPartNumber(); return 0; }
-
-        private void OnDocCustomPropertyChanged() => _taskPaneControl?.LoadPartNumber();
+        { _taskPaneControl?.OnDocumentPropertyChanged(propName, string.Empty); return 0; }
 
         private void OnSettingsRequested(object sender, EventArgs e)
         {

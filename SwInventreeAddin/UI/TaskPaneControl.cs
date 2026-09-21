@@ -292,9 +292,16 @@ namespace SwInventreeAddin.UI
 
         // -- Delegation to ViewModel -------------------------------------------
 
-        public void LoadPartNumber() => _vm.LoadPartNumber();
+        /// <summary>
+        /// The active SolidWorks document changed (opened, activated, loaded) —
+        /// the ViewModel re-evaluates the pane against the new document.
+        /// </summary>
+        public void NotifyActiveDocumentChanged() => _vm.LoadPartNumber();
+
+        /// <summary>The last document was closed — the ViewModel clears the pane.</summary>
+        public void NotifyLastDocumentClosed() => _vm.ClearAll();
+
         public void RefreshProperties() => _vm.RefreshCurrentProperties();
-        public void ClearAll() => _vm.ClearAll();
         public void OnDocumentPropertyChanged(string name, string value) => _vm.OnDocumentPropertyChanged(name, value);
 
         public void UpdateClient(IInventreeClient? client)
