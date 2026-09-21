@@ -3707,7 +3707,7 @@ namespace SwInventreeAddin.Tests
 
             // Stamped PK still matches the session; the IPN does not.
             _propertyService.Seed(Mapping.IpnProperty!, "OTHER-999");
-            _propertyService.Seed(Mapping.PkProperty!, "42");
+            _propertyService.Seed(Mapping.PkProperty!, FetchedPart.Pk.ToString());
             vm.LoadPartNumber();
 
             Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(0));
@@ -3723,7 +3723,7 @@ namespace SwInventreeAddin.Tests
         public async Task CompletedSession_PkOnlyDifferentPk_DropsSession()
         {
             _client.PartByPkToReturn = FetchedPart;
-            var vm = CreateLinkedByPkVm();
+            var vm = CreateLinkedByPkVm(FetchedPart.Pk.ToString());
             await vm.FetchPartAsync();
             Assert.That(vm.ApplyEnabled, Is.True);
 
