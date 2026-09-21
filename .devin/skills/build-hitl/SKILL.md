@@ -23,8 +23,8 @@ triggers: ["user"]
 
 Do not move to the next step until the **Done when** criterion for the current step is met.
 
-1. Identify the parent spec and resolve the child-ticket **task graph** and **frontier** per `REFERENCE.md` `## Inputs and issue hierarchy`. For the parent spec and every child ticket, read the full body and **all comments** per `docs/agents/issue-tracker.md` `## Comments are part of the spec`. Confirm the batch with the user.
-   **Done when:** the parent spec, the task graph, and the frontier of unblocked child tickets are identified, the body and comments of each are read, and the user has confirmed the batch.
+1. Identify the parent spec and resolve the child-ticket **task graph** and **frontier** per `REFERENCE.md` `## Inputs and issue hierarchy`. For the parent spec and every child ticket, read the full body and **all comments** per `docs/agents/issue-tracker.md` `## Comments are part of the spec`. Confirm the batch with the user, including a per-ticket playback digest — one or two lines each on what the ticket makes the add-in do in the engineer's terms — per `.devin/skills/spec-playback/`.
+   **Done when:** the parent spec, the task graph, and the frontier of unblocked child tickets are identified, the body and comments of each are read, and the user has confirmed the batch, digest included.
 2. Load the remaining **context pointers** in `REFERENCE.md` (`## Context pointers`) only when their branches fire.
    **Done when:** you can name which context pointers fired for this run and the design vocabulary has been consulted.
 3. Verify the working tree is clean. If `git status --short` is non-empty, stop and ask the user to commit or stash their changes before `/build-hitl` starts.

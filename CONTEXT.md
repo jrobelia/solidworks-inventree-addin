@@ -86,6 +86,10 @@ Rendering the active SolidWorks 3D viewport to an image file for upload to Inven
 The type of the active SolidWorks document: Part, Assembly, Drawing, or Unknown.
 _Avoid_: file type, SW type
 
+**Document Token**:
+The add-in's session-scoped identity for the active SolidWorks document: the file path for a saved document, the window title for an unsaved one. A different token marks a document switch and advances the **Task Pane** document generation; an equal token marks a refresh of the same document. Save As or rename produces a new token.
+_Avoid_: document id, SW id
+
 **Status Entry**:
 One unit of add-in status: text + severity + persistence class + the domain fact or action it reports. Status surfaces display a projection of entries — suppressed entries are retained and re-emerge; they are never overwritten. See ADR-0024.
 _Avoid_: status message, status text
