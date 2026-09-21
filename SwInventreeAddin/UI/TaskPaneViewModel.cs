@@ -247,6 +247,9 @@ namespace SwInventreeAddin.UI
 
         private DocumentType? ActiveDocumentType => _state.Document?.DocumentType;
 
+        /// <summary>True when the active document carries a positive stamped InvenTree Part PK.</summary>
+        private bool DocumentHasStampedPk => (_state.Document?.StampedPartPk ?? 0) > 0;
+
         private bool IsPartOrAssemblyDocument =>
             ActiveDocumentType == DocumentType.Part || ActiveDocumentType == DocumentType.Assembly;
 
@@ -255,14 +258,14 @@ namespace SwInventreeAddin.UI
             && _validationService != null
             && string.IsNullOrEmpty(_partNumber)
             && IsPartOrAssemblyDocument
-            && (_state.Document?.StampedPartPk ?? 0) == 0
+            && !DocumentHasStampedPk
             && _mappingResult?.CanUseForPartSync == true;
 
         private bool ShouldEnableFetch() =>
             _client != null
             && IsPartOrAssemblyDocument
             && _mappingResult?.CanFetch == true
-            && ((_state.Document?.StampedPartPk ?? 0) > 0 || !string.IsNullOrEmpty(_partNumber));
+            && (DocumentHasStampedPk || !string.IsNullOrEmpty(_partNumber));
 
         /// <summary>True when an assembly is open and the linked-data sections are showing — the Compare BOM button stays disabled until a Part Sync session exists.</summary>
         public bool BomSectionVisible =>
@@ -449,19 +452,24 @@ namespace SwInventreeAddin.UI
             var token = _propertyService.GetActiveDocumentToken();
             var snapshot = CaptureDocumentSnapshot();
 
-            // No usable active document — Unknown document type or a null token.
-            if (token == null || snapshot.DocumentType == DocumentType.Unknown)
+            // One call installs the whole document state — or clears it when
+            // there is no usable active document (null token or Unknown type).
+            // On the EMPTY branch ApplySnapshotOrClear already ran
+            // _state.ClearDocument(), so this must NOT call ClearAll() — a
+            // second ClearDocument would double-advance the generation.
+            ApplySnapshotOrClear(token, snapshot);
+
+            if (_state.Kind == TaskPaneStateKind.Empty)
             {
-                ClearAll();
+                ResetDocumentPanel();
+                NotifyBomVisibility();
                 RefreshStatus();
                 return;
             }
 
-            // One call installs the whole document state; the Changed handler
-            // projects it. Full evaluation then strictly revalidates the session
-            // against the new stamps — a document switch invalidates a session
-            // that no longer describes this document.
-            _state.ApplyDocumentUpdate(token, snapshot);
+            // Full evaluation strictly revalidates the session against the new
+            // stamps — a document switch invalidates a session that no longer
+            // describes this document.
             RevalidateSessionAgainstDocument();
             var document = _state.Document!;
 
@@ -707,7 +715,7 @@ namespace SwInventreeAddin.UI
 
                 PartNumber = part.Ipn ?? string.Empty;
                 FetchEnabled = _mappingResult?.CanFetch == true
-                    && ((_state.Document?.StampedPartPk ?? 0) > 0 || !string.IsNullOrEmpty(_partNumber));
+                    && (DocumentHasStampedPk || !string.IsNullOrEmpty(_partNumber));
                 CreatePartEnabled = CanCreatePart();
 
                 _session = new PartSyncSession(part, _client!, _propertyService, GetMappingOrDefault());
