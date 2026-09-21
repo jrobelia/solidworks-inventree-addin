@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using SwInventreeAddin.SolidWorks;
 
 namespace SwInventreeAddin.Tests.Stubs
@@ -11,6 +12,16 @@ namespace SwInventreeAddin.Tests.Stubs
 
         /// <summary>Every SetCustomProperty call, in order — name and value written.</summary>
         public IReadOnlyList<(string Name, string Value)> WriteLog => _writeLog;
+
+        /// <summary>The property names written, in order — the name projection of <see cref="WriteLog"/>.</summary>
+        public IReadOnlyList<string> WrittenNames => _writeLog.Select(w => w.Name).ToList();
+
+        /// <summary>
+        /// True when a write of <paramref name="name"/> was recorded — and of
+        /// <paramref name="value"/> too when one is given.
+        /// </summary>
+        public bool DidWrite(string name, string? value = null) =>
+            _writeLog.Any(w => w.Name == name && (value == null || w.Value == value));
 
         /// <summary>Set this to control what GetDocumentType() returns in tests. Defaults to Part.</summary>
         public DocumentType DocumentTypeToReturn { get; set; } = DocumentType.Part;

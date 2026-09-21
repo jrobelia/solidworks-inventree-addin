@@ -1491,7 +1491,7 @@ namespace SwInventreeAddin.Tests
 
             _vm.ApplyNameToDocument();
 
-            Assert.That(_propertyService.WriteLog.Select(w => w.Name),
+            Assert.That(_propertyService.WrittenNames,
                 Does.Not.Contain("Description"));
         }
 
@@ -1508,7 +1508,7 @@ namespace SwInventreeAddin.Tests
 
             _vm.ApplyNameToDocument();
 
-            Assert.That(_propertyService.WriteLog.Select(w => w.Name),
+            Assert.That(_propertyService.WrittenNames,
                 Contains.Item("Description"));
         }
 
@@ -2236,7 +2236,7 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.NamePreview, Is.EqualTo("New Resistor"));
             Assert.That(vm.ApplyEnabled, Is.True);           // fields unlocked via FetchPartAsync
             Assert.That(vm.CreatePartEnabled, Is.False);          // IPN now set — Create disabled
-            Assert.That(_propertyService.WriteLog.Select(w => w.Name),
+            Assert.That(_propertyService.WrittenNames,
                 Does.Contain("InvenTree PK")); // PK written on create
         }
 
@@ -2844,7 +2844,7 @@ namespace SwInventreeAddin.Tests
             await vm.FetchPartAsync();
 
             Assert.That(_propertyService.GetCustomProperty("PartNo"), Is.EqualTo(string.Empty));
-            Assert.That(_propertyService.WriteLog.Select(w => w.Name),
+            Assert.That(_propertyService.WrittenNames,
                 Does.Not.Contain("PartNo"));
         }
 
@@ -3689,8 +3689,7 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.NamePreview, Is.EqualTo("Resistor 10k"));
             Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(42));
             // The PK-path fetch wrote the server IPN back to the blank document.
-            Assert.That(_propertyService.WriteLog.Any(
-                w => w.Name == Mapping.IpnProperty && w.Value == "R-10K-0402"), Is.True);
+            Assert.That(_propertyService.DidWrite(Mapping.IpnProperty!, "R-10K-0402"), Is.True);
         }
 
         // Addendum case 2: a Property Mapping refresh preserves the session
@@ -3960,8 +3959,7 @@ namespace SwInventreeAddin.Tests
                 handler?.Invoke(createVm, createdPart);
             });
 
-            Assert.That(_propertyService.WriteLog.Any(
-                w => w.Name == Mapping.PkProperty && w.Value == "55"), Is.True);
+            Assert.That(_propertyService.DidWrite(Mapping.PkProperty!, "55"), Is.True);
             Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(55));
             Assert.That(vm.ApplyEnabled, Is.True);
             Assert.That(vm.StatusText, Is.EqualTo("Part created in InvenTree."));
