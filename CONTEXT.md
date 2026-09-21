@@ -40,7 +40,7 @@ The persistent SolidWorks side panel that hosts the add-in UI.
 _Avoid_: sidebar, panel, control
 
 **Task Pane State**:
-One of four states: EMPTY (no document open), UNLINKED (document open, no IPN and no InvenTree Part PK), LINKED (IPN or InvenTree Part PK present, not yet fetched), POPULATED (InvenTree data in hand).
+One of five states: EMPTY (no active document), UNSUPPORTED (unsupported active document — currently a Drawing), UNLINKED (supported document with no IPN and no stamped InvenTree Part PK), LINKED (a supported document has an IPN or stamped InvenTree Part PK, but no session valid for the current document generation and identifiers), POPULATED (a populated session belongs to the current active-document generation and identifiers). Busy, failure, and confirmation are presentation concerns, not states.
 
 **Fetch**:
 Retrieve an InvenTree part by IPN (or InvenTree Part PK) from the server and display its field values as a preview in the Task Pane.
@@ -100,7 +100,7 @@ _Avoid_: indicator, banner
 
 ## Relationships
 
-- An **IPN** links exactly one SolidWorks document to one InvenTree part
+- An **IPN** links a SolidWorks document to an InvenTree part, but an IPN may resolve to multiple InvenTree parts — disambiguated by Revision
 - A **Property Mapping** governs which **SolidWorks Document Properties** are read or written during **Fetch**, **Apply**, and **Push**, and which SolidWorks BOM column headers are recognized during **BOM Compare**
 - An **InvenTree Part PK** is associated with exactly one InvenTree part and is distinct from the **IPN**
 - **BOM Compare** operates on an Assembly **Document Type** and uses the **BOM Keyword** to locate the source table

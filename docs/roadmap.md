@@ -142,9 +142,9 @@ single `TaskPaneViewModel` seam.
 Tracked in [Milestone 4](https://github.com/jrobelia/solidworks-inventree-addin/milestone/2):
 
 - `#89` — Extract `TaskPaneState` from `TaskPaneViewModel` (parent spec)
-- `#90` — Phase A: Introduce `TaskPaneState`
+- `#90` — Phase A: Define Task Pane lifecycle and characterize behavior
 - `#91` — Phase B1: Move document state into `TaskPaneState`
-- `#92` — Phase B2: Move session lifecycle and Apply/Push delegation into `TaskPaneState`
+- `#92` — Phase B2: Introduce `PartSyncCoordinator` (as `IPartSyncCoordinator`), move session/workflow ownership, collapse `PartSyncSession` per-field methods to `ApplyAsync`/`PushAsync`, add stale-operation guards, thumbnail upload/refresh, and redesign BOM readiness integration
 - `#93` — Phase C: Contract `TaskPaneViewModel` to a thin projection adapter
 - `#65` — Reduce InvenTree round-trips during Compare BOM
 

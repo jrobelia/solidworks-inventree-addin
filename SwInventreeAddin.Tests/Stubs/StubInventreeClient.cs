@@ -142,6 +142,21 @@ namespace SwInventreeAddin.Tests.Stubs
         public int LastGetPartByPkPk { get; private set; }
         public bool ThrowOnGetPartByPk { get; set; }
 
+        private readonly PendingCallSource<int, InventreePart?> _getPartByPkCalls
+            = new PendingCallSource<int, InventreePart?>();
+
+        /// <summary>
+        /// When true, GetPartByPkAsync appends a <see cref="PendingCall{TRequest, TResult}"/>
+        /// to <see cref="PendingGetPartByPkCalls"/> and returns its incomplete task, so the
+        /// test controls when — and in what order — fetches complete.
+        /// </summary>
+        public bool DeferGetPartByPk
+        {
+            get => _getPartByPkCalls.Defer;
+            set => _getPartByPkCalls.Defer = value;
+        }
+        public List<PendingCall<int, InventreePart?>> PendingGetPartByPkCalls => _getPartByPkCalls.Calls;
+
         // Queue successive return values for polling tests.
         // When the queue runs out, falls back to PartByPkToReturn.
         private Queue<InventreePart?> _partByPkQueue;
@@ -156,6 +171,8 @@ namespace SwInventreeAddin.Tests.Stubs
             LastGetPartByPkPk = pk;
             if (ThrowOnGetPartByPk)
                 throw new HttpRequestException("Stub: GetPartByPk failed");
+            if (_getPartByPkCalls.Capture(pk) is { } deferred)
+                return deferred;
             if (_partByPkQueue != null && _partByPkQueue.Count > 0)
                 return Task.FromResult(_partByPkQueue.Dequeue());
             return Task.FromResult(PartByPkToReturn);
@@ -202,8 +219,27 @@ namespace SwInventreeAddin.Tests.Stubs
             return Task.CompletedTask;
         }
 
+        private readonly PendingCallSource<string, IReadOnlyList<InventreePart>> _getPartsByIpnCalls
+            = new PendingCallSource<string, IReadOnlyList<InventreePart>>();
+
+        /// <summary>
+        /// When true, GetPartsByIpnAsync appends a <see cref="PendingCall{TRequest, TResult}"/>
+        /// to <see cref="PendingGetPartsByIpnCalls"/> and returns its incomplete task, so the
+        /// test controls when — and in what order — fetches complete.
+        /// </summary>
+        public bool DeferGetPartsByIpn
+        {
+            get => _getPartsByIpnCalls.Defer;
+            set => _getPartsByIpnCalls.Defer = value;
+        }
+        public List<PendingCall<string, IReadOnlyList<InventreePart>>> PendingGetPartsByIpnCalls
+            => _getPartsByIpnCalls.Calls;
+
         public Task<IReadOnlyList<InventreePart>> GetPartsByIpnAsync(string ipn)
         {
+            LastIpnRequested = ipn;
+            if (_getPartsByIpnCalls.Capture(ipn) is { } deferred)
+                return deferred;
             // If a specific list was configured, return it.
             if (PartsByIpnToReturn.Count > 0)
                 return Task.FromResult(PartsByIpnToReturn);
