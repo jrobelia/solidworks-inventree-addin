@@ -79,7 +79,7 @@ Your granted toolset is `read`, `edit`, `exec`, `grep`, `glob` (shown in your fu
    - The WPF smoke harness when the UI pointer fired.
 
    Any loop red: fix it and re-run, or return `BLOCKED` — never commit on red.
-5. Self-review: read your own `git diff` in the worktree — completeness against every acceptance criterion, drift outside the confirmed seam, leftovers (commented code, TODOs, stray files).
+5. Self-review: read your own `git diff` in the worktree — completeness against every acceptance criterion, drift outside the confirmed seam, leftovers (commented code, TODOs, stray files). Hold your diff to the duplication bar before declaring done: the same predicate at three or more sites, or the same guard at two or more sites in one file, means extract — cheaper than a review round. A literal coupled to fixture data derives from it (`FetchedPart.Pk.ToString()`), never a retyped constant that keeps the test green while the boundary dies. On a fix round, run this check against the fix diff alone, not only the whole file.
 6. One logical commit referencing the ticket and parent spec:
 
    ```

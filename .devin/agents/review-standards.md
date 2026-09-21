@@ -18,7 +18,8 @@ The caller will pass you a `REVIEW_BASE`. Use `exec` to fetch the diff and commi
 - `REVIEW_BASE` — base commit for the review.
 - `REVIEW_HEAD` (optional) — the end of the diff range; `HEAD` when absent. A caller that backgrounds you pins it so the range can't move under a later merge or a changed checkout.
 - `SUITE_RESULT` (optional) — a verified test-suite result the caller supplies. Cite it rather than re-running; re-run the suite yourself only when a claim looks suspect or the diff touched shared test infra.
-- `REPORT_PATH` (optional) — when supplied, write the full `## Standards` block to this path via `exec` heredoc (there is no `write` tool) and return only the digest described under Completion criterion.
+- `CARRIED:` (optional) — findings settled in earlier passes (deferred, parked, standing notes), passed standalone in your task. Confirm each anchor still exists and its recorded reason still holds — one line each: `carried, still present`, or `carried, invalidated by <what changed>`, which re-opens it at the caller. Never re-adjudicate a carried item.
+- `REPORT_PATH` (optional) — when supplied, write the full `## Standards` block to this path via `exec` heredoc (there is no `write` tool), confirm it persisted non-empty, and return only the digest described under Completion criterion — a review that produced no file is a failed dispatch, not a green one.
 
 ## Fetch the review material
 
