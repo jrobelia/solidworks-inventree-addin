@@ -17,6 +17,10 @@ Custom skills live in `.devin/skills/`. `.agents/skills/` holds downloaded skill
 
 Before any design decision that creates, changes, or removes a public seam, read `docs/agents/coding-standards.md` `## Module Design`, consult `/codebase-design`, and proceed only when you can state the seam declaration it requires.
 
+## Spec discipline
+
+Before a spec is published to the issue tracker, run the **playback** in `.devin/skills/spec-playback/` — the spec re-narrated in the engineer's terms — and wait for their confirmation. Post the confirmed playback as a comment on the published spec issue.
+
 ## Where to look next
 
 - [Build, test, language, naming, and code-quality rules](docs/agents/coding-standards.md)
