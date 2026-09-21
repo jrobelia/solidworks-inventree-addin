@@ -348,7 +348,9 @@ namespace SwInventreeAddin.UI
         // ── State ─────────────────────────────────────────────────────────────
 
         // temporary — deleted by #92 when PartSyncCoordinator owns the session.
-        // Holds no document identity: it is revalidated against _state.Document.
+        // Holds no document identity: it is dropped on every document switch
+        // (Activated) and revalidated against _state.Document on same-document
+        // evaluations.
         private PartSyncSession? _session;
         private MappingResult? _mappingResult;
         private bool _mappingHealthWarningActive;
@@ -480,9 +482,10 @@ namespace SwInventreeAddin.UI
                 return;
             }
 
-            // Full evaluation strictly revalidates the session against the new
-            // stamps — a document switch invalidates a session that no longer
-            // describes this document.
+            // Full evaluation strictly revalidates the session against the
+            // current stamps — same-document identity edits still drop it.
+            // On an Activated transition ApplySnapshotOrClear already dropped
+            // the session, so this is a no-op after a document switch.
             RevalidateSessionAgainstDocument();
             var document = _state.Document!;
 
@@ -1211,7 +1214,8 @@ namespace SwInventreeAddin.UI
         /// Installs <paramref name="snapshot"/> under the opaque
         /// <paramref name="token"/>, or clears the document state when there is
         /// no usable active document. A genuine document switch (Activated)
-        /// always revalidates the session strictly.
+        /// drops the session unconditionally — the new document evaluates on
+        /// its own stamps.
         /// </summary>
         private void ApplySnapshotOrClear(string? token, TaskPaneDocumentSnapshot snapshot)
         {
@@ -1230,7 +1234,13 @@ namespace SwInventreeAddin.UI
                 // deliberately does not clear — it would reopen the in-flight
                 // echo window this set exists to close.
                 _pendingDocumentWrites.Clear();
-                RevalidateSessionAgainstDocument();
+
+                // A document switch drops the session unconditionally (#292):
+                // identical IPN + stamped InvenTree Part PK on the new document
+                // is a copied file with stale stamps, not a state to adopt.
+                // Silent — the cleared preview is the signal.
+                if (_session != null)
+                    ClearSession();
             }
         }
 
@@ -1273,9 +1283,10 @@ namespace SwInventreeAddin.UI
         /// Delivers a document-state transition on the UI thread: a session
         /// cannot outlive a transition to a document kind that cannot hold one
         /// (EMPTY / UNSUPPORTED), then the new snapshot is projected to the
-        /// bindings. Identity-level revalidation lives in
-        /// <see cref="RevalidateSessionAgainstDocument"/>, run by the
-        /// full-evaluation and document-switch paths.
+        /// bindings. Document switches drop the session in
+        /// <see cref="ApplySnapshotOrClear"/>; same-document identity-level
+        /// revalidation lives in <see cref="RevalidateSessionAgainstDocument"/>,
+        /// run by the full-evaluation path.
         /// </summary>
         private void OnTaskPaneStateChanged(object? sender, EventArgs e) =>
             RunOnUiThread(() =>
@@ -1289,6 +1300,8 @@ namespace SwInventreeAddin.UI
 
         /// <summary>
         /// temporary — deleted by #92 when PartSyncCoordinator owns the session.
+        /// Same-document revalidation only — an Activated transition drops the
+        /// session in <see cref="ApplySnapshotOrClear"/> before this can run.
         /// Drops the session unless it still describes the active document's
         /// identity stamps: an IPN-bearing document keeps it only on an exact
         /// IPN + stamped-PK match; a PK-only document keeps it only when the
