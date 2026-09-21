@@ -2552,20 +2552,30 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public async Task BomSectionVisible_AssemblyInheritingSessionForSamePart_IsTrue()
+        public async Task BomButtonEnabled_SwitchToSameStampedAssembly_DisabledUntilFetch()
         {
-            // A session fetched for a Part survives the switch to an Assembly
-            // stamped with the same IPN/PK — the session belongs to the
-            // InvenTree part, so the Assembly is POPULATED, not LINKED.
+            // A session fetched for a Part does NOT survive the switch to an
+            // Assembly stamped with the same IPN/PK — a document switch drops
+            // the session unconditionally (#292). The assembly lands LINKED:
+            // the section shows, but Compare BOM stays disabled until a Fetch
+            // on the assembly itself.
             _client.PartByPkToReturn = new InventreePart { Pk = 1, Ipn = "SHARED-001" };
             _propertyService.DocumentTypeToReturn = DocumentType.Part;
             CreateVm("SHARED-001", pk: "1");
             await _vm.FetchPartAsync();
 
             _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
             _vm.LoadPartNumber();
 
+            Assert.That(_vm.ApplyEnabled, Is.False);
+            Assert.That(_vm.CurrentInvenTreePk, Is.EqualTo(0));
             Assert.That(_vm.BomSectionVisible, Is.True);
+            Assert.That(_vm.BomButtonEnabled, Is.False);
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.BomButtonEnabled, Is.True);
         }
     }
 }
@@ -3494,8 +3504,9 @@ namespace SwInventreeAddin.Tests
     /// will build on.
     ///
     /// Facts pinned elsewhere are referenced, not duplicated:
-    /// Part → Assembly same-identity session inheritance —
-    ///   <see cref="BomVisibilityTests.BomSectionVisible_AssemblyInheritingSessionForSamePart_IsTrue"/>;
+    /// Part → Assembly same-stamp switch drops the session, Compare BOM
+    ///   stays disabled until a fresh Fetch —
+    ///   <see cref="BomVisibilityTests.BomButtonEnabled_SwitchToSameStampedAssembly_DisabledUntilFetch"/>;
     /// UpdateMapping with a loaded session —
     ///   TaskPaneViewModelTests.UpdateMapping_SchemaHealthy_WithSession_KeepsPartSyncActions;
     /// duplicate-IPN revision resolution — TaskPaneViewModelTests.FetchPartAsync_DuplicateIpn_*;
@@ -3651,9 +3662,12 @@ namespace SwInventreeAddin.Tests
         }
 
         // ── Completed-session rules (#90 addendum) ───────────────────────────
-        // Case 3 — a Part → Assembly switch with the same IPN and InvenTree Part
-        // PK preserves the session — is pinned by
-        // BomVisibilityTests.BomSectionVisible_AssemblyInheritingSessionForSamePart_IsTrue.
+        // Former case 3 — a Part → Assembly switch with the same IPN and
+        // InvenTree Part PK preserves the session — was withdrawn by #292: a
+        // document switch drops the session unconditionally. The drop and the
+        // disabled-until-Fetch Compare BOM are pinned by
+        // BomVisibilityTests.BomButtonEnabled_SwitchToSameStampedAssembly_DisabledUntilFetch
+        // and DocumentSwitch_SameIdentityStamps_DropsSession below.
 
         // Addendum case 1: an IPN-fetched session does not survive a direct
         // reload when the document carries no stamped InvenTree Part PK —
@@ -3788,10 +3802,14 @@ namespace SwInventreeAddin.Tests
         // a different token is an Activated transition (new generation), the
         // same token is a Refreshed transition.
 
-        // A genuinely different document carrying the same identity stamps keeps
-        // the session — the Part → Assembly same-identity inheritance case.
+        // A genuinely different document drops the session unconditionally —
+        // even one carrying identical identity stamps (#292: two documents
+        // sharing an IPN + InvenTree Part PK are a copied file with stale
+        // stamps, not a state to adopt). The new document evaluates on its
+        // own stamps — LINKED with Fetch armed. A new token on unchanged
+        // stamps is also the Save As / rename case.
         [Test]
-        public async Task DocumentSwitch_SameIdentityStamps_PreservesSession()
+        public async Task DocumentSwitch_SameIdentityStamps_DropsSession()
         {
             _client.PartByPkToReturn = FetchedPart;
             var vm = CreateLinkedByPkVm();
@@ -3801,9 +3819,14 @@ namespace SwInventreeAddin.Tests
             _propertyService.ActiveDocumentTokenToReturn = "doc-2";
             vm.LoadPartNumber();
 
-            Assert.That(vm.ApplyEnabled, Is.True);
-            Assert.That(vm.NamePreview, Is.EqualTo("Resistor 10k"));
-            Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(42));
+            Assert.That(vm.ApplyEnabled, Is.False);
+            Assert.That(vm.NamePreview, Is.Empty);
+            Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(0));
+            // The new document is still stamped with the same identity —
+            // LINKED with Fetch armed. The PK-path fetch wrote the server
+            // IPN back to the document, so it surfaces here.
+            Assert.That(vm.PartNumber, Is.EqualTo("R-10K-0402"));
+            Assert.That(vm.FetchEnabled, Is.True);
         }
 
         // A genuinely different document with different identity drops the
@@ -3826,8 +3849,8 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.PartNumber, Is.EqualTo("OTHER-999"));
         }
 
-        // A real document switch noticed on a light refresh path still
-        // revalidates strictly — the session cannot ride across documents.
+        // A real document switch noticed on a light refresh path still drops
+        // the session — the session cannot ride across documents.
         [Test]
         public async Task DocumentSwitch_OnLightRefresh_DropsMismatchedSession()
         {
@@ -3925,13 +3948,14 @@ namespace SwInventreeAddin.Tests
             vm.ApplyNameToDocument();   // the echo of this write never arrives
             Assert.That(vm.CurrentName, Is.EqualTo("Resistor 10k"));
 
-            // Switch to a document with the same identity stamps (session is
-            // adopted) but a different stored Name.
+            // Switch to a document with the same identity stamps but a
+            // different stored Name — the session is dropped (#292), which is
+            // also what routes the notification below through the re-read path.
             _propertyService.ActiveDocumentTokenToReturn = "doc-2";
             _propertyService.Seed(Mapping.PkProperty!, "42");
             _propertyService.Seed(Mapping.NameProperty!, "Doc-2 name");
             vm.LoadPartNumber();
-            Assert.That(vm.ApplyEnabled, Is.True);
+            Assert.That(vm.ApplyEnabled, Is.False);
             Assert.That(vm.CurrentName, Is.EqualTo("Doc-2 name"));
 
             // doc-2's Name is then genuinely written to the same value we

@@ -74,14 +74,15 @@ regardless of when the underlying request resolves.
 | 5 | Fetch in flight; a newer Fetch is issued in the same generation | The older completion is stale (request-order component) |
 | 6 | Create Part completion after a document switch or close | Stale — no session install, no writes |
 | 7 | Create Part completion after client replacement or Property Mapping replacement | Stale |
-| 8 | Completed result; then a switch to a document stamped with the same IPN and InvenTree Part PK | Revalidated and adopted for the new generation |
-| 9 | Completed result; then a switch to a document with different identity stamps | Dropped — the new document evaluates on its own stamps |
+| 8 | Completed result; then a switch to another document — any stamp combination, including an identical IPN + InvenTree Part PK | Dropped — the new document evaluates on its own stamps |
 
 Keep the matrix distinct from the completed-session rules: rows 1–7 cover
-work still in flight, rows 8–9 cover a completed result revalidated on a
-document switch. Rows 8–9 are executable since #91 — `DocumentSwitch_*` tests
-in `SwInventreeAddin.Tests/TaskPaneViewModelTests.cs` pin the token-based
-revalidation; rows 1–7 remain #92 coordinator work. The five
+work still in flight, row 8 covers a completed result across a document
+switch. Row 8 is executable since #91 — `DocumentSwitch_*` tests in
+`SwInventreeAddin.Tests/TaskPaneViewModelTests.cs` pin the token-based,
+unconditional drop (#292: same-stamp adoption was rejected — two documents
+sharing an IPN + InvenTree Part PK are a copied file with stale stamps);
+rows 1–7 remain #92 coordinator work. The five
 completed-session cases pinned in
 `TaskPaneLifecycleCharacterizationTests` describe what today's
 `LoadPartNumber` / `OnDocumentPropertyChanged` do once a session exists.
