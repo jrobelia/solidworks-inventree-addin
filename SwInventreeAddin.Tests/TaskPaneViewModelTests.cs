@@ -3911,6 +3911,37 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.CurrentName, Is.EqualTo("User override"));
         }
 
+        // Notifications carry no document identity, so a pending write whose
+        // echo never arrived must not outlive its document: after a switch, a
+        // same-name+same-value notification belongs to the NEW document and is
+        // a real edit, not our stale echo.
+        [Test]
+        public async Task PendingWriteEcho_AcrossDocumentSwitch_IsNotConsumed()
+        {
+            _client.PartToReturn = FetchedPart;
+            var vm = CreateLinkedByIpnVm();
+            await vm.FetchPartAsync();
+
+            vm.ApplyNameToDocument();   // the echo of this write never arrives
+            Assert.That(vm.CurrentName, Is.EqualTo("Resistor 10k"));
+
+            // Switch to a document with the same identity stamps (session is
+            // adopted) but a different stored Name.
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+            _propertyService.Seed(Mapping.PkProperty!, "42");
+            _propertyService.Seed(Mapping.NameProperty!, "Doc-2 name");
+            vm.LoadPartNumber();
+            Assert.That(vm.ApplyEnabled, Is.True);
+            Assert.That(vm.CurrentName, Is.EqualTo("Doc-2 name"));
+
+            // doc-2's Name is then genuinely written to the same value we
+            // wrote on doc-1 — a real edit that must trigger a re-read.
+            _propertyService.SetCustomProperty(Mapping.NameProperty!, "Resistor 10k");
+            vm.OnDocumentPropertyChanged(Mapping.NameProperty!, "Resistor 10k");
+
+            Assert.That(vm.CurrentName, Is.EqualTo("Resistor 10k"));
+        }
+
         // Addendum case 5: a same-document Revision edit is a property refresh,
         // not an identity change — the session stays and comparison state moves.
         [Test]

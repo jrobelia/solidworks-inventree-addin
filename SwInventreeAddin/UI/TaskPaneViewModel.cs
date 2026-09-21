@@ -359,7 +359,9 @@ namespace SwInventreeAddin.UI
         /// writes back through the change-notification callback — possibly
         /// synchronously during the write — and a follow-up re-read can still
         /// return the pre-write value, so a matching notification is consumed
-        /// without re-reading. Entries persist until their echo arrives.
+        /// without re-reading. Entries persist until their echo arrives or the
+        /// document generation advances — echoes are keyed to the document
+        /// that generated them, and notifications carry no identity.
         /// </summary>
         private readonly Dictionary<string, string> _pendingDocumentWrites =
             new Dictionary<string, string>(StringComparer.Ordinal);
@@ -675,6 +677,7 @@ namespace SwInventreeAddin.UI
         public void ClearAll()
         {
             _state.ClearDocument();
+            _pendingDocumentWrites.Clear();
             ResetDocumentPanel();
             NotifyBomVisibility();
         }
@@ -1215,11 +1218,20 @@ namespace SwInventreeAddin.UI
             if (token == null || snapshot.DocumentType == DocumentType.Unknown)
             {
                 _state.ClearDocument();
+                _pendingDocumentWrites.Clear();
                 return;
             }
 
             if (_state.ApplyDocumentUpdate(token, snapshot) == TaskPaneDocumentTransition.Activated)
+            {
+                // A new generation: pending echoes were keyed to the previous
+                // document — notifications carry no identity, so a stale entry
+                // could swallow a real edit on the new document. Refreshed
+                // deliberately does not clear — it would reopen the in-flight
+                // echo window this set exists to close.
+                _pendingDocumentWrites.Clear();
                 RevalidateSessionAgainstDocument();
+            }
         }
 
         /// <summary>
