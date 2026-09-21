@@ -79,6 +79,9 @@ regardless of when the underlying request resolves.
 
 Keep the matrix distinct from the completed-session rules: rows 1–7 cover
 work still in flight, rows 8–9 cover a completed result revalidated on a
-document switch. The five completed-session cases pinned in
+document switch. Rows 8–9 are executable since #91 — `DocumentSwitch_*` tests
+in `SwInventreeAddin.Tests/TaskPaneViewModelTests.cs` pin the token-based
+revalidation; rows 1–7 remain #92 coordinator work. The five
+completed-session cases pinned in
 `TaskPaneLifecycleCharacterizationTests` describe what today's
 `LoadPartNumber` / `OnDocumentPropertyChanged` do once a session exists.

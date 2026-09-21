@@ -29,6 +29,20 @@ namespace SwInventreeAddin.SolidWorks
             };
         }
 
+        public string? GetActiveDocumentToken()
+        {
+            var modelDoc = _swApp.ActiveDoc as IModelDoc2;
+            if (modelDoc == null) return null;
+
+            // Saved documents are identified by path; an unsaved document has
+            // no path, so fall back to its (unique per session) window title.
+            var path = modelDoc.GetPathName();
+            if (!string.IsNullOrEmpty(path)) return path;
+
+            var title = modelDoc.GetTitle();
+            return string.IsNullOrEmpty(title) ? null : title;
+        }
+
         public string GetCustomProperty(string name)
         {
             // Use 'as' rather than a direct cast: when no document is open,

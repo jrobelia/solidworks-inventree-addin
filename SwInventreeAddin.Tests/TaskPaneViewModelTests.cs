@@ -3783,6 +3783,165 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.CurrentPk, Is.EqualTo("77"));
         }
 
+        // ── Document-switch token cases (#91) ────────────────────────────────
+        // ActiveDocumentTokenToReturn models a real SolidWorks document switch:
+        // a different token is an Activated transition (new generation), the
+        // same token is a Refreshed transition.
+
+        // A genuinely different document carrying the same identity stamps keeps
+        // the session — the Part → Assembly same-identity inheritance case.
+        [Test]
+        public async Task DocumentSwitch_SameIdentityStamps_PreservesSession()
+        {
+            _client.PartByPkToReturn = FetchedPart;
+            var vm = CreateLinkedByPkVm();
+            await vm.FetchPartAsync();
+            Assert.That(vm.ApplyEnabled, Is.True);
+
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+            vm.LoadPartNumber();
+
+            Assert.That(vm.ApplyEnabled, Is.True);
+            Assert.That(vm.NamePreview, Is.EqualTo("Resistor 10k"));
+            Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(42));
+        }
+
+        // A genuinely different document with different identity drops the
+        // session — the token, not the caller, decided this was a switch.
+        [Test]
+        public async Task DocumentSwitch_DifferentIdentity_DropsSession()
+        {
+            _client.PartToReturn = FetchedPart;
+            var vm = CreateLinkedByIpnVm();
+            await vm.FetchPartAsync();
+            Assert.That(vm.ApplyEnabled, Is.True);
+
+            _propertyService.Seed(Mapping.IpnProperty!, "OTHER-999");
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+            vm.LoadPartNumber();
+
+            Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(0));
+            Assert.That(vm.NamePreview, Is.Empty);
+            Assert.That(vm.ApplyEnabled, Is.False);
+            Assert.That(vm.PartNumber, Is.EqualTo("OTHER-999"));
+        }
+
+        // A real document switch noticed on a light refresh path still
+        // revalidates strictly — the session cannot ride across documents.
+        [Test]
+        public async Task DocumentSwitch_OnLightRefresh_DropsMismatchedSession()
+        {
+            _client.PartToReturn = FetchedPart;
+            var vm = CreateLinkedByIpnVm();
+            await vm.FetchPartAsync();
+            Assert.That(vm.ApplyEnabled, Is.True);
+
+            _propertyService.Seed(Mapping.IpnProperty!, "OTHER-999");
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+            vm.RefreshCurrentProperties();
+
+            Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(0));
+            Assert.That(vm.NamePreview, Is.Empty);
+            Assert.That(vm.ApplyEnabled, Is.False);
+        }
+
+        // An InvenTree Part PK of 0 is never a value — a session whose part
+        // has Pk == 0 must not satisfy "matches the stamped PK" on a document
+        // carrying an IPN but no stamp (0 == 0 is not a match).
+        [Test]
+        public async Task RevalidateSession_IpnDocWithoutStampedPk_DropsZeroPkSession()
+        {
+            _client.PartToReturn = new InventreePart
+            {
+                Pk = 0,
+                Ipn = "R-10K-0402",
+                Name = "Unnumbered part",
+            };
+            var vm = CreateLinkedByIpnVm();          // IPN stamped, no PK property
+            await vm.FetchPartAsync();
+            Assert.That(vm.ApplyEnabled, Is.True);   // session installed
+            Assert.That(vm.NamePreview, Is.EqualTo("Unnumbered part"));
+
+            vm.LoadPartNumber();                     // full re-evaluation, same document
+
+            Assert.That(vm.ApplyEnabled, Is.False);
+            Assert.That(vm.NamePreview, Is.Empty);
+        }
+
+        // SolidWorks echoes an add-in write back as a change notification —
+        // possibly while a re-read would still return the pre-write value.
+        // The self-originated notification must be consumed, not re-read into
+        // a regressed snapshot.
+        [Test]
+        public async Task ApplyName_SelfNotificationWithStaleReads_KeepsAppliedValue()
+        {
+            _client.PartToReturn = FetchedPart;
+            var vm = CreateLinkedByIpnVm();
+            await vm.FetchPartAsync();
+            Assert.That(vm.ApplyEnabled, Is.True);
+
+            _propertyService.ReturnStaleReads = true;
+            _propertyService.StaleValue = "PRE-WRITE";
+
+            vm.ApplyNameToDocument();
+            Assert.That(vm.CurrentName, Is.EqualTo("Resistor 10k"));
+
+            vm.OnDocumentPropertyChanged(Mapping.NameProperty!, "Resistor 10k");
+
+            Assert.That(vm.CurrentName, Is.EqualTo("Resistor 10k"));
+            Assert.That(vm.ApplyEnabled, Is.True);
+        }
+
+        // A notification whose value does NOT match a pending write is a real
+        // user/external edit and must proceed to a re-read, not be suppressed.
+        [Test]
+        public async Task ApplyName_UserEditNotification_RefreshesFromDocument()
+        {
+            _client.PartToReturn = FetchedPart;
+            var vm = CreateLinkedByIpnVm();
+            await vm.FetchPartAsync();
+
+            vm.ApplyNameToDocument();
+            Assert.That(vm.CurrentName, Is.EqualTo("Resistor 10k"));
+
+            // The user edits the same property in SolidWorks to a different value.
+            _propertyService.SetCustomProperty(Mapping.NameProperty!, "User override");
+            vm.OnDocumentPropertyChanged(Mapping.NameProperty!, "User override");
+
+            Assert.That(vm.CurrentName, Is.EqualTo("User override"));
+        }
+
+        // Notifications carry no document identity, so a pending write whose
+        // echo never arrived must not outlive its document: after a switch, a
+        // same-name+same-value notification belongs to the NEW document and is
+        // a real edit, not our stale echo.
+        [Test]
+        public async Task PendingWriteEcho_AcrossDocumentSwitch_IsNotConsumed()
+        {
+            _client.PartToReturn = FetchedPart;
+            var vm = CreateLinkedByIpnVm();
+            await vm.FetchPartAsync();
+
+            vm.ApplyNameToDocument();   // the echo of this write never arrives
+            Assert.That(vm.CurrentName, Is.EqualTo("Resistor 10k"));
+
+            // Switch to a document with the same identity stamps (session is
+            // adopted) but a different stored Name.
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+            _propertyService.Seed(Mapping.PkProperty!, "42");
+            _propertyService.Seed(Mapping.NameProperty!, "Doc-2 name");
+            vm.LoadPartNumber();
+            Assert.That(vm.ApplyEnabled, Is.True);
+            Assert.That(vm.CurrentName, Is.EqualTo("Doc-2 name"));
+
+            // doc-2's Name is then genuinely written to the same value we
+            // wrote on doc-1 — a real edit that must trigger a re-read.
+            _propertyService.SetCustomProperty(Mapping.NameProperty!, "Resistor 10k");
+            vm.OnDocumentPropertyChanged(Mapping.NameProperty!, "Resistor 10k");
+
+            Assert.That(vm.CurrentName, Is.EqualTo("Resistor 10k"));
+        }
+
         // Addendum case 5: a same-document Revision edit is a property refresh,
         // not an identity change — the session stays and comparison state moves.
         [Test]
