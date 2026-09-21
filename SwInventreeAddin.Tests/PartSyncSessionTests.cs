@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -132,7 +131,7 @@ namespace SwInventreeAddin.Tests
 
             session.ApplyName();
 
-            Assert.That(_propertyService.WriteLog.Select(w => w.Name),
+            Assert.That(_propertyService.WrittenNames,
                 Does.Not.Contain(_mapping.NotesProperty!));
         }
 
@@ -156,7 +155,7 @@ namespace SwInventreeAddin.Tests
 
             session.ApplyNotes();
 
-            Assert.That(_propertyService.WriteLog.Select(w => w.Name),
+            Assert.That(_propertyService.WrittenNames,
                 Does.Not.Contain(_mapping.NameProperty!));
         }
 

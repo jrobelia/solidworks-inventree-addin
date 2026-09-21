@@ -18,3 +18,8 @@ implementation therefore `Send`s into a context whose pump is not running — a
 hang for `Send`, silent work-loss for `Post`. The three older copies
 (`TaskPaneViewModel`, `BomCompareViewModel`, `CreatePartViewModel`) predate
 this pin and are aligned under #264.
+
+The complete Task Pane lifecycle contract — STA capture → off-thread network
+work → STA validation/commit, plus the operation-token stale-result rules —
+is documented in `docs/agents/task-pane-lifecycle.md`. This ADR pins the
+marshalling mechanism; that document pins when a completion may commit at all.
