@@ -3539,6 +3539,13 @@ namespace SwInventreeAddin.Tests
             return CreateVm();
         }
 
+        private TaskPaneViewModel CreateLinkedByPkVm(string pk = "42")
+        {
+            _propertyService.Seed(Mapping.IpnProperty!, string.Empty);
+            _propertyService.Seed(Mapping.PkProperty!, pk);
+            return CreateVm();
+        }
+
         // ── Task Pane State kinds ────────────────────────────────────────────
 
         [Test]
@@ -3615,10 +3622,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void LinkedByPk_StampedPkShownFetchEnabledNoSession()
         {
-            _propertyService.Seed(Mapping.IpnProperty!, string.Empty);
-            _propertyService.Seed(Mapping.PkProperty!, "42");
-
-            var vm = CreateVm();
+            var vm = CreateLinkedByPkVm();
 
             Assert.That(vm.PropertiesSectionVisible, Is.True);
             Assert.That(vm.CurrentPk, Is.EqualTo("42"));
@@ -3676,10 +3680,8 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task CompletedSession_SameDocumentReloadWithMatchingPk_PreservesSession()
         {
-            _propertyService.Seed(Mapping.IpnProperty!, string.Empty);
-            _propertyService.Seed(Mapping.PkProperty!, "42");
             _client.PartByPkToReturn = FetchedPart;
-            var vm = CreateVm();
+            var vm = CreateLinkedByPkVm();
             await vm.FetchPartAsync();
             Assert.That(vm.ApplyEnabled, Is.True);
 
@@ -3690,6 +3692,51 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(42));
             // The PK-path fetch wrote the server IPN back to the blank document.
             Assert.That(_propertyService.DidWrite(Mapping.IpnProperty!, "R-10K-0402"), Is.True);
+        }
+
+        // Re-baseline rule: an IPN-bearing document preserves the session only
+        // when both the fetched IPN and the stamped InvenTree Part PK match —
+        // a PK match alone does not rescue a different IPN.
+        [Test]
+        public async Task CompletedSession_DifferentIpnWithMatchingPk_DropsSession()
+        {
+            _client.PartToReturn = FetchedPart;
+            var vm = CreateLinkedByIpnVm();
+            await vm.FetchPartAsync();
+            Assert.That(vm.ApplyEnabled, Is.True);
+
+            // Stamped PK still matches the session; the IPN does not.
+            _propertyService.Seed(Mapping.IpnProperty!, "OTHER-999");
+            _propertyService.Seed(Mapping.PkProperty!, "42");
+            vm.LoadPartNumber();
+
+            Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(0));
+            Assert.That(vm.NamePreview, Is.Empty);
+            Assert.That(vm.ApplyEnabled, Is.False);
+            Assert.That(vm.PartNumber, Is.EqualTo("OTHER-999"));
+        }
+
+        // Re-baseline rule: a PK-only document preserves the session only when
+        // the stamped InvenTree Part PK matches — a different stamped PK drops
+        // the session even though the fetch came from this document.
+        [Test]
+        public async Task CompletedSession_PkOnlyDifferentPk_DropsSession()
+        {
+            _client.PartByPkToReturn = FetchedPart;
+            var vm = CreateLinkedByPkVm();
+            await vm.FetchPartAsync();
+            Assert.That(vm.ApplyEnabled, Is.True);
+
+            // The PK-path fetch wrote the server IPN back — re-blank it so the
+            // reload still reads a PK-only document, then change the stamped PK.
+            _propertyService.Seed(Mapping.IpnProperty!, string.Empty);
+            _propertyService.Seed(Mapping.PkProperty!, "77");
+            vm.LoadPartNumber();
+
+            Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(0));
+            Assert.That(vm.NamePreview, Is.Empty);
+            Assert.That(vm.ApplyEnabled, Is.False);
+            Assert.That(vm.CurrentPk, Is.EqualTo("77"));
         }
 
         // Addendum case 2: a Property Mapping refresh preserves the session
@@ -3811,9 +3858,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task Fetch_PartNotFoundByPk_WarningNamesThePk()
         {
-            _propertyService.Seed(Mapping.IpnProperty!, string.Empty);
-            _propertyService.Seed(Mapping.PkProperty!, "42");
-            var vm = CreateVm();
+            var vm = CreateLinkedByPkVm();
 
             await vm.FetchPartAsync();
 
@@ -4039,10 +4084,8 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task FetchByPk_TwoInFlight_CapturedAndCompletableInEitherOrder()
         {
-            _propertyService.Seed(Mapping.IpnProperty!, string.Empty);
-            _propertyService.Seed(Mapping.PkProperty!, "42");
             _client.DeferGetPartByPk = true;
-            var vm = CreateVm();
+            var vm = CreateLinkedByPkVm();
 
             var first = vm.FetchPartAsync();
             var second = vm.FetchPartAsync();
