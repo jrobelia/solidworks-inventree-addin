@@ -142,6 +142,15 @@ namespace SwInventreeAddin.Tests.Stubs
         public int LastGetPartByPkPk { get; private set; }
         public bool ThrowOnGetPartByPk { get; set; }
 
+        /// <summary>
+        /// When true, GetPartByPkAsync appends a <see cref="PendingCall{TRequest, TResult}"/>
+        /// to <see cref="PendingGetPartByPkCalls"/> and returns its incomplete task, so the
+        /// test controls when — and in what order — fetches complete.
+        /// </summary>
+        public bool DeferGetPartByPk { get; set; }
+        public List<PendingCall<int, InventreePart?>> PendingGetPartByPkCalls { get; }
+            = new List<PendingCall<int, InventreePart?>>();
+
         // Queue successive return values for polling tests.
         // When the queue runs out, falls back to PartByPkToReturn.
         private Queue<InventreePart?> _partByPkQueue;
@@ -156,6 +165,12 @@ namespace SwInventreeAddin.Tests.Stubs
             LastGetPartByPkPk = pk;
             if (ThrowOnGetPartByPk)
                 throw new HttpRequestException("Stub: GetPartByPk failed");
+            if (DeferGetPartByPk)
+            {
+                var call = new PendingCall<int, InventreePart?>(pk);
+                PendingGetPartByPkCalls.Add(call);
+                return call.Task;
+            }
             if (_partByPkQueue != null && _partByPkQueue.Count > 0)
                 return Task.FromResult(_partByPkQueue.Dequeue());
             return Task.FromResult(PartByPkToReturn);
@@ -202,8 +217,24 @@ namespace SwInventreeAddin.Tests.Stubs
             return Task.CompletedTask;
         }
 
+        /// <summary>
+        /// When true, GetPartsByIpnAsync appends a <see cref="PendingCall{TRequest, TResult}"/>
+        /// to <see cref="PendingGetPartsByIpnCalls"/> and returns its incomplete task, so the
+        /// test controls when — and in what order — fetches complete.
+        /// </summary>
+        public bool DeferGetPartsByIpn { get; set; }
+        public List<PendingCall<string, IReadOnlyList<InventreePart>>> PendingGetPartsByIpnCalls { get; }
+            = new List<PendingCall<string, IReadOnlyList<InventreePart>>>();
+
         public Task<IReadOnlyList<InventreePart>> GetPartsByIpnAsync(string ipn)
         {
+            LastIpnRequested = ipn;
+            if (DeferGetPartsByIpn)
+            {
+                var call = new PendingCall<string, IReadOnlyList<InventreePart>>(ipn);
+                PendingGetPartsByIpnCalls.Add(call);
+                return call.Task;
+            }
             // If a specific list was configured, return it.
             if (PartsByIpnToReturn.Count > 0)
                 return Task.FromResult(PartsByIpnToReturn);

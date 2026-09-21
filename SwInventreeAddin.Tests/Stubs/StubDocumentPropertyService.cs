@@ -6,8 +6,11 @@ namespace SwInventreeAddin.Tests.Stubs
     public class StubDocumentPropertyService : IDocumentPropertyService
     {
         private readonly Dictionary<string, string> _properties = new Dictionary<string, string>();
+        private readonly List<(string Name, string Value)> _writeLog =
+            new List<(string Name, string Value)>();
 
-        public List<string> SetCallLog { get; } = new List<string>();
+        /// <summary>Every SetCustomProperty call, in order — name and value written.</summary>
+        public IReadOnlyList<(string Name, string Value)> WriteLog => _writeLog;
 
         /// <summary>Set this to control what GetDocumentType() returns in tests. Defaults to Part.</summary>
         public DocumentType DocumentTypeToReturn { get; set; } = DocumentType.Part;
@@ -28,7 +31,7 @@ namespace SwInventreeAddin.Tests.Stubs
         public void SetCustomProperty(string name, string value)
         {
             _properties[name] = value;
-            SetCallLog.Add(name);
+            _writeLog.Add((name, value));
         }
 
         public bool PropertyExists(string name) => _properties.ContainsKey(name);

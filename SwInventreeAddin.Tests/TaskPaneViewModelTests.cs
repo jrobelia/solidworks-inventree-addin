@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -1490,7 +1491,8 @@ namespace SwInventreeAddin.Tests
 
             _vm.ApplyNameToDocument();
 
-            Assert.That(_propertyService.SetCallLog, Does.Not.Contain("Description"));
+            Assert.That(_propertyService.WriteLog.Select(w => w.Name),
+                Does.Not.Contain("Description"));
         }
 
         [Test]
@@ -1506,7 +1508,8 @@ namespace SwInventreeAddin.Tests
 
             _vm.ApplyNameToDocument();
 
-            Assert.That(_propertyService.SetCallLog, Contains.Item("Description"));
+            Assert.That(_propertyService.WriteLog.Select(w => w.Name),
+                Contains.Item("Description"));
         }
 
         // ── FetchPartAsync — duplicate IPN handling ───────────────────────────────────
@@ -2233,7 +2236,8 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.NamePreview, Is.EqualTo("New Resistor"));
             Assert.That(vm.ApplyEnabled, Is.True);           // fields unlocked via FetchPartAsync
             Assert.That(vm.CreatePartEnabled, Is.False);          // IPN now set — Create disabled
-            Assert.That(_propertyService.SetCallLog, Does.Contain("InvenTree PK")); // PK written on create
+            Assert.That(_propertyService.WriteLog.Select(w => w.Name),
+                Does.Contain("InvenTree PK")); // PK written on create
         }
 
         [Test]
@@ -2840,7 +2844,8 @@ namespace SwInventreeAddin.Tests
             await vm.FetchPartAsync();
 
             Assert.That(_propertyService.GetCustomProperty("PartNo"), Is.EqualTo(string.Empty));
-            Assert.That(_propertyService.SetCallLog, Does.Not.Contain("PartNo"));
+            Assert.That(_propertyService.WriteLog.Select(w => w.Name),
+                Does.Not.Contain("PartNo"));
         }
 
         [Test]
@@ -3462,6 +3467,632 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(99));
             Assert.That(_promptShown, Is.False);
             Assert.That(vm.StatusText, Is.Empty);
+        }
+    }
+}
+
+// ── Task Pane lifecycle characterization (issue #90, parent spec #89) ─────────
+namespace SwInventreeAddin.Tests
+{
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Net.Http;
+    using System.Threading;
+    using System.Threading.Tasks;
+    using SwInventreeAddin.Bom;
+    using SwInventreeAddin.Config;
+    using SwInventreeAddin.InvenTree;
+    using SwInventreeAddin.SolidWorks;
+    using SwInventreeAddin.Tests.Stubs;
+    using SwInventreeAddin.UI;
+
+    /// <summary>
+    /// Characterization of the Task Pane lifecycle behind #89's state model:
+    /// the five Task Pane State kinds as observable ViewModel state, the
+    /// completed-session rules from the #90 addendum, and the controlled-async
+    /// surface the #92 stale-result matrix (docs/agents/task-pane-lifecycle.md)
+    /// will build on.
+    ///
+    /// Facts pinned elsewhere are referenced, not duplicated:
+    /// Part → Assembly same-identity session inheritance —
+    ///   <see cref="BomVisibilityTests.BomSectionVisible_AssemblyInheritingSessionForSamePart_IsTrue"/>;
+    /// UpdateMapping with a loaded session —
+    ///   TaskPaneViewModelTests.UpdateMapping_SchemaHealthy_WithSession_KeepsPartSyncActions;
+    /// duplicate-IPN revision resolution — TaskPaneViewModelTests.FetchPartAsync_DuplicateIpn_*;
+    /// Create Part completion — PartCreatedStateTests and OpenCreatePartWindow_*;
+    /// Link Mismatch cancel — FetchLinkMismatchTests.
+    /// </summary>
+    [TestFixture]
+    public class TaskPaneLifecycleCharacterizationTests
+    {
+        private StubInventreeClient _client = null!;
+        private StubDocumentPropertyService _propertyService = null!;
+        private ICreatePartValidationErrorService _createPartValidator = null!;
+
+        private static readonly PropertyMappingConfig Mapping = PropertyMappingConfig.WithDefaults();
+
+        private static readonly InventreePart FetchedPart = new InventreePart
+        {
+            Pk = 42,
+            Ipn = "R-10K-0402",
+            Name = "Resistor 10k",
+            Notes = "SMD 0402",
+            Revision = "A",
+            Description = "10k ohm 1% 0402",
+        };
+
+        [SetUp]
+        public void SetUp()
+        {
+            _client = new StubInventreeClient();
+            _propertyService = new StubDocumentPropertyService();
+            _createPartValidator = new StubCreatePartValidationErrorService();
+        }
+
+        private TaskPaneViewModel CreateVm(IPropertyMappingProvider? provider = null) =>
+            new TaskPaneViewModel(_client, _propertyService, null, provider,
+                                  createPartValidator: _createPartValidator);
+
+        private TaskPaneViewModel CreateLinkedByIpnVm(string ipn = "R-10K-0402")
+        {
+            _propertyService.Seed(Mapping.IpnProperty!, ipn);
+            return CreateVm();
+        }
+
+        // ── Task Pane State kinds ────────────────────────────────────────────
+
+        [Test]
+        public void Empty_NoActiveDocument_PanelCleared()
+        {
+            _propertyService.DocumentTypeToReturn = DocumentType.Unknown;
+
+            var vm = CreateVm();
+
+            Assert.That(vm.PropertiesSectionVisible, Is.False);
+            Assert.That(vm.FetchEnabled, Is.False);
+            Assert.That(vm.CreatePartEnabled, Is.False);
+            Assert.That(vm.ApplyEnabled, Is.False);
+            Assert.That(vm.StatusText,
+                Is.EqualTo("Open a part or assembly in SolidWorks to get started."));
+            Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.None));
+        }
+
+        [Test]
+        public void Unsupported_DrawingDocument_WarnsAndStaysCleared()
+        {
+            _propertyService.Seed(Mapping.IpnProperty!, "DRW-001");
+            _propertyService.DocumentTypeToReturn = DocumentType.Drawing;
+
+            var vm = CreateVm();
+
+            Assert.That(vm.PartNumber, Is.Empty);
+            Assert.That(vm.PropertiesSectionVisible, Is.False);
+            Assert.That(vm.FetchEnabled, Is.False);
+            Assert.That(vm.CreatePartEnabled, Is.False);
+            Assert.That(vm.StatusText,
+                Is.EqualTo("Drawings are not supported \u2014 open a part or assembly."));
+            Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+        }
+
+        [Test]
+        public void Unlinked_NoIpnNoPk_FetchDisabledCreateEnabled()
+        {
+            // Part document, no IPN and no stamped InvenTree Part PK.
+            var vm = CreateVm();
+
+            Assert.That(vm.PropertiesSectionVisible, Is.False);
+            Assert.That(vm.FetchEnabled, Is.False);
+            Assert.That(vm.CreatePartEnabled, Is.True);
+            Assert.That(vm.ApplyEnabled, Is.False);
+            Assert.That(vm.StatusText,
+                Is.EqualTo("Open a part or assembly in SolidWorks to get started."));
+        }
+
+        [Test]
+        public void Unlinked_NoClient_ShowsConfigureServerWarning()
+        {
+            var vm = new TaskPaneViewModel(null, _propertyService, null,
+                                           createPartValidator: _createPartValidator);
+
+            Assert.That(vm.StatusText,
+                Is.EqualTo("No server configured \u2014 click \u2699 Settings to get started"));
+            Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+        }
+
+        [Test]
+        public void LinkedByIpn_FetchEnabledButNoSession()
+        {
+            var vm = CreateLinkedByIpnVm();
+
+            Assert.That(vm.PartNumber, Is.EqualTo("R-10K-0402"));
+            Assert.That(vm.PropertiesSectionVisible, Is.True);
+            Assert.That(vm.FetchEnabled, Is.True);
+            Assert.That(vm.CreatePartEnabled, Is.False);
+            Assert.That(vm.ApplyEnabled, Is.False);   // LINKED: no session yet
+            Assert.That(vm.StatusText, Is.Empty);
+        }
+
+        [Test]
+        public void LinkedByPk_StampedPkShownFetchEnabledNoSession()
+        {
+            _propertyService.Seed(Mapping.IpnProperty!, string.Empty);
+            _propertyService.Seed(Mapping.PkProperty!, "42");
+
+            var vm = CreateVm();
+
+            Assert.That(vm.PropertiesSectionVisible, Is.True);
+            Assert.That(vm.CurrentPk, Is.EqualTo("42"));
+            Assert.That(vm.FetchEnabled, Is.True);
+            Assert.That(vm.CreatePartEnabled, Is.False);
+            Assert.That(vm.ApplyEnabled, Is.False);
+        }
+
+        [Test]
+        public async Task Populated_AfterFetch_PreviewsAndActionsAvailable()
+        {
+            _client.PartToReturn = FetchedPart;
+            var vm = CreateLinkedByIpnVm();
+
+            await vm.FetchPartAsync();
+
+            Assert.That(vm.NamePreview, Is.EqualTo("Resistor 10k"));
+            Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(42));
+            Assert.That(vm.ApplyEnabled, Is.True);
+            Assert.That(vm.ApplyNameEnabled, Is.True);
+            Assert.That(vm.PushNameEnabled, Is.True);
+            Assert.That(vm.PushRevisionVisible, Is.True);
+            // Observed mechanics: a successful Fetch has no terminal string —
+            // it clears the in-progress phase with a blank write.
+            Assert.That(vm.StatusText, Is.Empty);
+        }
+
+        // ── Completed-session rules (#90 addendum) ───────────────────────────
+        // Case 3 — a Part → Assembly switch with the same IPN and InvenTree Part
+        // PK preserves the session — is pinned by
+        // BomVisibilityTests.BomSectionVisible_AssemblyInheritingSessionForSamePart_IsTrue.
+
+        // Addendum case 1: an IPN-fetched session does not survive a direct
+        // reload when the document carries no stamped InvenTree Part PK —
+        // LoadPartNumber cannot prove the session belongs to this document.
+        [Test]
+        public async Task CompletedSession_SameDocumentReloadWithoutStampedPk_DropsSession()
+        {
+            _client.PartToReturn = FetchedPart;
+            var vm = CreateLinkedByIpnVm();
+            await vm.FetchPartAsync();
+            Assert.That(vm.ApplyEnabled, Is.True);
+
+            vm.LoadPartNumber();
+
+            Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(0));
+            Assert.That(vm.NamePreview, Is.Empty);
+            Assert.That(vm.ApplyEnabled, Is.False);
+            // The document stays LINKED-by-IPN — only the session is dropped.
+            Assert.That(vm.PartNumber, Is.EqualTo("R-10K-0402"));
+        }
+
+        // The matching counterpart: a reload that re-reads identity stamps the
+        // loaded session still matches keeps the session.
+        [Test]
+        public async Task CompletedSession_SameDocumentReloadWithMatchingPk_PreservesSession()
+        {
+            _propertyService.Seed(Mapping.IpnProperty!, string.Empty);
+            _propertyService.Seed(Mapping.PkProperty!, "42");
+            _client.PartByPkToReturn = FetchedPart;
+            var vm = CreateVm();
+            await vm.FetchPartAsync();
+            Assert.That(vm.ApplyEnabled, Is.True);
+
+            vm.LoadPartNumber();
+
+            Assert.That(vm.ApplyEnabled, Is.True);
+            Assert.That(vm.NamePreview, Is.EqualTo("Resistor 10k"));
+            Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(42));
+            // The PK-path fetch wrote the server IPN back to the blank document.
+            Assert.That(_propertyService.WriteLog.Any(
+                w => w.Name == Mapping.IpnProperty && w.Value == "R-10K-0402"), Is.True);
+        }
+
+        // Addendum case 2: a Property Mapping refresh preserves the session
+        // (RefreshPreservingSession, #224). The UpdateMapping half is pinned by
+        // TaskPaneViewModelTests.UpdateMapping_SchemaHealthy_WithSession_KeepsPartSyncActions.
+        [Test]
+        public async Task CompletedSession_MappingChanged_PreservesSession()
+        {
+            var provider = new StubPropertyMappingProvider
+            {
+                Config = PropertyMappingConfig.WithDefaults()
+            };
+            _propertyService.Seed(Mapping.IpnProperty!, "R-10K-0402");
+            _client.PartToReturn = FetchedPart;
+            var vm = CreateVm(provider);
+            await vm.FetchPartAsync();
+
+            provider.RaiseMappingChanged();
+
+            Assert.That(vm.NamePreview, Is.EqualTo("Resistor 10k"));
+            Assert.That(vm.ApplyEnabled, Is.True);
+            Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(42));
+        }
+
+        // Addendum case 4: switching to a document with different identity
+        // stamps clears the session — the panel re-links to the new identity.
+        [Test]
+        public async Task CompletedSession_SwitchToDifferentIdentity_ClearsSession()
+        {
+            _client.PartToReturn = FetchedPart;
+            var vm = CreateLinkedByIpnVm();
+            await vm.FetchPartAsync();
+
+            // Active-document change: different IPN and different stamped PK.
+            _propertyService.Seed(Mapping.IpnProperty!, "OTHER-999");
+            _propertyService.Seed(Mapping.PkProperty!, "77");
+            _propertyService.Seed(Mapping.NameProperty!, "Other document");
+            vm.LoadPartNumber();
+
+            Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(0));
+            Assert.That(vm.NamePreview, Is.Empty);
+            Assert.That(vm.ApplyEnabled, Is.False);
+            Assert.That(vm.PartNumber, Is.EqualTo("OTHER-999"));
+            Assert.That(vm.CurrentPk, Is.EqualTo("77"));
+        }
+
+        // Addendum case 5: a same-document Revision edit is a property refresh,
+        // not an identity change — the session stays and comparison state moves.
+        [Test]
+        public async Task CompletedSession_RevisionEdit_PreservesSessionAndUpdatesMatch()
+        {
+            _propertyService.Seed(Mapping.RevisionProperty!, "A");
+            _client.PartToReturn = FetchedPart;
+            var vm = CreateLinkedByIpnVm();
+            await vm.FetchPartAsync();
+            Assert.That(vm.RevisionMatch, Is.True);
+
+            _propertyService.Seed(Mapping.RevisionProperty!, "B");
+            vm.OnDocumentPropertyChanged(Mapping.RevisionProperty!, "B");
+
+            Assert.That(vm.NamePreview, Is.EqualTo("Resistor 10k"));
+            Assert.That(vm.ApplyEnabled, Is.True);
+            Assert.That(vm.CurrentRevision, Is.EqualTo("B"));
+            Assert.That(vm.RevisionMatch, Is.False);
+        }
+
+        // Client replacement is a coordinator lifecycle event: the completed
+        // session is dropped and the panel re-evaluates as LINKED to the
+        // still-stamped identity.
+        [Test]
+        public async Task UpdateClient_WithSession_ClearsSessionKeepsLink()
+        {
+            _client.PartToReturn = FetchedPart;
+            var vm = CreateLinkedByIpnVm();
+            await vm.FetchPartAsync();
+
+            vm.UpdateClient(new StubInventreeClient());
+
+            Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(0));
+            Assert.That(vm.ApplyEnabled, Is.False);
+            Assert.That(vm.PartNumber, Is.EqualTo("R-10K-0402"));
+            Assert.That(vm.FetchEnabled, Is.True);
+        }
+
+        // ── Fetch lifecycle and status producers ─────────────────────────────
+        // Wording pinned verbatim from docs/agents/status-producer-map.md.
+
+        [Test]
+        public async Task Fetch_InProgressThenSuccess_StatusLifecycle()
+        {
+            _client.DeferGetPartsByIpn = true;
+            var vm = CreateLinkedByIpnVm();
+
+            var fetch = vm.FetchPartAsync();
+            var pending = _client.PendingGetPartsByIpnCalls.Single();
+            Assert.That(pending.Request, Is.EqualTo("R-10K-0402"));
+            Assert.That(vm.StatusText, Is.EqualTo("Fetching from InvenTree\u2026"));
+
+            pending.Complete(new List<InventreePart> { FetchedPart });
+            await fetch;
+
+            Assert.That(vm.ApplyEnabled, Is.True);
+            Assert.That(vm.StatusText, Is.Empty);
+        }
+
+        [Test]
+        public async Task Fetch_PartNotFoundByIpn_WarningNamesTheIpn()
+        {
+            var vm = CreateLinkedByIpnVm();
+
+            await vm.FetchPartAsync();
+
+            Assert.That(vm.StatusText,
+                Is.EqualTo("No part found in InvenTree for: R-10K-0402"));
+            Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+            Assert.That(vm.ApplyEnabled, Is.False);
+        }
+
+        [Test]
+        public async Task Fetch_PartNotFoundByPk_WarningNamesThePk()
+        {
+            _propertyService.Seed(Mapping.IpnProperty!, string.Empty);
+            _propertyService.Seed(Mapping.PkProperty!, "42");
+            var vm = CreateVm();
+
+            await vm.FetchPartAsync();
+
+            Assert.That(vm.StatusText,
+                Is.EqualTo("No part found in InvenTree for PK: 42"));
+            Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+            Assert.That(vm.ApplyEnabled, Is.False);
+        }
+
+        [Test]
+        public async Task Fetch_FaultedRequest_ErrorStatusCarriesMessage()
+        {
+            _client.DeferGetPartsByIpn = true;
+            var vm = CreateLinkedByIpnVm();
+
+            var fetch = vm.FetchPartAsync();
+            _client.PendingGetPartsByIpnCalls.Single()
+                .Fault(new HttpRequestException("connection refused"));
+            await fetch;
+
+            Assert.That(vm.StatusText, Is.EqualTo("Error: connection refused"));
+            Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.Error));
+            Assert.That(vm.ApplyEnabled, Is.False);
+        }
+
+        // Duplicate-IPN resolution by Revision — an IPN is not unique.
+        // Confirm/cancel and thumbnail paths are pinned by FetchPartAsync_DuplicateIpn_*.
+        [Test]
+        public async Task Fetch_DuplicateIpnNoRevisionMatch_ErrorStatusWording()
+        {
+            _client.PartsByIpnToReturn = new List<InventreePart>
+            {
+                new InventreePart { Pk = 10, Ipn = "PART-001", Revision = "A" },
+                new InventreePart { Pk = 11, Ipn = "PART-001", Revision = "C" },
+            };
+            _propertyService.Seed(Mapping.RevisionProperty!, "B");
+            var vm = CreateLinkedByIpnVm("PART-001");
+
+            await vm.FetchPartAsync();
+
+            Assert.That(vm.StatusText, Is.EqualTo(
+                "2 parts share IPN \u2018PART-001\u2019 but none match " +
+                "SW revision B. Resolve in InvenTree."));
+            Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.Error));
+            Assert.That(vm.ApplyEnabled, Is.False);
+        }
+
+        [Test]
+        public async Task Fetch_DuplicateIpnSeveralRevisionMatches_ErrorStatusWording()
+        {
+            _client.PartsByIpnToReturn = new List<InventreePart>
+            {
+                new InventreePart { Pk = 10, Ipn = "PART-001", Revision = "B" },
+                new InventreePart { Pk = 11, Ipn = "PART-001", Revision = "B" },
+            };
+            _propertyService.Seed(Mapping.RevisionProperty!, "B");
+            var vm = CreateLinkedByIpnVm("PART-001");
+
+            await vm.FetchPartAsync();
+
+            Assert.That(vm.StatusText, Is.EqualTo(
+                "2 parts share IPN \u2018PART-001\u2019 and revision B. " +
+                "Resolve duplicates in InvenTree."));
+            Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.Error));
+            Assert.That(vm.ApplyEnabled, Is.False);
+        }
+
+        // ── Clear / Apply / Push ─────────────────────────────────────────────
+
+        [Test]
+        public async Task ClearAll_AfterPopulated_ReturnsToEmptyState()
+        {
+            _client.PartToReturn = FetchedPart;
+            var vm = CreateLinkedByIpnVm();
+            await vm.FetchPartAsync();
+
+            vm.ClearAll();
+
+            Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(0));
+            Assert.That(vm.ApplyEnabled, Is.False);
+            Assert.That(vm.PropertiesSectionVisible, Is.False);
+            Assert.That(vm.StatusText,
+                Is.EqualTo("Open a part or assembly in SolidWorks to get started."));
+        }
+
+        [Test]
+        public async Task Apply_WritesDocumentPropertyAndReportsApplied()
+        {
+            _client.PartToReturn = FetchedPart;
+            var vm = CreateLinkedByIpnVm();
+            await vm.FetchPartAsync();
+
+            vm.ApplyNameToDocument();
+
+            Assert.That(_propertyService.WriteLog, Has.Count.EqualTo(1));
+            Assert.That(_propertyService.WriteLog[0].Name, Is.EqualTo(Mapping.NameProperty));
+            Assert.That(_propertyService.WriteLog[0].Value, Is.EqualTo("Resistor 10k"));
+            Assert.That(vm.StatusText, Is.EqualTo("Name applied."));
+            Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.Success));
+        }
+
+        [Test]
+        public async Task Push_WritesServerAndReportsPushed()
+        {
+            _propertyService.Seed(Mapping.RevisionProperty!, "C");
+            _client.PartToReturn = FetchedPart;
+            var vm = CreateLinkedByIpnVm();
+            await vm.FetchPartAsync();
+
+            await vm.PushRevisionToInventreeAsync();
+
+            Assert.That(_client.LastPushedPk, Is.EqualTo(42));
+            Assert.That(_client.LastPushedRevision, Is.EqualTo("C"));
+            Assert.That(vm.StatusText, Is.EqualTo("Revision pushed to InvenTree."));
+            Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.Success));
+        }
+
+        // Create Part completion is covered by PartCreatedStateTests and
+        // OpenCreatePartWindow_*; this pins it through the WriteLog seam the
+        // #92 no-write assertions will use.
+        [Test]
+        public void CreatePartCompletion_InstallsSessionAndStampsPk()
+        {
+            _propertyService.Seed(Mapping.IpnProperty!, string.Empty);
+            _propertyService.Seed(Mapping.PkProperty!, string.Empty);
+            _propertyService.Seed(Mapping.NameProperty!, "New Resistor");
+            var createdPart = new InventreePart
+            {
+                Pk = 55,
+                Ipn = "R-NEW-001",
+                Name = "New Resistor",
+            };
+            var vm = CreateVm();
+
+            vm.OpenCreatePartWindow(createVm =>
+            {
+                var handler = typeof(CreatePartViewModel)
+                    .GetField("PartCreated",
+                        System.Reflection.BindingFlags.NonPublic |
+                        System.Reflection.BindingFlags.Instance |
+                        System.Reflection.BindingFlags.Public)
+                    ?.GetValue(createVm) as System.EventHandler<InventreePart>;
+                handler?.Invoke(createVm, createdPart);
+            });
+
+            Assert.That(_propertyService.WriteLog.Any(
+                w => w.Name == Mapping.PkProperty && w.Value == "55"), Is.True);
+            Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(55));
+            Assert.That(vm.ApplyEnabled, Is.True);
+            Assert.That(vm.StatusText, Is.EqualTo("Part created in InvenTree."));
+        }
+
+        // ── BOM readiness auto-fetch ─────────────────────────────────────────
+
+        [Test]
+        public async Task BomReadiness_NoSession_AutoFetchesThenRequiresStampedPk()
+        {
+            _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            _propertyService.Seed(Mapping.IpnProperty!, "ASSY-001");
+            _client.PartToReturn = new InventreePart { Pk = 42, Ipn = "ASSY-001" };
+            var vm = CreateVm();
+            vm.UpdateBomState(new StubAssemblyBomService { HasBomTableResult = true });
+
+            var result = await vm.CreateBomCompareReadinessCheck()!.CheckAsync();
+
+            Assert.That(_client.LastIpnRequested, Is.EqualTo("ASSY-001"));
+            Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(42));   // auto-fetch populated the session
+            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.PkNotStamped));
+        }
+
+        [Test]
+        public async Task BomReadiness_SessionAlreadyPopulated_DoesNotFetchAgain()
+        {
+            _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            _propertyService.Seed(Mapping.IpnProperty!, "ASSY-001");
+            _propertyService.Seed(Mapping.PkProperty!, "42");
+            _propertyService.Seed(Mapping.RevisionProperty!, "A");
+            _client.PartByPkToReturn =
+                new InventreePart { Pk = 42, Ipn = "ASSY-001", Revision = "A" };
+            var vm = CreateVm();
+            await vm.FetchPartAsync();
+            vm.UpdateBomState(new StubAssemblyBomService { HasBomTableResult = true });
+
+            // Any further fetch would leave a pending call instead of completing.
+            _client.DeferGetPartByPk = true;
+            _client.DeferGetPartsByIpn = true;
+
+            var result = await vm.CreateBomCompareReadinessCheck()!.CheckAsync();
+
+            Assert.That(_client.PendingGetPartByPkCalls, Is.Empty);
+            Assert.That(_client.PendingGetPartsByIpnCalls, Is.Empty);
+            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.Ready));
+        }
+
+        // ── Controlled async completion (the #92 matrix surface) ─────────────
+
+        [Test]
+        public async Task FetchByIpn_TwoInFlight_CapturedAndCompletableInEitherOrder()
+        {
+            _client.DeferGetPartsByIpn = true;
+            var vm = CreateLinkedByIpnVm();
+
+            var first = vm.FetchPartAsync();
+            var second = vm.FetchPartAsync();
+
+            Assert.That(_client.PendingGetPartsByIpnCalls, Has.Count.EqualTo(2));
+            Assert.That(_client.PendingGetPartsByIpnCalls[0].Request, Is.EqualTo("R-10K-0402"));
+            Assert.That(_client.PendingGetPartsByIpnCalls[1].Request, Is.EqualTo("R-10K-0402"));
+
+            // Completion order is the test's choice — later request resolves first.
+            _client.PendingGetPartsByIpnCalls[1].Complete(new List<InventreePart>
+            {
+                new InventreePart { Pk = 99, Ipn = "R-10K-0402" },
+            });
+            await second;
+            Assert.That(vm.ApplyEnabled, Is.True);   // a populated session results
+
+            _client.PendingGetPartsByIpnCalls[0].Complete(new List<InventreePart> { FetchedPart });
+            await first;
+            Assert.That(vm.ApplyEnabled, Is.True);
+            // Which fetch's part is installed is #92's contested behavior — not pinned here.
+        }
+
+        [Test]
+        public async Task FetchByPk_TwoInFlight_CapturedAndCompletableInEitherOrder()
+        {
+            _propertyService.Seed(Mapping.IpnProperty!, string.Empty);
+            _propertyService.Seed(Mapping.PkProperty!, "42");
+            _client.DeferGetPartByPk = true;
+            var vm = CreateVm();
+
+            var first = vm.FetchPartAsync();
+            var second = vm.FetchPartAsync();
+
+            Assert.That(_client.PendingGetPartByPkCalls, Has.Count.EqualTo(2));
+            Assert.That(_client.PendingGetPartByPkCalls[0].Request, Is.EqualTo(42));
+            Assert.That(_client.PendingGetPartByPkCalls[1].Request, Is.EqualTo(42));
+
+            _client.PendingGetPartByPkCalls[1].Complete(
+                new InventreePart { Pk = 42, Ipn = "TST-001" });
+            await second;
+            Assert.That(vm.ApplyEnabled, Is.True);
+
+            _client.PendingGetPartByPkCalls[0].Complete(
+                new InventreePart { Pk = 42, Ipn = "TST-002" });
+            await first;
+            Assert.That(vm.ApplyEnabled, Is.True);
+            // Which fetch's part is installed is #92's contested behavior — not pinned here.
+        }
+
+        // ── STA capture → off-thread network → STA commit ────────────────────
+
+        [Test]
+        public async Task FetchCompletion_FromOffCapturedThread_CommitsThroughSend()
+        {
+            var stubContext = new StubSynchronizationContext();
+            var previous = SynchronizationContext.Current;
+            SynchronizationContext.SetSynchronizationContext(stubContext);
+            try
+            {
+                _client.DeferGetPartsByIpn = true;
+                var vm = CreateLinkedByIpnVm();
+
+                var fetch = vm.FetchPartAsync();
+                var pending = _client.PendingGetPartsByIpnCalls.Single();
+
+                // Completing off the captured thread models a network completion:
+                // the commit must marshal back through the captured context.
+                await Task.Run(() => pending.Complete(new List<InventreePart> { FetchedPart }));
+                await fetch;
+
+                Assert.That(stubContext.SendCount, Is.GreaterThan(0));
+                Assert.That(vm.ApplyEnabled, Is.True);
+            }
+            finally
+            {
+                SynchronizationContext.SetSynchronizationContext(previous);
+            }
         }
     }
 }
