@@ -33,6 +33,7 @@ Each finding gets a disposition at the batch gate — record the disposition and
 ### Contract and tool reality
 
 - The dispatch contract is profile + filled task template → structured status JSON. Templates: `IMPLEMENTER_TASK.md` (implementers), `DESIGNER_TASK.md` (designer). Fill every `{{slot}}`, then scan the filled template for leftover `{{` markers and interleaved fragments before dispatch — a garbled ruling inside `{{extra_context}}` is applied as settled spec, silently.
+- A dispatch whose contract names a file artifact (`REPORT_PATH`, `{{report_path}}`) is done when the file exists and is non-empty, not when the agent returns. An empty return with no artifact is a failed dispatch: resume it once in the foreground — a background write denial is invisible to the caller — before escalating.
 - Profiles: `build-implementer` (`swe-2-high`, rounds 1–3), `build-implementer-max` (`swe-2-max`, rounds 4–5), `build-designer` (`swe-2-high`, read-only), `review-spec` (`swe-2-max`).
 - Subagents get five tools — `read`, `edit`, `exec`, `grep`, `glob` (exposed as `find_file_by_name`) — and `edit` cannot create files. New files go through `exec` heredoc or `git apply`; `IMPLEMENTER_TASK.md` `## Tool reality` carries this for the implementer. `skill` and `ask_user_question` are unreachable inside a subagent — every context pointer is a file to read, and a question is a `BLOCKED`.
 
@@ -69,10 +70,10 @@ Queue tickets never merge into a batch branch — for them this review and the f
 
 After a ticket merges into the batch branch:
 
-1. Dispatch `review-spec` in the background with `REVIEW_BASE` = the batch SHA before the merge, `REVIEW_HEAD` = the merge SHA, `SPEC` = the ticket body plus comments, `IMPLEMENTER CLAIMS` = the implementer's status JSON and concerns, `SUITE_RESULT` = the post-merge `dotnet test` result line, and `REPORT_PATH` = `reports/<N>-review-<round>.md` — the reviewer writes its full findings there itself and returns an adjudication digest (severity + file:line + spec quote per finding), so review text never re-transits the orchestrator's context.
+1. Dispatch `review-spec` in the background with `REVIEW_BASE` = the batch SHA before the merge, `REVIEW_HEAD` = the merge SHA, `SPEC` = the ticket body plus comments plus the seam's `Watch items` verbatim, `IMPLEMENTER CLAIMS` = the implementer's status JSON and concerns, `CARRIED:` = the run's settled findings on an overlapping range when any exist, `SUITE_RESULT` = the post-merge `dotnet test` result line, and `REPORT_PATH` = `reports/<N>-review-<round>.md` — the reviewer writes its full findings there itself and returns an adjudication digest (severity + file:line + spec quote per finding), so review text never re-transits the orchestrator's context.
 2. Fix ladder — at most five rounds, superseding `/review`'s standalone two-pass cap: rounds 1–3 `resume` the implementer with the findings; rounds 4–5 dispatch a fresh `build-implementer-max`. Each round re-reviews the new diff against the same base, re-pinning `REVIEW_HEAD` to the new tip. Once `afk/<N>` has merged into the batch branch, fix rounds add new commits — never amend or rebase the merged tip — and `STATUS.json`'s `commit` records the batch-branch merge SHA, not the worktree tip.
 3. Adjudicate every open finding against `docs/agents/coding-standards.md`'s own tests. YAGNI is the load-bearing test: a finding whose benefit only materializes once the code shows a real need is non-load-bearing by definition. Contested or non-load-bearing findings park with a written ruling in `reports/` citing the standard. Load-bearing findings get the smallest change that unblocks dependents.
-4. Minor findings never enter the ladder; park them for the final `/review`.
+4. Minor findings never enter the ladder; park them for the final `/review`. Every recorded disposition (deferred-with-reason, parked ruling, standing note) is carried forward, not re-derived: later review dispatches get it as a `CARRIED:` block — the reviewer confirms each anchor and reason still hold in one line and never re-adjudicates, and `carried, invalidated by <change>` re-opens it at step 3 — and fix prompts list carried items as settled, never as work. The set still open at run end is the run's **carried list** — the closeout summary names each item with its reason and revisit condition, since nothing downstream revisits them per PR.
 5. Stop for the maintainer only when every path forward is a guess.
 
 ## Run retro
@@ -85,6 +86,10 @@ After the final review, dispatch a read-only subagent (`build-designer` or `suba
 - Seam-gate escalation rate, permission denials, merge conflicts.
 
 Surface the top candidates in the run summary next to the PR link. The deeper session-level pass stays a user-invoked `/retro`.
+
+## Carried-list triage
+
+When the carried list is non-empty, dispatch a second read-only subagent (`build-designer` or `subagent_explore`) in the background alongside the retro — same run directory as input, plus the carried items' anchors. It does not re-adjudicate; it answers what per-finding adjudication can't: whether carried items interact into a larger risk, whether a revisit condition is nearer than when written, and which items are nits. It returns one line per item — `nit`, `watch` (with a tightened revisit condition), or `reopen` (why now) — sorted for the summary. The orchestrator persists its return to `reports/carried-triage.md` and prints it as the summary's carried list. `reopen` candidates go to the maintainer as decisions — un-deferring is their call and lands as a new fix round, never auto-fixed. An empty carried list skips the dispatch.
 
 ## Example
 

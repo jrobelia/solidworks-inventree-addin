@@ -65,6 +65,8 @@ Rules:
 - Use `[SetUp]` to construct stubs; use a private factory method (e.g. `CreateVm(...)`) to construct the subject under test.
 - Stub adapters mirror production semantics — writes apply, reads reflect writes, deletes remove — never merely record calls. A recording-only stub hides re-read bugs and bends the production code it stands behind into compensating for the stub (the #232 `StubConfigProvider.SaveServerConfig` bug). Adapters sharing a seam run one contract suite — e.g. `ConfigProviderContract`, executed by `StubConfigProviderContractTests` and `EncryptedConfigProviderTests` — so a divergence fails a named behaviour.
 - Every guard clause implies a stub that can violate it. A stub that only honours the contract leaves the guard dead code, so give the stub a misbehave knob — e.g. `StubSettingsApplyService.IgnoreCallerCancellation` delivers a normal result after the caller's token fires — and test the guard through it.
+- Firing an event the subject itself publishes goes through the field-like event's compiler-generated backing field (`GetField("<EventName>", NonPublic | Instance)` → `as EventHandler<T>` → `Invoke`) — the approved headless technique, not a smell. A WPF control's own events use `RaiseEvent` instead.
+- A literal that must match fixture data derives from the fixture (`FetchedPart.Pk.ToString()`), never a retyped constant — a retyped literal stays green after the fixture drifts while the boundary it guarded silently dies.
 
 ---
 
@@ -164,9 +166,16 @@ GUI changes follow the add-in's documented visual vocabulary in [design-language
 - Missing locality: business logic or state duplicated across callers instead of living in a deep module.
 - Hypothetical seams: a new cross-layer dependency with an interface but no `Stub*` test adapter.
 - Tests that bypass the seam and exercise internal helpers rather than the module's public interface.
+- Test literals that retype fixture data instead of deriving from it (`"42"` where the premise is `FetchedPart.Pk`) — green tests over a dead boundary.
 - Test code that references SolidWorks interop types or otherwise cannot run on a machine without SolidWorks installed.
 - Live-window tests missing the `HiddenTestWindow` off-screen guard.
 - New modules or seams introduced before the code shows a real need for them (YAGNI / over-engineering).
 - Hardcoded color, font, or spacing literals in XAML instead of `DesignTokens.xaml` resources.
 - A new visual pattern invented where a `design-language.md` pattern exists — cards, section headers, status bars, action rows — without being flagged in the PR.
 - `BrushStatus*` colors used for decoration rather than severity, or more than one `PrimaryButtonStyle` button in a dialog.
+
+---
+
+## Standing notes
+
+A finding deliberately not taken — because the fix would violate a stronger rule (e.g. widening an approved seam fails YAGNI) — is a **standing note**: recorded once in `REVIEW_NOTES` or the seam file with a revisit condition (`revisit if <trigger>`). Later review passes confirm it stands and never re-flag it as work; a pass re-opens it only when the revisit condition is met. Without the note, a later review "fixes" approved design against its own ruling.

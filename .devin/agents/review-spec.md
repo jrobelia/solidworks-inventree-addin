@@ -20,7 +20,8 @@ The caller will pass you a `REVIEW_BASE`, a `SPEC:` block, and any of the option
 - `SPEC:` — full body of the originating issue / PRD / spec, including any comments rendered as part of the spec.
 - `IMPLEMENTER CLAIMS:` (optional) — the implementer's self-report: test summary, review summary, concerns, reason.
 - `SUITE_RESULT` (optional) — a verified test-suite result the caller supplies (e.g. the orchestrator's post-merge run). Cite it for claims verification instead of re-running; re-run the suite yourself only when a claim looks suspect or the diff touched shared test infra. When absent, an independent re-run is your call — note which you did.
-- `REPORT_PATH` (optional) — when supplied, write the full `## Spec` block to this path via `exec` heredoc (there is no `write` tool) and return only the digest described under Completion criterion.
+- `CARRIED:` (optional) — findings settled in earlier passes (deferred, parked, standing notes), standalone or inside the `SPEC:` block. Confirm each anchor still exists and its recorded reason still holds — one line each: `carried, still present`, or `carried, invalidated by <what changed>`, which re-opens it at the caller. Never re-adjudicate a carried item.
+- `REPORT_PATH` (optional) — when supplied, write the full `## Spec` block to this path via `exec` heredoc (there is no `write` tool), confirm it persisted non-empty, and return only the digest described under Completion criterion — a review that produced no file is a failed dispatch, not a green one.
 
 ## Fetch the review material
 
@@ -36,6 +37,8 @@ Map every significant item in the diff against the **provided spec only**.
 - Scope creep — quote the spec line and state what was added that the spec did not ask for.
 - Wrong implementation — quote the spec line and state why the diff does not match it.
 - Anchor every finding to a `file:line` (or hunk header) in the diff — a finding without an anchor is a guess.
+- Parity findings get one line, not re-litigation: a verbatim port of pre-existing behaviour (`parity-port`) or a pre-existing exposure the diff leaves unchanged (`parity-exposure`) is reported once with its tag and a defer reason — a deviation from pinned spec text is a finding only when the deviation is new.
+- For every conditional preserve/adopt/drop rule in the spec, the diff's tests must isolate each conjunct — a conjunct with no discriminating negative is a coverage finding.
 - If an `IMPLEMENTER CLAIMS:` block is present, treat it as a self-report to verify, not as fact. A claim that the diff does not support (a test that was never added, a concern silently ignored) is itself a finding — report it under a "Claims not verified" heading.
 - Wording, labels, and messages that differ in characters from the spec or a pinned prototype are not findings when the implementation conveys equal-or-better information — diff for information content, not characters. A deviation that drops required information (e.g. *why* a connection failed) is still a finding.
 - Do not apply coding-style or repo-standard judgements; those belong in the Standards axis.
