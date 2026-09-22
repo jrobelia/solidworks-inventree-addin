@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
@@ -136,8 +137,17 @@ namespace SwInventreeAddin
             return transition;
         }
 
-        /// <inheritdoc/>
-        public TaskPaneDocumentTransition RefreshDocument()
+        /// <summary>
+        /// The light counterpart of <see cref="UpdateDocument"/>: STA
+        /// capture → install with the same Activated semantics (drops the
+        /// session, clears pending writes) but <em>no</em> same-document
+        /// session revalidation — today's <c>RefreshCurrentProperties</c>
+        /// path. Internal: consumed by <see cref="Bom.CoordinatorBomReadinessContext"/>
+        /// and the ViewModel's light refresh paths; deliberately off
+        /// <see cref="IPartSyncCoordinator"/>, whose document-lifecycle
+        /// surface is the approved full evaluation only.
+        /// </summary>
+        internal TaskPaneDocumentTransition RefreshDocument()
         {
             if (_disposed)
                 return TaskPaneDocumentTransition.Activated;
@@ -273,6 +283,7 @@ namespace SwInventreeAddin
             _lifecycleRevision++;
             _session = null;
             _pendingConfirmation = null;
+            _state.ClearPopulated();
         }
 
         // ── Fetch ────────────────────────────────────────────────────────────
@@ -355,11 +366,7 @@ namespace SwInventreeAddin
             PartSyncOperationToken token, int stampedPk,
             InventreePart? part, byte[]? thumb, Exception? error)
         {
-            if (!IsTokenCurrent(token))
-                return Stale();
-            // Recapture inside the commit: catches a document switch whose host
-            // notification has not been delivered yet, then revalidates the token.
-            if (!RecaptureAndRevalidate(token))
+            if (!IsCommitCurrent(token))
                 return Stale();
 
             if (error != null)
@@ -440,9 +447,7 @@ namespace SwInventreeAddin
             PartSyncOperationToken token, string ipn,
             IReadOnlyList<InventreePart>? parts, byte[]? thumb, Exception? error)
         {
-            if (!IsTokenCurrent(token))
-                return Stale();
-            if (!RecaptureAndRevalidate(token))
+            if (!IsCommitCurrent(token))
                 return Stale();
 
             if (error != null)
@@ -468,7 +473,11 @@ namespace SwInventreeAddin
                 .Where(p => RevisionComparer.Compare(swRev, p.Revision?.Trim() ?? string.Empty)
                             == RevisionOrder.Equal)
                 .ToList();
-            var candidates = parts.Select(PartSnapshot.FromPart).ToList();
+            // Frozen set: the same ReadOnlyCollection backs the pending
+            // confirmation and the public result — a consumer cannot cast it
+            // back to List and inject a fabricated candidate.
+            var candidates = new ReadOnlyCollection<PartSnapshot>(
+                parts.Select(PartSnapshot.FromPart).ToList());
 
             if (matches.Count == 0)
                 return new PartSyncResult(PartSyncOutcome.DuplicateNoRevisionMatch)
@@ -519,7 +528,10 @@ namespace SwInventreeAddin
             if (part == null) throw new ArgumentNullException(nameof(part));
             if (_disposed)
                 return InvalidOp("The coordinator is disposed.");
-            if (!IsTokenCurrent(token))
+            // Validate + recapture BEFORE any write — the completion may
+            // outrun an undelivered document switch, and production writes
+            // always target ISldWorks.ActiveDoc.
+            if (!IsCommitCurrent(token))
                 return Stale();
 
             var mapping = ResolveMapping();
@@ -598,7 +610,7 @@ namespace SwInventreeAddin
                 return new PartSyncResult(PartSyncOutcome.MissingPropertyConfirmation)
                 {
                     Confirmation = handle,
-                    MissingProperties = missing,
+                    MissingProperties = new ReadOnlyCollection<string>(missing.ToList()),
                 };
             }
 
@@ -637,12 +649,12 @@ namespace SwInventreeAddin
 
             return await CommitOnStaAsync(() =>
             {
+                // Validate BEFORE examining the network outcome — a stale
+                // failure must never reach the pane as a status write.
+                if (!IsCommitCurrent(token) || !ReferenceEquals(_session, session))
+                    return Stale();
                 if (error != null)
                     return Failed(error.Message);
-                // The server may already have been updated — a stale commit
-                // still must not mutate the dropped session.
-                if (!IsTokenCurrent(token) || !ReferenceEquals(_session, session))
-                    return Stale();
                 session.CommitPushedValue(field, value);
                 RaiseChanged();
                 return new PartSyncResult(PartSyncOutcome.Success);
@@ -697,10 +709,11 @@ namespace SwInventreeAddin
 
             return await CommitOnStaAsync(() =>
             {
+                // Validate BEFORE examining the upload/preview outcome.
+                if (!IsCommitCurrent(token) || !ReferenceEquals(_session, session))
+                    return Stale();
                 if (error != null)
                     return Failed(error.Message);
-                if (!IsTokenCurrent(token) || !ReferenceEquals(_session, session))
-                    return Stale();
                 if (warning != null)
                     return new PartSyncResult(PartSyncOutcome.SucceededWithWarning)
                     {
@@ -730,6 +743,15 @@ namespace SwInventreeAddin
             {
                 _pendingConfirmation = null;
                 return new PartSyncResult(PartSyncOutcome.Cancelled);
+            }
+
+            // Validate on resume, BEFORE dispatching any download or commit
+            // work — the in-commit validation then re-checks after the
+            // download window. A stale pending can never succeed; drop it.
+            if (!IsTokenCurrent(pending.Token))
+            {
+                _pendingConfirmation = null;
+                return Stale();
             }
 
             switch (pending.Kind)
@@ -763,6 +785,19 @@ namespace SwInventreeAddin
                 return InvalidOp("The selected candidate is not part of the captured set.");
             }
 
+            // Validate on resume — marshalled, WITH document recapture —
+            // before any download: an undelivered switch discovered here
+            // stales the resume before a single byte is fetched.
+            var stillCurrent = await RunOnStaAsync(() =>
+            {
+                if (IsCommitCurrent(pending.Token))
+                    return true;
+                _pendingConfirmation = null;
+                return false;
+            }).ConfigureAwait(false);
+            if (!stillCurrent)
+                return Stale();
+
             byte[]? thumb = null;
             if (!string.IsNullOrEmpty(chosen.ThumbnailUrl))
             {
@@ -775,9 +810,7 @@ namespace SwInventreeAddin
                 _pendingConfirmation = null;
                 // Second validation inside the commit — the download gave a
                 // switch/close/replacement time to land.
-                if (!IsTokenCurrent(pending.Token))
-                    return Stale();
-                if (!RecaptureAndRevalidate(pending.Token))
+                if (!IsCommitCurrent(pending.Token))
                     return Stale();
                 InstallSession(chosen.ToPart(), thumb);
                 RaiseChanged();
@@ -793,9 +826,7 @@ namespace SwInventreeAddin
         private PartSyncResult CommitLinkMismatchResume(PendingConfirmation pending)
         {
             _pendingConfirmation = null;
-            if (!IsTokenCurrent(pending.Token))
-                return Stale();
-            if (!RecaptureAndRevalidate(pending.Token))
+            if (!IsCommitCurrent(pending.Token))
                 return Stale();
 
             var part = pending.Part!.ToPart();
@@ -815,7 +846,9 @@ namespace SwInventreeAddin
         private PartSyncResult CommitMissingPropertyResume(PendingConfirmation pending)
         {
             _pendingConfirmation = null;
-            if (!IsTokenCurrent(pending.Token))
+            // Validate + recapture BEFORE _session.Apply writes — same
+            // discipline as the fetch/duplicate resumes.
+            if (!IsCommitCurrent(pending.Token))
                 return Stale();
             if (_session == null)
                 return InvalidOp("No Part Sync session.");
@@ -923,6 +956,18 @@ namespace SwInventreeAddin
         }
 
         /// <summary>
+        /// The single stale-commit guard every completion path runs BEFORE
+        /// examining the network result or performing any write: validates
+        /// the captured token against current coordinator state, then
+        /// recaptures the active document — catching a switch/close whose
+        /// host notification has not been delivered yet — and validates the
+        /// token again. A stale outcome must never become a status write or
+        /// a SolidWorks property write.
+        /// </summary>
+        private bool IsCommitCurrent(PartSyncOperationToken token) =>
+            IsTokenCurrent(token) && RecaptureAndRevalidate(token);
+
+        /// <summary>
         /// Re-reads document values inside a validated commit and confirms the
         /// token is still current — catches a document switch whose host
         /// notification has not been delivered yet.
@@ -1024,13 +1069,21 @@ namespace SwInventreeAddin
             return CaptureScopedToken();
         }
 
-        private Task<PartSyncResult> CommitOnStaAsync(Func<PartSyncResult> commit)
+        private Task<PartSyncResult> CommitOnStaAsync(Func<PartSyncResult> commit) =>
+            RunOnStaAsync(commit);
+
+        /// <summary>
+        /// Marshals <paramref name="work"/> onto the host STA thread through
+        /// the injected dispatcher — the single boundary every completion
+        /// crosses before touching document state.
+        /// </summary>
+        private Task<TResult> RunOnStaAsync<TResult>(Func<TResult> work)
         {
-            var tcs = new TaskCompletionSource<PartSyncResult>(
+            var tcs = new TaskCompletionSource<TResult>(
                 TaskCreationOptions.RunContinuationsAsynchronously);
             _dispatcher.Run(() =>
             {
-                try { tcs.SetResult(commit()); }
+                try { tcs.SetResult(work()); }
                 catch (Exception ex) { tcs.SetException(ex); }
             });
             return tcs.Task;

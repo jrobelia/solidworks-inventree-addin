@@ -256,6 +256,116 @@ namespace SwInventreeAddin.Tests
             Assert.That(result.FetchResult, Is.SameAs(context.EnsureResult));
         }
 
+        // -- Typed ensure-outcome preservation ----------------------------------
+        // A server/lifecycle failure must never masquerade as "create the part".
+
+        [Test]
+        public async Task CheckAsync_EnsureReturnsPartNotFound_ReturnsPkNotFound()
+        {
+            var context = new StubContext { InMemoryPartPk = 0 };
+            context.EnsureResult = new PartSyncResult(PartSyncOutcome.PartNotFound) { Ipn = "PART-001" };
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
+
+            var result = await check.CheckAsync();
+
+            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.PkNotFound));
+            Assert.That(result.FetchResult, Is.SameAs(context.EnsureResult));
+        }
+
+        [Test]
+        public async Task CheckAsync_EnsureReturnsFailed_ReturnsFetchFailedWithResult()
+        {
+            var context = new StubContext { InMemoryPartPk = 0 };
+            context.EnsureResult = new PartSyncResult(PartSyncOutcome.Failed)
+            {
+                Diagnostic = "connection refused",
+            };
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
+
+            var result = await check.CheckAsync();
+
+            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.FetchFailed));
+            Assert.That(result.FetchResult!.Outcome, Is.EqualTo(PartSyncOutcome.Failed));
+            Assert.That(result.FetchResult.Diagnostic, Is.EqualTo("connection refused"));
+        }
+
+        [Test]
+        public async Task CheckAsync_EnsureReturnsStale_ReturnsFetchFailedWithResult()
+        {
+            var context = new StubContext { InMemoryPartPk = 0 };
+            context.EnsureResult = new PartSyncResult(PartSyncOutcome.Stale);
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
+
+            var result = await check.CheckAsync();
+
+            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.FetchFailed));
+            Assert.That(result.FetchResult!.Outcome, Is.EqualTo(PartSyncOutcome.Stale));
+        }
+
+        [Test]
+        public async Task CheckAsync_EnsureReturnsCancelled_ReturnsFetchFailedWithResult()
+        {
+            var context = new StubContext { InMemoryPartPk = 0 };
+            context.EnsureResult = new PartSyncResult(PartSyncOutcome.Cancelled);
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
+
+            var result = await check.CheckAsync();
+
+            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.FetchFailed));
+            Assert.That(result.FetchResult!.Outcome, Is.EqualTo(PartSyncOutcome.Cancelled));
+        }
+
+        [Test]
+        public async Task CheckAsync_EnsureReturnsInvalidOperation_ReturnsFetchFailedWithResult()
+        {
+            var context = new StubContext { InMemoryPartPk = 0 };
+            context.EnsureResult = new PartSyncResult(PartSyncOutcome.InvalidOperation)
+            {
+                Diagnostic = "No Part Sync session or client.",
+            };
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
+
+            var result = await check.CheckAsync();
+
+            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.FetchFailed));
+            Assert.That(result.FetchResult!.Outcome, Is.EqualTo(PartSyncOutcome.InvalidOperation));
+        }
+
+        [Test]
+        public async Task CheckAsync_EnsureReturnsDuplicateTerminal_ReturnsFetchFailedWithResult()
+        {
+            var context = new StubContext { InMemoryPartPk = 0 };
+            context.EnsureResult = new PartSyncResult(PartSyncOutcome.DuplicateNoRevisionMatch)
+            {
+                Ipn = "PART-001",
+                SwRevision = "B",
+            };
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
+
+            var result = await check.CheckAsync();
+
+            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.FetchFailed));
+            Assert.That(result.FetchResult!.Outcome, Is.EqualTo(PartSyncOutcome.DuplicateNoRevisionMatch));
+        }
+
+        // -- Snapshot immutability ------------------------------------------------
+
+        [Test]
+        public void BomReadinessSnapshot_Mapping_IsDefensivelyCopiedInAndOut()
+        {
+            var mapping = CreateMapping();
+            var snapshot = new BomReadinessSnapshot("PART-001", 0, string.Empty, "A", "A", mapping);
+
+            mapping.BomColumnIpn = "POISONED";
+            Assert.That(snapshot.Mapping.BomColumnIpn, Is.EqualTo("IPN"),
+                "mutating the source config must not change the snapshot");
+
+            var read = snapshot.Mapping;
+            read.BomColumnIpn = "POISONED";
+            Assert.That(snapshot.Mapping.BomColumnIpn, Is.EqualTo("IPN"),
+                "mutating a returned Mapping must not change the snapshot");
+        }
+
         // -- BOM column alias pre-flight ----------------------------------------
 
         [Test]

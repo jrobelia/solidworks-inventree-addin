@@ -39,7 +39,10 @@ namespace SwInventreeAddin.UI
 
         // ── Dependencies ──────────────────────────────────────────────────────
 
-        private readonly IPartSyncCoordinator _coordinator;
+        // Bound to the concrete coordinator: the light RefreshDocument
+        // member is internal and deliberately off IPartSyncCoordinator —
+        // the approved public seam stays exactly the declared surface.
+        private readonly PartSyncCoordinator _coordinator;
         private readonly IHostStaDispatcher _dispatcher;
         private IInventreeClient? _client;
         private IPropertyMappingProvider? _mappingProvider;
@@ -379,14 +382,18 @@ namespace SwInventreeAddin.UI
         /// coordinator owns the document model and all Part Sync workflow; the
         /// ViewModel only projects it into bindable properties.
         /// </summary>
-        /// <param name="coordinator">Part Sync coordinator owning state and workflow.</param>
+        /// <param name="coordinator">
+        /// Part Sync coordinator owning state and workflow — the concrete
+        /// type: the ViewModel's light-refresh paths use an internal member
+        /// kept off the approved <see cref="IPartSyncCoordinator"/> surface.
+        /// </param>
         /// <param name="dispatcher">STA dispatcher for marshalling UI-thread work.</param>
         /// <param name="client">Active InvenTree client, or null when no server is configured.</param>
         /// <param name="mappingProvider">Current property mapping provider.</param>
         /// <param name="configProvider">Config persistence (BOM keyword), or null.</param>
         /// <param name="createPartValidator">Create Part validation service, or null to hide the button.</param>
         public TaskPaneViewModel(
-            IPartSyncCoordinator coordinator,
+            PartSyncCoordinator coordinator,
             IHostStaDispatcher dispatcher,
             IInventreeClient? client,
             IPropertyMappingProvider? mappingProvider = null,

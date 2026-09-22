@@ -41,10 +41,13 @@ document warrants.
   stale each other while sequential scoped operations (Push, image,
   confirmations) do not.
 - **Stale completion.** A completion whose captured token no longer matches
-  must not install a session and must not write SolidWorks Document
-  Properties — enforced by revalidation *inside* the marshalled commit, plus
-  a document recapture that catches a switch whose host notification has not
-  arrived yet.
+  must not install a session, must not write SolidWorks Document
+  Properties, and must not surface *any* result — including a network
+  failure — to the pane. Every commit path (marshalled or synchronous)
+  runs one guard first: token revalidation *inside* the marshalled commit
+  plus an active-document recapture that catches a switch whose host
+  notification has not arrived yet. A stale `Failed` returns `Stale`, so it
+  can never overwrite a newer document's status.
 - **Cancellation is best effort.** `IInventreeClient` carries no
   `CancellationToken`s, so cancellation is *attempted* on document switch,
   close, client replacement, and shutdown — but token validation is the
@@ -81,15 +84,17 @@ Document Properties — regardless of when the underlying request resolves.
 | 5 | Fetch in flight; a newer Fetch is issued in the same generation | The older completion is stale (request-order component) |
 | 6 | Create Part completion after a document switch or close | Stale — no session install, no writes |
 | 7 | Create Part completion after client replacement or Property Mapping replacement | Stale |
-| 8 | Completed result; then a switch to another document — any stamp combination, including an identical IPN + InvenTree Part PK | Dropped — the new document evaluates on its own stamps |
+| 8 | Push/image upload *fails* while its commit is parked; the document switches before it runs | Stale — the failure never becomes a status write on the new pane |
+| 9 | Missing-property approval or duplicate-IPN resume after a document switch (delivered or not) | Stale — no `Apply` write, no session install; the duplicate resume is rejected before its thumbnail download |
+| 10 | Completed result; then a switch to another document — any stamp combination, including an identical IPN + InvenTree Part PK | Dropped — the new document evaluates on its own stamps |
 
-Keep the matrix distinct from the completed-session rules: rows 1–7 cover
-work still in flight, row 8 covers a completed result across a document
-switch. Row 8 is executable since #91 — `DocumentSwitch_*` tests in
+Keep the matrix distinct from the completed-session rules: rows 1–9 cover
+work still in flight, row 10 covers a completed result across a document
+switch. Row 10 is executable since #91 — `DocumentSwitch_*` tests in
 `SwInventreeAddin.Tests/TaskPaneViewModelTests.cs` pin the token-based,
 unconditional drop (#292: same-stamp adoption was rejected — two documents
 sharing an IPN + InvenTree Part PK are a copied file with stale stamps);
-rows 1–7 are `PartSyncCoordinatorTests` — including the queued-dispatcher
+rows 1–9 are `PartSyncCoordinatorTests` — including the queued-dispatcher
 case where a commit is parked on the STA queue while the document changes.
 The five
 completed-session cases pinned in

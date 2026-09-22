@@ -65,17 +65,6 @@ namespace SwInventreeAddin
         /// </summary>
         TaskPaneDocumentTransition UpdateDocument();
 
-        /// <summary>
-        /// The light counterpart of <see cref="UpdateDocument"/>: STA
-        /// capture → install with the same Activated semantics (drops the
-        /// session, clears pending writes) but <em>no</em> same-document
-        /// session revalidation — today's <c>RefreshCurrentProperties</c>
-        /// path. Used by the BOM readiness snapshot capture and other
-        /// light-refresh callers that must not drop a populated session whose
-        /// document carries no stamped PK yet.
-        /// </summary>
-        TaskPaneDocumentTransition RefreshDocument();
-
         /// <summary>Clears document state, drops the session, clears pending writes.</summary>
         void NotifyDocumentClosed();
 

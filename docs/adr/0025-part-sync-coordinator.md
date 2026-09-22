@@ -31,9 +31,14 @@ its lifecycle, behind the narrow `IPartSyncCoordinator` interface.
   (Push, image upload, confirmations) never stale each other.
 - **Commit discipline.** STA capture → network/image work off-thread via
   `ConfigureAwait(false)` → commit marshalled through `IHostStaDispatcher`
-  with token revalidation **inside** the marshalled callback, plus a document
-  recapture that catches a switch whose host notification has not arrived.
-  No stale completion ever installs a session or writes a Document Property.
+  with token revalidation **inside** the marshalled callback. One guard —
+  `IsCommitCurrent` = token validation + active-document recapture (which
+  catches a switch whose host notification has not arrived) — runs BEFORE
+  any result examination or write on every commit path, including error
+  branches: a stale `Failed` can never reach the ViewModel as a status
+  write, and `CompleteCreatePart`/confirmation resumes revalidate before
+  touching `ISldWorks.ActiveDoc`. No stale completion ever installs a
+  session, mutates a dropped session, or writes a Document Property.
 - **Typed outcomes, not UI.** Operations return `PartSyncResult` carrying a
   `PartSyncOutcome` (Success, PartNotFound, DuplicateIpnConfirmation,
   DuplicateNoRevisionMatch, DuplicateAmbiguous, LinkMismatchConfirmation,
@@ -42,9 +47,12 @@ its lifecycle, behind the narrow `IPartSyncCoordinator` interface.
   coordinator code never touches `StatusText`.
 - **Confirmation correlation.** Every confirmation outcome carries an opaque
   `PartSyncConfirmationHandle`; `ResumeConfirmationAsync` validates it
-  against the single pending-confirmation slot, so an approval can never land
-  on a different pending operation than the one displayed. Duplicate
-  candidate selection is by immutable PK, validated against the captured set.
+  against the single pending-confirmation slot, validates the operation
+  token on resume (and again inside the post-download commit), so an
+  approval can never land on a different pending operation than the one
+  displayed — and a stale resume is rejected before any download starts.
+  Duplicate candidate selection is by immutable PK, validated against the
+  captured set, which is a `ReadOnlyCollection` the caller cannot mutate.
 - **Immutable surface.** `InventreePart` never escapes: the read surface and
   result payloads expose immutable `PartSnapshot` projections, incoming parts
   are copied on install, and `ThumbnailBytes`/`CurrentMapping` return
@@ -55,10 +63,14 @@ its lifecycle, behind the narrow `IPartSyncCoordinator` interface.
   before `SetCustomProperty` (SolidWorks can raise the echo synchronously)
   and the set is cleared only on generation advance.
 - **BOM readiness** consumes `IBomReadinessContext` — one coherent
-  `BomReadinessSnapshot` plus the explicit ensure-populated and push-revision
-  commands — replacing `IBomReadinessSource`'s property-and-command mixture.
-  The production adapter marshals snapshot captures through the dispatcher,
-  so readiness checks never touch SolidWorks COM on a pool continuation.
+  `BomReadinessSnapshot` (immutable; clones its mapping in and out) plus
+  the explicit ensure-populated and push-revision commands — replacing
+  `IBomReadinessSource`'s property-and-command mixture. Non-success,
+  non-confirmation ensure outcomes surface as `BomCompareOutcome.FetchFailed`
+  carrying the typed `PartSyncResult` — a server or lifecycle failure never
+  masquerades as "create the part". The production adapter marshals snapshot
+  captures through the dispatcher, so readiness checks never touch
+  SolidWorks COM on a pool continuation.
 - **`IHostStaDispatcher`** is the marshalling seam:
   `SynchronizationContextStaDispatcher` (production, captures the host STA
   context in `TaskPaneControl`; managed-thread-id check per ADR-0002) and
@@ -88,6 +100,11 @@ its lifecycle, behind the narrow `IPartSyncCoordinator` interface.
 - `PartThumbnailService` is deleted — upload + thumbnail re-fetch moved into
   the coordinator's `PushImageAsync`; its warning messages travel as
   `SucceededWithWarning` diagnostics.
+- The light document refresh (capture→install without same-document session
+  revalidation) is an `internal` member on the concrete
+  `PartSyncCoordinator` — `IPartSyncCoordinator` is exactly the approved
+  public seam; only the internal BOM adapter and the ViewModel (both bound
+  to the concrete type) consume it.
 - Every async mutation is now provably generation/lifecycle/order-guarded:
   overlapping fetches, fetch-vs-create races, client/mapping replacement, and
   disposal each have executable stale-commit tests

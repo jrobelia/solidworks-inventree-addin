@@ -1299,5 +1299,176 @@ namespace SwInventreeAddin.Tests
             var result = await fetch;
             Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Stale));
         }
+
+        [Test]
+        public async Task Dispose_WithPopulatedSession_KindIsNotPopulated()
+        {
+            _client.PartToReturn = SamplePart;
+            await InstallSessionViaFetch();
+            Assert.That(_coordinator.Kind, Is.EqualTo(TaskPaneStateKind.Populated));
+
+            _coordinator.Dispose();
+
+            Assert.That(_coordinator.FetchedPart, Is.Null);
+            Assert.That(_coordinator.Kind, Is.Not.EqualTo(TaskPaneStateKind.Populated),
+                "a populated marker must never survive disposal while no part is fetched");
+        }
+
+        // ── Stale commit discipline — validate + recapture before anything else ──
+
+        [Test]
+        public void CompleteCreatePart_UndeliveredDocumentSwitch_IsStaleNoWrites()
+        {
+            SeedIpnDocument(string.Empty);
+            _coordinator.UpdateDocument();
+            var token = _coordinator.BeginCreatePart();
+
+            // The host notification has not run yet — the commit's recapture
+            // must discover the new active document BEFORE writing PK/IPN/Name:
+            // production writes always target ISldWorks.ActiveDoc.
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+
+            var result = _coordinator.CompleteCreatePart(
+                token, new InventreePart { Pk = 99, Ipn = "NEW-001", Name = "New Part" });
+
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Stale));
+            Assert.That(_propertyService.DidWrite(Mapping.PkProperty!), Is.False);
+            Assert.That(_propertyService.DidWrite(Mapping.IpnProperty!), Is.False);
+            Assert.That(_propertyService.DidWrite(Mapping.NameProperty!), Is.False);
+            Assert.That(_coordinator.FetchedPart, Is.Null);
+        }
+
+        [Test]
+        public async Task PushAsync_ServerError_ParkedCommit_DocumentSwitch_IsStale()
+        {
+            // A stale FAILED must never leave the commit — the ViewModel would
+            // turn it into an error status on the new document's pane.
+            _client.PartToReturn = SamplePart;
+            _propertyService.Seed(Mapping.NameProperty!, "New Name");
+            await InstallSessionViaFetch();
+            _client.ThrowOnUpdate = new HttpRequestException("500");
+
+            _dispatcher.DeferRun = true;
+            var push = _coordinator.PushAsync(PushField.Name);
+            Assert.That(_dispatcher.QueuedCount, Is.EqualTo(1));
+
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+            _coordinator.UpdateDocument();
+            _dispatcher.RunAll();
+
+            var result = await push;
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Stale));
+            Assert.That(_coordinator.FetchedPart, Is.Null);
+        }
+
+        [Test]
+        public async Task PushImageAsync_UploadError_ParkedCommit_DocumentSwitch_IsStale()
+        {
+            _client.PartToReturn = SamplePart;
+            await InstallSessionViaFetch();
+            _client.ThrowOnUpload = new HttpRequestException("500");
+
+            _dispatcher.DeferRun = true;
+            using var image = new Bitmap(10, 10);
+            var push = _coordinator.PushImageAsync(image, Rectangle.Empty);
+            Assert.That(_dispatcher.QueuedCount, Is.EqualTo(1));
+
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+            _coordinator.UpdateDocument();
+            _dispatcher.RunAll();
+
+            var result = await push;
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Stale));
+            Assert.That(_coordinator.FetchedPart, Is.Null);
+        }
+
+        [Test]
+        public async Task ResumeConfirmationAsync_MissingProperty_UndeliveredSwitch_IsStaleNoWrite()
+        {
+            _client.PartToReturn = SamplePart;
+            await InstallSessionViaFetch();
+            var confirm = _coordinator.Apply(ApplyField.Name);
+            Assert.That(confirm.Outcome, Is.EqualTo(PartSyncOutcome.MissingPropertyConfirmation));
+
+            // Undelivered switch — the resume commit's recapture must catch it
+            // before _session.Apply writes the approved property.
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+
+            var resumed = await _coordinator.ResumeConfirmationAsync(confirm.Confirmation!, approved: true);
+
+            Assert.That(resumed.Outcome, Is.EqualTo(PartSyncOutcome.Stale));
+            Assert.That(_propertyService.DidWrite(Mapping.NameProperty!), Is.False);
+        }
+
+        [Test]
+        public async Task ResumeConfirmationAsync_DuplicateIpn_UndeliveredSwitch_IsStaleBeforeDownload()
+        {
+            _client.PartsByIpnToReturn = new System.Collections.Generic.List<InventreePart>
+            {
+                new InventreePart { Pk = 11, Ipn = "PART-001", Revision = "B", ThumbnailUrl = "/t-11.png" },
+                new InventreePart { Pk = 12, Ipn = "PART-001", Revision = "A", ThumbnailUrl = "/t-12.png" },
+            };
+            SeedIpnDocument("PART-001", "B");
+            _coordinator.UpdateDocument();
+
+            var confirm = await _coordinator.FetchAsync("PART-001");
+            Assert.That(confirm.Outcome, Is.EqualTo(PartSyncOutcome.DuplicateIpnConfirmation));
+            Assert.That(_client.DownloadImageCallCount, Is.EqualTo(0),
+                "a multi-candidate fetch downloads no thumbnail");
+
+            // Undelivered switch — the resume's marshalled validation +
+            // recapture must discover it BEFORE the candidate thumbnail
+            // download is issued.
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+
+            var resumed = await _coordinator.ResumeConfirmationAsync(confirm.Confirmation!, approved: true);
+
+            Assert.That(resumed.Outcome, Is.EqualTo(PartSyncOutcome.Stale));
+            Assert.That(_client.DownloadImageCallCount, Is.EqualTo(0),
+                "a stale resume must be rejected before any download call is issued");
+            Assert.That(_coordinator.FetchedPart, Is.Null);
+        }
+
+        [Test]
+        public async Task FetchAsync_DuplicateIpn_Candidates_AreNotCastableToMutableList()
+        {
+            _client.PartsByIpnToReturn = new System.Collections.Generic.List<InventreePart>
+            {
+                new InventreePart { Pk = 11, Ipn = "PART-001", Revision = "B" },
+                new InventreePart { Pk = 12, Ipn = "PART-001", Revision = "A" },
+            };
+            SeedIpnDocument("PART-001", "B");
+            _coordinator.UpdateDocument();
+
+            var result = await _coordinator.FetchAsync("PART-001");
+
+            Assert.That(result.Candidates, Is.Not.Null);
+            Assert.That(result.Candidates as System.Collections.Generic.List<PartSnapshot>, Is.Null,
+                "the public candidate set must not be castable back to the mutable List " +
+                "the pending confirmation validates against");
+        }
+
+        [Test]
+        public void UpdateDocument_AlreadyEmpty_DoesNotAdvanceGeneration()
+        {
+            // Ruling pin: an already-empty light capture clears zero times —
+            // a second ClearDocument would double-advance the generation and
+            // poison every token minted against the current one.
+            _propertyService.DocumentTypeToReturn = DocumentType.Unknown;
+
+            var first = _coordinator.UpdateDocument();
+            var generation = _coordinator.Generation;
+            var second = _coordinator.UpdateDocument();
+
+            Assert.That(first, Is.EqualTo(TaskPaneDocumentTransition.Activated));
+            Assert.That(second, Is.EqualTo(TaskPaneDocumentTransition.Activated));
+            Assert.That(_coordinator.Generation, Is.EqualTo(generation));
+
+            // The next real activation still lands exactly one generation on.
+            _propertyService.DocumentTypeToReturn = DocumentType.Part;
+            SeedIpnDocument();
+            _coordinator.UpdateDocument();
+            Assert.That(_coordinator.Generation, Is.EqualTo(generation + 1));
+        }
     }
 }

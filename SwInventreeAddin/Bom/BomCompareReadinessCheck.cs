@@ -61,6 +61,14 @@ namespace SwInventreeAddin.Bom
                 var ensure = await _context.EnsurePartPopulatedAsync().ConfigureAwait(false);
                 if (IsConfirmationOutcome(ensure.Outcome))
                     return Result(BomCompareOutcome.FetchConfirmationRequired, ensure);
+                // PartNotFound is the honest "create the part" case; every
+                // other non-success outcome keeps its typed diagnostic —
+                // a server/lifecycle failure must never masquerade as
+                // PkNotFound.
+                if (ensure.Outcome == PartSyncOutcome.PartNotFound)
+                    return Result(BomCompareOutcome.PkNotFound, ensure);
+                if (ensure.Outcome != PartSyncOutcome.Success)
+                    return Result(BomCompareOutcome.FetchFailed, ensure);
             }
 
             // Re-capture: the ensure may have installed a session or stamped

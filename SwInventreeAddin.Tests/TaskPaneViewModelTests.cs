@@ -655,6 +655,42 @@ namespace SwInventreeAddin.Tests
             Assert.That(_vm.StatusText, Does.Contain("Error").IgnoreCase);
         }
 
+        [Test]
+        public async Task PushRevision_OnHttpError_DocumentSwitchBeforeCommit_DoesNotOverwriteNewPaneStatus()
+        {
+            // A stale failure must never reach the pane as a status write:
+            // the parked commit revalidates inside the dispatcher callback
+            // and returns Stale, which the status mapping ignores — the new
+            // document's own status stays intact.
+            var dispatcher = new StubHostStaDispatcher();
+            _propertyService.Seed(DefaultMapping.IpnProperty!, "R-10K-0402");
+            _propertyService.Seed("Revision", "C");
+            _client.PartToReturn = SamplePart;
+            _vm = VmFactory.Create(
+                _client, _propertyService,
+                createPartValidator: _createPartValidator,
+                dispatcher: dispatcher);
+            await _vm.FetchPartAsync();
+
+            _client.ThrowOnUpdate = new System.Net.Http.HttpRequestException("500");
+            dispatcher.DeferRun = true;
+            var push = _vm.PushRevisionToInventreeAsync();
+            Assert.That(dispatcher.QueuedCount, Is.EqualTo(1),
+                "the failing push's commit is parked on the STA queue");
+
+            // Delivered document switch — the new document's pane state wins.
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+            _vm.LoadPartNumber();
+
+            dispatcher.DeferRun = false;
+            dispatcher.RunAll();
+            await push;
+
+            Assert.That(_vm.StatusSeverity, Is.Not.EqualTo(StatusSeverity.Error));
+            Assert.That(_vm.StatusText, Does.Not.Contain("Error").IgnoreCase,
+                "the old document's failed push must not overwrite the new pane's status");
+        }
+
         // ── PushImage ─────────────────────────────────────────────────────────
 
         [Test]

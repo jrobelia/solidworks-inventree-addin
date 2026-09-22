@@ -185,6 +185,20 @@ namespace SwInventreeAddin.UI
                     continue;
                 }
 
+                if (readiness.Outcome == BomCompareOutcome.FetchFailed)
+                {
+                    // Preserve the typed ensure outcome: stale/cancelled are
+                    // silent (a newer operation owns the pane / the user
+                    // declined); everything else surfaces an honest error —
+                    // never "create the part" for a server or lifecycle failure.
+                    var r = readiness.FetchResult;
+                    if (r?.Outcome == PartSyncOutcome.Stale
+                        || r?.Outcome == PartSyncOutcome.Cancelled)
+                        return;
+                    ShowBomCompareError(DescribeBomFetchFailure(r));
+                    return;
+                }
+
                 if (readiness.Outcome == BomCompareOutcome.BomColumnAliasesMissing)
                 {
                     ShowBomColumnAliasesMissingDialog(mappingResult.Config);
@@ -327,9 +341,10 @@ namespace SwInventreeAddin.UI
 
             if (answer != MessageDialogResult.Ok) return false;
 
+            PartSyncResult pushResult;
             try
             {
-                await preFlightCheck.PushRevisionAsync().ConfigureAwait(true);
+                pushResult = await preFlightCheck.PushRevisionAsync().ConfigureAwait(true);
             }
             catch (Exception ex)
             {
@@ -341,8 +356,55 @@ namespace SwInventreeAddin.UI
                 return false;
             }
 
-            return true;
+            // Surface the typed result: stale is silent (a newer operation
+            // owns the pane); anything non-success reports its diagnostic.
+            switch (pushResult.Outcome)
+            {
+                case PartSyncOutcome.Success:
+                case PartSyncOutcome.SucceededWithWarning:
+                    return true;
+                case PartSyncOutcome.Stale:
+                case PartSyncOutcome.Cancelled:
+                    return false;
+                default:
+                    MessageDialog.ShowOK(
+                        SolidWorksWindowHandle.Get(),
+                        $"Failed to update revision in InvenTree:{System.Environment.NewLine}"
+                        + (pushResult.Diagnostic ?? pushResult.Outcome.ToString()),
+                        "BOM Compare \u2014 Revision Update Failed",
+                        System.Windows.Forms.MessageBoxIcon.Error);
+                    return false;
+            }
         }
+
+        /// <summary>
+        /// Words a non-success ensure-populate outcome for the BOM Compare
+        /// error dialog — mirroring the status wording the ViewModel uses for
+        /// the same terminal fetch outcomes.
+        /// </summary>
+        private static string DescribeBomFetchFailure(PartSyncResult? result)
+        {
+            if (result == null)
+                return "Could not load part from InvenTree.";
+
+            switch (result.Outcome)
+            {
+                case PartSyncOutcome.DuplicateNoRevisionMatch:
+                    return $"{result.Candidates?.Count ?? 0} parts share IPN \u2018{result.Ipn}\u2019 but none match " +
+                           $"SW revision {RevisionLabel(result.SwRevision)}. Resolve in InvenTree.";
+                case PartSyncOutcome.DuplicateAmbiguous:
+                    return $"{result.Candidates?.Count ?? 0} parts share IPN \u2018{result.Ipn}\u2019 and revision " +
+                           $"{RevisionLabel(result.SwRevision)}. Resolve duplicates in InvenTree.";
+                case PartSyncOutcome.InvalidOperation:
+                    return result.Diagnostic ?? "The part fetch is not available right now.";
+                default:
+                    return $"Could not load part from InvenTree:{System.Environment.NewLine}"
+                         + (result.Diagnostic ?? result.Outcome.ToString());
+            }
+        }
+
+        private static string RevisionLabel(string? revision) =>
+            string.IsNullOrEmpty(revision) ? "(blank)" : revision;
 
         // -- Delegation to ViewModel -------------------------------------------
 

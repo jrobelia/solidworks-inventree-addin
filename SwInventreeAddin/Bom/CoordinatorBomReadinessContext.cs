@@ -4,23 +4,25 @@ using System.Threading.Tasks;
 namespace SwInventreeAddin.Bom
 {
     /// <summary>
-    /// Production <see cref="IBomReadinessContext"/> over
-    /// <see cref="IPartSyncCoordinator"/>: snapshot capture refreshes the
-    /// document values through the coordinator's light refresh
-    /// (<see cref="IPartSyncCoordinator.RefreshDocument"/>) marshalled onto
+    /// Production <see cref="IBomReadinessContext"/> over the concrete
+    /// <see cref="PartSyncCoordinator"/>: snapshot capture refreshes the
+    /// document values through the coordinator's internal light refresh
+    /// (<see cref="PartSyncCoordinator.RefreshDocument"/>) marshalled onto
     /// the host STA thread, so it is callable from a thread-pool
     /// continuation — SolidWorks COM never runs off the STA thread. The
     /// light refresh (not the full <see cref="IPartSyncCoordinator.UpdateDocument"/>)
     /// is deliberate: revalidation would drop the session an ensure-fetch
-    /// just installed on a document with no stamped PK.
+    /// just installed on a document with no stamped PK. It stays off
+    /// <see cref="IPartSyncCoordinator"/> — this adapter is internal and
+    /// binds the concrete type.
     /// </summary>
     internal sealed class CoordinatorBomReadinessContext : IBomReadinessContext
     {
-        private readonly IPartSyncCoordinator _coordinator;
+        private readonly PartSyncCoordinator _coordinator;
         private readonly IHostStaDispatcher _dispatcher;
 
         public CoordinatorBomReadinessContext(
-            IPartSyncCoordinator coordinator, IHostStaDispatcher dispatcher)
+            PartSyncCoordinator coordinator, IHostStaDispatcher dispatcher)
         {
             _coordinator = coordinator ?? throw new ArgumentNullException(nameof(coordinator));
             _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));

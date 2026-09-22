@@ -51,6 +51,15 @@ namespace SwInventreeAddin.Bom
         /// coordinator's pending confirmation, and re-runs the check.
         /// </summary>
         FetchConfirmationRequired,
+
+        /// <summary>
+        /// The auto-populate fetch returned a non-success, non-confirmation
+        /// outcome — server failure, stale/cancelled lifecycle, invalid
+        /// operation, or a terminal duplicate. The caller inspects
+        /// <see cref="BomCompareReadiness.FetchResult"/> and presents it
+        /// honestly (never as "create the part").
+        /// </summary>
+        FetchFailed,
     }
 
     internal sealed class BomCompareReadiness

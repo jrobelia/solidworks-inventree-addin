@@ -1,3 +1,4 @@
+using System;
 using SwInventreeAddin.Config;
 
 namespace SwInventreeAddin.Bom
@@ -11,6 +12,11 @@ namespace SwInventreeAddin.Bom
     /// </summary>
     internal sealed class BomReadinessSnapshot
     {
+        // The snapshot owns its mapping — defensive copy in, defensive copy
+        // out — so the type is immutable regardless of what the caller hands
+        // in or does with the value it reads back.
+        private readonly PropertyMappingConfig _mapping;
+
         public BomReadinessSnapshot(
             string ipn,
             int inMemoryPartPk,
@@ -24,7 +30,7 @@ namespace SwInventreeAddin.Bom
             StampedPkText = stampedPkText ?? string.Empty;
             SwRevision = swRevision ?? string.Empty;
             FetchedRevision = fetchedRevision ?? string.Empty;
-            Mapping = mapping;
+            _mapping = (mapping ?? throw new ArgumentNullException(nameof(mapping))).Clone();
         }
 
         /// <summary>The document's IPN Document Property value.</summary>
@@ -43,6 +49,6 @@ namespace SwInventreeAddin.Bom
         public string FetchedRevision { get; }
 
         /// <summary>The resolved mapping (defensive copy), including BOM column aliases.</summary>
-        public PropertyMappingConfig Mapping { get; }
+        public PropertyMappingConfig Mapping => _mapping.Clone();
     }
 }
