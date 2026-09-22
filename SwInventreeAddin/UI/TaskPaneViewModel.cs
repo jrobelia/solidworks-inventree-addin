@@ -312,23 +312,46 @@ namespace SwInventreeAddin.UI
 
         // ── Match indicators ──────────────────────────────────────────────────
 
-        private bool BothNonBlank(string? a, string? b) =>
-            !string.IsNullOrEmpty(a) && !string.IsNullOrEmpty(b);
+        /// <summary>
+        /// Null = not yet fetched. True = SW and InvenTree values match. False = mismatch.
+        /// </summary>
+        public bool? NameMatch =>
+            PropertiesSectionVisible
+                ? string.Equals(CurrentName.Trim(), NamePreview.Trim(), StringComparison.OrdinalIgnoreCase)
+                : (bool?)null;
 
-        /// <summary>True when both sides have a Name and they are identical.</summary>
-        public bool NameMatch => PropertiesSectionVisible && BothNonBlank(CurrentName, NamePreview) && CurrentName == NamePreview;
+        /// <summary>
+        /// Null = not yet fetched. True = SW and InvenTree values match. False = mismatch.
+        /// </summary>
+        public bool? NotesMatch =>
+            PropertiesSectionVisible
+                ? string.Equals(CurrentNotes.Trim(), NotesPreview.Trim(), StringComparison.OrdinalIgnoreCase)
+                : (bool?)null;
 
-        /// <summary>True when both sides have Notes and they are identical.</summary>
-        public bool NotesMatch => PropertiesSectionVisible && BothNonBlank(CurrentNotes, NotesPreview) && CurrentNotes == NotesPreview;
+        /// <summary>
+        /// Null = not yet fetched. True = SW and InvenTree revisions match. False = mismatch.
+        /// </summary>
+        public bool? RevisionMatch =>
+            PropertiesSectionVisible
+                ? string.Equals(CurrentRevision.Trim(), RevisionPreview.Trim(), StringComparison.OrdinalIgnoreCase)
+                : (bool?)null;
 
-        /// <summary>True when both sides have a Revision and they are identical.</summary>
-        public bool RevisionMatch => PropertiesSectionVisible && BothNonBlank(CurrentRevision, RevisionPreview) && CurrentRevision == RevisionPreview;
+        /// <summary>
+        /// Null = not yet fetched. True = SW and InvenTree descriptions match. False = mismatch.
+        /// </summary>
+        public bool? DescriptionMatch =>
+            PropertiesSectionVisible
+                ? string.Equals(CurrentDescription.Trim(), DescriptionPreview.Trim(), StringComparison.OrdinalIgnoreCase)
+                : (bool?)null;
 
-        /// <summary>True when both sides have a Description Long and they are identical.</summary>
-        public bool DescriptionMatch => PropertiesSectionVisible && BothNonBlank(CurrentDescription, DescriptionPreview) && CurrentDescription == DescriptionPreview;
-
-        /// <summary>True when both sides have a PK and they are identical.</summary>
-        public bool PkMatch => PropertiesSectionVisible && BothNonBlank(CurrentPk, PkPreview) && CurrentPk == PkPreview;
+        /// <summary>
+        /// Null = not yet fetched. True = SW and InvenTree PK values match. False = mismatch.
+        /// </summary>
+        public bool? PkMatch =>
+            PropertiesSectionVisible
+                ? string.Equals(_coordinator.Document?.PkText?.Trim(), PkPreview.Trim(),
+                      StringComparison.OrdinalIgnoreCase)
+                : (bool?)null;
 
         // ── BOM compare state ─────────────────────────────────────────────────
 

@@ -1956,6 +1956,39 @@ namespace SwInventreeAddin.Tests
             Assert.That(_vm.RevisionMatch, Is.False);
         }
 
+        [Test]
+        public async Task RevisionMatch_WhenCaseDiffers_IsTrue()
+        {
+            _propertyService.Seed("Revision", "a");
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.RevisionMatch, Is.True);
+        }
+
+        [Test]
+        public async Task RevisionMatch_WhenWhitespacePadded_IsTrue()
+        {
+            _propertyService.Seed("Revision", " A ");
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.RevisionMatch, Is.True);
+        }
+
+        [Test]
+        public async Task RevisionMatch_WhenBothBlank_IsTrue()
+        {
+            _client.PartToReturn = new InventreePart
+            {
+                Pk = 42,
+                Ipn = "ABC-001",
+                Name = "Widget",
+                Revision = ""
+            };
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.RevisionMatch, Is.True);
+        }
+
         // ── PushNameEnabled ────────────────────────────────────────────────────
 
         [Test]
