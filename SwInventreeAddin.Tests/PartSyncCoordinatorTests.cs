@@ -916,6 +916,62 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public async Task Apply_ExistingProperty_RegistersPendingEcho()
+        {
+            _client.PartToReturn = SamplePart;
+            _propertyService.Seed(Mapping.NameProperty!, "old");
+            await InstallSessionViaFetch();
+
+            _coordinator.Apply(ApplyField.Name);
+
+            // The add-in-originated write registered its echo — SolidWorks
+            // reporting our own value back is consumed without a re-read.
+            var echo = _coordinator.NotifyDocumentPropertyChanged(
+                Mapping.NameProperty!, "Resistor 10k");
+            Assert.That(echo, Is.EqualTo(PartSyncPropertyChange.EchoConsumed));
+        }
+
+        [Test]
+        public async Task Apply_ExistingProperty_UndeliveredSwitch_IsStaleNoWrite()
+        {
+            _client.PartToReturn = SamplePart;
+            _propertyService.Seed(Mapping.NameProperty!, "old");
+            await InstallSessionViaFetch();
+
+            // ActiveDoc changed but the host notification has not run — the
+            // commit's recapture must catch it before the old part's value
+            // is written into the new document.
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+
+            var result = _coordinator.Apply(ApplyField.Name);
+
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Stale));
+            Assert.That(_propertyService.DidWrite(Mapping.NameProperty!, "Resistor 10k"), Is.False);
+        }
+
+        [Test]
+        public async Task Apply_MissingProperty_UndeliveredSwitch_IsStaleNoPendingStored()
+        {
+            _client.PartToReturn = SamplePart;
+            await InstallSessionViaFetch();
+            Assert.That(_propertyService.PropertyExists(Mapping.NameProperty!), Is.False);
+
+            // Undelivered switch — the guard runs before the missing-property
+            // check, so no confirmation is parked for a superseded document.
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+
+            var result = _coordinator.Apply(ApplyField.Name);
+
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Stale));
+            Assert.That(result.Confirmation, Is.Null);
+            Assert.That(_propertyService.DidWrite(Mapping.NameProperty!), Is.False);
+
+            var bogus = await _coordinator.ResumeConfirmationAsync(
+                new PartSyncConfirmationHandle(777), approved: true);
+            Assert.That(bogus.Outcome, Is.EqualTo(PartSyncOutcome.InvalidOperation));
+        }
+
+        [Test]
         public async Task Apply_MissingProperty_ReturnsConfirmation()
         {
             _client.PartToReturn = SamplePart;

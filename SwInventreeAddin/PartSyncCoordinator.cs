@@ -597,13 +597,25 @@ namespace SwInventreeAddin
             if (mappingResult.CanUseForPartSync != true)
                 return InvalidOp(mappingResult.FullStatusMessage);
 
-            var propertyName = _session.ApplyPropertyName(field);
-            var missing = _session.GetMissingApplyProperties(propertyName);
+            // Same commit discipline as the async paths: the session was
+            // validated against the last *delivered* document state — an
+            // ActiveDoc switch whose host notification has not run yet would
+            // direct the old part's value into the new document. Validate +
+            // recapture BEFORE any property-existence check or write, and
+            // reuse the validated capture for a stored missing-property
+            // confirmation so its resume correlates to this exact point.
+            var session = _session;
+            var token = CaptureScopedToken();
+            if (!IsCommitCurrent(token) || !ReferenceEquals(_session, session))
+                return Stale();
+
+            var propertyName = session.ApplyPropertyName(field);
+            var missing = session.GetMissingApplyProperties(propertyName);
             if (missing.Count > 0)
             {
                 var handle = StorePendingConfirmation(new PendingConfirmation
                 {
-                    Token = CaptureScopedToken(),
+                    Token = token,
                     Kind = PendingConfirmationKind.MissingProperty,
                     ApplyField = field,
                 });
@@ -614,7 +626,7 @@ namespace SwInventreeAddin
                 };
             }
 
-            var written = _session.Apply(field);
+            var written = session.Apply(field);
             SubstituteRefreshFor(field, written);
             RaiseChanged();
             return new PartSyncResult(PartSyncOutcome.Success);
