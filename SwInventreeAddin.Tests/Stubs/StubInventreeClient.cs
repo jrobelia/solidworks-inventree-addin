@@ -235,9 +235,13 @@ namespace SwInventreeAddin.Tests.Stubs
         public List<PendingCall<string, IReadOnlyList<InventreePart>>> PendingGetPartsByIpnCalls
             => _getPartsByIpnCalls.Calls;
 
+        /// <summary>When set, GetPartsByIpnAsync throws — models a network failure on the IPN fetch path.</summary>
+        public Exception? ThrowOnGetPartsByIpn { get; set; }
+
         public Task<IReadOnlyList<InventreePart>> GetPartsByIpnAsync(string ipn)
         {
             LastIpnRequested = ipn;
+            if (ThrowOnGetPartsByIpn != null) throw ThrowOnGetPartsByIpn;
             if (_getPartsByIpnCalls.Capture(ipn) is { } deferred)
                 return deferred;
             // If a specific list was configured, return it.

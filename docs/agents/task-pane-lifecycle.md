@@ -4,7 +4,8 @@ The Task Pane's state and lifecycle contract, locked down in #90 ahead of the
 #91–#93 state moves. The five kinds below are characterized as observable
 `TaskPaneViewModel` state by `TaskPaneLifecycleCharacterizationTests`
 (`SwInventreeAddin.Tests/TaskPaneViewModelTests.cs`); the `#92` matrix is
-recorded here as a document — it deliberately has no executable tests yet.
+executable — `PartSyncCoordinatorTests` pins every row against the real
+coordinator.
 
 ## Task Pane State kinds
 
@@ -31,27 +32,33 @@ document warrants.
   for the same document are refreshes and do not advance it. A same-document
   property refresh (`OnDocumentPropertyChanged`, or a reload that re-reads
   identical identity stamps) does not advance it either.
-- **Operation token.** Async work captures an opaque three-component token —
-  document generation + coordinator lifecycle revision + request order —
-  plus the relevant IPN / InvenTree Part PK. The coordinator lifecycle
+- **Operation token.** `PartSyncCoordinator` captures an opaque
+  `PartSyncOperationToken` — document generation + coordinator lifecycle
+  revision + session-family order — at STA capture time. The lifecycle
   revision advances on client replacement (`UpdateClient`), Property Mapping
-  replacement (`UpdateMapping`), and disposal/shutdown. Request order
-  distinguishes overlapping requests within one generation + revision.
+  replacement (`UpdateMapping`), and disposal/shutdown. Fetch and
+  `BeginCreatePart` mint a new family order, so overlapping family operations
+  stale each other while sequential scoped operations (Push, image,
+  confirmations) do not.
 - **Stale completion.** A completion whose captured token no longer matches
   must not install a session and must not write SolidWorks Document
-  Properties.
+  Properties — enforced by revalidation *inside* the marshalled commit, plus
+  a document recapture that catches a switch whose host notification has not
+  arrived yet.
 - **Cancellation is best effort.** `IInventreeClient` carries no
   `CancellationToken`s, so cancellation is *attempted* on document switch,
   close, client replacement, and shutdown — but token validation is the
   correctness mechanism, not cancellation.
 - **Threading.** SolidWorks work follows STA capture → off-thread network
-  work → STA validation/commit. `TaskPaneViewModel` captures
-  `SynchronizationContext.Current` and the managed thread id at construction,
-  network awaits use `ConfigureAwait(false)`, and commits marshal back through
-  `RunOnUiThread` — a managed-thread-id check, never a context comparison
+  work → STA validation/commit. `TaskPaneControl` constructs
+  `SynchronizationContextStaDispatcher` on the host thread — it captures the
+  ambient `SynchronizationContext` and the managed thread id; the
+  coordinator's commits and the ViewModel's `RunOnUiThread` marshal through
+  its `Run` — a managed-thread-id check, never a context comparison
   (ADR-0002). The rule is testable without SolidWorks installed:
-  `StubSynchronizationContext` counts `Send` calls and the deferred-completion
-  stubs complete fetches off the captured thread.
+  `StubHostStaDispatcher` parks commits in queued mode so a test can land a
+  document switch mid-flight, and `StubSynchronizationContext` counts `Send`
+  calls for the marshalling path.
 - **Presentation.** Confirmations (Link Mismatch, duplicate IPN, missing
   properties) and status wording remain presentation concerns. Producer
   triggers and current wording are catalogued in
@@ -61,9 +68,9 @@ document warrants.
 
 ## #92 stale-result matrix
 
-The named matrix #92 turns into executable tests. "Stale" means the operation
-must not install a session and must not write SolidWorks Document Properties —
-regardless of when the underlying request resolves.
+The matrix #92 pins as executable `PartSyncCoordinatorTests`. "Stale" means
+the operation must not install a session and must not write SolidWorks
+Document Properties — regardless of when the underlying request resolves.
 
 | # | Scenario | Expected outcome |
 | --- | --- | --- |
@@ -82,7 +89,9 @@ switch. Row 8 is executable since #91 — `DocumentSwitch_*` tests in
 `SwInventreeAddin.Tests/TaskPaneViewModelTests.cs` pin the token-based,
 unconditional drop (#292: same-stamp adoption was rejected — two documents
 sharing an IPN + InvenTree Part PK are a copied file with stale stamps);
-rows 1–7 remain #92 coordinator work. The five
+rows 1–7 are `PartSyncCoordinatorTests` — including the queued-dispatcher
+case where a commit is parked on the STA queue while the document changes.
+The five
 completed-session cases pinned in
-`TaskPaneLifecycleCharacterizationTests` describe what today's
+`TaskPaneLifecycleCharacterizationTests` describe what
 `LoadPartNumber` / `OnDocumentPropertyChanged` do once a session exists.

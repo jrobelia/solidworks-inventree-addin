@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using System.Threading.Tasks;
 using SwInventreeAddin.Bom;
 using SwInventreeAddin.Config;
@@ -15,11 +13,18 @@ using SwInventreeAddin.SolidWorks;
 namespace SwInventreeAddin.UI
 {
     /// <summary>
-    /// All business logic for the InvenTree task pane.
+    /// Presentation layer for the InvenTree task pane.
     /// Pure C# — no WinForms or WPF types so it is fully unit-testable
     /// without an STA thread or UI handle.
     /// </summary>
-    public class TaskPaneViewModel : INotifyPropertyChanged, IBomReadinessSource
+    /// <remarks>
+    /// Part Sync session lifecycle and workflow live in
+    /// <see cref="IPartSyncCoordinator"/> — this ViewModel owns only WPF
+    /// property notifications, status wording, confirmation prompts, and
+    /// command routing. Every bindable document/session projection reads the
+    /// coordinator's immutable surface; nothing here stores document state.
+    /// </remarks>
+    public class TaskPaneViewModel : INotifyPropertyChanged
     {
         // ── INotifyPropertyChanged ─────────────────────────────────────────────
 
@@ -34,9 +39,9 @@ namespace SwInventreeAddin.UI
 
         // ── Dependencies ──────────────────────────────────────────────────────
 
+        private readonly IPartSyncCoordinator _coordinator;
+        private readonly IHostStaDispatcher _dispatcher;
         private IInventreeClient? _client;
-        private readonly IDocumentPropertyService _propertyService;
-        private readonly IViewportCaptureService? _viewportService;
         private IPropertyMappingProvider? _mappingProvider;
         private readonly IConfigProvider? _configProvider;
         private ICreatePartValidationErrorService? _validationService;
@@ -57,10 +62,10 @@ namespace SwInventreeAddin.UI
 
         /// <summary>
         /// Called when an IPN resolves to multiple parts and exactly one revision matches SW.
-        /// Receives (allCandidates, matchedPart). Return true to load the matched part, false to cancel.
-        /// Default always proceeds.
+        /// Receives (allCandidates, matchedCandidate) as immutable projections.
+        /// Return true to load the matched part, false to cancel. Default always proceeds.
         /// </summary>
-        public Func<IReadOnlyList<InventreePart>, InventreePart, bool> ConfirmDuplicateIpn { get; set; } = (_, __) => true;
+        public Func<IReadOnlyList<PartSnapshot>, PartSnapshot, bool> ConfirmDuplicateIpn { get; set; } = (_, __) => true;
 
         /// <summary>
         /// Called on the PK fetch path when the fetched part's IPN or Revision disagrees
@@ -69,7 +74,7 @@ namespace SwInventreeAddin.UI
         /// PK-addressed part, false to leave the document LINKED with no session.
         /// Default always proceeds.
         /// </summary>
-        public Func<string, string, InventreePart, bool> ConfirmLinkMismatch { get; set; } = (_, __, ___) => true;
+        public Func<string, string, PartSnapshot, bool> ConfirmLinkMismatch { get; set; } = (_, __, ___) => true;
 
         /// <summary>
         /// Called when the InvenTree thumbnail is clicked and a part URL is available.
@@ -81,6 +86,14 @@ namespace SwInventreeAddin.UI
             using var _ = Process.Start(new ProcessStartInfo(url.AbsoluteUri) { UseShellExecute = true });
         };
 
+        /// <summary>
+        /// Host-provided viewport capture + crop: returns the image to push and
+        /// the crop rectangle, or null when the user cancels or capture is
+        /// unavailable. Wired by <see cref="TaskPaneControl"/>; the returned
+        /// image is disposed by <see cref="PushImageAsync"/> after the push.
+        /// </summary>
+        public Func<(Image Image, Rectangle CropRect)?>? CaptureImageForPush { get; set; }
+
         // ── Bindable properties ───────────────────────────────────────────────
 
         private string _partNumber = string.Empty;
@@ -90,14 +103,6 @@ namespace SwInventreeAddin.UI
         private bool _createPartEnabled;
         private bool _propertiesSectionVisible;
         private StatusSeverity _statusSeverity = StatusSeverity.None;
-
-        /// <summary>
-        /// The active document's state — type, IPN, stamped InvenTree Part PK,
-        /// and the mapped Document Property values — owned atomically by
-        /// <see cref="TaskPaneState"/>. Every document-derived bindable below
-        /// is a computed projection of it; nothing else stores document state.
-        /// </summary>
-        private readonly TaskPaneState _state = new TaskPaneState();
 
         /// <summary>User-editable IPN entry box.</summary>
         public string PartNumber
@@ -110,105 +115,111 @@ namespace SwInventreeAddin.UI
             }
         }
 
-        // ── Preview properties (computed from session) ────────────────────────
+        // ── Preview properties (computed from the coordinator's session projection) ──
+
+        private PartSnapshot? Fetched => _coordinator.FetchedPart;
 
         /// <summary>Name fetched from InvenTree.</summary>
-        public string NamePreview => _session?.Part.Name ?? string.Empty;
+        public string NamePreview => Fetched?.Name ?? string.Empty;
 
         /// <summary>Notes fetched from InvenTree.</summary>
-        public string NotesPreview => _session?.Part.Notes ?? string.Empty;
+        public string NotesPreview => Fetched?.Notes ?? string.Empty;
 
         /// <summary>Revision fetched from InvenTree (or pushed).</summary>
-        public string RevisionPreview => _session?.Part.Revision ?? string.Empty;
+        public string RevisionPreview => Fetched?.Revision ?? string.Empty;
 
         /// <summary>Description fetched from InvenTree.</summary>
-        public string DescriptionPreview => _session?.Part.Description ?? string.Empty;
+        public string DescriptionPreview => Fetched?.Description ?? string.Empty;
 
         /// <summary>InvenTree PK as a display string.</summary>
-        public string PkPreview => _session?.Part.Pk > 0 ? _session!.Part.Pk.ToString() : string.Empty;
+        public string PkPreview => Fetched?.Pk > 0 ? Fetched!.Pk.ToString() : string.Empty;
 
         /// <summary>Raw PNG/JPEG bytes of the InvenTree part thumbnail. Null when none fetched.</summary>
-        public byte[]? ThumbnailBytes => _session?.ThumbnailBytes;
+        public byte[]? ThumbnailBytes => _coordinator.ThumbnailBytes;
 
         /// <summary>In-stock quantity display string (e.g. "15.5").</summary>
-        public string InStockDisplay => _session?.Part.InStock.ToString("G29") ?? string.Empty;
+        public string InStockDisplay => Fetched?.InStock.ToString("G29") ?? string.Empty;
 
         /// <summary>On-order quantity display string (e.g. "100").</summary>
-        public string OrderingDisplay => _session?.Part.Ordering.ToString("G29") ?? string.Empty;
+        public string OrderingDisplay => Fetched?.Ordering.ToString("G29") ?? string.Empty;
 
-        // ── Flag chips (computed from session) ──────────────────────────────────
+        // ── Flag chips (computed from the session projection) ─────────────────
 
         /// <summary>"Active: ✓" / "Active: ✗" display text for the Active flag chip.</summary>
-        public string ActiveDisplay => FormatFlag("Active", _session?.Part.Active);
-        public bool? ActiveValue => _session?.Part.Active;
-        public string AssemblyDisplay => FormatFlag("Assembly", _session?.Part.Assembly);
-        public bool? AssemblyValue => _session?.Part.Assembly;
-        public string ComponentDisplay => FormatFlag("Component", _session?.Part.Component);
-        public bool? ComponentValue => _session?.Part.Component;
-        public string PurchaseableDisplay => FormatFlag("Purchaseable", _session?.Part.Purchaseable);
-        public bool? PurchaseableValue => _session?.Part.Purchaseable;
-        public string SalableDisplay => FormatFlag("Salable", _session?.Part.Salable);
-        public bool? SalableValue => _session?.Part.Salable;
-        public string TrackableDisplay => FormatFlag("Trackable", _session?.Part.Trackable);
-        public bool? TrackableValue => _session?.Part.Trackable;
-        public string TestableDisplay => FormatFlag("Testable", _session?.Part.Testable);
-        public bool? TestableValue => _session?.Part.Testable;
+        public string ActiveDisplay => FormatFlag("Active", Fetched?.Active);
+        public bool? ActiveValue => Fetched?.Active;
+        public string AssemblyDisplay => FormatFlag("Assembly", Fetched?.Assembly);
+        public bool? AssemblyValue => Fetched?.Assembly;
+        public string ComponentDisplay => FormatFlag("Component", Fetched?.Component);
+        public bool? ComponentValue => Fetched?.Component;
+        public string PurchaseableDisplay => FormatFlag("Purchaseable", Fetched?.Purchaseable);
+        public bool? PurchaseableValue => Fetched?.Purchaseable;
+        public string SalableDisplay => FormatFlag("Salable", Fetched?.Salable);
+        public bool? SalableValue => Fetched?.Salable;
+        public string TrackableDisplay => FormatFlag("Trackable", Fetched?.Trackable);
+        public bool? TrackableValue => Fetched?.Trackable;
+        public string TestableDisplay => FormatFlag("Testable", Fetched?.Testable);
+        public bool? TestableValue => Fetched?.Testable;
 
         private static string FormatFlag(string name, bool? value) =>
-            value == null ? string.Empty : $"{name}: {(value.Value ? "\u2713" : "\u2717")}";
+            value == null ? string.Empty : $"{name}: {(value.Value ? "✓" : "✗")}";
 
-        // ── Enabled / visible flags (computed from session) ───────────────────
+        // ── Enabled / visible flags ───────────────────────────────────────────
+
+        private bool HasSessionAndHealthyMapping =>
+            Fetched != null && _mappingResult?.CanUseForPartSync == true;
 
         /// <summary>True when a part has been fetched and Apply is meaningful.</summary>
-        public bool ApplyEnabled => _session != null && _mappingResult?.CanUseForPartSync == true;
+        public bool ApplyEnabled => HasSessionAndHealthyMapping;
 
         /// <summary>True when individual Name apply is available.</summary>
-        public bool ApplyNameEnabled => _session != null && _mappingResult?.CanUseForPartSync == true;
+        public bool ApplyNameEnabled => HasSessionAndHealthyMapping;
 
         /// <summary>True when individual Notes apply is available.</summary>
-        public bool ApplyNotesEnabled => _session != null && _mappingResult?.CanUseForPartSync == true;
+        public bool ApplyNotesEnabled => HasSessionAndHealthyMapping;
 
         /// <summary>True when individual Description apply is available.</summary>
-        public bool ApplyDescriptionEnabled => _session != null && _mappingResult?.CanUseForPartSync == true;
+        public bool ApplyDescriptionEnabled => HasSessionAndHealthyMapping;
 
         /// <summary>True when a part has been fetched and applying PK to SW doc is meaningful.</summary>
-        public bool ApplyPkEnabled => _session != null && _mappingResult?.CanUseForPartSync == true;
+        public bool ApplyPkEnabled => HasSessionAndHealthyMapping;
 
         /// <summary>True when a part has been fetched and pushing Name to InvenTree is meaningful.</summary>
-        public bool PushNameEnabled => _session != null && _mappingResult?.CanUseForPartSync == true;
+        public bool PushNameEnabled => HasSessionAndHealthyMapping;
 
         /// <summary>True when a part has been fetched and pushing Notes to InvenTree is meaningful.</summary>
-        public bool PushNotesEnabled => _session != null && _mappingResult?.CanUseForPartSync == true;
+        public bool PushNotesEnabled => HasSessionAndHealthyMapping;
 
         /// <summary>True when a part has been fetched and pushing Description to InvenTree is meaningful.</summary>
-        public bool PushDescriptionEnabled => _session != null && _mappingResult?.CanUseForPartSync == true;
+        public bool PushDescriptionEnabled => HasSessionAndHealthyMapping;
 
         /// <summary>Controls Push Revision button visibility.</summary>
-        public bool PushRevisionVisible => _session != null && _mappingResult?.CanUseForPartSync == true;
+        public bool PushRevisionVisible => HasSessionAndHealthyMapping;
 
         /// <summary>Controls Push Image button visibility.</summary>
-        public bool PushImageVisible => _session != null && _mappingResult?.CanUseForPartSync == true;
+        public bool PushImageVisible => HasSessionAndHealthyMapping;
 
         /// <summary>True when the no-image placeholder icon should be shown.</summary>
-        public bool ThumbnailPlaceholderVisible => _session != null && (_session.ThumbnailBytes == null || _session.ThumbnailBytes.Length == 0);
+        public bool ThumbnailPlaceholderVisible =>
+            Fetched != null && (ThumbnailBytes == null || ThumbnailBytes.Length == 0);
 
         /// <summary>True when the InvenTree thumbnail is clickable and links to the part page.</summary>
-        public bool PartLinkEnabled => _session != null && _session.PartPk > 0;
+        public bool PartLinkEnabled => (Fetched?.Pk ?? 0) > 0;
 
-        /// <summary>Current SolidWorks document Name value — projected from the document snapshot.</summary>
-        public string CurrentName => _state.Document?.Name ?? string.Empty;
+        /// <summary>Current SolidWorks document Name value — projected from the coordinator's document snapshot.</summary>
+        public string CurrentName => _coordinator.Document?.Name ?? string.Empty;
 
-        /// <summary>Current SolidWorks document Notes value — projected from the document snapshot.</summary>
-        public string CurrentNotes => _state.Document?.Notes ?? string.Empty;
+        /// <summary>Current SolidWorks document Notes value — projected from the coordinator's document snapshot.</summary>
+        public string CurrentNotes => _coordinator.Document?.Notes ?? string.Empty;
 
-        /// <summary>Current SolidWorks document Revision value — projected from the document snapshot.</summary>
-        public string CurrentRevision => _state.Document?.Revision ?? string.Empty;
+        /// <summary>Current SolidWorks document Revision value — projected from the coordinator's document snapshot.</summary>
+        public string CurrentRevision => _coordinator.Document?.Revision ?? string.Empty;
 
-        /// <summary>Current SolidWorks document Description Long value — projected from the document snapshot.</summary>
-        public string CurrentDescription => _state.Document?.Description ?? string.Empty;
+        /// <summary>Current SolidWorks document Description Long value — projected from the coordinator's document snapshot.</summary>
+        public string CurrentDescription => _coordinator.Document?.Description ?? string.Empty;
 
-        /// <summary>Current SolidWorks InvenTree PK property value — projected from the document snapshot.</summary>
-        public string CurrentPk => _state.Document?.PkText ?? string.Empty;
+        /// <summary>Current SolidWorks InvenTree PK property value — projected from the coordinator's document snapshot.</summary>
+        public string CurrentPk => _coordinator.Document?.PkText ?? string.Empty;
 
         /// <summary>Status bar message.</summary>
         public string StatusText
@@ -245,10 +256,10 @@ namespace SwInventreeAddin.UI
             private set => Set(ref _createPartEnabled, value);
         }
 
-        private DocumentType? ActiveDocumentType => _state.Document?.DocumentType;
+        private DocumentType? ActiveDocumentType => _coordinator.Document?.DocumentType;
 
         /// <summary>True when the active document carries a positive stamped InvenTree Part PK.</summary>
-        private bool DocumentHasStampedPk => (_state.Document?.StampedPartPk ?? 0) > 0;
+        private bool DocumentHasStampedPk => (_coordinator.Document?.StampedPartPk ?? 0) > 0;
 
         private bool IsPartOrAssemblyDocument =>
             ActiveDocumentType == DocumentType.Part || ActiveDocumentType == DocumentType.Assembly;
@@ -274,11 +285,11 @@ namespace SwInventreeAddin.UI
         /// <summary>True when BOM compare button should be enabled.</summary>
         public bool BomButtonEnabled =>
             ActiveDocumentType == DocumentType.Assembly
-            && _client != null && _session != null
+            && _client != null && Fetched != null
             && _mappingResult?.CanUseForPartSync == true;
 
         /// <summary>The InvenTree PK of the currently fetched part. Zero when none fetched.</summary>
-        public int CurrentInvenTreePk => _session?.Part.Pk ?? 0;
+        public int CurrentInvenTreePk => Fetched?.Pk ?? 0;
 
         /// <summary>True once a document is open (shows the comparison grid).</summary>
         public bool PropertiesSectionVisible
@@ -296,185 +307,119 @@ namespace SwInventreeAddin.UI
             }
         }
 
-        /// <summary>
-        /// Null = not yet fetched. True = SW and InvenTree values match. False = mismatch.
-        /// </summary>
-        public bool? NameMatch =>
-            _propertiesSectionVisible
-                ? string.Equals(_state.Document?.Name?.Trim() ?? string.Empty,
-                      _session?.Part.Name?.Trim() ?? string.Empty,
-                      StringComparison.OrdinalIgnoreCase)
-                : (bool?)null;
+        // ── Match indicators ──────────────────────────────────────────────────
+
+        private bool BothNonBlank(string? a, string? b) =>
+            !string.IsNullOrEmpty(a) && !string.IsNullOrEmpty(b);
+
+        /// <summary>True when both sides have a Name and they are identical.</summary>
+        public bool NameMatch => PropertiesSectionVisible && BothNonBlank(CurrentName, NamePreview) && CurrentName == NamePreview;
+
+        /// <summary>True when both sides have Notes and they are identical.</summary>
+        public bool NotesMatch => PropertiesSectionVisible && BothNonBlank(CurrentNotes, NotesPreview) && CurrentNotes == NotesPreview;
+
+        /// <summary>True when both sides have a Revision and they are identical.</summary>
+        public bool RevisionMatch => PropertiesSectionVisible && BothNonBlank(CurrentRevision, RevisionPreview) && CurrentRevision == RevisionPreview;
+
+        /// <summary>True when both sides have a Description Long and they are identical.</summary>
+        public bool DescriptionMatch => PropertiesSectionVisible && BothNonBlank(CurrentDescription, DescriptionPreview) && CurrentDescription == DescriptionPreview;
+
+        /// <summary>True when both sides have a PK and they are identical.</summary>
+        public bool PkMatch => PropertiesSectionVisible && BothNonBlank(CurrentPk, PkPreview) && CurrentPk == PkPreview;
+
+        // ── BOM compare state ─────────────────────────────────────────────────
+
+        private IAssemblyBomService? _assemblyBomService;
 
         /// <summary>
-        /// Null = not yet fetched. True = SW and InvenTree values match. False = mismatch.
+        /// Part Sync keyword to match against BOM-column names. Read live from
+        /// the server config; corrupt settings fall back to the default.
         /// </summary>
-        public bool? NotesMatch =>
-            _propertiesSectionVisible
-                ? string.Equals(_state.Document?.Notes?.Trim() ?? string.Empty,
-                      _session?.Part.Notes?.Trim() ?? string.Empty,
-                      StringComparison.OrdinalIgnoreCase)
-                : (bool?)null;
+        public string BomKeyword
+        {
+            get
+            {
+                // Corrupt settings surface in the Settings window; Compare falls back to the default.
+                try { return _configProvider?.GetServerConfig()?.BomKeyword ?? "inventree"; }
+                catch { return "inventree"; }
+            }
+        }
+
+        /// <summary>Wires the SolidWorks BOM table service used by BOM Compare.</summary>
+        public void UpdateBomState(IAssemblyBomService bomService)
+            => _assemblyBomService = bomService;
 
         /// <summary>
-        /// Null = not yet fetched. True = SW and InvenTree revisions match. False = mismatch.
+        /// Builds the BOM Compare pre-flight check over the coordinator's narrow
+        /// context seam — the check reaches SolidWorks only through the
+        /// coordinator's STA dispatcher. Null when no BOM service is wired.
         /// </summary>
-        public bool? RevisionMatch =>
-            _propertiesSectionVisible
-                ? string.Equals(_state.Document?.Revision?.Trim() ?? string.Empty,
-                      _session?.Part.Revision?.Trim() ?? string.Empty,
-                      StringComparison.OrdinalIgnoreCase)
-                : (bool?)null;
+        internal BomCompareReadinessCheck? CreateBomCompareReadinessCheck()
+            => _assemblyBomService == null
+                ? null
+                : new BomCompareReadinessCheck(
+                    new CoordinatorBomReadinessContext(_coordinator, _dispatcher),
+                    _assemblyBomService,
+                    BomKeyword);
+
+        /// <summary>Builds the BOM Compare ViewModel; null when the client or BOM service is missing.</summary>
+        internal BomCompareViewModel? CreateBomCompareViewModel(PropertyMappingConfig mapping, int assemblyPk)
+            => (_client == null || _assemblyBomService == null)
+                ? null
+                : new BomCompareViewModel(_client, _assemblyBomService, mapping, assemblyPk, BomKeyword);
+
+        /// <summary>Returns the matched BOM table's feature name; null when no BOM service is wired.</summary>
+        internal string? GetBomTableName()
+            => _assemblyBomService?.GetBomTableName(BomKeyword);
+
+        // ── Constructor ───────────────────────────────────────────────────────
 
         /// <summary>
-        /// Null = not yet fetched. True = SW and InvenTree descriptions match. False = mismatch.
+        /// Builds the task pane ViewModel over an existing coordinator. The
+        /// coordinator owns the document model and all Part Sync workflow; the
+        /// ViewModel only projects it into bindable properties.
         /// </summary>
-        public bool? DescriptionMatch =>
-            _propertiesSectionVisible
-                ? string.Equals(_state.Document?.Description?.Trim() ?? string.Empty,
-                      _session?.Part.Description?.Trim() ?? string.Empty,
-                      StringComparison.OrdinalIgnoreCase)
-                : (bool?)null;
-
-        /// <summary>
-        /// Null = not yet fetched. True = SW and InvenTree PK values match. False = mismatch.
-        /// </summary>
-        public bool? PkMatch =>
-            _propertiesSectionVisible
-                ? string.Equals(_state.Document?.PkText?.Trim(), PkPreview?.Trim(),
-                      StringComparison.OrdinalIgnoreCase)
-                : (bool?)null;
-
-        // ── State ─────────────────────────────────────────────────────────────
-
-        // temporary — deleted by #92 when PartSyncCoordinator owns the session.
-        // Holds no document identity: it is dropped on every document switch
-        // (Activated) and revalidated against _state.Document on same-document
-        // evaluations.
-        private PartSyncSession? _session;
-        private MappingResult? _mappingResult;
-        private bool _mappingHealthWarningActive;
-
-        /// <summary>
-        /// Add-in-originated Document Property writes awaiting their echo:
-        /// mapped property name → written value. SolidWorks reports our own
-        /// writes back through the change-notification callback — possibly
-        /// synchronously during the write — and a follow-up re-read can still
-        /// return the pre-write value, so a matching notification is consumed
-        /// without re-reading. Entries persist until their echo arrives or the
-        /// document generation advances — echoes are keyed to the document
-        /// that generated them, and notifications carry no identity.
-        /// </summary>
-        private readonly Dictionary<string, string> _pendingDocumentWrites =
-            new Dictionary<string, string>(StringComparer.Ordinal);
-
-        /// <summary>
-        /// UI-thread synchronisation context captured at construction.
-        /// Null when constructed on a thread-pool thread (unit tests) — in
-        /// that case RunOnUiThread executes actions inline.
-        /// </summary>
-        private readonly SynchronizationContext? _uiContext;
-
-        // Captured alongside _uiContext so "already on the UI thread" is a
-        // thread check, not a context check — inside a Dispatcher.Invoke
-        // callback SynchronizationContext.Current is a fresh
-        // DispatcherSynchronizationContext wrapper that never reference-equals
-        // the captured context, and Send would marshal into a context whose
-        // pump is not running.
-        private readonly int _uiThreadId;
-
-        /// <summary>
-        /// When true, the Create Part flow polls InvenTree for a server-assigned IPN.
-        /// When false (default), the poll is skipped and the dialog closes immediately.
-        /// Set from <see cref="ServerConfig.WaitForServerAssignedIpn"/> after config loads.
-        /// </summary>
-        public bool WaitForServerAssignedIpn { get; set; }
-
-        // ── Constructors ──────────────────────────────────────────────────────
-
-        /// <summary>Two-service constructor (no viewport capture — e.g. unit tests).</summary>
-        public TaskPaneViewModel(IInventreeClient? client, IDocumentPropertyService propertyService)
-            : this(client, propertyService, null) { }
-
-        /// <summary>Three-service constructor (no mapping provider).</summary>
+        /// <param name="coordinator">Part Sync coordinator owning state and workflow.</param>
+        /// <param name="dispatcher">STA dispatcher for marshalling UI-thread work.</param>
+        /// <param name="client">Active InvenTree client, or null when no server is configured.</param>
+        /// <param name="mappingProvider">Current property mapping provider.</param>
+        /// <param name="configProvider">Config persistence (BOM keyword), or null.</param>
+        /// <param name="createPartValidator">Create Part validation service, or null to hide the button.</param>
         public TaskPaneViewModel(
+            IPartSyncCoordinator coordinator,
+            IHostStaDispatcher dispatcher,
             IInventreeClient? client,
-            IDocumentPropertyService propertyService,
-            IViewportCaptureService? viewportService)
-            : this(client, propertyService, viewportService, null, null) { }
-
-        /// <summary>Full constructor used by the production add-in.</summary>
-        public TaskPaneViewModel(
-            IInventreeClient? client,
-            IDocumentPropertyService propertyService,
-            IViewportCaptureService? viewportService,
             IPropertyMappingProvider? mappingProvider = null,
             IConfigProvider? configProvider = null,
             ICreatePartValidationErrorService? createPartValidator = null)
         {
+            _coordinator = coordinator ?? throw new ArgumentNullException(nameof(coordinator));
+            _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
             _client = client;
-            _propertyService = propertyService;
-            _viewportService = viewportService;
             _mappingProvider = mappingProvider;
             _configProvider = configProvider;
             _validationService = createPartValidator;
-            _uiContext = SynchronizationContext.Current;
-            _uiThreadId = Environment.CurrentManagedThreadId;
 
-            _state.Changed += OnTaskPaneStateChanged;
+            _coordinator.Changed += OnCoordinatorChanged;
 
             LoadPartNumber();
             AttachMappingProvider();
         }
 
-        // ── Commands (called by WPF bindings and forwarded by the shim) ───────
-
-        /// <summary>Settings button — raises the SettingsRequested event.</summary>
-        public void RequestSettings() =>
-            SettingsRequested?.Invoke(this, EventArgs.Empty);
-
-        /// <summary>Compare BOM button — raises the CompareBomRequested event.</summary>
-        public void RequestCompareBom() =>
-            CompareBomRequested?.Invoke(this, EventArgs.Empty);
+        // ── Document lifecycle → presentation ─────────────────────────────────
 
         /// <summary>
-        /// Opens the current InvenTree part in the default system browser.
-        /// Does nothing when no part has been fetched.
-        /// </summary>
-        public void OpenPartInBrowser()
-        {
-            if (!PartLinkEnabled) return;
-
-            var url = _client?.GetPartWebUrl(_session!.PartPk);
-            if (url == null) return;
-
-            OpenBrowserUrl(url);
-        }
-
-        // ── Behaviour ─────────────────────────────────────────────────────────
-
-        /// <summary>
-        /// Re-evaluates the panel against the active SolidWorks document:
-        /// captures a complete <see cref="TaskPaneDocumentSnapshot"/> on this
-        /// (STA) thread and installs it atomically into TaskPaneState.
-        /// Called on every active-document change, document load, and whenever
-        /// a caller needs a full document re-evaluation.
+        /// Runs a full document evaluation on the coordinator, then projects
+        /// the result into bindable state. Equivalent to the legacy
+        /// "load document → set presentation" step; called on document
+        /// activation, mapping changes, and construction.
         /// </summary>
         public void LoadPartNumber()
         {
             RefreshMappingResult();
+            _coordinator.UpdateDocument();
 
-            var token = _propertyService.GetActiveDocumentToken();
-            var snapshot = CaptureDocumentSnapshot();
-
-            // One call installs the whole document state — or clears it when
-            // there is no usable active document (null token or Unknown type).
-            // On the EMPTY branch ApplySnapshotOrClear already ran
-            // _state.ClearDocument(), so this must NOT call ClearAll() — a
-            // second ClearDocument would double-advance the generation.
-            ApplySnapshotOrClear(token, snapshot);
-
-            if (_state.Kind == TaskPaneStateKind.Empty)
+            if (_coordinator.Kind == TaskPaneStateKind.Empty)
             {
                 ResetDocumentPanel();
                 NotifyBomVisibility();
@@ -482,302 +427,200 @@ namespace SwInventreeAddin.UI
                 return;
             }
 
-            // Full evaluation strictly revalidates the session against the
-            // current stamps — same-document identity edits still drop it.
-            // On an Activated transition ApplySnapshotOrClear already dropped
-            // the session, so this is a no-op after a document switch.
-            RevalidateSessionAgainstDocument();
-            var document = _state.Document!;
+            var document = _coordinator.Document!;
 
-            if (_state.Kind == TaskPaneStateKind.Unsupported)
+            if (_coordinator.Kind == TaskPaneStateKind.Unsupported)
             {
                 ResetDocumentPanel();
-                SetStatus("Drawings are not supported — open a part or assembly.",
-                          StatusSeverity.Warning);
+                SetStatus("Drawings are not supported — open a part or assembly.", StatusSeverity.Warning);
                 RefreshStatus();
                 return;
             }
 
-            if (_state.Kind == TaskPaneStateKind.Unlinked)
+            if (_coordinator.Kind == TaskPaneStateKind.Unlinked)
             {
-                // UNLINKED: no IPN and no PK — reset the panel.
                 ResetDocumentPanel();
                 CreatePartEnabled = CanCreatePart();
                 if (_client == null)
-                    SetStatus("No server configured — click ⚙ Settings to get started",
-                              StatusSeverity.Warning);
+                    SetStatus("No server configured — click ⚙ Settings to get started", StatusSeverity.Warning);
                 NotifyBomVisibility();
                 RefreshStatus();
                 return;
             }
+
+            // LINKED or POPULATED: a session that survived document revalidation
+            // is projected by the coordinator Changed event; presentation only
+            // needs enable/disable state and status wording.
+            var sessionKept = _coordinator.FetchedPart != null;
 
             if (string.IsNullOrEmpty(document.Ipn))
             {
-                // LINKED-by-PK: blank IPN but a PK is stored.
-                // A session still matching the stamped PK survived revalidation
-                // (e.g. a poll-skipped Create Part); anything else was dropped.
-                bool sessionKept = _session != null;
-                if (sessionKept)
-                    NotifySessionProperties();
-
+                // LINKED-by-PK — no IPN property to show.
                 PartNumber = string.Empty;
-                FetchEnabled = _client != null && _mappingResult?.CanFetch == true;
+                FetchEnabled = ShouldEnableFetch();
                 CreatePartEnabled = false;
-
-                // A PK-only document is LINKED the same as an IPN-bearing one:
-                // show the linked-data sections greyed, with the stamped PK
-                // visible so the user can see what Fetch will pull.
                 PropertiesSectionVisible = true;
-
                 if (_client == null)
-                    SetStatus("No server configured — click ⚙ Settings to get started",
-                              StatusSeverity.Warning);
+                    SetStatus("No server configured — click ⚙ Settings to get started", StatusSeverity.Warning);
                 else if (!sessionKept)
                     SetStatus(string.Empty, StatusSeverity.None);
-
                 NotifyBomVisibility();
                 RefreshStatus();
                 return;
             }
 
-            // LINKED-by-IPN.
+            // LINKED-by-IPN (or POPULATED on an IPN-bearing document).
             PartNumber = document.Ipn;
             PropertiesSectionVisible = true;
-
             if (_client == null)
             {
                 FetchEnabled = false;
                 CreatePartEnabled = false;
-                SetStatus("No server configured — click ⚙ Settings to get started",
-                          StatusSeverity.Warning);
+                SetStatus("No server configured — click ⚙ Settings to get started", StatusSeverity.Warning);
             }
             else
             {
-                FetchEnabled = _mappingResult?.CanFetch == true;
+                FetchEnabled = ShouldEnableFetch();
                 CreatePartEnabled = CanCreatePart();
                 SetStatus(string.Empty, StatusSeverity.None);
             }
-
             NotifyBomVisibility();
             RefreshStatus();
         }
 
         /// <summary>
-        /// Called when a SolidWorks custom property is added or changed.
-        /// Distinguishes add-in writes from user edits and performs a light refresh
-        /// instead of a full <see cref="LoadPartNumber"/> reset when the mapping is healthy
-        /// and the document identity (IPN / InvenTree Part PK) has not changed.
+        /// Handles a SolidWorks document-property-changed notification: the
+        /// coordinator consumes write echoes, re-captures, and classifies; the
+        /// ViewModel maps the classification onto presentation state.
+        /// Entered on the STA/UI thread.
         /// </summary>
-        public void OnDocumentPropertyChanged(string propertyName, string newValue)
+        public void OnDocumentPropertyChanged(string name, string newValue)
         {
-            // An echo of our own pending write carries no new information —
-            // the substitute-refresh already installed the announced value —
-            // and a re-read could return a stale pre-write value.
-            if (TryConsumePendingWrite(propertyName, newValue))
-                return;
-
             RefreshMappingResult();
-
-            if (_session == null || _mappingResult?.Health != MappingHealth.Healthy)
+            var change = _coordinator.NotifyDocumentPropertyChanged(name, newValue);
+            switch (change)
             {
-                LoadPartNumber();
-                return;
-            }
-
-            var config = _mappingResult.Config;
-
-            // IPN and PK are identity properties: if they change to a different value,
-            // the document now refers to a different InvenTree part and the Task Pane must reset.
-            if (HandleIdentityProperty(config.IpnProperty, propertyName, newValue, _session.Part.Ipn))
-                return;
-
-            if (HandleIdentityProperty(config.PkProperty, propertyName, newValue, _session.Part.Pk.ToString()))
-                return;
-
-            // Mapped non-identity properties: refresh from the document.
-            // If the new value does not match the fetched part, this is a user edit and
-            // any stale success status should be cleared.
-            if (TryGetPartValueFor(propertyName, config, out var expectedValue))
-            {
-                if (!ValuesMatch(newValue, expectedValue))
+                case PartSyncPropertyChange.EchoConsumed:
+                case PartSyncPropertyChange.Ignored:
+                    return;
+                case PartSyncPropertyChange.Reevaluated:
+                    LoadPartNumber();
+                    return;
+                case PartSyncPropertyChange.RefreshedDivergent:
                     SetStatus(string.Empty, StatusSeverity.None);
-
-                LightRefreshAfterDocumentChange();
-                return;
+                    return;
+                case PartSyncPropertyChange.Refreshed:
+                    return;
             }
-
-            // Changes to properties this mapping does not use have no effect on the Task Pane.
         }
 
-        private bool HandleIdentityProperty(string? configProperty, string propertyName, string newValue, string? currentValue)
-        {
-            if (!PropertyNameEquals(configProperty, propertyName))
-                return false;
-
-            if (!ValuesMatch(newValue, currentValue))
-            {
-                LoadPartNumber();
-                return true;
-            }
-
-            LightRefreshAfterDocumentChange();
-            return true;
-        }
-
-        private bool TryGetPartValueFor(string propertyName, PropertyMappingConfig config, out string? value)
-        {
-            if (PropertyNameEquals(config.NameProperty, propertyName)) { value = _session!.Part.Name; return true; }
-            if (PropertyNameEquals(config.NotesProperty, propertyName)) { value = _session!.Part.Notes; return true; }
-            if (PropertyNameEquals(config.RevisionProperty, propertyName)) { value = _session!.Part.Revision; return true; }
-            if (PropertyNameEquals(config.DescriptionProperty, propertyName)) { value = _session!.Part.Description; return true; }
-
-            value = null;
-            return false;
-        }
-
-        private static bool PropertyNameEquals(string? left, string? right)
-            => !string.IsNullOrEmpty(left)
-               && !string.IsNullOrEmpty(right)
-               && string.Equals(left, right, StringComparison.Ordinal);
-
-        private static bool ValuesMatch(string? left, string? right)
-            => string.Equals(left?.Trim(), right?.Trim(), StringComparison.Ordinal);
-
-        /// <summary>
-        /// Records an add-in-originated Document Property write so its echo
-        /// notification can be recognized and consumed. Call before the write —
-        /// SolidWorks may raise the notification synchronously during it.
-        /// </summary>
-        private void RegisterPendingWrite(string? propertyName, string? value)
-        {
-            if (string.IsNullOrEmpty(propertyName) || value == null) return;
-            _pendingDocumentWrites[propertyName!] = value;
-        }
-
-        /// <summary>
-        /// Consumes a notification echoing a pending add-in write: same mapped
-        /// property name, same value. Returns false — leaving the entry pending
-        /// for its still-expected echo — when the value differs, i.e. a real
-        /// user or external edit on that property.
-        /// </summary>
-        private bool TryConsumePendingWrite(string propertyName, string newValue)
-        {
-            if (!_pendingDocumentWrites.TryGetValue(propertyName, out var expected))
-                return false;
-            if (!ValuesMatch(expected, newValue))
-                return false;
-            _pendingDocumentWrites.Remove(propertyName);
-            return true;
-        }
-
-        private void LightRefreshAfterDocumentChange()
-        {
-            RefreshDocumentFromService();
-            NotifySessionProperties();
-        }
-
-        /// <summary>Resets the entire Task Pane. Called when no document is active.</summary>
+        /// <summary>Clears all state when the active document is closed.</summary>
         public void ClearAll()
         {
-            _state.ClearDocument();
-            _pendingDocumentWrites.Clear();
+            _coordinator.NotifyDocumentClosed();
             ResetDocumentPanel();
             NotifyBomVisibility();
         }
 
-        /// <summary>
-        /// Clears the panel's per-document UI state — the fetch buffer, the
-        /// linked-data sections, the temporary session, and command states —
-        /// without touching TaskPaneState itself.
-        /// </summary>
-        private void ResetDocumentPanel()
+        /// <summary>Updates the InvenTree client (called when server config changes).</summary>
+        public void UpdateClient(IInventreeClient? client)
         {
-            PartNumber = string.Empty;
-            PropertiesSectionVisible = false;
-
-            ClearSession();
-
-            if (_client == null)
-            {
-                FetchEnabled = false;
-                CreatePartEnabled = false;
-                SetStatus("No server configured — click ⚙ Settings to get started",
-                          StatusSeverity.Warning);
-            }
-            else
-            {
-                FetchEnabled = false;
-                SetStatus("Open a part or assembly in SolidWorks to get started.", StatusSeverity.None);
-            }
-        }
-
-        /// <summary>
-        /// Updates the client reference — called when settings change.
-        /// Re-evaluates the panel against the current document so button states
-        /// (especially FetchEnabled) stay correct after the server is configured.
-        /// </summary>
-        public void UpdateClient(IInventreeClient? newClient)
-        {
-            _client = newClient;
-            ClearSession();
+            _client = client;
+            _coordinator.UpdateClient(client);
             LoadPartNumber();
         }
 
-        /// <summary>
-        /// Replaces the Create Part validation service, usually when the InvenTree client changes.
-        /// </summary>
-        public void UpdateCreatePartValidationService(ICreatePartValidationErrorService? validator)
-            => _validationService = validator;
+        /// <summary>Updates the create-part validation service.</summary>
+        public void UpdateCreatePartValidationService(ICreatePartValidationErrorService? service)
+        {
+            _validationService = service;
+        }
 
         /// <summary>
-        /// Creates and opens the Create Part dialog.
-        /// Called from the WPF code-behind on the UI thread.
-        /// The <paramref name="showDialog"/> delegate is responsible for
-        /// constructing and showing the window (keeps this ViewModel free of WPF types).
+        /// Updates the property-mapping provider and refreshes the document model.
+        /// Called when the settings window reports a mapping change.
         /// </summary>
+        /// <param name="mappingProvider">The new provider, or null to clear.</param>
+        public void UpdateMapping(IPropertyMappingProvider? mappingProvider)
+        {
+            DetachMappingProvider();
+            _mappingProvider = mappingProvider;
+            _coordinator.UpdateMapping(mappingProvider);
+            if (!TryLoadPartNumberWhenNoSession())
+                RefreshPreservingSession();
+            AttachMappingProvider();
+        }
+
+        private bool TryLoadPartNumberWhenNoSession()
+        {
+            if (_coordinator.FetchedPart != null)
+                return false;
+            LoadPartNumber();
+            return true;
+        }
+
+        /// <summary>
+        /// Mapping changed while a session is installed: re-evaluate the
+        /// document snapshot under the new mapping and refresh command state
+        /// without tearing down presentation.
+        /// </summary>
+        private void RefreshPreservingSession()
+        {
+            RefreshMappingResult();
+            if (_propertiesSectionVisible)
+                _coordinator.RefreshDocument();
+            RefreshStatus();
+            RefreshCommandStates();
+        }
+
+        // ── Create Part ───────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Whether the Create Part dialog blocks until InvenTree assigns a
+        /// server-generated IPN. Persisted via the config provider.
+        /// </summary>
+        public bool WaitForServerAssignedIpn { get; set; }
+
+        /// <summary>
+        /// Creates the Create Part dialog ViewModel and hands it to the
+        /// caller-supplied show callback. The coordinator mints the session-family
+        /// token up front; when the dialog produces a part, the coordinator
+        /// performs the stale-validated commit (document writes + session
+        /// install) so a document switch mid-dialog can never write to the
+        /// wrong document.
+        /// </summary>
+        /// <param name="showDialog">Host callback that shows the dialog modally.</param>
         public void OpenCreatePartWindow(Action<CreatePartViewModel> showDialog)
         {
-            if (_client == null) return;
-            if (!IsPartOrAssemblyDocument) return;
-            if (!CanCreatePart()) return;
+            if (_client == null || !IsPartOrAssemblyDocument || !CanCreatePart() || _validationService == null)
+                return;
 
-            var mapping = GetMappingOrDefault();
-            var name = GetCustomPropertyOrEmpty(mapping.NameProperty);
+            var token = _coordinator.BeginCreatePart();
+            var documentName = _coordinator.Document?.Name ?? string.Empty;
 
-            if (_validationService == null) return;
-
-            var vm = new CreatePartViewModel(_client, _propertyService, _validationService, name, _mappingProvider,
-                                             waitForServerAssignedIpn: WaitForServerAssignedIpn,
-                                             documentType: _state.Document!.DocumentType);
+            var vm = new CreatePartViewModel(
+                _client,
+                _validationService,
+                documentName,
+                _mappingProvider,
+                waitForServerAssignedIpn: WaitForServerAssignedIpn,
+                documentType: _coordinator.Document!.DocumentType);
 
             vm.PartCreated += (_, part) =>
             {
-                // A successful create always links the document by PK. The stamp is
-                // installed as a refresh transition so LINKED-by-PK is respected
-                // even when the server has not (yet) assigned an IPN.
-                if (part.Pk > 0)
-                {
-                    var m = GetMappingOrDefault();
-                    if (!string.IsNullOrEmpty(m.PkProperty))
-                    {
-                        RegisterPendingWrite(m.PkProperty, part.Pk.ToString());
-                        _propertyService.SetCustomProperty(m.PkProperty!, part.Pk.ToString());
-                    }
-                    RefreshDocumentSubstituting(pkText: part.Pk.ToString());
-                }
+                var result = _coordinator.CompleteCreatePart(token, part);
+                if (result.Outcome != PartSyncOutcome.Success)
+                    return;   // Stale or invalid — the coordinator already dropped the pending operation.
 
-                PartNumber = part.Ipn ?? string.Empty;
-                FetchEnabled = _mappingResult?.CanFetch == true
-                    && (DocumentHasStampedPk || !string.IsNullOrEmpty(_partNumber));
+                PartNumber = result.Ipn ?? part.Ipn ?? string.Empty;
+                FetchEnabled = ShouldEnableFetch();
                 CreatePartEnabled = CanCreatePart();
-
-                _session = new PartSyncSession(part, _client!, _propertyService, GetMappingOrDefault());
                 PropertiesSectionVisible = true;
-                NotifySessionProperties();
 
                 var ipnNotice = vm.IpnMismatchNotice;
-                SetStatus(ipnNotice ?? "Part created in InvenTree.",
-                          ipnNotice != null ? StatusSeverity.Warning : StatusSeverity.Success);
+                SetStatus(
+                    ipnNotice ?? "Part created in InvenTree.",
+                    ipnNotice != null ? StatusSeverity.Warning : StatusSeverity.Success);
             };
 
             showDialog(vm);
@@ -803,8 +646,13 @@ namespace SwInventreeAddin.UI
             }
         }
 
+        // ── Fetch ─────────────────────────────────────────────────────────────
+
         /// <summary>
-        /// Fetches part data from InvenTree for the current IPN.
+        /// Fetches part data from InvenTree. The coordinator decides between the
+        /// stamped-PK path and the IPN path, clears any installed session before
+        /// the first await, and guards the completion against staleness; this
+        /// method only maps the typed outcome onto status text and prompts.
         /// </summary>
         public async Task FetchPartAsync()
         {
@@ -812,522 +660,355 @@ namespace SwInventreeAddin.UI
             if (_mappingResult?.CanFetch != true)
                 return;
 
-            // The stamped PK can change mid-session without a LoadPartNumber —
-            // Apply writes and manual edits matching the loaded session only get
-            // a light refresh — so re-capture before choosing the fetch path.
-            RefreshDocumentFromService();
-            var stampedPk = _state.Document?.StampedPartPk ?? 0;
-
-            // ── LINKED-by-PK path ─────────────────────────────────────────────
-            if (stampedPk > 0)
-            {
-                SetStatus("Fetching from InvenTree\u2026", StatusSeverity.None);
-                ClearSession();
-
-                if (_client == null)
-                {
-                    SetStatus("No server configured \u2014 click \u2699 Settings to get started",
-                              StatusSeverity.Warning);
-                    return;
-                }
-
-                InventreePart? pkPart = null;
-                byte[]? pkThumb = null;
-                Exception? pkError = null;
-
-                try
-                {
-                    pkPart = await _client.GetPartByPkAsync(stampedPk).ConfigureAwait(false);
-
-                    if (pkPart != null && !string.IsNullOrEmpty(pkPart.ThumbnailUrl))
-                    {
-                        try { pkThumb = await _client.DownloadImageAsync(pkPart.ThumbnailUrl!).ConfigureAwait(false); }
-                        catch { /* silent — placeholder will show */ }
-                    }
-                }
-                catch (Exception ex) { pkError = ex; }
-
-                RunOnUiThread(() =>
-                {
-                    if (pkError != null)
-                    {
-                        SetStatus($"Error: {pkError.Message}", StatusSeverity.Error);
-                        return;
-                    }
-
-                    if (pkPart == null)
-                    {
-                        SetStatus($"No part found in InvenTree for PK: {stampedPk}", StatusSeverity.Warning);
-                        return;
-                    }
-
-                    RefreshDocumentFromService();
-                    var m = GetMappingOrDefault();
-                    var docIpn = _state.Document?.Ipn ?? string.Empty;
-                    var docRev = _state.Document?.Revision?.Trim() ?? string.Empty;
-
-                    // Link Mismatch: a stamped field counts only when both sides
-                    // carry values that disagree — blank on either side means
-                    // "can't verify" and stays silent.
-                    var ipnMismatch = !string.IsNullOrWhiteSpace(docIpn)
-                        && !string.IsNullOrWhiteSpace(pkPart.Ipn)
-                        && !string.Equals(docIpn.Trim(), pkPart.Ipn!.Trim(), StringComparison.OrdinalIgnoreCase);
-                    var revMismatch = !string.IsNullOrWhiteSpace(docRev)
-                        && !string.IsNullOrWhiteSpace(pkPart.Revision)
-                        && RevisionComparer.Compare(docRev, pkPart.Revision!.Trim()) != RevisionOrder.Equal;
-
-                    if ((ipnMismatch || revMismatch) && !ConfirmLinkMismatch(docIpn, docRev, pkPart))
-                    {
-                        SetStatus("Fetch cancelled \u2014 Link Mismatch.", StatusSeverity.Warning);
-                        return;
-                    }
-
-                    // Write IPN to SW document when the server has one and the document IPN is blank
-                    // so the document is linked by IPN going forward without an explicit Apply.
-                    if (!string.IsNullOrWhiteSpace(pkPart.Ipn) && string.IsNullOrWhiteSpace(docIpn) && !string.IsNullOrWhiteSpace(m.IpnProperty))
-                    {
-                        RegisterPendingWrite(m.IpnProperty, pkPart.Ipn);
-                        _propertyService.SetCustomProperty(m.IpnProperty!, pkPart.Ipn);
-                        PartNumber = pkPart.Ipn;
-                        RefreshDocumentSubstituting(ipn: pkPart.Ipn);
-                    }
-
-                    _session = new PartSyncSession(pkPart, _client!, _propertyService, m, pkThumb);
-                    PropertiesSectionVisible = true;
-                    NotifySessionProperties();
-                    SetStatus(string.Empty, StatusSeverity.None);
-                });
-                return;
-            }
-
-            // ── LINKED-by-IPN path (existing behaviour) ────────────────────────
+            _coordinator.RefreshDocument();
             var ipn = PartNumber;
-            if (string.IsNullOrEmpty(ipn))
+
+            if (!DocumentHasStampedPk && string.IsNullOrEmpty(ipn))
             {
                 SetStatus("Open a part or assembly in SolidWorks to get started.", StatusSeverity.None);
                 return;
             }
 
-            SetStatus("Fetching from InvenTree\u2026", StatusSeverity.None);
-            ClearSession();
+            SetStatus("Fetching from InvenTree…", StatusSeverity.None);
 
             if (_client == null)
             {
-                SetStatus("No server configured \u2014 click \u2699 Settings to get started",
-                          StatusSeverity.Warning);
+                SetStatus("No server configured — click ⚙ Settings to get started", StatusSeverity.Warning);
                 return;
             }
 
-            IReadOnlyList<InventreePart>? parts = null;
-            byte[]? thumbBytes = null;
-            Exception? fetchError = null;
-
-            try { parts = await _client.GetPartsByIpnAsync(ipn).ConfigureAwait(false); }
-            catch (Exception ex) { fetchError = ex; }
-
-            // Only pre-fetch thumbnail when there is exactly one unambiguous result.
-            if (parts?.Count == 1 && !string.IsNullOrEmpty(parts[0].ThumbnailUrl))
-                thumbBytes = await TryDownloadThumbnailAsync(parts[0].ThumbnailUrl).ConfigureAwait(false);
-
-            InventreePart? resolvedPart = null;
-            byte[]? resolvedThumb = null;
-            bool needsThumbnailDownload = false;
-
-            RunOnUiThread(() =>
-            {
-                if (fetchError != null)
-                {
-                    SetStatus($"Error: {fetchError.Message}", StatusSeverity.Error);
-                    return;
-                }
-
-                if (parts == null || parts.Count == 0)
-                {
-                    SetStatus($"No part found in InvenTree for: {ipn}", StatusSeverity.Warning);
-                    return;
-                }
-
-                if (parts.Count == 1)
-                {
-                    resolvedPart = parts[0];
-                    resolvedThumb = thumbBytes;
-                    return;
-                }
-
-                // Multiple parts share this IPN — resolve by revision.
-                var swRev = _state.Document?.Revision?.Trim() ?? string.Empty;
-                var matches = new System.Collections.Generic.List<InventreePart>();
-                foreach (var p in parts)
-                {
-                    if (RevisionComparer.Compare(swRev, p.Revision?.Trim() ?? string.Empty)
-                        == RevisionOrder.Equal)
-                        matches.Add(p);
-                }
-
-                if (matches.Count == 0)
-                {
-                    var revLabel = string.IsNullOrEmpty(swRev) ? "(blank)" : swRev;
-                    SetStatus(
-                        $"{parts.Count} parts share IPN \u2018{ipn}\u2019 but none match "
-                        + $"SW revision {revLabel}. Resolve in InvenTree.",
-                        StatusSeverity.Error);
-                    return;
-                }
-
-                if (matches.Count > 1)
-                {
-                    var revLabel = string.IsNullOrEmpty(swRev) ? "(blank)" : swRev;
-                    SetStatus(
-                        $"{parts.Count} parts share IPN \u2018{ipn}\u2019 and revision {revLabel}. "
-                        + "Resolve duplicates in InvenTree.",
-                        StatusSeverity.Error);
-                    return;
-                }
-
-                // Exactly one revision match — confirm with user.
-                if (!ConfirmDuplicateIpn(parts, matches[0])) return;
-                resolvedPart = matches[0];
-                needsThumbnailDownload = true;
-            });
-
-            if (resolvedPart == null)
-                return;
-
-            if (needsThumbnailDownload)
-                resolvedThumb = await TryDownloadThumbnailAsync(resolvedPart.ThumbnailUrl).ConfigureAwait(false);
-
-            RunOnUiThread(() =>
-            {
-                _session = new PartSyncSession(resolvedPart!, _client!, _propertyService, GetMappingOrDefault(), resolvedThumb);
-                PropertiesSectionVisible = true;
-                RefreshDocumentFromService();
-                NotifySessionProperties();
-                SetStatus(string.Empty, StatusSeverity.None);
-            });
+            var result = await _coordinator.FetchAsync(ipn).ConfigureAwait(false);
+            await ApplyFetchOutcomeAsync(result).ConfigureAwait(false);
         }
 
         /// <summary>
-        /// Returns property names from <paramref name="names"/> that don't exist in the
-        /// SolidWorks document. Empty list means all exist.
+        /// Maps a fetch outcome to presentation. Confirmation outcomes prompt on
+        /// the UI thread, then resume through the coordinator and re-enter the
+        /// loop so a resume outcome flows through the same terminal mapping.
         /// </summary>
-        internal List<string> FindMissingProperties(IEnumerable<string?> names)
+        private async Task ApplyFetchOutcomeAsync(PartSyncResult result)
         {
-            var missing = new List<string>();
-            foreach (var n in names)
-                if (!string.IsNullOrEmpty(n) && !_propertyService.PropertyExists(n!))
-                    missing.Add(n!);
-            return missing;
-        }
-
-        /// <summary>Writes only the Name field to the SolidWorks document and refreshes the preview from the written value.</summary>
-        public void ApplyNameToDocument()
-        {
-            if (_session == null || _mappingResult?.CanUseForPartSync != true) return;
-            var nameProperty = GetMappingOrDefault().NameProperty;
-            var missing = FindMissingProperties(new[] { nameProperty });
-            if (missing.Count > 0 && !ConfirmMissingProperties(missing)) return;
-            RegisterPendingWrite(nameProperty, _session.Part.Name);
-            RefreshDocumentSubstituting(name: _session.ApplyName());
-            SetStatus("Name applied.", StatusSeverity.Success);
-        }
-
-        /// <summary>Writes only the Notes field to the SolidWorks document and refreshes the preview from the written value.</summary>
-        public void ApplyNotesToDocument()
-        {
-            if (_session == null || _mappingResult?.CanUseForPartSync != true) return;
-            var notesProperty = GetMappingOrDefault().NotesProperty;
-            var missing = FindMissingProperties(new[] { notesProperty });
-            if (missing.Count > 0 && !ConfirmMissingProperties(missing)) return;
-            RegisterPendingWrite(notesProperty, _session.Part.Notes);
-            RefreshDocumentSubstituting(notes: _session.ApplyNotes());
-            SetStatus("Notes applied.", StatusSeverity.Success);
-        }
-
-        /// <summary>Writes only the Description field to the SolidWorks document and refreshes the preview from the written value.</summary>
-        public void ApplyDescriptionToDocument()
-        {
-            if (_session == null || _mappingResult?.CanUseForPartSync != true) return;
-            var descriptionProperty = GetMappingOrDefault().DescriptionProperty;
-            var missing = FindMissingProperties(new[] { descriptionProperty });
-            if (missing.Count > 0 && !ConfirmMissingProperties(missing)) return;
-            RegisterPendingWrite(descriptionProperty, _session.Part.Description);
-            RefreshDocumentSubstituting(description: _session.ApplyDescription());
-            SetStatus("Description applied.", StatusSeverity.Success);
-        }
-
-        /// <summary>Writes the InvenTree PK property to the SolidWorks document and refreshes the preview from the written value.</summary>
-        public void ApplyPkToDocument()
-        {
-            if (_session == null || _mappingResult?.CanUseForPartSync != true) return;
-            var pkProperty = GetMappingOrDefault().PkProperty;
-            var missing = FindMissingProperties(new[] { pkProperty });
-            if (missing.Count > 0 && !ConfirmMissingProperties(missing)) return;
-            RegisterPendingWrite(pkProperty, _session.Part.Pk.ToString());
-            RefreshDocumentSubstituting(pkText: _session.ApplyPk());
-            SetStatus("InvenTree PK applied.", StatusSeverity.Success);
-        }
-
-        /// <summary>Pushes the current SolidWorks revision up to InvenTree.</summary>
-        public async Task PushRevisionToInventreeAsync()
-        {
-            if (_session == null || _mappingResult?.CanUseForPartSync != true) return;
-            if (_session.Part.Pk == 0)
+            while (true)
             {
-                SetStatus("Error: cannot push revision \u2014 InvenTree part ID is missing.",
-                          StatusSeverity.Error);
-                return;
-            }
-            SetStatus("Pushing revision to InvenTree\u2026", StatusSeverity.None);
-            try
-            {
-                await _session.PushRevisionAsync().ConfigureAwait(false);
+                var shouldResume = false;
+                var approved = false;
+                var linkMismatchDeclined = false;
+
                 RunOnUiThread(() =>
                 {
-                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RevisionPreview)));
-                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RevisionMatch)));
-                    SetStatus("Revision pushed to InvenTree.", StatusSeverity.Success);
+                    switch (result.Outcome)
+                    {
+                        case PartSyncOutcome.DuplicateIpnConfirmation:
+                            shouldResume = result.Confirmation != null;
+                            approved = result.MatchedCandidate != null
+                                && ConfirmDuplicateIpn(
+                                    result.Candidates ?? Array.Empty<PartSnapshot>(),
+                                    result.MatchedCandidate);
+                            break;
+                        case PartSyncOutcome.LinkMismatchConfirmation:
+                            shouldResume = result.Confirmation != null;
+                            approved = result.FetchedPart != null
+                                && ConfirmLinkMismatch(
+                                    result.DocumentIpn ?? string.Empty,
+                                    result.DocumentRevision ?? string.Empty,
+                                    result.FetchedPart);
+                            linkMismatchDeclined = shouldResume && !approved;
+                            if (linkMismatchDeclined)
+                                SetStatus("Fetch cancelled — Link Mismatch.", StatusSeverity.Warning);
+                            break;
+                        default:
+                            MapTerminalOutcome(result);
+                            break;
+                    }
                 });
-            }
-            catch (Exception ex)
-            {
-                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error));
-            }
-        }
 
-        /// <summary>Pushes the current SolidWorks name/description up to InvenTree.</summary>
-        public async Task PushNameToInvenTreeAsync()
-        {
-            if (_session == null || _client == null || _mappingResult?.CanUseForPartSync != true) return;
-            SetStatus("Pushing name to InvenTree\u2026", StatusSeverity.None);
-            try
-            {
-                await _session.PushNameAsync().ConfigureAwait(false);
-                RunOnUiThread(() =>
-                {
-                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NamePreview)));
-                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NameMatch)));
-                    SetStatus("Name pushed to InvenTree.", StatusSeverity.Success);
-                });
-            }
-            catch (Exception ex)
-            {
-                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error));
-            }
-        }
+                if (!shouldResume || result.Confirmation == null)
+                    return;
 
-        /// <summary>Pushes the current SolidWorks notes up to InvenTree.</summary>
-        public async Task PushNotesToInvenTreeAsync()
-        {
-            if (_session == null || _client == null || _mappingResult?.CanUseForPartSync != true) return;
-            SetStatus("Pushing notes to InvenTree\u2026", StatusSeverity.None);
-            try
-            {
-                await _session.PushNotesAsync().ConfigureAwait(false);
-                RunOnUiThread(() =>
-                {
-                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NotesPreview)));
-                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NotesMatch)));
-                    SetStatus("Notes pushed to InvenTree.", StatusSeverity.Success);
-                });
-            }
-            catch (Exception ex)
-            {
-                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error));
-            }
-        }
-
-        /// <summary>Pushes the current SolidWorks description up to InvenTree.</summary>
-        public async Task PushDescriptionToInvenTreeAsync()
-        {
-            if (_session == null || _client == null || _mappingResult?.CanUseForPartSync != true) return;
-            SetStatus("Pushing description to InvenTree\u2026", StatusSeverity.None);
-            try
-            {
-                await _session.PushDescriptionAsync().ConfigureAwait(false);
-                RunOnUiThread(() =>
-                {
-                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DescriptionPreview)));
-                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DescriptionMatch)));
-                    SetStatus("Description pushed to InvenTree.", StatusSeverity.Success);
-                });
-            }
-            catch (Exception ex)
-            {
-                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error));
+                result = await _coordinator
+                    .ResumeConfirmationAsync(result.Confirmation, approved)
+                    .ConfigureAwait(false);
             }
         }
 
         /// <summary>
-        /// Runs the Viewport Capture workflow: capture, crop, upload, and refresh the
-        /// thumbnail. Delegates to <see cref="PartThumbnailService"/>.
-        /// Must be called on the UI thread.
+        /// Maps a terminal (non-confirmation) outcome to status text. Stale and
+        /// Cancelled intentionally do nothing — a stale completion must never
+        /// touch a newer operation's status, and cancellation leaves whatever
+        /// status the decline path already set.
         /// </summary>
+        private void MapTerminalOutcome(PartSyncResult result)
+        {
+            switch (result.Outcome)
+            {
+                case PartSyncOutcome.Success:
+                    if (!string.IsNullOrEmpty(result.Ipn))
+                        PartNumber = result.Ipn!;
+                    PropertiesSectionVisible = true;
+                    SetStatus(string.Empty, StatusSeverity.None);
+                    break;
+                case PartSyncOutcome.PartNotFound:
+                    SetStatus(
+                        result.PartPk > 0
+                            ? $"No part found in InvenTree for PK: {result.PartPk}"
+                            : $"No part found in InvenTree for: {result.Ipn}",
+                        StatusSeverity.Warning);
+                    break;
+                case PartSyncOutcome.DuplicateNoRevisionMatch:
+                    SetStatus(
+                        $"{result.Candidates?.Count ?? 0} parts share IPN ‘{result.Ipn}’ but none match " +
+                        $"SW revision {RevisionLabel(result.SwRevision)}. Resolve in InvenTree.",
+                        StatusSeverity.Error);
+                    break;
+                case PartSyncOutcome.DuplicateAmbiguous:
+                    SetStatus(
+                        $"{result.Candidates?.Count ?? 0} parts share IPN ‘{result.Ipn}’ and revision " +
+                        $"{RevisionLabel(result.SwRevision)}. Resolve duplicates in InvenTree.",
+                        StatusSeverity.Error);
+                    break;
+                case PartSyncOutcome.SucceededWithWarning:
+                    SetStatus(result.Diagnostic ?? string.Empty, StatusSeverity.Warning);
+                    break;
+                case PartSyncOutcome.InvalidOperation:
+                    if (!string.IsNullOrEmpty(result.Diagnostic))
+                        SetStatus(result.Diagnostic!, StatusSeverity.Warning);
+                    break;
+                case PartSyncOutcome.Failed:
+                    SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error);
+                    break;
+                case PartSyncOutcome.Stale:
+                case PartSyncOutcome.Cancelled:
+                case PartSyncOutcome.DuplicateIpnConfirmation:
+                case PartSyncOutcome.LinkMismatchConfirmation:
+                case PartSyncOutcome.MissingPropertyConfirmation:
+                    break;
+            }
+        }
+
+        private static string RevisionLabel(string? revision) =>
+            string.IsNullOrEmpty(revision) ? "(blank)" : revision;
+
+        /// <summary>
+        /// Runs the confirmation prompt for a fetch/BOM outcome and resumes the
+        /// pending coordinator operation. Used by the BOM readiness path where
+        /// the typed outcome travels through <see cref="BomReadinessResult"/>.
+        /// </summary>
+        internal async Task<PartSyncResult> ResumeFetchConfirmationAsync(PartSyncResult fetchResult)
+        {
+            switch (fetchResult.Outcome)
+            {
+                case PartSyncOutcome.DuplicateIpnConfirmation when fetchResult.Confirmation != null:
+                    {
+                        var approved = fetchResult.MatchedCandidate != null
+                            && ConfirmDuplicateIpn(
+                                fetchResult.Candidates ?? Array.Empty<PartSnapshot>(),
+                                fetchResult.MatchedCandidate);
+                        return await _coordinator
+                            .ResumeConfirmationAsync(fetchResult.Confirmation, approved)
+                            .ConfigureAwait(false);
+                    }
+                case PartSyncOutcome.LinkMismatchConfirmation when fetchResult.Confirmation != null:
+                    {
+                        var approved = fetchResult.FetchedPart != null
+                            && ConfirmLinkMismatch(
+                                fetchResult.DocumentIpn ?? string.Empty,
+                                fetchResult.DocumentRevision ?? string.Empty,
+                                fetchResult.FetchedPart);
+                        return await _coordinator
+                            .ResumeConfirmationAsync(fetchResult.Confirmation, approved)
+                            .ConfigureAwait(false);
+                    }
+                case PartSyncOutcome.MissingPropertyConfirmation when fetchResult.Confirmation != null:
+                    {
+                        var approved = ConfirmMissingProperties(
+                            fetchResult.MissingProperties ?? Array.Empty<string>());
+                        return await _coordinator
+                            .ResumeConfirmationAsync(fetchResult.Confirmation, approved)
+                            .ConfigureAwait(false);
+                    }
+                default:
+                    return fetchResult;
+            }
+        }
+
+        // ── Apply (InvenTree → SolidWorks) ────────────────────────────────────
+
+        /// <summary>Applies the fetched Name to the SolidWorks document.</summary>
+        public Task ApplyNameToDocument() => ApplyFieldAsync(ApplyField.Name, "Name applied.");
+
+        /// <summary>Applies the fetched Notes to the SolidWorks document.</summary>
+        public Task ApplyNotesToDocument() => ApplyFieldAsync(ApplyField.Notes, "Notes applied.");
+
+        /// <summary>Applies the fetched Description to the SolidWorks document.</summary>
+        public Task ApplyDescriptionToDocument() => ApplyFieldAsync(ApplyField.Description, "Description applied.");
+
+        /// <summary>Applies the fetched PK to the SolidWorks document.</summary>
+        public Task ApplyPkToDocument() => ApplyFieldAsync(ApplyField.Pk, "PK applied.");
+
+        /// <summary>
+        /// Applies one field. The coordinator registers write echoes before
+        /// every document write; a missing mapped property produces a
+        /// confirmation outcome that prompts here and resumes through the
+        /// coordinator.
+        /// </summary>
+        private async Task ApplyFieldAsync(ApplyField field, string successText)
+        {
+            if (Fetched == null || _mappingResult?.CanUseForPartSync != true)
+                return;
+
+            var result = _coordinator.Apply(field);
+
+            if (result.Outcome == PartSyncOutcome.MissingPropertyConfirmation && result.Confirmation != null)
+            {
+                var approved = ConfirmMissingProperties(
+                    result.MissingProperties ?? Array.Empty<string>());
+                result = await _coordinator
+                    .ResumeConfirmationAsync(result.Confirmation, approved)
+                    .ConfigureAwait(false);
+                if (!approved)
+                    return;
+            }
+
+            RunOnUiThread(() =>
+            {
+                switch (result.Outcome)
+                {
+                    case PartSyncOutcome.Success:
+                        SetStatus(successText, StatusSeverity.Success);
+                        break;
+                    case PartSyncOutcome.Failed:
+                        SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error);
+                        break;
+                    case PartSyncOutcome.InvalidOperation:
+                        if (!string.IsNullOrEmpty(result.Diagnostic))
+                            SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error);
+                        break;
+                }
+            });
+        }
+
+        // ── Push (SolidWorks → InvenTree) ─────────────────────────────────────
+
+        /// <summary>Pushes the SolidWorks document Revision to the InvenTree part.</summary>
+        public Task PushRevisionToInventreeAsync() =>
+            PushFieldAsync(PushField.Revision, "Pushing revision to InvenTree…", "Revision pushed to InvenTree.");
+
+        /// <summary>Pushes the SolidWorks document Name to the InvenTree part.</summary>
+        public Task PushNameToInvenTreeAsync() =>
+            PushFieldAsync(PushField.Name, "Pushing name to InvenTree…", "Name pushed to InvenTree.");
+
+        /// <summary>Pushes the SolidWorks document Notes to the InvenTree part.</summary>
+        public Task PushNotesToInvenTreeAsync() =>
+            PushFieldAsync(PushField.Notes, "Pushing notes to InvenTree…", "Notes pushed to InvenTree.");
+
+        /// <summary>Pushes the SolidWorks document Description to the InvenTree part.</summary>
+        public Task PushDescriptionToInvenTreeAsync() =>
+            PushFieldAsync(PushField.Description, "Pushing description to InvenTree…", "Description pushed to InvenTree.");
+
+        /// <summary>
+        /// Pushes one field. The coordinator captures the mapped document value
+        /// on the STA thread, updates off-thread, and commits the session
+        /// mutation through a validated dispatcher callback.
+        /// </summary>
+        private async Task PushFieldAsync(PushField field, string busyText, string successText)
+        {
+            if (!HasSessionAndHealthyMapping || _client == null)
+                return;
+
+            if (field == PushField.Revision && (Fetched?.Pk ?? 0) == 0)
+            {
+                SetStatus("Error: cannot push revision — InvenTree part ID is missing.", StatusSeverity.Error);
+                return;
+            }
+
+            SetStatus(busyText, StatusSeverity.None);
+
+            var result = await _coordinator.PushAsync(field).ConfigureAwait(false);
+
+            RunOnUiThread(() =>
+            {
+                switch (result.Outcome)
+                {
+                    case PartSyncOutcome.Success:
+                        SetStatus(successText, StatusSeverity.Success);
+                        break;
+                    case PartSyncOutcome.Failed:
+                    case PartSyncOutcome.InvalidOperation:
+                        if (!string.IsNullOrEmpty(result.Diagnostic))
+                            SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error);
+                        break;
+                }
+            });
+        }
+
+        /// <summary>
+        /// Pushes a SolidWorks viewport screenshot to the InvenTree part's
+        /// image field. When <paramref name="imageOverride"/> is null the host's
+        /// <see cref="CaptureImageForPush"/> provides the capture (including the
+        /// crop rectangle); the coordinator then uploads off-thread, refreshes
+        /// the thumbnail, and commits it through a validated callback.
+        /// </summary>
+        /// <param name="imageOverride">
+        /// Direct image override (tests). When supplied the image is used as-is,
+        /// uncropped, and is NOT disposed by this method.
+        /// </param>
         public async Task PushImageAsync(Image? imageOverride = null)
         {
-            if (_session == null || _client == null || _mappingResult?.CanUseForPartSync != true) return;
+            if (Fetched == null || _client == null || _mappingResult?.CanUseForPartSync != true)
+                return;
 
-            var service = new PartThumbnailService(_client, _viewportService);
+            Image? image = imageOverride;
+            var cropRect = Rectangle.Empty;
+            var ownImage = false;
+
+            if (image == null)
+            {
+                var captured = CaptureImageForPush?.Invoke();
+                if (captured == null)
+                    return;
+                image = captured.Value.Image;
+                cropRect = captured.Value.CropRect;
+                ownImage = true;
+            }
+
             try
             {
-                var thumb = await service.PushAsync(
-                    _session.Part.Pk,
-                    (text, severity) => RunOnUiThread(() => SetStatus(text, severity)),
-                    imageOverride).ConfigureAwait(false);
+                SetStatus("Pushing image to InvenTree…", StatusSeverity.None);
+
+                var result = await _coordinator.PushImageAsync(image, cropRect).ConfigureAwait(false);
 
                 RunOnUiThread(() =>
                 {
-                    if (thumb != null)
+                    switch (result.Outcome)
                     {
-                        _session.SetThumbnail(thumb);
-                        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ThumbnailBytes)));
-                        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ThumbnailPlaceholderVisible)));
-                        SetStatus("Image pushed to InvenTree.", StatusSeverity.Success);
+                        case PartSyncOutcome.Success:
+                            SetStatus("Image pushed to InvenTree.", StatusSeverity.Success);
+                            break;
+                        case PartSyncOutcome.SucceededWithWarning:
+                            SetStatus(result.Diagnostic ?? "Image pushed.", StatusSeverity.Warning);
+                            break;
+                        case PartSyncOutcome.Failed:
+                        case PartSyncOutcome.InvalidOperation:
+                            if (!string.IsNullOrEmpty(result.Diagnostic))
+                                SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error);
+                            break;
                     }
                 });
             }
-            catch (Exception ex)
+            finally
             {
-                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error));
+                if (ownImage)
+                    image!.Dispose();
             }
         }
 
-        // ── Document state transitions ───────────────────────────────────────────────────────
+        // ── Property-change notifications ─────────────────────────────────────
 
         /// <summary>
-        /// Captures a complete snapshot of the active document's mapped
-        /// Document Properties. Call on the STA thread — this reads COM.
+        /// Re-raises PropertyChanged for all document-value projections.
+        /// Called when the coordinator reports a document change (refresh,
+        /// property change, session install/drop).
         /// </summary>
-        private TaskPaneDocumentSnapshot CaptureDocumentSnapshot()
-        {
-            var mapping = GetMappingOrDefault();
-            return new TaskPaneDocumentSnapshot(
-                _propertyService.GetDocumentType(),
-                GetCustomPropertyOrEmpty(mapping.IpnProperty),
-                GetCustomPropertyOrEmpty(mapping.PkProperty),
-                GetCustomPropertyOrEmpty(mapping.NameProperty),
-                GetCustomPropertyOrEmpty(mapping.NotesProperty),
-                GetCustomPropertyOrEmpty(mapping.RevisionProperty),
-                GetCustomPropertyOrEmpty(mapping.DescriptionProperty));
-        }
-
-        /// <summary>
-        /// Installs <paramref name="snapshot"/> under the opaque
-        /// <paramref name="token"/>, or clears the document state when there is
-        /// no usable active document. A genuine document switch (Activated)
-        /// drops the session unconditionally — the new document evaluates on
-        /// its own stamps.
-        /// </summary>
-        private void ApplySnapshotOrClear(string? token, TaskPaneDocumentSnapshot snapshot)
-        {
-            if (token == null || snapshot.DocumentType == DocumentType.Unknown)
-            {
-                _state.ClearDocument();
-                _pendingDocumentWrites.Clear();
-                return;
-            }
-
-            if (_state.ApplyDocumentUpdate(token, snapshot) == TaskPaneDocumentTransition.Activated)
-            {
-                // A new generation: pending echoes were keyed to the previous
-                // document — notifications carry no identity, so a stale entry
-                // could swallow a real edit on the new document. Refreshed
-                // deliberately does not clear — it would reopen the in-flight
-                // echo window this set exists to close.
-                _pendingDocumentWrites.Clear();
-
-                // A document switch drops the session unconditionally (#292):
-                // identical IPN + stamped InvenTree Part PK on the new document
-                // is a copied file with stale stamps, not a state to adopt.
-                // Silent — the cleared preview is the signal.
-                if (_session != null)
-                    ClearSession();
-            }
-        }
-
-        /// <summary>
-        /// Light refresh — re-captures the active document's values without a
-        /// full <see cref="LoadPartNumber"/> reset. A same-document refresh
-        /// preserves the session even when the document carries no stamped PK
-        /// (the light-path outcome characterized in
-        /// TaskPaneLifecycleCharacterizationTests).
-        /// </summary>
-        private void RefreshDocumentFromService() =>
-            ApplySnapshotOrClear(_propertyService.GetActiveDocumentToken(), CaptureDocumentSnapshot());
-
-        /// <summary>
-        /// Refresh transition after an add-in write: the just-written value is
-        /// substituted over a possibly-stale re-read — SolidWorks caches custom
-        /// property reads on assemblies — while other fields carry over from
-        /// the current snapshot.
-        /// </summary>
-        private void RefreshDocumentSubstituting(
-            string? ipn = null, string? pkText = null, string? name = null,
-            string? notes = null, string? revision = null, string? description = null)
-        {
-            var doc = _state.Document;
-            if (doc == null) return;
-
-            ApplySnapshotOrClear(
-                _propertyService.GetActiveDocumentToken(),
-                new TaskPaneDocumentSnapshot(
-                    doc.DocumentType,
-                    ipn ?? doc.Ipn,
-                    pkText ?? doc.PkText,
-                    name ?? doc.Name,
-                    notes ?? doc.Notes,
-                    revision ?? doc.Revision,
-                    description ?? doc.Description));
-        }
-
-        /// <summary>
-        /// Delivers a document-state transition on the UI thread: a session
-        /// cannot outlive a transition to a document kind that cannot hold one
-        /// (EMPTY / UNSUPPORTED), then the new snapshot is projected to the
-        /// bindings. Document switches drop the session in
-        /// <see cref="ApplySnapshotOrClear"/>; same-document identity-level
-        /// revalidation lives in <see cref="RevalidateSessionAgainstDocument"/>,
-        /// run by the full-evaluation path.
-        /// </summary>
-        private void OnTaskPaneStateChanged(object? sender, EventArgs e) =>
-            RunOnUiThread(() =>
-            {
-                if (_session != null
-                    && (_state.Kind == TaskPaneStateKind.Empty
-                        || _state.Kind == TaskPaneStateKind.Unsupported))
-                    ClearSession();
-                NotifyDocumentProperties();
-            });
-
-        /// <summary>
-        /// temporary — deleted by #92 when PartSyncCoordinator owns the session.
-        /// Same-document revalidation only — an Activated transition drops the
-        /// session in <see cref="ApplySnapshotOrClear"/> before this can run.
-        /// Drops the session unless it still describes the active document's
-        /// identity stamps: an IPN-bearing document keeps it only on an exact
-        /// IPN + stamped-PK match; a PK-only document keeps it only when the
-        /// stamped PK matches.
-        /// </summary>
-        private void RevalidateSessionAgainstDocument()
-        {
-            if (_session == null) return;
-            var doc = _state.Document;
-
-            // An InvenTree Part PK of 0 is never a value — it could only match
-            // a missing stamp — so a positive stamped PK is required in both
-            // branches, not just incidentally via Kind on the blank-IPN one.
-            var pkMatches = doc != null
-                && doc.StampedPartPk > 0
-                && _session.Part.Pk == doc.StampedPartPk;
-
-            var keep = _state.Kind == TaskPaneStateKind.Linked && pkMatches
-                && (string.IsNullOrEmpty(doc!.Ipn)
-                    || string.Equals(_session.Part.Ipn, doc.Ipn, StringComparison.Ordinal));
-
-            if (!keep)
-                ClearSession();
-        }
-
-        /// <summary>Raises PropertyChanged for every document-state projection.</summary>
         private void NotifyDocumentProperties()
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CurrentName)));
@@ -1340,23 +1021,15 @@ namespace SwInventreeAddin.UI
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RevisionMatch)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DescriptionMatch)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PkMatch)));
-            NotifyBomVisibility();
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ApplyEnabled)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ApplyPkEnabled)));
         }
-
-        // ── Helpers ───────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Re-reads the active document's mapped Document Properties — a
-        /// refresh transition, not a full <see cref="LoadPartNumber"/> reset.
+        /// Re-raises PropertyChanged for all session-projection properties.
+        /// Called whenever the coordinator's <see cref="IPartSyncCoordinator.Changed"/>
+        /// event fires — session install, drop, apply, push, thumbnail update.
         /// </summary>
-        public void RefreshCurrentProperties() => RefreshDocumentFromService();
-
-        private void ClearSession()
-        {
-            _session = null;
-            NotifySessionProperties();
-        }
-
         private void NotifySessionProperties()
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NamePreview)));
@@ -1365,9 +1038,13 @@ namespace SwInventreeAddin.UI
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DescriptionPreview)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PkPreview)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ThumbnailBytes)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ThumbnailPlaceholderVisible)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(InStockDisplay)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(OrderingDisplay)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NameMatch)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NotesMatch)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RevisionMatch)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DescriptionMatch)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PkMatch)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ApplyEnabled)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ApplyNameEnabled)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ApplyNotesEnabled)));
@@ -1378,14 +1055,10 @@ namespace SwInventreeAddin.UI
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PushDescriptionEnabled)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PushRevisionVisible)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PushImageVisible)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ThumbnailPlaceholderVisible)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PartLinkEnabled)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NameMatch)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NotesMatch)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RevisionMatch)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DescriptionMatch)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PkMatch)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CurrentInvenTreePk)));
-            NotifyBomVisibility();
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(BomButtonEnabled)));
             NotifyFlagDisplays();
         }
 
@@ -1407,67 +1080,62 @@ namespace SwInventreeAddin.UI
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TestableValue)));
         }
 
-        /// <summary>
-        /// Updates the mapping provider reference and re-checks the schema version.
-        /// Called after settings are saved with a new MappingSourcePath.
-        /// </summary>
-        public void UpdateMapping(IPropertyMappingProvider provider)
+        private void NotifyBomVisibility()
         {
-            DetachMappingProvider();
-            _mappingProvider = provider;
-
-            if (!TryLoadPartNumberWhenNoSession())
-                RefreshPreservingSession();
-
-            AttachMappingProvider();
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(BomSectionVisible)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(BomButtonEnabled)));
         }
 
-        private void AttachMappingProvider() =>
-            MappingChangedSubscription.SubscribeTo(ref _mappingChangedSubscription, _mappingProvider, OnMappingChanged);
-
-        private void DetachMappingProvider() =>
-            MappingChangedSubscription.UnsubscribeFrom(ref _mappingChangedSubscription);
-
-        private void OnMappingChanged()
-        {
+        private void OnCoordinatorChanged(object? sender, EventArgs e) =>
             RunOnUiThread(() =>
             {
-                if (TryLoadPartNumberWhenNoSession())
-                    return;
-                RefreshPreservingSession();
+                NotifyDocumentProperties();
+                NotifySessionProperties();
             });
+
+        private void ResetDocumentPanel()
+        {
+            PartNumber = string.Empty;
+            FetchEnabled = false;
+            CreatePartEnabled = false;
+            PropertiesSectionVisible = false;
+
+            if (_client == null)
+                SetStatus("No server configured — click ⚙ Settings to get started", StatusSeverity.Warning);
+            else
+                SetStatus("Open a part or assembly in SolidWorks to get started.", StatusSeverity.None);
+        }
+
+        // ── Commands ──────────────────────────────────────────────────────────
+
+        /// <summary>Raises <see cref="SettingsRequested"/>.</summary>
+        public void RequestSettings() => SettingsRequested?.Invoke(this, EventArgs.Empty);
+
+        /// <summary>Raises <see cref="CompareBomRequested"/>.</summary>
+        public void RequestCompareBom() => CompareBomRequested?.Invoke(this, EventArgs.Empty);
+
+        /// <summary>Opens the current part's InvenTree page in the default browser.</summary>
+        public void OpenPartInBrowser()
+        {
+            var url = _coordinator.GetPartWebUrl();
+            if (url == null) return;
+            OpenBrowserUrl(url);
         }
 
         /// <summary>
-        /// Light refresh used when a Part Sync session is loaded: re-checks
-        /// mapping health, status, command states, and — when the linked
-        /// sections are visible — the document's current property values.
-        /// Does not re-read document identity, so the session is preserved.
+        /// Re-checks the current document properties and notifies listeners.
+        /// Kept for compatibility; coordinator projections are live so this is a no-op notify.
         /// </summary>
-        private void RefreshPreservingSession()
+        public void RefreshCurrentProperties()
         {
-            RefreshMappingResult();
-            if (_propertiesSectionVisible)
-                RefreshDocumentFromService();
-            RefreshStatus();
-            RefreshCommandStates();
+            _coordinator.RefreshDocument();
+            NotifyDocumentProperties();
         }
 
-        /// <summary>
-        /// Re-runs <see cref="LoadPartNumber"/> when no Part Sync session is
-        /// loaded, so a link stamped since the last load — e.g. an IPN or
-        /// InvenTree Part PK added while the property notification was missed —
-        /// is picked up without a document switch. Returns false when a session
-        /// is loaded so the caller keeps its lighter refresh and does not drop
-        /// the session.
-        /// </summary>
-        private bool TryLoadPartNumberWhenNoSession()
-        {
-            if (_session != null)
-                return false;
-            LoadPartNumber();
-            return true;
-        }
+        // ── Mapping / status / threading internals ────────────────────────────
+
+        private MappingResult? _mappingResult;
+        private bool _mappingHealthWarningActive;
 
         private MappingResult GetMappingResultOrDefault() =>
             _mappingProvider?.GetMappingResult()
@@ -1476,17 +1144,19 @@ namespace SwInventreeAddin.UI
         private void RefreshMappingResult() =>
             _mappingResult = GetMappingResultOrDefault();
 
-        private PropertyMappingConfig GetMappingOrDefault()
+        /// <summary>
+        /// Recomputes all command enable/disable flags from the current document
+        /// state and mapping health, then raises the PropertyChanged events that
+        /// keep the Task Pane buttons in sync.
+        /// </summary>
+        private void RefreshCommandStates()
         {
-            if (_mappingResult == null)
-                RefreshMappingResult();
-            return _mappingResult?.Config ?? PropertyMappingConfig.WithDefaults();
-        }
+            FetchEnabled = ShouldEnableFetch();
+            CreatePartEnabled = CanCreatePart();
 
-        private string GetCustomPropertyOrEmpty(string? propertyName) =>
-            string.IsNullOrEmpty(propertyName)
-                ? string.Empty
-                : _propertyService.GetCustomProperty(propertyName!);
+            NotifySessionProperties();
+            NotifyBomVisibility();
+        }
 
         // Mapping-health warnings take precedence over document/client status messages,
         // so any state change that could hide a schema mismatch must re-evaluate here.
@@ -1520,19 +1190,6 @@ namespace SwInventreeAddin.UI
             }
         }
 
-        /// <summary>
-        /// Recomputes all command enable/disable flags from the current document state and mapping health,
-        /// then raises the PropertyChanged events that keep the Task Pane buttons in sync.
-        /// </summary>
-        private void RefreshCommandStates()
-        {
-            FetchEnabled = ShouldEnableFetch();
-            CreatePartEnabled = CanCreatePart();
-
-            NotifySessionProperties();
-            NotifyBomVisibility();
-        }
-
         private void SetStatus(string text, StatusSeverity severity, string? toolTip = null)
         {
             StatusText = text;
@@ -1540,85 +1197,43 @@ namespace SwInventreeAddin.UI
             StatusSeverity = severity;
         }
 
-        /// <summary>Fires PropertyChanged for BOM visibility properties.</summary>
-        private void NotifyBomVisibility()
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(BomSectionVisible)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(BomButtonEnabled)));
-        }
+        private void AttachMappingProvider() =>
+            MappingChangedSubscription.SubscribeTo(ref _mappingChangedSubscription, _mappingProvider, OnMappingChanged);
+
+        private void DetachMappingProvider() =>
+            MappingChangedSubscription.UnsubscribeFrom(ref _mappingChangedSubscription);
 
         /// <summary>
-        /// Runs <paramref name="action"/> on the UI thread. Same-thread callers
-        /// execute inline; off-thread callers marshal through Send (synchronous)
-        /// so they see property updates immediately. Falls back to inline
-        /// execution when no context was captured (unit tests).
+        /// The mapping file changed under the same provider: the coordinator
+        /// rebinds (revision advance + session rebuild against the new mapping),
+        /// then the ViewModel re-runs the full evaluation when no session is
+        /// installed, or the lighter session-preserving refresh otherwise.
         /// </summary>
-        private void RunOnUiThread(Action action)
+        private void OnMappingChanged()
         {
-            if (Environment.CurrentManagedThreadId == _uiThreadId || _uiContext == null)
-                action();
-            else
-                _uiContext.Send(_ => action(), null);
-        }
-
-        /// <summary>
-        /// Downloads the thumbnail at <paramref name="url"/> off the UI thread.
-        /// Returns null when the URL is blank or the download fails.
-        /// </summary>
-        private async Task<byte[]?> TryDownloadThumbnailAsync(string? url)
-        {
-            if (string.IsNullOrEmpty(url)) return null;
-
-            try { return await _client!.DownloadImageAsync(url!).ConfigureAwait(false); }
-            catch { /* silent — placeholder will show */ }
-            return null;
-        }
-
-        // ── BOM Compare state ─────────────────────────────────────────────────
-
-        private IAssemblyBomService? _assemblyBomService;
-
-        /// <summary>
-        /// The saved BOM Keyword identifying the SolidWorks BOM table for BOM Compare.
-        /// Read live from the config so a keyword change in Settings takes effect on
-        /// the next Compare without anyone propagating it.
-        /// </summary>
-        internal string BomKeyword
-        {
-            get
+            RunOnUiThread(() =>
             {
-                // Corrupt settings surface in the Settings window; Compare falls back to the default.
-                try { return _configProvider?.GetServerConfig()?.BomKeyword ?? "inventree"; }
-                catch { return "inventree"; }
-            }
+                _coordinator.UpdateMapping(_mappingProvider);
+                if (TryLoadPartNumberWhenNoSession())
+                    return;
+                RefreshPreservingSession();
+            });
         }
 
-        /// <summary>Wires the SolidWorks BOM table service used by BOM Compare.</summary>
-        public void UpdateBomState(IAssemblyBomService bomService)
-            => _assemblyBomService = bomService;
-
-        /// <summary>Builds the BOM Compare pre-flight check; null when no BOM service is wired.</summary>
-        internal BomCompareReadinessCheck? CreateBomCompareReadinessCheck()
-            => _assemblyBomService == null
-                ? null
-                : new BomCompareReadinessCheck(this, _assemblyBomService, BomKeyword);
-
-        /// <summary>Builds the BOM Compare ViewModel; null when the client or BOM service is missing.</summary>
-        internal BomCompareViewModel? CreateBomCompareViewModel(PropertyMappingConfig mapping, int assemblyPk)
-            => (_client == null || _assemblyBomService == null)
-                ? null
-                : new BomCompareViewModel(_client, _assemblyBomService, mapping, assemblyPk, BomKeyword);
-
-        /// <summary>Returns the matched BOM table's feature name; null when no BOM service is wired.</summary>
-        internal string? GetBomTableName()
-            => _assemblyBomService?.GetBomTableName(BomKeyword);
-
-        // ── IBomReadinessSource ────────────────────────────────────────────────
-        // The resolved mapping is exposed through the public mapping provider; this
-        // explicit member keeps the pre-flight seam internal to the assembly.
-        PropertyMappingConfig IBomReadinessSource.CurrentMapping => GetMappingOrDefault();
+        /// <summary>Marshals an action onto the STA/UI thread via the dispatcher.</summary>
+        private void RunOnUiThread(Action action) => _dispatcher.Run(action);
     }
 
-    /// <summary>Severity level for the status bar stripe colour.</summary>
-    public enum StatusSeverity { None, Success, Warning, Error }
+    /// <summary>Visual severity of the status-bar message.</summary>
+    public enum StatusSeverity
+    {
+        /// <summary>No status / neutral.</summary>
+        None,
+        /// <summary>Successful operation.</summary>
+        Success,
+        /// <summary>Non-fatal warning.</summary>
+        Warning,
+        /// <summary>Operation failed.</summary>
+        Error,
+    }
 }

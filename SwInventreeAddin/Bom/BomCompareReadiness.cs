@@ -43,6 +43,14 @@ namespace SwInventreeAddin.Bom
         /// still allow the compare window to open.
         /// </summary>
         BomColumnAliasesMissing,
+
+        /// <summary>
+        /// The auto-populate fetch stopped at a typed confirmation (duplicate
+        /// IPN, Link Mismatch). The caller prompts through
+        /// <see cref="BomCompareReadiness.FetchResult"/>, resumes the
+        /// coordinator's pending confirmation, and re-runs the check.
+        /// </summary>
+        FetchConfirmationRequired,
     }
 
     internal sealed class BomCompareReadiness
@@ -52,16 +60,25 @@ namespace SwInventreeAddin.Bom
         public string SwRevision { get; }
         public string ItRevision { get; }
 
+        /// <summary>
+        /// The coordinator fetch result that requires confirmation; non-null
+        /// only when <see cref="Outcome"/> is
+        /// <see cref="BomCompareOutcome.FetchConfirmationRequired"/>.
+        /// </summary>
+        public PartSyncResult? FetchResult { get; }
+
         public BomCompareReadiness(
             BomCompareOutcome outcome,
             string partNumber,
             string swRevision,
-            string itRevision)
+            string itRevision,
+            PartSyncResult? fetchResult = null)
         {
             Outcome = outcome;
             PartNumber = partNumber;
             SwRevision = swRevision;
             ItRevision = itRevision;
+            FetchResult = fetchResult;
         }
     }
 }

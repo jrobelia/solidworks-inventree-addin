@@ -32,35 +32,44 @@ namespace SwInventreeAddin.Tests
                 BomColumnNote = noteAlias,
             };
 
-        private sealed class StubSource : IBomReadinessSource
+        /// <summary>
+        /// In-memory <see cref="IBomReadinessContext"/>: one coherent snapshot per
+        /// capture plus recording for the two coordinator commands.
+        /// </summary>
+        private sealed class StubContext : IBomReadinessContext
         {
-            public int CurrentInvenTreePk { get; set; }
-            public string PartNumber { get; set; } = "PART-001";
-            public string CurrentPk { get; set; } = string.Empty;
-            public string CurrentRevision { get; set; } = string.Empty;
-            public string RevisionPreview { get; set; } = string.Empty;
-            public PropertyMappingConfig CurrentMapping { get; set; } = CreateMapping();
+            public string Ipn { get; set; } = "PART-001";
+            public int InMemoryPartPk { get; set; }
+            public string StampedPkText { get; set; } = string.Empty;
+            public string SwRevision { get; set; } = string.Empty;
+            public string FetchedRevision { get; set; } = string.Empty;
+            public PropertyMappingConfig Mapping { get; set; } = CreateMapping();
 
             public bool FetchCalled { get; private set; }
-            public bool RefreshCalled { get; private set; }
             public bool PushRevisionCalled { get; private set; }
 
-            /// <summary>Side-effect applied when FetchPartAsync is called.</summary>
+            /// <summary>Side-effect applied when EnsurePartPopulatedAsync is called.</summary>
             public Action? OnFetch { get; set; }
 
-            public Task FetchPartAsync()
+            /// <summary>The typed result EnsurePartPopulatedAsync returns.</summary>
+            public PartSyncResult EnsureResult { get; set; } =
+                new PartSyncResult(PartSyncOutcome.Success);
+
+            public BomReadinessSnapshot CaptureSnapshot() =>
+                new BomReadinessSnapshot(
+                    Ipn, InMemoryPartPk, StampedPkText, SwRevision, FetchedRevision, Mapping);
+
+            public Task<PartSyncResult> EnsurePartPopulatedAsync()
             {
                 FetchCalled = true;
                 OnFetch?.Invoke();
-                return Task.CompletedTask;
+                return Task.FromResult(EnsureResult);
             }
 
-            public void RefreshCurrentProperties() => RefreshCalled = true;
-
-            public Task PushRevisionToInventreeAsync()
+            public Task<PartSyncResult> PushRevisionAsync()
             {
                 PushRevisionCalled = true;
-                return Task.CompletedTask;
+                return Task.FromResult(new PartSyncResult(PartSyncOutcome.Success));
             }
         }
 
@@ -69,30 +78,30 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task CheckAsync_PkInMemory_DoesNotFetch()
         {
-            var source = new StubSource { CurrentInvenTreePk = 42, CurrentPk = "42" };
-            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
+            var context = new StubContext { InMemoryPartPk = 42, StampedPkText = "42" };
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
 
             await check.CheckAsync();
 
-            Assert.That(source.FetchCalled, Is.False);
+            Assert.That(context.FetchCalled, Is.False);
         }
 
         [Test]
         public async Task CheckAsync_PkNotInMemory_AutoFetches()
         {
-            var source = new StubSource { CurrentInvenTreePk = 0 };
-            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
+            var context = new StubContext { InMemoryPartPk = 0 };
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
 
             await check.CheckAsync();
 
-            Assert.That(source.FetchCalled, Is.True);
+            Assert.That(context.FetchCalled, Is.True);
         }
 
         [Test]
         public async Task CheckAsync_StillNoPkAfterFetch_ReturnsPkNotFound()
         {
-            var source = new StubSource { CurrentInvenTreePk = 0 };
-            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
+            var context = new StubContext { InMemoryPartPk = 0 };
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
 
@@ -102,13 +111,13 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task CheckAsync_FetchSucceeds_PkNotStampedInDocument_ReturnsPkNotStamped()
         {
-            var source = new StubSource
+            var context = new StubContext
             {
-                CurrentInvenTreePk = 0,
-                CurrentPk = string.Empty,
+                InMemoryPartPk = 0,
+                StampedPkText = string.Empty,
             };
-            source.OnFetch = () => source.CurrentInvenTreePk = 99;
-            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
+            context.OnFetch = () => context.InMemoryPartPk = 99;
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
 
@@ -118,14 +127,14 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task CheckAsync_PkStamped_RevisionsEqual_ReturnsReady()
         {
-            var source = new StubSource
+            var context = new StubContext
             {
-                CurrentInvenTreePk = 42,
-                CurrentPk = "42",
-                CurrentRevision = "A",
-                RevisionPreview = "A",
+                InMemoryPartPk = 42,
+                StampedPkText = "42",
+                SwRevision = "A",
+                FetchedRevision = "A",
             };
-            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
 
@@ -135,14 +144,14 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task CheckAsync_ItIsNewer_ReturnsItIsNewer()
         {
-            var source = new StubSource
+            var context = new StubContext
             {
-                CurrentInvenTreePk = 42,
-                CurrentPk = "42",
-                CurrentRevision = "A",
-                RevisionPreview = "B",
+                InMemoryPartPk = 42,
+                StampedPkText = "42",
+                SwRevision = "A",
+                FetchedRevision = "B",
             };
-            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
 
@@ -152,14 +161,14 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task CheckAsync_SwIsNewer_ReturnsSwIsNewer()
         {
-            var source = new StubSource
+            var context = new StubContext
             {
-                CurrentInvenTreePk = 42,
-                CurrentPk = "42",
-                CurrentRevision = "B",
-                RevisionPreview = "A",
+                InMemoryPartPk = 42,
+                StampedPkText = "42",
+                SwRevision = "B",
+                FetchedRevision = "A",
             };
-            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
 
@@ -170,14 +179,14 @@ namespace SwInventreeAddin.Tests
         public async Task CheckAsync_AmbiguousRevisions_ReturnsAmbiguous()
         {
             // Non-comparable revision strings (e.g. "1.0" vs "A") produce Ambiguous.
-            var source = new StubSource
+            var context = new StubContext
             {
-                CurrentInvenTreePk = 42,
-                CurrentPk = "42",
-                CurrentRevision = "1.0",
-                RevisionPreview = "A",
+                InMemoryPartPk = 42,
+                StampedPkText = "42",
+                SwRevision = "1.0",
+                FetchedRevision = "A",
             };
-            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
 
@@ -187,32 +196,31 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task CheckAsync_PopulatesRevisionLabelsOnResult()
         {
-            var source = new StubSource
+            var context = new StubContext
             {
-                CurrentInvenTreePk = 42,
-                CurrentPk = "42",
-                CurrentRevision = "B",
-                RevisionPreview = "A",
+                InMemoryPartPk = 42,
+                StampedPkText = "42",
+                SwRevision = "B",
+                FetchedRevision = "A",
             };
-            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
 
-            Assert.That(result.SwRevision, Is.EqualTo("B"));
             Assert.That(result.ItRevision, Is.EqualTo("A"));
         }
 
         [Test]
         public async Task CheckAsync_NoBomTable_ReturnsBomTableMissing()
         {
-            var source = new StubSource
+            var context = new StubContext
             {
-                CurrentInvenTreePk = 42,
-                CurrentPk = "42",
-                CurrentRevision = "A",
-                RevisionPreview = "A",
+                InMemoryPartPk = 42,
+                StampedPkText = "42",
+                SwRevision = "A",
+                FetchedRevision = "A",
             };
-            var check = new BomCompareReadinessCheck(source, CreateBomService(false), DefaultBomKeyword);
+            var check = new BomCompareReadinessCheck(context, CreateBomService(false), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
 
@@ -222,15 +230,30 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task CheckAsync_NoBomTable_PkNotInMemory_DoesNotFetch()
         {
-            var source = new StubSource { CurrentInvenTreePk = 0 };
-            source.OnFetch = () => source.CurrentInvenTreePk = 99;
-            var check = new BomCompareReadinessCheck(source, CreateBomService(false), DefaultBomKeyword);
+            var context = new StubContext { InMemoryPartPk = 0 };
+            context.OnFetch = () => context.InMemoryPartPk = 99;
+            var check = new BomCompareReadinessCheck(context, CreateBomService(false), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
 
             Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.BomTableMissing));
-            Assert.That(source.FetchCalled, Is.False);
-            Assert.That(source.CurrentInvenTreePk, Is.EqualTo(0));
+            Assert.That(context.FetchCalled, Is.False);
+            Assert.That(context.InMemoryPartPk, Is.EqualTo(0));
+        }
+
+        // -- Confirmation propagation -----------------------------------------
+
+        [Test]
+        public async Task CheckAsync_EnsureReturnsConfirmation_PropagatesFetchResult()
+        {
+            var context = new StubContext { InMemoryPartPk = 0 };
+            context.EnsureResult = new PartSyncResult(PartSyncOutcome.LinkMismatchConfirmation);
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
+
+            var result = await check.CheckAsync();
+
+            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.FetchConfirmationRequired));
+            Assert.That(result.FetchResult, Is.SameAs(context.EnsureResult));
         }
 
         // -- BOM column alias pre-flight ----------------------------------------
@@ -238,15 +261,15 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task CheckAsync_BomColumnIpnBlank_ReturnsBomColumnAliasesMissing()
         {
-            var source = new StubSource
+            var context = new StubContext
             {
-                CurrentInvenTreePk = 42,
-                CurrentPk = "42",
-                CurrentRevision = "A",
-                RevisionPreview = "A",
-                CurrentMapping = CreateMapping(ipnAlias: "", qtyAlias: "Qty"),
+                InMemoryPartPk = 42,
+                StampedPkText = "42",
+                SwRevision = "A",
+                FetchedRevision = "A",
+                Mapping = CreateMapping(ipnAlias: "", qtyAlias: "Qty"),
             };
-            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
 
@@ -256,15 +279,15 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task CheckAsync_BomColumnQtyBlank_ReturnsBomColumnAliasesMissing()
         {
-            var source = new StubSource
+            var context = new StubContext
             {
-                CurrentInvenTreePk = 42,
-                CurrentPk = "42",
-                CurrentRevision = "A",
-                RevisionPreview = "A",
-                CurrentMapping = CreateMapping(ipnAlias: "IPN", qtyAlias: ""),
+                InMemoryPartPk = 42,
+                StampedPkText = "42",
+                SwRevision = "A",
+                FetchedRevision = "A",
+                Mapping = CreateMapping(ipnAlias: "IPN", qtyAlias: ""),
             };
-            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
 
@@ -274,15 +297,15 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task CheckAsync_BomColumnIpnAndQtyBlank_ReturnsBomColumnAliasesMissing()
         {
-            var source = new StubSource
+            var context = new StubContext
             {
-                CurrentInvenTreePk = 42,
-                CurrentPk = "42",
-                CurrentRevision = "A",
-                RevisionPreview = "A",
-                CurrentMapping = CreateMapping(ipnAlias: "", qtyAlias: ""),
+                InMemoryPartPk = 42,
+                StampedPkText = "42",
+                SwRevision = "A",
+                FetchedRevision = "A",
+                Mapping = CreateMapping(ipnAlias: "", qtyAlias: ""),
             };
-            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
 
@@ -292,15 +315,15 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task CheckAsync_BomColumnAliasesPresent_ReturnsReady()
         {
-            var source = new StubSource
+            var context = new StubContext
             {
-                CurrentInvenTreePk = 42,
-                CurrentPk = "42",
-                CurrentRevision = "A",
-                RevisionPreview = "A",
-                CurrentMapping = CreateMapping(),
+                InMemoryPartPk = 42,
+                StampedPkText = "42",
+                SwRevision = "A",
+                FetchedRevision = "A",
+                Mapping = CreateMapping(),
             };
-            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
 
@@ -310,15 +333,15 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task CheckAsync_NoBomTableAndMissingAliases_ReturnsBomTableMissing()
         {
-            var source = new StubSource
+            var context = new StubContext
             {
-                CurrentInvenTreePk = 42,
-                CurrentPk = "42",
-                CurrentRevision = "A",
-                RevisionPreview = "A",
-                CurrentMapping = CreateMapping(ipnAlias: "", qtyAlias: ""),
+                InMemoryPartPk = 42,
+                StampedPkText = "42",
+                SwRevision = "A",
+                FetchedRevision = "A",
+                Mapping = CreateMapping(ipnAlias: "", qtyAlias: ""),
             };
-            var check = new BomCompareReadinessCheck(source, CreateBomService(false), DefaultBomKeyword);
+            var check = new BomCompareReadinessCheck(context, CreateBomService(false), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
 
@@ -328,15 +351,15 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task CheckAsync_ItIsNewer_WithMissingAliases_ReturnsItIsNewer()
         {
-            var source = new StubSource
+            var context = new StubContext
             {
-                CurrentInvenTreePk = 42,
-                CurrentPk = "42",
-                CurrentRevision = "A",
-                RevisionPreview = "B",
-                CurrentMapping = CreateMapping(ipnAlias: "", qtyAlias: ""),
+                InMemoryPartPk = 42,
+                StampedPkText = "42",
+                SwRevision = "A",
+                FetchedRevision = "B",
+                Mapping = CreateMapping(ipnAlias: "", qtyAlias: ""),
             };
-            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
 
@@ -346,21 +369,21 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task CheckAsync_SwIsNewer_AfterPush_StillMissingAliases_ReturnsBomColumnAliasesMissing()
         {
-            var source = new StubSource
+            var context = new StubContext
             {
-                CurrentInvenTreePk = 42,
-                CurrentPk = "42",
-                CurrentRevision = "B",
-                RevisionPreview = "A",
-                CurrentMapping = CreateMapping(ipnAlias: "", qtyAlias: ""),
+                InMemoryPartPk = 42,
+                StampedPkText = "42",
+                SwRevision = "B",
+                FetchedRevision = "A",
+                Mapping = CreateMapping(ipnAlias: "", qtyAlias: ""),
             };
-            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
 
             var beforePush = await check.CheckAsync();
             Assert.That(beforePush.Outcome, Is.EqualTo(BomCompareOutcome.SwIsNewer));
 
             await check.PushRevisionAsync();
-            source.RevisionPreview = "B"; // simulate the pre-flight update the UI would see
+            context.FetchedRevision = "B"; // simulate the pre-flight update the UI would see
 
             var afterPush = await check.CheckAsync();
             Assert.That(afterPush.Outcome, Is.EqualTo(BomCompareOutcome.BomColumnAliasesMissing));
@@ -369,20 +392,20 @@ namespace SwInventreeAddin.Tests
         // -- PushRevisionAsync --------------------------------------------------
 
         [Test]
-        public async Task PushRevisionAsync_DelegatesToSource()
+        public async Task PushRevisionAsync_DelegatesToContext()
         {
-            var source = new StubSource();
-            var check = new BomCompareReadinessCheck(source, CreateBomService(), DefaultBomKeyword);
+            var context = new StubContext();
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
 
             await check.PushRevisionAsync();
 
-            Assert.That(source.PushRevisionCalled, Is.True);
+            Assert.That(context.PushRevisionCalled, Is.True);
         }
 
         // -- Constructor guard --------------------------------------------------
 
         [Test]
-        public void Constructor_NullSource_Throws()
+        public void Constructor_NullContext_Throws()
         {
             Assert.That(() => new BomCompareReadinessCheck(null!, CreateBomService(), DefaultBomKeyword),
                 Throws.ArgumentNullException);
@@ -391,14 +414,14 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void Constructor_NullBomService_Throws()
         {
-            Assert.That(() => new BomCompareReadinessCheck(new StubSource(), null!, DefaultBomKeyword),
+            Assert.That(() => new BomCompareReadinessCheck(new StubContext(), null!, DefaultBomKeyword),
                 Throws.ArgumentNullException);
         }
 
         [Test]
         public void Constructor_NullBomKeyword_Throws()
         {
-            Assert.That(() => new BomCompareReadinessCheck(new StubSource(), CreateBomService(), null!),
+            Assert.That(() => new BomCompareReadinessCheck(new StubContext(), CreateBomService(), null!),
                 Throws.ArgumentNullException);
         }
     }
