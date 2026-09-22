@@ -379,8 +379,8 @@ namespace SwInventreeAddin.UI
 
         /// <summary>
         /// Words a non-success ensure-populate outcome for the BOM Compare
-        /// error dialog — mirroring the status wording the ViewModel uses for
-        /// the same terminal fetch outcomes.
+        /// error dialog — the duplicate-IPN sentences are the same wording the
+        /// status line shows (<see cref="PartSyncWording"/>).
         /// </summary>
         private static string DescribeBomFetchFailure(PartSyncResult? result)
         {
@@ -390,11 +390,8 @@ namespace SwInventreeAddin.UI
             switch (result.Outcome)
             {
                 case PartSyncOutcome.DuplicateNoRevisionMatch:
-                    return $"{result.Candidates?.Count ?? 0} parts share IPN \u2018{result.Ipn}\u2019 but none match " +
-                           $"SW revision {RevisionLabel(result.SwRevision)}. Resolve in InvenTree.";
                 case PartSyncOutcome.DuplicateAmbiguous:
-                    return $"{result.Candidates?.Count ?? 0} parts share IPN \u2018{result.Ipn}\u2019 and revision " +
-                           $"{RevisionLabel(result.SwRevision)}. Resolve duplicates in InvenTree.";
+                    return PartSyncWording.DuplicateIpnStatus(result);
                 case PartSyncOutcome.InvalidOperation:
                     return result.Diagnostic ?? "The part fetch is not available right now.";
                 default:
@@ -402,9 +399,6 @@ namespace SwInventreeAddin.UI
                          + (result.Diagnostic ?? result.Outcome.ToString());
             }
         }
-
-        private static string RevisionLabel(string? revision) =>
-            string.IsNullOrEmpty(revision) ? "(blank)" : revision;
 
         // -- Delegation to ViewModel -------------------------------------------
 

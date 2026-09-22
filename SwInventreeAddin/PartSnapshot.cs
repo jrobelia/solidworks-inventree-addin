@@ -67,10 +67,22 @@ namespace SwInventreeAddin
         /// <summary>Projects a mutable client/dialog part into an immutable snapshot.</summary>
         internal static PartSnapshot FromPart(InventreePart part) =>
             new PartSnapshot(
-                part.Pk, part.Ipn, part.Name, part.Notes, part.Revision,
-                part.Description, part.ThumbnailUrl, part.InStock, part.Ordering,
-                part.Active, part.Assembly, part.Component, part.Purchaseable,
-                part.Salable, part.Trackable, part.Testable);
+                pk: part.Pk,
+                ipn: part.Ipn,
+                name: part.Name,
+                notes: part.Notes,
+                revision: part.Revision,
+                description: part.Description,
+                thumbnailUrl: part.ThumbnailUrl,
+                inStock: part.InStock,
+                ordering: part.Ordering,
+                active: part.Active,
+                assembly: part.Assembly,
+                component: part.Component,
+                purchaseable: part.Purchaseable,
+                salable: part.Salable,
+                trackable: part.Trackable,
+                testable: part.Testable);
 
         /// <summary>
         /// Re-materializes a mutable <see cref="InventreePart"/> from this

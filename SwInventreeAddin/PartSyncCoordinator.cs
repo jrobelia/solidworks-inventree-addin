@@ -358,7 +358,7 @@ namespace SwInventreeAddin
             }
             catch (Exception ex) { error = ex; }
 
-            return await CommitOnStaAsync(
+            return await RunOnStaAsync(
                 () => CommitPkFetch(token, stampedPk, part, thumb, error)).ConfigureAwait(false);
         }
 
@@ -439,7 +439,7 @@ namespace SwInventreeAddin
                 catch { /* silent — placeholder will show */ }
             }
 
-            return await CommitOnStaAsync(
+            return await RunOnStaAsync(
                 () => CommitIpnFetch(token, ipn, parts, thumb, error)).ConfigureAwait(false);
         }
 
@@ -659,7 +659,7 @@ namespace SwInventreeAddin
             try { await session.PushValueAsync(field, value).ConfigureAwait(false); }
             catch (Exception ex) { error = ex; }
 
-            return await CommitOnStaAsync(() =>
+            return await RunOnStaAsync(() =>
             {
                 // Validate BEFORE examining the network outcome — a stale
                 // failure must never reach the pane as a status write.
@@ -719,7 +719,7 @@ namespace SwInventreeAddin
                 catch { warning = "Image pushed, but the thumbnail preview could not be refreshed."; }
             }
 
-            return await CommitOnStaAsync(() =>
+            return await RunOnStaAsync(() =>
             {
                 // Validate BEFORE examining the upload/preview outcome.
                 if (!IsCommitCurrent(token) || !ReferenceEquals(_session, session))
@@ -772,10 +772,10 @@ namespace SwInventreeAddin
                     return await ResumeDuplicateIpnAsync(pending, selectedCandidatePk)
                         .ConfigureAwait(false);
                 case PendingConfirmationKind.LinkMismatch:
-                    return await CommitOnStaAsync(() => CommitLinkMismatchResume(pending))
+                    return await RunOnStaAsync(() => CommitLinkMismatchResume(pending))
                         .ConfigureAwait(false);
                 case PendingConfirmationKind.MissingProperty:
-                    return await CommitOnStaAsync(() => CommitMissingPropertyResume(pending))
+                    return await RunOnStaAsync(() => CommitMissingPropertyResume(pending))
                         .ConfigureAwait(false);
                 default:
                     _pendingConfirmation = null;
@@ -817,7 +817,7 @@ namespace SwInventreeAddin
                 catch { /* silent — placeholder will show */ }
             }
 
-            return await CommitOnStaAsync(() =>
+            return await RunOnStaAsync(() =>
             {
                 _pendingConfirmation = null;
                 // Second validation inside the commit — the download gave a
@@ -938,33 +938,44 @@ namespace SwInventreeAddin
 
             if (token == null || snapshot.DocumentType == DocumentType.Unknown)
             {
-                // ClearDocument exactly once — a second clear would
-                // double-advance the generation and poison in-flight tokens.
-                if (_state.Kind != TaskPaneStateKind.Empty)
-                {
-                    _state.ClearDocument();
-                    _session = null;
-                    _pendingConfirmation = null;
-                }
-                _state.ClearPopulated();
-                _pendingDocumentWrites.Clear();
+                ClearGoneDocument();
                 return TaskPaneDocumentTransition.Activated;
             }
 
             var transition = _state.ApplyDocumentUpdate(token, snapshot);
             if (transition == TaskPaneDocumentTransition.Activated)
-            {
-                // A new generation: pending echoes were keyed to the previous
-                // document — notifications carry no identity, so a stale
-                // entry could swallow a real edit on the new document.
-                _pendingDocumentWrites.Clear();
-
-                // A document switch drops the session unconditionally (#292):
-                // identical IPN + stamped PK on the new document is a copied
-                // file with stale stamps, not a state to adopt.
-                DropSession();
-            }
+                OnActivatedCleanup();
             return transition;
+        }
+
+        /// <summary>
+        /// The active document is gone (closed/no token). ClearDocument runs
+        /// exactly once — a second clear would double-advance the generation
+        /// and poison in-flight tokens.
+        /// </summary>
+        private void ClearGoneDocument()
+        {
+            if (_state.Kind != TaskPaneStateKind.Empty)
+            {
+                _state.ClearDocument();
+                _session = null;
+                _pendingConfirmation = null;
+            }
+            _state.ClearPopulated();
+            _pendingDocumentWrites.Clear();
+        }
+
+        /// <summary>
+        /// A new generation began: pending echoes were keyed to the previous
+        /// document — notifications carry no identity, so a stale entry could
+        /// swallow a real edit on the new document — and the session drops
+        /// unconditionally (#292): identical IPN + stamped PK on the new
+        /// document is a copied file with stale stamps, not a state to adopt.
+        /// </summary>
+        private void OnActivatedCleanup()
+        {
+            _pendingDocumentWrites.Clear();
+            DropSession();
         }
 
         /// <summary>
@@ -1011,7 +1022,17 @@ namespace SwInventreeAddin
         /// </summary>
         private void SubstituteRefresh(
             string? ipn = null, string? pkText = null, string? name = null,
-            string? notes = null, string? revision = null, string? description = null)
+            string? notes = null, string? revision = null, string? description = null) =>
+            SubstituteRefresh(doc => new TaskPaneDocumentSnapshot(
+                doc.DocumentType,
+                ipn ?? doc.Ipn,
+                pkText ?? doc.PkText,
+                name ?? doc.Name,
+                notes ?? doc.Notes,
+                revision ?? doc.Revision,
+                description ?? doc.Description));
+
+        private void SubstituteRefresh(Func<TaskPaneDocumentSnapshot, TaskPaneDocumentSnapshot> substitute)
         {
             var doc = _state.Document;
             if (doc == null) return;
@@ -1019,43 +1040,20 @@ namespace SwInventreeAddin
             var token = _propertyService.GetActiveDocumentToken();
             if (token == null)
             {
-                if (_state.Kind != TaskPaneStateKind.Empty)
-                {
-                    _state.ClearDocument();
-                    _session = null;
-                    _pendingConfirmation = null;
-                }
-                _state.ClearPopulated();
-                _pendingDocumentWrites.Clear();
+                ClearGoneDocument();
                 return;
             }
 
-            var transition = _state.ApplyDocumentUpdate(
-                token,
-                new TaskPaneDocumentSnapshot(
-                    doc.DocumentType,
-                    ipn ?? doc.Ipn,
-                    pkText ?? doc.PkText,
-                    name ?? doc.Name,
-                    notes ?? doc.Notes,
-                    revision ?? doc.Revision,
-                    description ?? doc.Description));
+            var transition = _state.ApplyDocumentUpdate(token, substitute(doc));
             if (transition == TaskPaneDocumentTransition.Activated)
-            {
-                _pendingDocumentWrites.Clear();
-                DropSession();
-            }
+                OnActivatedCleanup();
         }
 
         private void SubstituteRefreshFor(ApplyField field, string value)
         {
-            switch (field)
-            {
-                case ApplyField.Name: SubstituteRefresh(name: value); break;
-                case ApplyField.Notes: SubstituteRefresh(notes: value); break;
-                case ApplyField.Description: SubstituteRefresh(description: value); break;
-                case ApplyField.Pk: SubstituteRefresh(pkText: value); break;
-            }
+            var info = PartSyncFields.ForApply(field);
+            if (info == null) return;
+            SubstituteRefresh(doc => info.Substitute(doc, value));
         }
 
         // ── Operation tokens ─────────────────────────────────────────────────
@@ -1080,9 +1078,6 @@ namespace SwInventreeAddin
             _pendingConfirmation = null;
             return CaptureScopedToken();
         }
-
-        private Task<PartSyncResult> CommitOnStaAsync(Func<PartSyncResult> commit) =>
-            RunOnStaAsync(commit);
 
         /// <summary>
         /// Marshals <paramref name="work"/> onto the host STA thread through
@@ -1189,20 +1184,6 @@ namespace SwInventreeAddin
                 ? string.Empty
                 : _propertyService.GetCustomProperty(propertyName!);
 
-        /// <summary>
-        /// Mapped Document Property names absent from the active document —
-        /// the missing-property check behind Apply's confirmation flow,
-        /// exposed for tests.
-        /// </summary>
-        internal List<string> FindMissingProperties(IEnumerable<string?> names)
-        {
-            var missing = new List<string>();
-            foreach (var n in names)
-                if (!string.IsNullOrEmpty(n) && !_propertyService.PropertyExists(n!))
-                    missing.Add(n!);
-            return missing;
-        }
-
         private MappingResult ResolveMappingResult() =>
             _mappingProvider?.GetMappingResult()
             ?? new MappingResult(MappingHealth.Healthy, PropertyMappingConfig.WithDefaults());
@@ -1214,27 +1195,12 @@ namespace SwInventreeAddin
         /// Copy-on-install: an <see cref="InventreePart"/> handed in by the
         /// client or the Create Part dialog is caller-owned — the session
         /// keeps a private copy so later caller mutation cannot reach it.
+        /// The copy round-trips through the snapshot projection, which
+        /// normalizes null strings to empty — the same values the read
+        /// surface reports.
         /// </summary>
         internal static InventreePart CopyPart(InventreePart part) =>
-            new InventreePart
-            {
-                Pk = part.Pk,
-                Ipn = part.Ipn,
-                Name = part.Name,
-                Notes = part.Notes,
-                Revision = part.Revision,
-                Description = part.Description,
-                ThumbnailUrl = part.ThumbnailUrl,
-                InStock = part.InStock,
-                Ordering = part.Ordering,
-                Active = part.Active,
-                Assembly = part.Assembly,
-                Component = part.Component,
-                Purchaseable = part.Purchaseable,
-                Salable = part.Salable,
-                Trackable = part.Trackable,
-                Testable = part.Testable,
-            };
+            PartSnapshot.FromPart(part).ToPart();
 
         private static PartSyncResult InvalidOp(string? diagnostic = null) =>
             new PartSyncResult(PartSyncOutcome.InvalidOperation) { Diagnostic = diagnostic };

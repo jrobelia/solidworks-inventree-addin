@@ -67,14 +67,8 @@ namespace SwInventreeAddin
         // ── Apply (InvenTree → SolidWorks) ────────────────────────────────────
 
         /// <summary>The mapped Document Property name for <paramref name="field"/>; null when unmapped.</summary>
-        public string? ApplyPropertyName(ApplyField field) => field switch
-        {
-            ApplyField.Name => _mapping.NameProperty,
-            ApplyField.Notes => _mapping.NotesProperty,
-            ApplyField.Description => _mapping.DescriptionProperty,
-            ApplyField.Pk => _mapping.PkProperty,
-            _ => null,
-        };
+        public string? ApplyPropertyName(ApplyField field) =>
+            PartSyncFields.ForApply(field)?.PropertyName(_mapping);
 
         /// <summary>
         /// Writes one field to the SolidWorks document on the STA thread and
@@ -85,26 +79,13 @@ namespace SwInventreeAddin
         public string Apply(ApplyField field)
         {
             var propertyName = ApplyPropertyName(field);
-            var value = ApplyValue(field);
+            var value = PartSyncFields.ForApply(field)?.Value(Part) ?? string.Empty;
             if (!string.IsNullOrEmpty(propertyName))
             {
                 _pendingWrites[propertyName!] = value;
                 _propertyService.SetCustomProperty(propertyName!, value);
             }
             return value;
-        }
-
-        /// <summary>Task-returning wrapper over the synchronous STA write.</summary>
-        public Task<string> ApplyAsync(ApplyField field) => Task.FromResult(Apply(field));
-
-        /// <summary>Writes every Apply field to the SolidWorks document.</summary>
-        public Task ApplyAllAsync()
-        {
-            Apply(ApplyField.Name);
-            Apply(ApplyField.Notes);
-            Apply(ApplyField.Description);
-            Apply(ApplyField.Pk);
-            return Task.CompletedTask;
         }
 
         /// <summary>
@@ -126,57 +107,19 @@ namespace SwInventreeAddin
         /// <paramref name="field"/>. Null when unmapped — nothing to push.
         /// </summary>
         public string? CapturePushValue(PushField field) =>
-            GetPropertyIfMapped(PushPropertyName(field));
+            GetPropertyIfMapped(PartSyncFields.ForPush(field)?.PropertyName(_mapping));
 
         /// <summary>Network send: pushes <paramref name="value"/> to the part on InvenTree.</summary>
-        public Task PushValueAsync(PushField field, string value) => field switch
-        {
-            PushField.Name => _client.UpdatePartNameAsync(Part.Pk, value),
-            PushField.Notes => _client.UpdatePartNotesAsync(Part.Pk, value),
-            PushField.Description => _client.UpdatePartDescriptionAsync(Part.Pk, value),
-            PushField.Revision => _client.UpdatePartRevisionAsync(Part.Pk, value),
-            _ => Task.CompletedTask,
-        };
+        public Task PushValueAsync(PushField field, string value) =>
+            PartSyncFields.ForPush(field)?.Push(_client, Part.Pk, value) ?? Task.CompletedTask;
 
         /// <summary>
         /// STA commit: applies a successfully pushed value to <see cref="Part"/>.
         /// Called by the coordinator inside its validated commit — never on a
         /// network continuation.
         /// </summary>
-        public void CommitPushedValue(PushField field, string value)
-        {
-            switch (field)
-            {
-                case PushField.Name: Part.Name = value; break;
-                case PushField.Notes: Part.Notes = value; break;
-                case PushField.Description: Part.Description = value; break;
-                case PushField.Revision: Part.Revision = value; break;
-            }
-        }
-
-        /// <summary>
-        /// Convenience whole-op Push — capture → send → commit in one await.
-        /// Used by <see cref="PushAllAsync"/> and session-level tests; the
-        /// coordinator uses the decomposed calls so the commit lands inside
-        /// its token validation.
-        /// </summary>
-        public async Task PushAsync(PushField field)
-        {
-            var value = CapturePushValue(field);
-            if (value == null) return;
-
-            await PushValueAsync(field, value).ConfigureAwait(false);
-            CommitPushedValue(field, value);
-        }
-
-        /// <summary>Pushes every field whose mapped property exists on the document.</summary>
-        public async Task PushAllAsync()
-        {
-            await PushAsync(PushField.Name).ConfigureAwait(false);
-            await PushAsync(PushField.Notes).ConfigureAwait(false);
-            await PushAsync(PushField.Description).ConfigureAwait(false);
-            await PushAsync(PushField.Revision).ConfigureAwait(false);
-        }
+        public void CommitPushedValue(PushField field, string value) =>
+            PartSyncFields.ForPush(field)?.Commit(Part, value);
 
         // ── Thumbnail ─────────────────────────────────────────────────────────
 
@@ -185,27 +128,128 @@ namespace SwInventreeAddin
 
         // ── Helpers ───────────────────────────────────────────────────────────
 
-        private string? PushPropertyName(PushField field) => field switch
-        {
-            PushField.Name => _mapping.NameProperty,
-            PushField.Notes => _mapping.NotesProperty,
-            PushField.Description => _mapping.DescriptionProperty,
-            PushField.Revision => _mapping.RevisionProperty,
-            _ => null,
-        };
-
-        private string ApplyValue(ApplyField field) => field switch
-        {
-            ApplyField.Name => Part.Name,
-            ApplyField.Notes => Part.Notes,
-            ApplyField.Description => Part.Description,
-            ApplyField.Pk => Part.Pk.ToString(),
-            _ => string.Empty,
-        };
-
         private string? GetPropertyIfMapped(string? propertyName) =>
             string.IsNullOrEmpty(propertyName)
                 ? null
                 : _propertyService.GetCustomProperty(propertyName!);
+    }
+
+    /// <summary>
+    /// The per-field behavior of an <see cref="ApplyField"/> (InvenTree →
+    /// SolidWorks): which mapped Document Property it writes, which part-side
+    /// value it carries, and which document-snapshot slot a committed write
+    /// lands in. One row per field — session, coordinator, and the substitute
+    /// refresh all consult this table instead of re-switching on the enum.
+    /// </summary>
+    internal sealed class ApplyFieldInfo
+    {
+        public ApplyFieldInfo(
+            Func<PropertyMappingConfig, string?> propertyName,
+            Func<InventreePart, string> value,
+            Func<TaskPaneDocumentSnapshot, string, TaskPaneDocumentSnapshot> substitute)
+        {
+            PropertyName = propertyName;
+            Value = value;
+            Substitute = substitute;
+        }
+
+        /// <summary>The mapped Document Property name under a mapping.</summary>
+        public Func<PropertyMappingConfig, string?> PropertyName { get; }
+
+        /// <summary>The InvenTree-side value written for the field.</summary>
+        public Func<InventreePart, string> Value { get; }
+
+        /// <summary>Rebuilds a document snapshot with the written value substituted.</summary>
+        public Func<TaskPaneDocumentSnapshot, string, TaskPaneDocumentSnapshot> Substitute { get; }
+    }
+
+    /// <summary>
+    /// The per-field behavior of a <see cref="PushField"/> (SolidWorks →
+    /// InvenTree): which mapped Document Property it reads, which client call
+    /// sends it, and which <see cref="InventreePart"/> field a committed push
+    /// updates. One row per field — the same table backs STA capture, network
+    /// send, and STA commit.
+    /// </summary>
+    internal sealed class PushFieldInfo
+    {
+        public PushFieldInfo(
+            Func<PropertyMappingConfig, string?> propertyName,
+            Func<IInventreeClient, int, string, Task> push,
+            Action<InventreePart, string> commit)
+        {
+            PropertyName = propertyName;
+            Push = push;
+            Commit = commit;
+        }
+
+        /// <summary>The mapped Document Property name under a mapping.</summary>
+        public Func<PropertyMappingConfig, string?> PropertyName { get; }
+
+        /// <summary>The client call that sends the value to InvenTree.</summary>
+        public Func<IInventreeClient, int, string, Task> Push { get; }
+
+        /// <summary>Applies a successfully pushed value to the session part.</summary>
+        public Action<InventreePart, string> Commit { get; }
+    }
+
+    /// <summary>
+    /// The single lookup every Apply/Push field behavior goes through.
+    /// Out-of-range enum values return null — the former switch-default no-op.
+    /// </summary>
+    internal static class PartSyncFields
+    {
+        private static readonly IReadOnlyDictionary<ApplyField, ApplyFieldInfo> ApplyTable =
+            new Dictionary<ApplyField, ApplyFieldInfo>
+            {
+                [ApplyField.Name] = new ApplyFieldInfo(
+                    m => m.NameProperty,
+                    p => p.Name,
+                    (doc, v) => new TaskPaneDocumentSnapshot(
+                        doc.DocumentType, doc.Ipn, doc.PkText, v, doc.Notes, doc.Revision, doc.Description)),
+                [ApplyField.Notes] = new ApplyFieldInfo(
+                    m => m.NotesProperty,
+                    p => p.Notes,
+                    (doc, v) => new TaskPaneDocumentSnapshot(
+                        doc.DocumentType, doc.Ipn, doc.PkText, doc.Name, v, doc.Revision, doc.Description)),
+                [ApplyField.Description] = new ApplyFieldInfo(
+                    m => m.DescriptionProperty,
+                    p => p.Description,
+                    (doc, v) => new TaskPaneDocumentSnapshot(
+                        doc.DocumentType, doc.Ipn, doc.PkText, doc.Name, doc.Notes, doc.Revision, v)),
+                [ApplyField.Pk] = new ApplyFieldInfo(
+                    m => m.PkProperty,
+                    p => p.Pk.ToString(),
+                    (doc, v) => new TaskPaneDocumentSnapshot(
+                        doc.DocumentType, doc.Ipn, v, doc.Name, doc.Notes, doc.Revision, doc.Description)),
+            };
+
+        private static readonly IReadOnlyDictionary<PushField, PushFieldInfo> PushTable =
+            new Dictionary<PushField, PushFieldInfo>
+            {
+                [PushField.Name] = new PushFieldInfo(
+                    m => m.NameProperty,
+                    (c, pk, v) => c.UpdatePartNameAsync(pk, v),
+                    (p, v) => p.Name = v),
+                [PushField.Notes] = new PushFieldInfo(
+                    m => m.NotesProperty,
+                    (c, pk, v) => c.UpdatePartNotesAsync(pk, v),
+                    (p, v) => p.Notes = v),
+                [PushField.Description] = new PushFieldInfo(
+                    m => m.DescriptionProperty,
+                    (c, pk, v) => c.UpdatePartDescriptionAsync(pk, v),
+                    (p, v) => p.Description = v),
+                [PushField.Revision] = new PushFieldInfo(
+                    m => m.RevisionProperty,
+                    (c, pk, v) => c.UpdatePartRevisionAsync(pk, v),
+                    (p, v) => p.Revision = v),
+            };
+
+        /// <summary>The row for <paramref name="field"/>; null when the enum value has no row.</summary>
+        public static ApplyFieldInfo? ForApply(ApplyField field) =>
+            ApplyTable.TryGetValue(field, out var info) ? info : null;
+
+        /// <summary>The row for <paramref name="field"/>; null when the enum value has no row.</summary>
+        public static PushFieldInfo? ForPush(PushField field) =>
+            PushTable.TryGetValue(field, out var info) ? info : null;
     }
 }

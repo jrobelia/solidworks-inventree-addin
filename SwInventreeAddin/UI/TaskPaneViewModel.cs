@@ -785,16 +785,8 @@ namespace SwInventreeAddin.UI
                         StatusSeverity.Warning);
                     break;
                 case PartSyncOutcome.DuplicateNoRevisionMatch:
-                    SetStatus(
-                        $"{result.Candidates?.Count ?? 0} parts share IPN ‘{result.Ipn}’ but none match " +
-                        $"SW revision {RevisionLabel(result.SwRevision)}. Resolve in InvenTree.",
-                        StatusSeverity.Error);
-                    break;
                 case PartSyncOutcome.DuplicateAmbiguous:
-                    SetStatus(
-                        $"{result.Candidates?.Count ?? 0} parts share IPN ‘{result.Ipn}’ and revision " +
-                        $"{RevisionLabel(result.SwRevision)}. Resolve duplicates in InvenTree.",
-                        StatusSeverity.Error);
+                    SetStatus(PartSyncWording.DuplicateIpnStatus(result), StatusSeverity.Error);
                     break;
                 case PartSyncOutcome.SucceededWithWarning:
                     SetStatus(result.Diagnostic ?? string.Empty, StatusSeverity.Warning);
@@ -814,9 +806,6 @@ namespace SwInventreeAddin.UI
                     break;
             }
         }
-
-        private static string RevisionLabel(string? revision) =>
-            string.IsNullOrEmpty(revision) ? "(blank)" : revision;
 
         /// <summary>
         /// Runs the confirmation prompt for a fetch/BOM outcome and resumes the

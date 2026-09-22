@@ -1491,30 +1491,6 @@ namespace SwInventreeAddin.Tests
         // ── Task 12: Property Validation ───────────────────────────────────────
 
         [Test]
-        public void FindMissingProperties_WhenPropertySeeded_ReturnsEmptyList()
-        {
-            _propertyService.Seed("PartNo", "R-10K-0402");
-            _propertyService.Seed("Description", "");
-            var coordinator = VmFactory.Coordinator(_propertyService, _client);
-
-            var missing = coordinator.FindMissingProperties(new[] { "Description" });
-
-            Assert.That(missing, Is.Empty);
-        }
-
-        [Test]
-        public void FindMissingProperties_WhenPropertyNotSeeded_ReturnsMissingName()
-        {
-            _propertyService.Seed("PartNo", "R-10K-0402");
-            var coordinator = VmFactory.Coordinator(_propertyService, _client);
-
-            var missing = coordinator.FindMissingProperties(new[] { "MissingProp" });
-
-            Assert.That(missing, Has.Count.EqualTo(1));
-            Assert.That(missing[0], Is.EqualTo("MissingProp"));
-        }
-
-        [Test]
         public async Task ApplyNameToDocument_WhenPropertyMissingAndUserCancels_DoesNotWrite()
         {
             _propertyService.Seed("PartNo", "R-10K-0402");
