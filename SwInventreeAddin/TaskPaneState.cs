@@ -39,14 +39,16 @@ namespace SwInventreeAddin
         private string? _documentToken;
         private TaskPaneDocumentSnapshot? _document;
         private int _generation;
+        private int _populatedGeneration = -1;
 
         /// <summary>
-        /// The Task Pane's state kind. Derived from the snapshot — it cannot
-        /// disagree with the installed document.
+        /// The Task Pane's state kind. Derived from the snapshot and the
+        /// populated signal — it cannot disagree with the installed state.
         /// </summary>
         public TaskPaneStateKind Kind =>
             _document == null ? TaskPaneStateKind.Empty
             : _document.DocumentType == DocumentType.Drawing ? TaskPaneStateKind.Unsupported
+            : _populatedGeneration == _generation ? TaskPaneStateKind.Populated
             : string.IsNullOrEmpty(_document.Ipn) && _document.StampedPartPk == 0
                 ? TaskPaneStateKind.Unlinked
             : TaskPaneStateKind.Linked;
@@ -56,6 +58,15 @@ namespace SwInventreeAddin
         /// Owned solely by this module; callers never supply a value.
         /// </summary>
         public int Generation => _generation;
+
+        /// <summary>
+        /// The generation the populated signal was last bound to; -1 when no
+        /// Part Sync session result is installed. The marker self-invalidates
+        /// the moment <see cref="Generation"/> advances, so a stale marker can
+        /// never report <see cref="TaskPaneStateKind.Populated"/> for a newer
+        /// document.
+        /// </summary>
+        public int PopulatedGeneration => _populatedGeneration;
 
         /// <summary>
         /// The active document's snapshot; null iff
@@ -114,6 +125,36 @@ namespace SwInventreeAddin
             _documentToken = null;
             _document = null;
             _generation++;
+            _populatedGeneration = -1;
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// Binds the populated signal to the current generation: a Part Sync
+        /// session result is installed for the document that is active right
+        /// now. Valid only while a Part/Assembly document is installed
+        /// (<see cref="TaskPaneStateKind.Unlinked"/> or
+        /// <see cref="TaskPaneStateKind.Linked"/> — a typed-IPN fetch can
+        /// populate before any stamp exists).
+        /// </summary>
+        public void MarkPopulated()
+        {
+            if (_document == null || _document.DocumentType == DocumentType.Drawing)
+                throw new InvalidOperationException(
+                    "Populated requires an installed Part/Assembly document.");
+
+            _populatedGeneration = _generation;
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// Releases the populated signal. Harmless when not populated — the
+        /// marker is generation-bound, so clearing it can never affect a newer
+        /// document generation.
+        /// </summary>
+        public void ClearPopulated()
+        {
+            _populatedGeneration = -1;
             Changed?.Invoke(this, EventArgs.Empty);
         }
     }

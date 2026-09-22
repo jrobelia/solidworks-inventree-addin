@@ -20,7 +20,12 @@ namespace SwInventreeAddin.UI
     {
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        /// <summary>Raised with the new part after it is created and IPN+Name are written to the SW document.</summary>
+        /// <summary>
+        /// Raised with the new part after it is created on the server. The
+        /// Part Sync coordinator owns all Document Property writes — this
+        /// ViewModel returns the created part only and never touches
+        /// SolidWorks itself.
+        /// </summary>
         public event EventHandler<InventreePart>? PartCreated;
 
         private void Set<T>(ref T field, T value, [CallerMemberName] string? name = null)
@@ -31,7 +36,6 @@ namespace SwInventreeAddin.UI
         }
 
         private readonly IInventreeClient _client;
-        private readonly IDocumentPropertyService _propertyService;
         private readonly ICreatePartValidationErrorService _validationService;
         private readonly IPropertyMappingProvider? _mappingProvider;
         private readonly int _ipnPollDelayMs;
@@ -239,7 +243,6 @@ namespace SwInventreeAddin.UI
 
         public CreatePartViewModel(
             IInventreeClient client,
-            IDocumentPropertyService propertyService,
             ICreatePartValidationErrorService validationService,
             string initialName,
             IPropertyMappingProvider? mappingProvider = null,
@@ -248,7 +251,6 @@ namespace SwInventreeAddin.UI
             DocumentType documentType = DocumentType.Unknown)
         {
             _client = client;
-            _propertyService = propertyService;
             _validationService = validationService;
             _mappingProvider = mappingProvider;
             _ipnPollDelayMs = ipnPollDelayMs;
@@ -338,8 +340,9 @@ namespace SwInventreeAddin.UI
         }
 
         /// <summary>
-        /// Creates the part, re-fetches it, writes IPN + Name to the SW document,
-        /// then raises PartCreated. Leaves the dialog open on any error.
+        /// Creates the part, re-fetches it, then raises PartCreated so the
+        /// coordinator can stamp PK/IPN/Name on the document under its
+        /// operation token. Leaves the dialog open on any error.
         /// </summary>
         public async Task CreateAsync()
         {
@@ -414,8 +417,6 @@ namespace SwInventreeAddin.UI
                 var ipn = part?.Ipn ?? string.Empty;
                 var name = part?.Name ?? string.Empty;
 
-                var mapping = mappingResult?.Config ?? PropertyMappingConfig.WithDefaults();
-
                 RunOnUiThread(() =>
                 {
                     // A server-side IPN plugin can overwrite the submitted IPN. Tell the
@@ -424,15 +425,6 @@ namespace SwInventreeAddin.UI
                         IpnMismatchNotice = string.IsNullOrEmpty(ipn)
                             ? $"Part created, but the server assigned no IPN \u2014 the entered IPN '{ipnToSubmit}' was not applied."
                             : $"Part created, but the server assigned IPN '{ipn}' instead of the entered IPN '{ipnToSubmit}'.";
-
-                    if (!string.IsNullOrEmpty(mapping.PkProperty))
-                        _propertyService.SetCustomProperty(mapping.PkProperty!, pk.ToString());
-                    // Only write IPN if we actually received one — avoid blanking the property
-                    // if the plugin timed out.
-                    if (!string.IsNullOrEmpty(ipn) && !string.IsNullOrEmpty(mapping.IpnProperty))
-                        _propertyService.SetCustomProperty(mapping.IpnProperty!, ipn);
-                    if (!string.IsNullOrEmpty(mapping.NameProperty))
-                        _propertyService.SetCustomProperty(mapping.NameProperty!, name);
 
                     // Show "refresh manually" only if the poll actually ran but IPN didn't arrive.
                     if (string.IsNullOrEmpty(ipn) && pollEnabled)

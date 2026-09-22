@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -33,6 +34,9 @@ namespace SwInventreeAddin.Tests
             _mapping = PropertyMappingConfig.WithDefaults();
         }
 
+        private readonly Dictionary<string, string> _pendingWrites =
+            new Dictionary<string, string>();
+
         private PartSyncSession CreateSession(byte[]? thumbnailBytes = null) =>
             new PartSyncSession(
                 new InventreePart
@@ -47,7 +51,27 @@ namespace SwInventreeAddin.Tests
                 _client,
                 _propertyService,
                 _mapping,
+                _pendingWrites,
                 thumbnailBytes);
+
+        /// <summary>Writes every Apply field — the loop the coordinator's Apply-all path runs.</summary>
+        private static void ApplyAll(PartSyncSession session)
+        {
+            session.Apply(ApplyField.Name);
+            session.Apply(ApplyField.Notes);
+            session.Apply(ApplyField.Description);
+            session.Apply(ApplyField.Pk);
+        }
+
+        /// <summary>Composes the decomposed Push path — capture → send → commit — the way the coordinator drives it.</summary>
+        private static async Task PushAsync(PartSyncSession session, PushField field)
+        {
+            var value = session.CapturePushValue(field);
+            if (value == null) return;
+
+            await session.PushValueAsync(field, value).ConfigureAwait(false);
+            session.CommitPushedValue(field, value);
+        }
 
         // ── Constructor ───────────────────────────────────────────────────────
 
@@ -83,7 +107,7 @@ namespace SwInventreeAddin.Tests
         {
             var session = CreateSession();
 
-            session.Apply();
+            ApplyAll(session);
 
             Assert.That(_propertyService.GetCustomProperty(_mapping.NameProperty!),
                         Is.EqualTo(SamplePart.Name));
@@ -94,7 +118,7 @@ namespace SwInventreeAddin.Tests
         {
             var session = CreateSession();
 
-            session.Apply();
+            ApplyAll(session);
 
             Assert.That(_propertyService.GetCustomProperty(_mapping.NotesProperty!),
                         Is.EqualTo(SamplePart.Notes));
@@ -105,7 +129,7 @@ namespace SwInventreeAddin.Tests
         {
             var session = CreateSession();
 
-            session.Apply();
+            ApplyAll(session);
 
             Assert.That(_propertyService.GetCustomProperty(_mapping.DescriptionProperty!),
                         Is.EqualTo(SamplePart.Description));
@@ -118,7 +142,7 @@ namespace SwInventreeAddin.Tests
         {
             var session = CreateSession();
 
-            session.ApplyName();
+            session.Apply(ApplyField.Name);
 
             Assert.That(_propertyService.GetCustomProperty(_mapping.NameProperty!),
                         Is.EqualTo(SamplePart.Name));
@@ -129,7 +153,7 @@ namespace SwInventreeAddin.Tests
         {
             var session = CreateSession();
 
-            session.ApplyName();
+            session.Apply(ApplyField.Name);
 
             Assert.That(_propertyService.WrittenNames,
                 Does.Not.Contain(_mapping.NotesProperty!));
@@ -142,7 +166,7 @@ namespace SwInventreeAddin.Tests
         {
             var session = CreateSession();
 
-            session.ApplyNotes();
+            session.Apply(ApplyField.Notes);
 
             Assert.That(_propertyService.GetCustomProperty(_mapping.NotesProperty!),
                         Is.EqualTo(SamplePart.Notes));
@@ -153,7 +177,7 @@ namespace SwInventreeAddin.Tests
         {
             var session = CreateSession();
 
-            session.ApplyNotes();
+            session.Apply(ApplyField.Notes);
 
             Assert.That(_propertyService.WrittenNames,
                 Does.Not.Contain(_mapping.NameProperty!));
@@ -166,7 +190,7 @@ namespace SwInventreeAddin.Tests
         {
             var session = CreateSession();
 
-            session.ApplyDescription();
+            session.Apply(ApplyField.Description);
 
             Assert.That(_propertyService.GetCustomProperty(_mapping.DescriptionProperty!),
                         Is.EqualTo(SamplePart.Description));
@@ -179,7 +203,7 @@ namespace SwInventreeAddin.Tests
         {
             var session = CreateSession();
 
-            session.ApplyPk();
+            session.Apply(ApplyField.Pk);
 
             Assert.That(_propertyService.GetCustomProperty(_mapping.PkProperty!),
                         Is.EqualTo(SamplePart.Pk.ToString()));
@@ -192,7 +216,7 @@ namespace SwInventreeAddin.Tests
         {
             var session = CreateSession();
 
-            var value = session.ApplyName();
+            var value = session.Apply(ApplyField.Name);
 
             Assert.That(value, Is.EqualTo(SamplePart.Name));
         }
@@ -202,7 +226,7 @@ namespace SwInventreeAddin.Tests
         {
             var session = CreateSession();
 
-            var value = session.ApplyNotes();
+            var value = session.Apply(ApplyField.Notes);
 
             Assert.That(value, Is.EqualTo(SamplePart.Notes));
         }
@@ -212,7 +236,7 @@ namespace SwInventreeAddin.Tests
         {
             var session = CreateSession();
 
-            var value = session.ApplyDescription();
+            var value = session.Apply(ApplyField.Description);
 
             Assert.That(value, Is.EqualTo(SamplePart.Description));
         }
@@ -222,7 +246,7 @@ namespace SwInventreeAddin.Tests
         {
             var session = CreateSession();
 
-            var value = session.ApplyPk();
+            var value = session.Apply(ApplyField.Pk);
 
             Assert.That(value, Is.EqualTo(SamplePart.Pk.ToString()));
         }
@@ -260,140 +284,140 @@ namespace SwInventreeAddin.Tests
             Assert.That(missing, Is.Empty);
         }
 
-        // ── PushNameAsync ─────────────────────────────────────────────────────
+        // ── Push: Name ─────────────────────────────────────────────────────
 
         [Test]
-        public async Task PushNameAsync_CallsClientWithCorrectPkAndValue()
+        public async Task PushName_CallsClientWithCorrectPkAndValue()
         {
             _propertyService.Seed(_mapping.NameProperty!, "Updated Name");
             var session = CreateSession();
 
-            await session.PushNameAsync();
+            await PushAsync(session, PushField.Name);
 
             Assert.That(_client.LastPushedPk, Is.EqualTo(SamplePart.Pk));
             Assert.That(_client.LastPushedName, Is.EqualTo("Updated Name"));
         }
 
         [Test]
-        public async Task PushNameAsync_UpdatesPartNameOnSuccess()
+        public async Task PushName_UpdatesPartNameOnSuccess()
         {
             _propertyService.Seed(_mapping.NameProperty!, "New Name");
             var session = CreateSession();
 
-            await session.PushNameAsync();
+            await PushAsync(session, PushField.Name);
 
             Assert.That(session.Part.Name, Is.EqualTo("New Name"));
         }
 
         [Test]
-        public void PushNameAsync_PropagatesExceptionOnFailure()
+        public void PushName_PropagatesExceptionOnFailure()
         {
             _client.ThrowOnUpdate = new HttpRequestException("server error");
             var session = CreateSession();
 
-            Assert.ThrowsAsync<HttpRequestException>(() => session.PushNameAsync());
+            Assert.ThrowsAsync<HttpRequestException>(() => PushAsync(session, PushField.Name));
         }
 
-        // ── PushNotesAsync ────────────────────────────────────────────────────
+        // ── Push: Notes ────────────────────────────────────────────────────
 
         [Test]
-        public async Task PushNotesAsync_CallsClientWithCorrectPkAndValue()
+        public async Task PushNotes_CallsClientWithCorrectPkAndValue()
         {
             _propertyService.Seed(_mapping.NotesProperty!, "Updated Notes");
             var session = CreateSession();
 
-            await session.PushNotesAsync();
+            await PushAsync(session, PushField.Notes);
 
             Assert.That(_client.LastPushedPk, Is.EqualTo(SamplePart.Pk));
             Assert.That(_client.LastPushedNotes, Is.EqualTo("Updated Notes"));
         }
 
         [Test]
-        public async Task PushNotesAsync_UpdatesPartNotesOnSuccess()
+        public async Task PushNotes_UpdatesPartNotesOnSuccess()
         {
             _propertyService.Seed(_mapping.NotesProperty!, "New Notes");
             var session = CreateSession();
 
-            await session.PushNotesAsync();
+            await PushAsync(session, PushField.Notes);
 
             Assert.That(session.Part.Notes, Is.EqualTo("New Notes"));
         }
 
         [Test]
-        public void PushNotesAsync_PropagatesExceptionOnFailure()
+        public void PushNotes_PropagatesExceptionOnFailure()
         {
             _client.ThrowOnUpdate = new HttpRequestException("server error");
             var session = CreateSession();
 
-            Assert.ThrowsAsync<HttpRequestException>(() => session.PushNotesAsync());
+            Assert.ThrowsAsync<HttpRequestException>(() => PushAsync(session, PushField.Notes));
         }
 
-        // ── PushDescriptionAsync ──────────────────────────────────────────────
+        // ── Push: Description ──────────────────────────────────────────────
 
         [Test]
-        public async Task PushDescriptionAsync_CallsClientWithCorrectPkAndValue()
+        public async Task PushDescription_CallsClientWithCorrectPkAndValue()
         {
             _propertyService.Seed(_mapping.DescriptionProperty!, "Updated Description");
             var session = CreateSession();
 
-            await session.PushDescriptionAsync();
+            await PushAsync(session, PushField.Description);
 
             Assert.That(_client.LastPushedPk, Is.EqualTo(SamplePart.Pk));
             Assert.That(_client.LastPushedDescription, Is.EqualTo("Updated Description"));
         }
 
         [Test]
-        public async Task PushDescriptionAsync_UpdatesPartDescriptionOnSuccess()
+        public async Task PushDescription_UpdatesPartDescriptionOnSuccess()
         {
             _propertyService.Seed(_mapping.DescriptionProperty!, "New Description");
             var session = CreateSession();
 
-            await session.PushDescriptionAsync();
+            await PushAsync(session, PushField.Description);
 
             Assert.That(session.Part.Description, Is.EqualTo("New Description"));
         }
 
         [Test]
-        public void PushDescriptionAsync_PropagatesExceptionOnFailure()
+        public void PushDescription_PropagatesExceptionOnFailure()
         {
             _client.ThrowOnUpdate = new HttpRequestException("server error");
             var session = CreateSession();
 
-            Assert.ThrowsAsync<HttpRequestException>(() => session.PushDescriptionAsync());
+            Assert.ThrowsAsync<HttpRequestException>(() => PushAsync(session, PushField.Description));
         }
 
-        // ── PushRevisionAsync ─────────────────────────────────────────────────
+        // ── Push: Revision ─────────────────────────────────────────────────
 
         [Test]
-        public async Task PushRevisionAsync_CallsClientWithCorrectPkAndValue()
+        public async Task PushRevision_CallsClientWithCorrectPkAndValue()
         {
             _propertyService.Seed(_mapping.RevisionProperty!, "C");
             var session = CreateSession();
 
-            await session.PushRevisionAsync();
+            await PushAsync(session, PushField.Revision);
 
             Assert.That(_client.LastPushedPk, Is.EqualTo(SamplePart.Pk));
             Assert.That(_client.LastPushedRevision, Is.EqualTo("C"));
         }
 
         [Test]
-        public async Task PushRevisionAsync_UpdatesPartRevisionOnSuccess()
+        public async Task PushRevision_UpdatesPartRevisionOnSuccess()
         {
             _propertyService.Seed(_mapping.RevisionProperty!, "C");
             var session = CreateSession();
 
-            await session.PushRevisionAsync();
+            await PushAsync(session, PushField.Revision);
 
             Assert.That(session.Part.Revision, Is.EqualTo("C"));
         }
 
         [Test]
-        public void PushRevisionAsync_PropagatesExceptionOnFailure()
+        public void PushRevision_PropagatesExceptionOnFailure()
         {
             _client.ThrowOnUpdate = new HttpRequestException("server error");
             var session = CreateSession();
 
-            Assert.ThrowsAsync<HttpRequestException>(() => session.PushRevisionAsync());
+            Assert.ThrowsAsync<HttpRequestException>(() => PushAsync(session, PushField.Revision));
         }
 
         // ── SetThumbnail ──────────────────────────────────────────────────────
