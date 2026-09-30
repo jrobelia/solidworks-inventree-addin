@@ -90,7 +90,7 @@ Every `SetStatus("", None)` is hand-rolled decay; ADR-0024 replaces all of them 
 
 | Site | Trigger | Decays what |
 | --- | --- | --- |
-| `:504` | LINKED-by-PK + client, session differs (`!sessionMatches`) | whatever reigned |
+| `:504` | LINKED-by-PK + client, session differs (`!sessionKept`) | whatever reigned |
 | `:523` | LINKED-by-IPN + client | whatever reigned |
 | `:547` | `ProjectPropertyChange(RefreshedDivergent)` — user edit diverges | stale action result |
 | `:780` | PK fetch success | the "Fetching…" in-progress phase — success writes blank |
