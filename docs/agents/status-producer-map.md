@@ -14,12 +14,12 @@ Written imperatively at each site today; under the model they are projections of
 
 | Site | Trigger | Text | Severity |
 | --- | --- | --- | --- |
-| `TaskPaneViewModel.cs:489` | `LoadPartNumber`, Drawing active | "Drawings are not supported — open a part or assembly." | Warning |
-| `:522` | `LoadPartNumber`, UNLINKED + no client | "No server configured — click ⚙ Settings to get started" | Warning |
-| `:559` | `LoadPartNumber`, LINKED-by-PK + no client | same | Warning |
-| `:584` | `LoadPartNumber`, LINKED-by-IPN + no client | same | Warning |
-| `:699` | `ClearAll` + no client | same | Warning |
-| `:705` | `ClearAll` + client | "Open a part or assembly in SolidWorks to get started." | None |
+| `TaskPaneViewModel.cs:489` | `ProjectDocumentUpdate`, Drawing active | "Drawings are not supported — open a part or assembly." | Warning |
+| `:522` | `ProjectDocumentUpdate`, UNLINKED + no client | "No server configured — click ⚙ Settings to get started" | Warning |
+| `:559` | `ProjectDocumentUpdate`, LINKED-by-PK + no client | same | Warning |
+| `:584` | `ProjectDocumentUpdate`, LINKED-by-IPN + no client | same | Warning |
+| `:699` | `ProjectDocumentClosed`/`ResetDocumentPanel` + no client | same | Warning |
+| `:705` | `ProjectDocumentClosed`/`ResetDocumentPanel` + client | "Open a part or assembly in SolidWorks to get started." | None |
 | `:904` | `FetchPartAsync`, blank IPN | same | None |
 
 ### Transient — Fetch lifecycle
@@ -92,7 +92,7 @@ Every `SetStatus("", None)` is hand-rolled decay; ADR-0024 replaces all of them 
 | --- | --- | --- |
 | `:562` | LINKED-by-PK + client, session differs (`!sessionMatches`) | whatever reigned |
 | `:591` | LINKED-by-IPN + client | whatever reigned |
-| `:630` | `OnDocumentPropertyChanged`, user edit diverges | stale action result |
+| `:630` | `ProjectPropertyChange(RefreshedDivergent)` — user edit diverges | stale action result |
 | `:895` | PK fetch success | the "Fetching…" in-progress phase — success writes blank |
 | `:1002` | IPN fetch success | same |
 | `:1365` | mapping health restored (`_mappingHealthWarningActive` latch) | the health entry |

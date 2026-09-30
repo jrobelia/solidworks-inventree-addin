@@ -23,3 +23,23 @@ The complete Task Pane lifecycle contract — STA capture → off-thread network
 work → STA validation/commit, plus the operation-token stale-result rules —
 is documented in `docs/agents/task-pane-lifecycle.md`. This ADR pins the
 marshalling mechanism; that document pins when a completion may commit at all.
+
+## Addendum — who may touch which thread (#93)
+
+- **Capture** runs on the host STA thread only. `TaskPaneControl` routes every
+  SolidWorks callback straight into the coordinator's lifecycle members
+  (`UpdateDocument`, `NotifyDocumentClosed`, `NotifyDocumentPropertyChanged`,
+  `UpdateClient`, `UpdateMapping`), which read Document Properties and mint
+  the operation token inside the same STA call. The ViewModel reads no
+  Document Properties at all — it projects the coordinator's immutable
+  snapshot surface.
+- **Network work** runs off-thread under `ConfigureAwait(false)`.
+- **Validation and commit** run back on the STA thread inside
+  `IHostStaDispatcher.Run`: token revalidation plus an active-document
+  recapture, then the write/session install. A completion whose captured
+  generation or lifecycle revision no longer matches is `Stale` — it writes
+  nothing and surfaces no result, so a late network answer can never put a
+  status on a pane that belongs to a newer document.
+- **Notification** re-marshals through the same dispatcher: the coordinator's
+  `Changed` event reaches the ViewModel's property notifications on the
+  captured thread via the managed-thread-id rule above.

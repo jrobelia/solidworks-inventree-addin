@@ -23,8 +23,14 @@ namespace SwInventreeAddin.UI
     /// property notifications, status wording, confirmation prompts, and
     /// command routing. Every bindable document/session projection reads the
     /// coordinator's immutable surface; nothing here stores document state.
+    /// <para>
+    /// SolidWorks host callbacks are routed by <see cref="TaskPaneControl"/>:
+    /// it invokes the coordinator's lifecycle methods and hands the typed
+    /// results to the <c>Project*</c> entry points below. The ViewModel never
+    /// calls document-lifecycle members itself.
+    /// </para>
     /// </remarks>
-    public class TaskPaneViewModel : INotifyPropertyChanged
+    public class TaskPaneViewModel : INotifyPropertyChanged, IDisposable
     {
         // ── INotifyPropertyChanged ─────────────────────────────────────────────
 
@@ -39,16 +45,13 @@ namespace SwInventreeAddin.UI
 
         // ── Dependencies ──────────────────────────────────────────────────────
 
-        // Bound to the concrete coordinator: the light RefreshDocument
-        // member is internal and deliberately off IPartSyncCoordinator —
-        // the approved public seam stays exactly the declared surface.
-        private readonly PartSyncCoordinator _coordinator;
+        private readonly IPartSyncCoordinator _coordinator;
+        private readonly IBomReadinessContext _bomReadinessContext;
         private readonly IHostStaDispatcher _dispatcher;
         private IInventreeClient? _client;
         private IPropertyMappingProvider? _mappingProvider;
         private readonly IConfigProvider? _configProvider;
         private ICreatePartValidationErrorService? _validationService;
-        private MappingChangedSubscription? _mappingChangedSubscription;
 
         /// <summary>Raised when the user triggers the Settings action.</summary>
         public event EventHandler? SettingsRequested;
@@ -376,15 +379,16 @@ namespace SwInventreeAddin.UI
             => _assemblyBomService = bomService;
 
         /// <summary>
-        /// Builds the BOM Compare pre-flight check over the coordinator's narrow
-        /// context seam — the check reaches SolidWorks only through the
-        /// coordinator's STA dispatcher. Null when no BOM service is wired.
+        /// Builds the BOM Compare pre-flight check over the narrow readiness
+        /// context composed at the host — the check reaches SolidWorks only
+        /// through the coordinator's STA dispatcher. Null when no BOM service
+        /// is wired.
         /// </summary>
         internal BomCompareReadinessCheck? CreateBomCompareReadinessCheck()
             => _assemblyBomService == null
                 ? null
                 : new BomCompareReadinessCheck(
-                    new CoordinatorBomReadinessContext(_coordinator, _dispatcher),
+                    _bomReadinessContext,
                     _assemblyBomService,
                     BomKeyword);
 
@@ -401,22 +405,25 @@ namespace SwInventreeAddin.UI
         // ── Constructor ───────────────────────────────────────────────────────
 
         /// <summary>
-        /// Builds the task pane ViewModel over an existing coordinator. The
-        /// coordinator owns the document model and all Part Sync workflow; the
-        /// ViewModel only projects it into bindable properties.
+        /// Builds the task pane ViewModel over the injected Part Sync modules.
+        /// The coordinator owns the document model and all Part Sync workflow;
+        /// the ViewModel only projects it into bindable properties. The host
+        /// drives the initial document evaluation — construction leaves the
+        /// pane unprojected until <see cref="ProjectDocumentUpdate"/> runs.
         /// </summary>
-        /// <param name="coordinator">
-        /// Part Sync coordinator owning state and workflow — the concrete
-        /// type: the ViewModel's light-refresh paths use an internal member
-        /// kept off the approved <see cref="IPartSyncCoordinator"/> surface.
+        /// <param name="coordinator">Part Sync coordinator owning state and workflow.</param>
+        /// <param name="bomReadinessContext">
+        /// The narrow readiness context BOM Compare consumes — composed by the
+        /// host over the concrete coordinator.
         /// </param>
         /// <param name="dispatcher">STA dispatcher for marshalling UI-thread work.</param>
         /// <param name="client">Active InvenTree client, or null when no server is configured.</param>
         /// <param name="mappingProvider">Current property mapping provider.</param>
         /// <param name="configProvider">Config persistence (BOM keyword), or null.</param>
         /// <param name="createPartValidator">Create Part validation service, or null to hide the button.</param>
-        public TaskPaneViewModel(
-            PartSyncCoordinator coordinator,
+        internal TaskPaneViewModel(
+            IPartSyncCoordinator coordinator,
+            IBomReadinessContext bomReadinessContext,
             IHostStaDispatcher dispatcher,
             IInventreeClient? client,
             IPropertyMappingProvider? mappingProvider = null,
@@ -424,6 +431,7 @@ namespace SwInventreeAddin.UI
             ICreatePartValidationErrorService? createPartValidator = null)
         {
             _coordinator = coordinator ?? throw new ArgumentNullException(nameof(coordinator));
+            _bomReadinessContext = bomReadinessContext ?? throw new ArgumentNullException(nameof(bomReadinessContext));
             _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
             _client = client;
             _mappingProvider = mappingProvider;
@@ -431,23 +439,23 @@ namespace SwInventreeAddin.UI
             _validationService = createPartValidator;
 
             _coordinator.Changed += OnCoordinatorChanged;
-
-            LoadPartNumber();
-            AttachMappingProvider();
+            RefreshMappingResult();
         }
 
-        // ── Document lifecycle → presentation ─────────────────────────────────
+        // ── Host-routed projection entry points ───────────────────────────────
+        // TaskPaneControl invokes the coordinator's lifecycle methods on each
+        // SolidWorks callback and hands the results here; these methods never
+        // call document-lifecycle members themselves.
 
         /// <summary>
-        /// Runs a full document evaluation on the coordinator, then projects
-        /// the result into bindable state. Equivalent to the legacy
-        /// "load document → set presentation" step; called on document
-        /// activation, mapping changes, and construction.
+        /// Projects the pane for the coordinator's current document state:
+        /// Task Pane State kind → status wording, enabled flags, the IPN text
+        /// box, and section visibility. Called by the host after
+        /// <see cref="IPartSyncCoordinator.UpdateDocument"/>.
         /// </summary>
-        public void LoadPartNumber()
+        internal void ProjectDocumentUpdate()
         {
             RefreshMappingResult();
-            _coordinator.UpdateDocument();
 
             if (_coordinator.Kind == TaskPaneStateKind.Empty)
             {
@@ -519,22 +527,21 @@ namespace SwInventreeAddin.UI
         }
 
         /// <summary>
-        /// Handles a SolidWorks document-property-changed notification: the
-        /// coordinator consumes write echoes, re-captures, and classifies; the
-        /// ViewModel maps the classification onto presentation state.
-        /// Entered on the STA/UI thread.
+        /// Maps a document-property-change classification onto presentation:
+        /// a re-evaluation re-projects the pane, a divergent refresh clears a
+        /// stale status, everything else is a no-op. Called by the host after
+        /// <see cref="IPartSyncCoordinator.NotifyDocumentPropertyChanged"/>.
         /// </summary>
-        public void OnDocumentPropertyChanged(string name, string newValue)
+        internal void ProjectPropertyChange(PartSyncPropertyChange change)
         {
             RefreshMappingResult();
-            var change = _coordinator.NotifyDocumentPropertyChanged(name, newValue);
             switch (change)
             {
                 case PartSyncPropertyChange.EchoConsumed:
                 case PartSyncPropertyChange.Ignored:
                     return;
                 case PartSyncPropertyChange.Reevaluated:
-                    LoadPartNumber();
+                    ProjectDocumentUpdate();
                     return;
                 case PartSyncPropertyChange.RefreshedDivergent:
                     SetStatus(string.Empty, StatusSeverity.None);
@@ -544,20 +551,25 @@ namespace SwInventreeAddin.UI
             }
         }
 
-        /// <summary>Clears all state when the active document is closed.</summary>
-        public void ClearAll()
+        /// <summary>
+        /// Clears the projected pane when the last document is closed. Called
+        /// by the host after <see cref="IPartSyncCoordinator.NotifyDocumentClosed"/>.
+        /// </summary>
+        internal void ProjectDocumentClosed()
         {
-            _coordinator.NotifyDocumentClosed();
             ResetDocumentPanel();
             NotifyBomVisibility();
         }
 
-        /// <summary>Updates the InvenTree client (called when server config changes).</summary>
+        /// <summary>
+        /// Updates the client this pane composes dialogs against and re-projects.
+        /// Called by the host after <see cref="IPartSyncCoordinator.UpdateClient"/>
+        /// — in-flight work is already invalidated there.
+        /// </summary>
         public void UpdateClient(IInventreeClient? client)
         {
             _client = client;
-            _coordinator.UpdateClient(client);
-            LoadPartNumber();
+            ProjectDocumentUpdate();
         }
 
         /// <summary>Updates the create-part validation service.</summary>
@@ -567,38 +579,29 @@ namespace SwInventreeAddin.UI
         }
 
         /// <summary>
-        /// Updates the property-mapping provider and refreshes the document model.
-        /// Called when the settings window reports a mapping change.
+        /// Stores the new property-mapping provider for composition, then
+        /// re-projects: the full pane when no Part Sync session is installed,
+        /// or the lighter session-preserving refresh otherwise. Called by the
+        /// host after <see cref="IPartSyncCoordinator.UpdateMapping"/> — the
+        /// coordinator has already re-captured under the new mapping.
         /// </summary>
         /// <param name="mappingProvider">The new provider, or null to clear.</param>
         public void UpdateMapping(IPropertyMappingProvider? mappingProvider)
         {
-            DetachMappingProvider();
             _mappingProvider = mappingProvider;
-            _coordinator.UpdateMapping(mappingProvider);
-            if (!TryLoadPartNumberWhenNoSession())
+            if (_coordinator.FetchedPart == null)
+                ProjectDocumentUpdate();
+            else
                 RefreshPreservingSession();
-            AttachMappingProvider();
-        }
-
-        private bool TryLoadPartNumberWhenNoSession()
-        {
-            if (_coordinator.FetchedPart != null)
-                return false;
-            LoadPartNumber();
-            return true;
         }
 
         /// <summary>
-        /// Mapping changed while a session is installed: re-evaluate the
-        /// document snapshot under the new mapping and refresh command state
-        /// without tearing down presentation.
+        /// Mapping changed while a session is installed: refresh command state
+        /// and status without tearing down presentation.
         /// </summary>
         private void RefreshPreservingSession()
         {
             RefreshMappingResult();
-            if (_propertiesSectionVisible)
-                _coordinator.RefreshDocument();
             RefreshStatus();
             RefreshCommandStates();
         }
@@ -690,7 +693,6 @@ namespace SwInventreeAddin.UI
             if (_mappingResult?.CanFetch != true)
                 return;
 
-            _coordinator.RefreshDocument();
             var ipn = PartNumber;
 
             if (!DocumentHasStampedPk && string.IsNullOrEmpty(ipn))
@@ -1141,16 +1143,6 @@ namespace SwInventreeAddin.UI
             OpenBrowserUrl(url);
         }
 
-        /// <summary>
-        /// Re-checks the current document properties and notifies listeners.
-        /// Kept for compatibility; coordinator projections are live so this is a no-op notify.
-        /// </summary>
-        public void RefreshCurrentProperties()
-        {
-            _coordinator.RefreshDocument();
-            NotifyDocumentProperties();
-        }
-
         // ── Mapping / status / threading internals ────────────────────────────
 
         private MappingResult? _mappingResult;
@@ -1216,31 +1208,17 @@ namespace SwInventreeAddin.UI
             StatusSeverity = severity;
         }
 
-        private void AttachMappingProvider() =>
-            MappingChangedSubscription.SubscribeTo(ref _mappingChangedSubscription, _mappingProvider, OnMappingChanged);
-
-        private void DetachMappingProvider() =>
-            MappingChangedSubscription.UnsubscribeFrom(ref _mappingChangedSubscription);
-
-        /// <summary>
-        /// The mapping file changed under the same provider: the coordinator
-        /// rebinds (revision advance + session rebuild against the new mapping),
-        /// then the ViewModel re-runs the full evaluation when no session is
-        /// installed, or the lighter session-preserving refresh otherwise.
-        /// </summary>
-        private void OnMappingChanged()
-        {
-            RunOnUiThread(() =>
-            {
-                _coordinator.UpdateMapping(_mappingProvider);
-                if (TryLoadPartNumberWhenNoSession())
-                    return;
-                RefreshPreservingSession();
-            });
-        }
-
         /// <summary>Marshals an action onto the STA/UI thread via the dispatcher.</summary>
         private void RunOnUiThread(Action action) => _dispatcher.Run(action);
+
+        /// <summary>
+        /// Detaches the coordinator <see cref="IPartSyncCoordinator.Changed"/>
+        /// subscription so the pane cannot be notified — or retained — after
+        /// the Task Pane unloads. Called by the host before it disposes the
+        /// coordinator; later calls are safe.
+        /// </summary>
+        public void Dispose() =>
+            _coordinator.Changed -= OnCoordinatorChanged;
     }
 
     /// <summary>Visual severity of the status-bar message.</summary>
