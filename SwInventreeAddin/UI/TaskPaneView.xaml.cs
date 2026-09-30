@@ -96,16 +96,16 @@ namespace SwInventreeAddin.UI
         }
 
         private void ApplyName_Click(object sender, RoutedEventArgs e) =>
-            _vm?.ApplyNameToDocument();
+            _ = _vm?.ApplyNameToDocument();
 
         private void ApplyNotes_Click(object sender, RoutedEventArgs e) =>
-            _vm?.ApplyNotesToDocument();
+            _ = _vm?.ApplyNotesToDocument();
 
         private void ApplyDescription_Click(object sender, RoutedEventArgs e) =>
-            _vm?.ApplyDescriptionToDocument();
+            _ = _vm?.ApplyDescriptionToDocument();
 
         private void ApplyPk_Click(object sender, RoutedEventArgs e) =>
-            _vm?.ApplyPkToDocument();
+            _ = _vm?.ApplyPkToDocument();
 
         private void PushDescription_Click(object sender, RoutedEventArgs e)
         {

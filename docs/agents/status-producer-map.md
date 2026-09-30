@@ -6,7 +6,7 @@ Consumers: #90's characterization tests pin this surface; #271's implementation 
 
 ## Task Pane strip
 
-The aggregation surface: one slot behind `TaskPaneViewModel.SetStatus` (`StatusText` / `StatusSeverity` / `StatusToolTip`), last-writer-wins. 48 call sites in `TaskPaneViewModel.cs`, plus 5 messages `PartThumbnailService` emits through its `(text, severity)` callback.
+The aggregation surface: one slot behind `TaskPaneViewModel.SetStatus` (`StatusText` / `StatusSeverity` / `StatusToolTip`), last-writer-wins. ~45 call sites in `TaskPaneViewModel.cs` — since #92 the coordinator returns typed `PartSyncResult`s and the ViewModel maps them, so the former `PartThumbnailService` callback messages arrive as `SucceededWithWarning` diagnostics instead.
 
 ### Persistent — document and config facts (guidance hints)
 
@@ -57,22 +57,22 @@ Synchronous writes: terminal result only, no in-progress phase.
 
 ### Transient — Push lifecycle
 
-Each field push follows in-progress → terminal; `PushImageAsync` forwards `PartThumbnailService`'s messages.
+Each field push follows in-progress → terminal; `PushImageAsync`'s degraded outcomes arrive as `PartSyncOutcome.SucceededWithWarning` diagnostics from the coordinator (`PartThumbnailService` was deleted in #92 — same wording, now produced in `PartSyncCoordinator.PushImageAsync` and mapped by the ViewModel).
 
 | Site | Trigger | Text | Severity |
 | --- | --- | --- | --- |
-| `:1065` | `PushRevisionToInventreeAsync`, part PK is 0 | "Error: cannot push revision — InvenTree part ID is missing." | Error |
-| `:1069`, `:1077`, `:1082` | Push Revision | "Pushing revision to InvenTree…" / "Revision pushed to InvenTree." / `Error: {ex.Message}` | None / Success / Error |
-| `:1090`, `:1098`, `:1103` | Push Name | "Pushing name…" / "Name pushed to InvenTree." / `Error: {ex.Message}` | None / Success / Error |
-| `:1111`, `:1119`, `:1124` | Push Notes | "Pushing notes…" / "Notes pushed to InvenTree." / `Error: {ex.Message}` | None / Success / Error |
-| `:1132`, `:1140`, `:1145` | Push Description | "Pushing description…" / "Description pushed to InvenTree." / `Error: {ex.Message}` | None / Success / Error |
-| `:1163` | `PushImageAsync` — forwards service messages | (see below) | — |
-| `:1173`, `:1179` | `PushImageAsync` terminal | "Image pushed to InvenTree." / `Error: {ex.Message}` | Success / Error |
-| `PartThumbnailService.cs:79` | before upload | "Pushing image to InvenTree…" | None (in-progress) |
-| `:90` | re-fetch returned null | "Image pushed, but the part could not be re-fetched for a preview." | Warning |
-| `:93` | no thumbnail URL | "Image pushed, but InvenTree did not return a thumbnail URL." | Warning |
-| `:98` | download returned null | "Image pushed, but the thumbnail could not be downloaded." | Warning |
-| `:102` | refresh threw | "Image pushed, but the thumbnail preview could not be refreshed." | Warning |
+| `TaskPaneViewModel.cs` | `PushRevisionToInventreeAsync`, part PK is 0 | "Error: cannot push revision — InvenTree part ID is missing." | Error |
+| Push Revision | "Pushing revision to InvenTree…" / "Revision pushed to InvenTree." / `Error: {diagnostic}` | None / Success / Error |
+| Push Name | "Pushing name…" / "Name pushed to InvenTree." / `Error: {diagnostic}` | None / Success / Error |
+| Push Notes | "Pushing notes…" / "Notes pushed to InvenTree." / `Error: {diagnostic}` | None / Success / Error |
+| Push Description | "Pushing description…" / "Description pushed to InvenTree." / `Error: {diagnostic}` | None / Success / Error |
+| `PushImageAsync`, before upload | "Pushing image to InvenTree…" | None (in-progress) |
+| `PushImageAsync`, upload failed | `Error: {diagnostic}` | Error |
+| `PushImageAsync`, `SucceededWithWarning` — re-fetch returned null | "Image pushed, but the part could not be re-fetched for a preview." | Warning |
+| `SucceededWithWarning` — no thumbnail URL | "Image pushed, but InvenTree did not return a thumbnail URL." | Warning |
+| `SucceededWithWarning` — download returned null | "Image pushed, but the thumbnail could not be downloaded." | Warning |
+| `SucceededWithWarning` — refresh threw | "Image pushed, but the thumbnail preview could not be refreshed." | Warning |
+| `PushImageAsync`, success | "Image pushed to InvenTree." | Success |
 
 ### Persistent — Mapping Health
 

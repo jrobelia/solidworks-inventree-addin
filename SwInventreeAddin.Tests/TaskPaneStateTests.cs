@@ -312,5 +312,109 @@ namespace SwInventreeAddin.Tests
             Assert.That(_state.Document!.Ipn, Is.EqualTo("B"));
             Assert.That(_state.Document!.Name, Is.EqualTo("n2"));
         }
+
+        // ── Populated signal (#92) ───────────────────────────────────────────
+
+        [Test]
+        public void InitialState_PopulatedGeneration_IsMinusOne()
+        {
+            Assert.That(_state.PopulatedGeneration, Is.EqualTo(-1));
+        }
+
+        [Test]
+        public void MarkPopulated_WithPartDocument_BindsToCurrentGeneration()
+        {
+            _state.ApplyDocumentUpdate("doc-1", Snapshot(ipn: "R-10K-0402"));
+
+            _state.MarkPopulated();
+
+            Assert.That(_state.PopulatedGeneration, Is.EqualTo(_state.Generation));
+            Assert.That(_state.Kind, Is.EqualTo(TaskPaneStateKind.Populated));
+        }
+
+        [Test]
+        public void MarkPopulated_WithUnlinkedDocument_IsAllowed()
+        {
+            // A typed-IPN fetch can populate before any stamp exists on the document.
+            _state.ApplyDocumentUpdate("doc-1", Snapshot());
+
+            _state.MarkPopulated();
+
+            Assert.That(_state.Kind, Is.EqualTo(TaskPaneStateKind.Populated));
+        }
+
+        [Test]
+        public void MarkPopulated_WithoutDocument_Throws()
+        {
+            Assert.Throws<InvalidOperationException>(() => _state.MarkPopulated());
+        }
+
+        [Test]
+        public void MarkPopulated_WithDrawingDocument_Throws()
+        {
+            _state.ApplyDocumentUpdate(
+                "doc-1", Snapshot(documentType: DocumentType.Drawing, ipn: "DRW-1"));
+
+            Assert.Throws<InvalidOperationException>(() => _state.MarkPopulated());
+        }
+
+        [Test]
+        public void MarkPopulated_RaisedChangedOnce()
+        {
+            _state.ApplyDocumentUpdate("doc-1", Snapshot());
+            var count = 0;
+            _state.Changed += (_, __) => count++;
+
+            _state.MarkPopulated();
+
+            Assert.That(count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void ClearPopulated_RevertsToUnderlyingKind()
+        {
+            _state.ApplyDocumentUpdate("doc-1", Snapshot(ipn: "R-10K-0402"));
+            _state.MarkPopulated();
+
+            _state.ClearPopulated();
+
+            Assert.That(_state.PopulatedGeneration, Is.EqualTo(-1));
+            Assert.That(_state.Kind, Is.EqualTo(TaskPaneStateKind.Linked));
+        }
+
+        [Test]
+        public void ActivatedTransition_DropsPopulatedSignal()
+        {
+            _state.ApplyDocumentUpdate("doc-1", Snapshot(ipn: "R-10K-0402"));
+            _state.MarkPopulated();
+
+            _state.ApplyDocumentUpdate("doc-2", Snapshot(ipn: "R-10K-0402"));
+
+            // The marker was bound to the old generation — the new generation
+            // cannot report Populated even before ClearPopulated runs.
+            Assert.That(_state.Kind, Is.EqualTo(TaskPaneStateKind.Linked));
+        }
+
+        [Test]
+        public void RefreshedTransition_KeepsPopulatedSignal()
+        {
+            _state.ApplyDocumentUpdate("doc-1", Snapshot(ipn: "R-10K-0402"));
+            _state.MarkPopulated();
+
+            _state.ApplyDocumentUpdate("doc-1", Snapshot(ipn: "R-10K-0402", revision: "B"));
+
+            Assert.That(_state.Kind, Is.EqualTo(TaskPaneStateKind.Populated));
+        }
+
+        [Test]
+        public void ClearDocument_DropsPopulatedSignal()
+        {
+            _state.ApplyDocumentUpdate("doc-1", Snapshot(ipn: "R-10K-0402"));
+            _state.MarkPopulated();
+
+            _state.ClearDocument();
+
+            Assert.That(_state.Kind, Is.EqualTo(TaskPaneStateKind.Empty));
+        }
     }
 }

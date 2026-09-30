@@ -13,11 +13,13 @@ namespace SwInventreeAddin.UI
     /// <summary>
     /// Thin WinForms wrapper that gives SolidWorks a native HWND while hosting
     /// the real UI in a WPF UserControl via <see cref="ElementHost"/>.
-    /// All business logic lives in <see cref="TaskPaneViewModel"/>.
+    /// All business logic lives in <see cref="TaskPaneViewModel"/>; Part Sync
+    /// session lifecycle and workflow live in <see cref="PartSyncCoordinator"/>.
     /// </summary>
     public class TaskPaneControl : UserControl
     {
         private readonly TaskPaneViewModel _vm;
+        private readonly PartSyncCoordinator _coordinator;
         private IInventreeClient? _client;
         private readonly ICreatePartValidationErrorService _createPartValidator;
         private IPropertyMappingProvider? _mappingProvider;
@@ -38,9 +40,35 @@ namespace SwInventreeAddin.UI
             _createPartValidator = createPartValidator;
             _mappingProvider = mappingProvider;
 
-            _vm = new TaskPaneViewModel(client, propertyService, viewportService, mappingProvider, configProvider, _createPartValidator);
+            // The dispatcher captures the host STA SynchronizationContext at
+            // construction — the coordinator marshals every async commit and
+            // document mutation through it.
+            var dispatcher = new SynchronizationContextStaDispatcher();
+            _coordinator = new PartSyncCoordinator(propertyService, dispatcher, client, mappingProvider);
+            _vm = new TaskPaneViewModel(_coordinator, dispatcher, client, mappingProvider, configProvider, _createPartValidator);
             _vm.SettingsRequested += (s, e) => SettingsRequested?.Invoke(this, e);
             _vm.CompareBomRequested += OnCompareBomRequested;
+
+            // Host seam: viewport capture + crop dialog stay UI concerns; the
+            // coordinator only receives the processed image and rectangle.
+            if (viewportService != null)
+            {
+                _vm.CaptureImageForPush = () =>
+                {
+                    var image = viewportService.CaptureViewportImage();
+                    if (image == null)
+                        return null;
+
+                    var cropWindow = new ImageCropWindow(image);
+                    if (cropWindow.ShowDialog() != true)
+                    {
+                        image.Dispose();
+                        return ((System.Drawing.Image, System.Drawing.Rectangle)?)null;
+                    }
+
+                    return (image, cropWindow.CropRectangle);
+                };
+            }
             _vm.ConfirmMissingProperties = missing =>
             {
                 var bullet = string.Join(System.Environment.NewLine + "  \u2022 ", missing);
@@ -130,6 +158,46 @@ namespace SwInventreeAddin.UI
             {
                 if (readiness.Outcome == BomCompareOutcome.Ready)
                     break;
+
+                if (readiness.Outcome == BomCompareOutcome.FetchConfirmationRequired
+                    && readiness.FetchResult != null)
+                {
+                    // The ensure-fetch parked on a typed confirmation (duplicate
+                    // IPN, Link Mismatch): prompt here, resume the coordinator's
+                    // pending operation, then re-run the check. A declined,
+                    // cancelled, or stale resume stops the flow silently — the
+                    // user already answered the prompt.
+                    var resumed = await _vm
+                        .ResumeFetchConfirmationAsync(readiness.FetchResult)
+                        .ConfigureAwait(true);
+                    if (resumed.Outcome != PartSyncOutcome.Success)
+                        return;
+
+                    try
+                    {
+                        readiness = await preFlightCheck.CheckAsync().ConfigureAwait(true);
+                    }
+                    catch (Exception ex)
+                    {
+                        ShowBomCompareError($"Could not load part from InvenTree:{System.Environment.NewLine}{ex.Message}");
+                        return;
+                    }
+                    continue;
+                }
+
+                if (readiness.Outcome == BomCompareOutcome.FetchFailed)
+                {
+                    // Preserve the typed ensure outcome: stale/cancelled are
+                    // silent (a newer operation owns the pane / the user
+                    // declined); everything else surfaces an honest error —
+                    // never "create the part" for a server or lifecycle failure.
+                    var r = readiness.FetchResult;
+                    if (r?.Outcome == PartSyncOutcome.Stale
+                        || r?.Outcome == PartSyncOutcome.Cancelled)
+                        return;
+                    ShowBomCompareError(DescribeBomFetchFailure(r));
+                    return;
+                }
 
                 if (readiness.Outcome == BomCompareOutcome.BomColumnAliasesMissing)
                 {
@@ -273,9 +341,10 @@ namespace SwInventreeAddin.UI
 
             if (answer != MessageDialogResult.Ok) return false;
 
+            PartSyncResult pushResult;
             try
             {
-                await preFlightCheck.PushRevisionAsync().ConfigureAwait(true);
+                pushResult = await preFlightCheck.PushRevisionAsync().ConfigureAwait(true);
             }
             catch (Exception ex)
             {
@@ -287,7 +356,48 @@ namespace SwInventreeAddin.UI
                 return false;
             }
 
-            return true;
+            // Surface the typed result: stale is silent (a newer operation
+            // owns the pane); anything non-success reports its diagnostic.
+            switch (pushResult.Outcome)
+            {
+                case PartSyncOutcome.Success:
+                case PartSyncOutcome.SucceededWithWarning:
+                    return true;
+                case PartSyncOutcome.Stale:
+                case PartSyncOutcome.Cancelled:
+                    return false;
+                default:
+                    MessageDialog.ShowOK(
+                        SolidWorksWindowHandle.Get(),
+                        $"Failed to update revision in InvenTree:{System.Environment.NewLine}"
+                        + (pushResult.Diagnostic ?? pushResult.Outcome.ToString()),
+                        "BOM Compare \u2014 Revision Update Failed",
+                        System.Windows.Forms.MessageBoxIcon.Error);
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// Words a non-success ensure-populate outcome for the BOM Compare
+        /// error dialog — the duplicate-IPN sentences are the same wording the
+        /// status line shows (<see cref="PartSyncWording"/>).
+        /// </summary>
+        private static string DescribeBomFetchFailure(PartSyncResult? result)
+        {
+            if (result == null)
+                return "Could not load part from InvenTree.";
+
+            switch (result.Outcome)
+            {
+                case PartSyncOutcome.DuplicateNoRevisionMatch:
+                case PartSyncOutcome.DuplicateAmbiguous:
+                    return PartSyncWording.DuplicateIpnStatus(result);
+                case PartSyncOutcome.InvalidOperation:
+                    return result.Diagnostic ?? "The part fetch is not available right now.";
+                default:
+                    return $"Could not load part from InvenTree:{System.Environment.NewLine}"
+                         + (result.Diagnostic ?? result.Outcome.ToString());
+            }
         }
 
         // -- Delegation to ViewModel -------------------------------------------
@@ -324,5 +434,16 @@ namespace SwInventreeAddin.UI
 
         public void UpdateBomState(IAssemblyBomService bomService)
             => _vm.UpdateBomState(bomService);
+
+        /// <summary>
+        /// Teardown: disposes the coordinator first so any in-flight Part Sync
+        /// operation is invalidated before the hosted view goes away.
+        /// </summary>
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+                _coordinator.Dispose();
+            base.Dispose(disposing);
+        }
     }
 }

@@ -6,8 +6,10 @@ namespace SwInventreeAddin
     /// never stored independently.
     /// </summary>
     /// <remarks>
-    /// <see cref="Populated"/> is reserved for #92: document transitions never
-    /// produce it while the temporary ViewModel session owns populated state.
+    /// <see cref="Populated"/> is produced only through
+    /// <see cref="TaskPaneState.MarkPopulated"/> — the thin populated-signal the
+    /// Part Sync coordinator binds to the current document generation when it
+    /// installs a session. Document transitions never produce it directly.
     /// </remarks>
     public enum TaskPaneStateKind
     {
@@ -23,7 +25,11 @@ namespace SwInventreeAddin
         /// <summary>Supported document with an IPN or stamped InvenTree Part PK.</summary>
         Linked,
 
-        /// <summary>A populated session valid for the current generation — #92 only.</summary>
+        /// <summary>
+        /// A populated Part Sync session result is installed for the current
+        /// document generation. The rich populated data lives in
+        /// PartSyncCoordinator — this kind only reports that it exists.
+        /// </summary>
         Populated,
     }
 }
