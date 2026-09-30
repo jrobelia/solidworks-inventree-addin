@@ -40,7 +40,7 @@ Two blocks, in order:
 - Candidates: <only when RED and an alternative seam exists — same ## Module Design declaration fields>
 ```
 
-Under 500 words. Every question answered — a skipped question is a failed review, not an implicit pass.
+Keep it scannable: one line per question, one per finding, one per condition — the reasoning lives in `## Evidence`. Aim near 500 words, but never drop a question or finding to stay under: compress wording first, and let the block run long before it sheds content. A skipped question or dropped finding is a failed review, not an implicit pass.
 
 2. `## Evidence` (optional, uncapped) — the reasoning behind the verdict: alternatives weighed, code examined that produced no finding, what an `unverifiable` item needs. The orchestrator persists it to the run's `reports/` (or `.scratch/` outside a run) and the comment references it by path; it is never posted.
 
