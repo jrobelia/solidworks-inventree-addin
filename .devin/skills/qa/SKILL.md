@@ -152,10 +152,12 @@ After the smoke test, before presenting the first issue step, print the Severity
 
 Present one step at a time from the approved plan. Put the full step (preconditions, action, and expected result) directly in the `question` field of `ask_user_question`, because a separate assistant message may render in the IDE's thoughts area instead of the chat panel.
 
+Number the steps with a running counter `k/M`: `k` is the step's position in the walk and `M` is the total step count across all groups, smoke test included. The counter tells the user where they are and how many steps remain — skipping a step still advances `k`, so `M` never changes mid-walk. Fix-now pauses resume on the same `k`.
+
 Format the `question` field like this:
 
 ```
-Group X Step N: Step title
+Step k/M — Group X Step N: Step title
 
 - Preconditions: ...
 - Action: ...
@@ -164,7 +166,7 @@ Group X Step N: Step title
 Pass, Fail, or Skip?
 ```
 
-Use the `header` field only for the short step label (e.g. "G1 Step 1" or "177.1 Step 4"). Keep the options as Pass / Fail / Skip with one-sentence descriptions.
+Use the `header` field only for the short step label plus the counter (e.g. "G1 S1 · 3/14" or "177.1 S4 · 9/14"). Keep the options as Pass / Fail / Skip with one-sentence descriptions.
 
 Interpret the answer. If the result is unclear, confirm before moving on:
 

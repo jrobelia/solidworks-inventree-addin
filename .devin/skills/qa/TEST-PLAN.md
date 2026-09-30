@@ -24,7 +24,7 @@ Ready to start? Approve, edit, merge/split, reorder, or expand any group/step.
 
 ### Detailed format
 
-Use this when the user asks to expand a step before the walk, or when presenting a step during the walk.
+Use this when the user asks to expand a step before the walk, or when presenting a step during the walk. During the walk, prefix the step with the running `Step k/M` counter described in SKILL.md so the user can see progress through the plan.
 
 ```
 **Group 1: #12 — Add save button** (3 steps)
