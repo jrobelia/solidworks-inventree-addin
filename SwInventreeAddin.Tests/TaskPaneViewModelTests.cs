@@ -271,10 +271,10 @@ namespace SwInventreeAddin.Tests
             Assert.That(_vm.StatusText, Does.Contain("Error").IgnoreCase);
         }
 
-        // ── ClearAll ──────────────────────────────────────────────────────────
+        // ── Document close ────────────────────────────────────────────────────
 
         [Test]
-        public async Task AfterClearAll_PushRevisionVisible_IsFalse()
+        public async Task AfterCloseDocument_PushRevisionVisible_IsFalse()
         {
             _client.PartToReturn = SamplePart;
             CreateVm();
@@ -286,7 +286,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public async Task AfterClearAll_PushImageVisible_IsFalse()
+        public async Task AfterCloseDocument_PushImageVisible_IsFalse()
         {
             _client.PartToReturn = SamplePart;
             CreateVm();
@@ -298,7 +298,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public async Task AfterClearAll_ApplyEnabled_IsFalse()
+        public async Task AfterCloseDocument_ApplyEnabled_IsFalse()
         {
             _client.PartToReturn = SamplePart;
             CreateVm();
@@ -310,7 +310,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public async Task AfterClearAll_PartNumber_IsEmpty()
+        public async Task AfterCloseDocument_PartNumber_IsEmpty()
         {
             _client.PartToReturn = SamplePart;
             CreateVm();
@@ -406,7 +406,7 @@ namespace SwInventreeAddin.Tests
         // ── Document property changed ──────────────────────────────────────────
 
         [Test]
-        public async Task OnDocumentPropertyChanged_AfterApplyName_KeepsPreviewAndStatus()
+        public async Task PropertyChanged_AfterApplyName_KeepsPreviewAndStatus()
         {
             _client.PartToReturn = SamplePart;
             CreateVm();
@@ -425,7 +425,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public async Task OnDocumentPropertyChanged_AfterPushDescription_KeepsPreviewAndStatus()
+        public async Task PropertyChanged_AfterPushDescription_KeepsPreviewAndStatus()
         {
             _propertyService.Seed(DefaultMapping.DescriptionProperty!, "Updated desc");
             _client.PartToReturn = SamplePart;
@@ -445,7 +445,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public async Task OnDocumentPropertyChanged_UserEditOfName_UpdatesMatchButDoesNotClearSession()
+        public async Task PropertyChanged_UserEditOfName_UpdatesMatchButDoesNotClearSession()
         {
             _client.PartToReturn = SamplePart;
             CreateVm();
@@ -461,7 +461,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public async Task OnDocumentPropertyChanged_IpnChanged_ClearsSession()
+        public async Task PropertyChanged_IpnChanged_ClearsSession()
         {
             _client.PartToReturn = SamplePart;
             CreateVm();
@@ -981,7 +981,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void LoadPartNumber_WithNeedsUpgradeMapping_SetsWarningStatus()
+        public void UpdateDocument_WithNeedsUpgradeMapping_SetsWarningStatus()
         {
             _vm = CreateVmWithMapping(ipn: "R-10K-0402");
 
@@ -991,7 +991,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void LoadPartNumber_NoDocument_WithNeedsUpgradeMapping_SetsWarningStatus()
+        public void UpdateDocument_NoDocument_WithNeedsUpgradeMapping_SetsWarningStatus()
         {
             _vm = CreateVmWithMapping(docType: DocumentType.Unknown);
 
@@ -1001,7 +1001,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void LoadPartNumber_Unlinked_WithNeedsUpgradeMapping_SetsWarningStatus()
+        public void UpdateDocument_Unlinked_WithNeedsUpgradeMapping_SetsWarningStatus()
         {
             _vm = CreateVmWithMapping(ipn: string.Empty, pk: string.Empty);
 
@@ -1011,7 +1011,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void LoadPartNumber_Drawing_WithNeedsUpgradeMapping_SetsWarningStatus()
+        public void UpdateDocument_Drawing_WithNeedsUpgradeMapping_SetsWarningStatus()
         {
             _vm = CreateVmWithMapping(docType: DocumentType.Drawing);
 
@@ -1021,7 +1021,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void LoadPartNumber_LinkedByPk_WithNeedsUpgradeMapping_SetsWarningStatus()
+        public void UpdateDocument_LinkedByPk_WithNeedsUpgradeMapping_SetsWarningStatus()
         {
             _vm = CreateVmWithMapping(ipn: string.Empty, pk: "12345");
 
@@ -1875,7 +1875,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void DrawingDocument_LoadPartNumber_ClearsPanel()
+        public void DrawingDocument_UpdateDocument_ClearsPanel()
         {
             _propertyService.DocumentTypeToReturn = DocumentType.Drawing;
             CreateVm();
@@ -1886,7 +1886,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void DrawingDocument_LoadPartNumber_ShowsWarningStatus()
+        public void DrawingDocument_UpdateDocument_ShowsWarningStatus()
         {
             _propertyService.DocumentTypeToReturn = DocumentType.Drawing;
             CreateVm();
@@ -1896,7 +1896,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void PartDocument_LoadPartNumber_LoadsNormally()
+        public void PartDocument_UpdateDocument_LoadsNormally()
         {
             _propertyService.DocumentTypeToReturn = DocumentType.Part;
             CreateVm();
@@ -1906,7 +1906,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void AssemblyDocument_LoadPartNumber_LoadsNormally()
+        public void AssemblyDocument_UpdateDocument_LoadsNormally()
         {
             _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
             CreateVm();
@@ -2175,7 +2175,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public async Task ThumbnailPlaceholderVisible_AfterClearAll_IsFalse()
+        public async Task ThumbnailPlaceholderVisible_AfterCloseDocument_IsFalse()
         {
             _client.ThumbnailBytesToReturn = new byte[] { 1, 2, 3 };
             await _vm.FetchPartAsync();
@@ -2212,7 +2212,7 @@ namespace SwInventreeAddin.Tests
             _client = new StubInventreeClient();
             _propertyService = new StubDocumentPropertyService();
             _createPartValidator = new StubCreatePartValidationErrorService();
-            // Seed a populated document so LoadPartNumber doesn't immediately ClearAll.
+            // Seed a populated document so UpdateDocument doesn't immediately reset the panel.
             _propertyService.Seed("PartNo", "TST-001");
         }
 
@@ -2284,7 +2284,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void ClearAll_WithNoDocument_DisablesCreatePart()
+        public void CloseDocument_WithNoDocument_DisablesCreatePart()
         {
             // Closing the last document represents "no document open" — Create
             // should be disabled even when a client exists, because there is no
@@ -2296,7 +2296,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void LoadPartNumber_BlankPart_KeepsCreatePartEnabled()
+        public void UpdateDocument_BlankPart_KeepsCreatePartEnabled()
         {
             // A document IS open but has no IPN yet — Create should be enabled.
             _propertyService.Seed("PartNo", string.Empty);
@@ -2650,7 +2650,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public async Task BomSectionVisible_AfterClearAll_ForAssembly_IsFalse()
+        public async Task BomSectionVisible_AfterCloseDocument_ForAssembly_IsFalse()
         {
             _client.PartToReturn = new InventreePart { Pk = 1, Ipn = "ASSY-001" };
             _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
@@ -2722,7 +2722,7 @@ namespace SwInventreeAddin.Tests
         // ── UNLINKED (IPN blank, PK blank) ────────────────────────────────────
 
         [Test]
-        public void LoadPartNumber_BlankIpn_BlankPk_FetchDisabled()
+        public void UpdateDocument_BlankIpn_BlankPk_FetchDisabled()
         {
             _propertyService.Seed("PartNo", string.Empty);
             _propertyService.Seed("InvenTree PK", string.Empty);
@@ -2733,7 +2733,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void LoadPartNumber_BlankIpn_BlankPk_CreateEnabled()
+        public void UpdateDocument_BlankIpn_BlankPk_CreateEnabled()
         {
             _propertyService.Seed("PartNo", string.Empty);
             _propertyService.Seed("InvenTree PK", string.Empty);
@@ -2746,7 +2746,7 @@ namespace SwInventreeAddin.Tests
         // ── LINKED-by-PK (IPN blank, PK present) ─────────────────────────────
 
         [Test]
-        public void LoadPartNumber_BlankIpn_PositivePk_FetchEnabled()
+        public void UpdateDocument_BlankIpn_PositivePk_FetchEnabled()
         {
             _propertyService.Seed("PartNo", string.Empty);
             _propertyService.Seed("InvenTree PK", "42");
@@ -2757,7 +2757,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void LoadPartNumber_BlankIpn_PositivePk_CreateDisabled()
+        public void UpdateDocument_BlankIpn_PositivePk_CreateDisabled()
         {
             _propertyService.Seed("PartNo", string.Empty);
             _propertyService.Seed("InvenTree PK", "42");
@@ -2768,7 +2768,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void LoadPartNumber_BlankIpn_ZeroPk_NotLinkedByPk()
+        public void UpdateDocument_BlankIpn_ZeroPk_NotLinkedByPk()
         {
             // Zero is not a valid PK — should behave as UNLINKED.
             _propertyService.Seed("PartNo", string.Empty);
@@ -2783,7 +2783,7 @@ namespace SwInventreeAddin.Tests
         // ── LINKED-by-IPN (IPN present — existing behaviour unchanged) ────────
 
         [Test]
-        public void LoadPartNumber_NonBlankIpn_FetchEnabled()
+        public void UpdateDocument_NonBlankIpn_FetchEnabled()
         {
             _propertyService.Seed("PartNo", "TST-001");
             _propertyService.Seed("InvenTree PK", string.Empty);
@@ -2794,7 +2794,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void LoadPartNumber_NonBlankIpn_CreateDisabled()
+        public void UpdateDocument_NonBlankIpn_CreateDisabled()
         {
             _propertyService.Seed("PartNo", "TST-001");
             _propertyService.Seed("InvenTree PK", string.Empty);
@@ -3228,7 +3228,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void LoadPartNumber_AfterPollSkippedBlankIpnCreate_PreservesPopulatedState()
+        public void UpdateDocument_AfterPollSkippedBlankIpnCreate_PreservesPopulatedState()
         {
             const int newPk = 55;
             _client.PkToReturnOnCreate = newPk;
@@ -3255,7 +3255,7 @@ namespace SwInventreeAddin.Tests
     }
 
     [TestFixture]
-    public class LoadPartNumberRegressionTests
+    public class UpdateDocumentRegressionTests
     {
         private StubInventreeClient _client;
         private StubDocumentPropertyService _propertyService;
@@ -3481,11 +3481,11 @@ namespace SwInventreeAddin.Tests
             Assert.That(_promptShown, Is.False);
         }
 
-        // The PK can also appear after the last LoadPartNumber with no property
+        // The PK can also appear after the last UpdateDocument with no property
         // event at all. Fetch re-reads it at decision time, so the PK path wins
         // even when the change notification never arrived.
         [Test]
-        public async Task PkStampedAfterLastLoadPartNumber_HonoredOnNextFetch()
+        public async Task PkStampedAfterLastUpdateDocument_HonoredOnNextFetch()
         {
             var vm = CreateVm();                           // loads with no PK
             _propertyService.Seed(Mapping.PkProperty!, "11"); // stamped later, no event
@@ -3498,7 +3498,7 @@ namespace SwInventreeAddin.Tests
             Assert.That(_promptShown, Is.False);
         }
 
-        // Switching to another document and back fires LoadPartNumber, which
+        // Switching to another document and back routes UpdateDocument, which
         // re-reads the stamped PK — the workaround QA observed.
         [Test]
         public async Task ManualPkEditMatchingSession_DocumentSwitchResyncs()
@@ -3519,7 +3519,7 @@ namespace SwInventreeAddin.Tests
             Assert.That(_promptShown, Is.False);
         }
 
-        // ClearAll() inside the LINKED-by-PK branch wipes the flag the reload
+        // ResetDocumentPanel() inside the LINKED-by-PK branch wipes the flag the reload
         // just synced; a later command-state refresh must not disable Fetch or
         // enable Create Part on a PK-linked document.
         [Test]
@@ -3536,10 +3536,10 @@ namespace SwInventreeAddin.Tests
         }
 
         // #224: a Settings Apply must re-read the document identity — a PK
-        // stamped after the last LoadPartNumber, with the property event
+        // stamped after the last UpdateDocument, with the property event
         // missed, still picks up the LINKED-by-PK state.
         [Test]
-        public void PkStampedAfterLoadPartNumber_SettingsApplyRefreshesPanel()
+        public void PkStampedAfterUpdateDocument_SettingsApplyRefreshesPanel()
         {
             _propertyService.Seed(Mapping.IpnProperty!, string.Empty); // doc starts unlinked
             var vm = CreateVm();
@@ -3554,10 +3554,10 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.ApplyEnabled, Is.False);
         }
 
-        // #224 IPN twin: an IPN stamped after the last LoadPartNumber is
+        // #224 IPN twin: an IPN stamped after the last UpdateDocument is
         // picked up on Settings Apply the same way.
         [Test]
-        public void IpnStampedAfterLoadPartNumber_SettingsApplyRefreshesPanel()
+        public void IpnStampedAfterUpdateDocument_SettingsApplyRefreshesPanel()
         {
             _propertyService.Seed(Mapping.IpnProperty!, string.Empty); // doc starts unlinked
             var vm = CreateVm();
@@ -3574,7 +3574,7 @@ namespace SwInventreeAddin.Tests
 
         // #224: the mapping-changed path has the same staleness gap — a
         // mapping-editor SaveMapping or external file edit on a document whose
-        // link was stamped after the last LoadPartNumber must also re-read
+        // link was stamped after the last UpdateDocument must also re-read
         // document identity when no session is loaded.
         [Test]
         public void MappingChanged_NoSession_PicksUpStampedPk()
@@ -3808,7 +3808,7 @@ namespace SwInventreeAddin.Tests
 
         // Addendum case 1: an IPN-fetched session does not survive a direct
         // reload when the document carries no stamped InvenTree Part PK —
-        // LoadPartNumber cannot prove the session belongs to this document.
+        // UpdateDocument cannot prove the session belongs to this document.
         [Test]
         public async Task CompletedSession_SameDocumentReloadWithoutStampedPk_DropsSession()
         {
@@ -4249,7 +4249,7 @@ namespace SwInventreeAddin.Tests
         // ── Clear / Apply / Push ─────────────────────────────────────────────
 
         [Test]
-        public async Task ClearAll_AfterPopulated_ReturnsToEmptyState()
+        public async Task CloseDocument_AfterPopulated_ReturnsToEmptyState()
         {
             _client.PartToReturn = FetchedPart;
             var vm = CreateLinkedByIpnVm();
@@ -4518,7 +4518,7 @@ namespace SwInventreeAddin.Tests
         private void UpdateMapping(IPropertyMappingProvider? provider) =>
             _pair.UpdateMapping(provider);
 
-        private void CreateVm()
+        private void SeedLinkedDocument()
         {
             _propertyService.Seed(Mapping.IpnProperty!, "R-10K-0402");
             UpdateDocument();
@@ -4573,7 +4573,7 @@ namespace SwInventreeAddin.Tests
         public async Task ProjectDocumentClosed_AfterPopulated_ReturnsToEmpty()
         {
             _client.PartToReturn = FetchedPart;
-            CreateVm();
+            SeedLinkedDocument();
             await _vm.FetchPartAsync();
             Assert.That(_vm.ApplyEnabled, Is.True);
 
@@ -4589,7 +4589,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void ProjectPropertyChange_Reevaluated_RerunsFullProjection()
         {
-            CreateVm();
+            SeedLinkedDocument();
 
             _propertyService.Seed(Mapping.IpnProperty!, "NEW-IPN-01");
             PropertyChanged(Mapping.IpnProperty!, "NEW-IPN-01");
@@ -4602,7 +4602,7 @@ namespace SwInventreeAddin.Tests
         {
             _client.PartToReturn = FetchedPart;
             _propertyService.Seed(Mapping.NameProperty!, "old name");
-            CreateVm();
+            SeedLinkedDocument();
             await _vm.FetchPartAsync();
             await _vm.ApplyNameToDocument();
             Assert.That(_vm.StatusText, Is.EqualTo("Name applied."));
@@ -4618,7 +4618,7 @@ namespace SwInventreeAddin.Tests
         {
             _client.PartToReturn = FetchedPart;
             _propertyService.Seed(Mapping.NameProperty!, "old name");
-            CreateVm();
+            SeedLinkedDocument();
             await _vm.FetchPartAsync();
             await _vm.ApplyNameToDocument();
             Assert.That(_vm.StatusText, Is.EqualTo("Name applied."));
@@ -4633,7 +4633,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void UpdateClient_ToNull_ProjectsUnconfiguredPane()
         {
-            CreateVm();
+            SeedLinkedDocument();
 
             UpdateClient(null);
 
@@ -4667,7 +4667,7 @@ namespace SwInventreeAddin.Tests
         public async Task UpdateMapping_WithSession_PreservesPartSyncActions()
         {
             _client.PartToReturn = FetchedPart;
-            CreateVm();
+            SeedLinkedDocument();
             await _vm.FetchPartAsync();
             Assert.That(_vm.ApplyEnabled, Is.True);
 
@@ -4685,7 +4685,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void CoordinatorChanged_DeliversPropertyChangedNotifications()
         {
-            CreateVm();
+            SeedLinkedDocument();
             var count = 0;
             _vm.PropertyChanged += (_, __) => count++;
 
@@ -4697,7 +4697,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void Dispose_DetachesCoordinatorChanged()
         {
-            CreateVm();
+            SeedLinkedDocument();
             var count = 0;
             _vm.PropertyChanged += (_, __) => count++;
 
@@ -4714,7 +4714,7 @@ namespace SwInventreeAddin.Tests
         public async Task FetchPartAsync_DelegatesThroughInterface_ProjectsSession()
         {
             _client.PartToReturn = FetchedPart;
-            CreateVm();
+            SeedLinkedDocument();
 
             await _vm.FetchPartAsync();
 
