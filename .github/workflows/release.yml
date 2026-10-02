@@ -25,12 +25,7 @@ jobs:
       - name: Ensure Inno Setup
         shell: pwsh
         run: |
-          $iscc = @(
-            $env:INNO_SETUP,
-            "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe",
-            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
-            "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
-          ) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+          $iscc = & .\Installer\Resolve-ISCC.ps1
           if (-not $iscc) {
             winget install --id JRSoftware.InnoSetup -e --version 6.7.3 --accept-source-agreements --accept-package-agreements
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

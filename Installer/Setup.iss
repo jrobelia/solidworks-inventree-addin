@@ -26,7 +26,7 @@
 AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}}
 AppName={#AppName}
 AppVersion={#AppVersion}
-AppPublisher=SwInventreeAddin
+AppPublisher={#AppName}
 DefaultDirName={autopf}\{#AppName}
 DisableProgramGroupPage=yes
 PrivilegesRequired=admin
@@ -69,10 +69,14 @@ Source: "{#BuildDir}\Resources\*"; DestDir: "{app}\Resources"; \
 ; Finish-page checkbox for the post-install notes — unchecked so upgrades
 ; don't keep reopening Notepad.
 Filename: "{app}\POST-INSTALL.txt"; \
-    Description: "View post-install notes (finding the panel, server setup)"; \
+    Description: "View post-install notes (finding the task pane, server setup)"; \
     Flags: postinstall shellexec skipifsilent unchecked
 
 [Code]
+const
+  // NDP Release value Microsoft assigned to .NET Framework 4.8
+  DotNet48MinRelease = 528040;
+
 // .NET Framework 4.8 is a hard prerequisite. Check the NDP Release value —
 // RegAsm ships with every 4.x, so a FileExists gate would let 4.6/4.7
 // machines through and then fail mid-install at the [Run] step.
@@ -82,7 +86,7 @@ var
 begin
   Result := RegQueryDWordValue(HKLM,
     'SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full', 'Release', Release)
-    and (Release >= 528040);
+    and (Release >= DotNet48MinRelease);
   if not Result then
     MsgBox('SwInventreeAddin requires .NET Framework 4.8 or later.' + #13#10 +
            'Install it from Microsoft and run this installer again.',

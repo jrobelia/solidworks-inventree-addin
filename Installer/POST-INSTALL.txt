@@ -4,7 +4,7 @@ SwInventreeAddin — After Installation
 The installer registered the add-in with SolidWorks. Server settings
 carry over between versions.
 
-FINDING THE PANEL
+FINDING THE TASK PANE
   Start SolidWorks. The "InvenTree" tab appears in the task pane on
   the right edge of the window.
 
@@ -16,7 +16,7 @@ FINDING THE PANEL
     4. Click OK.
 
 SET UP YOUR SERVER
-    1. In the InvenTree panel, click the Settings button (gear icon).
+    1. In the InvenTree task pane, click the Settings button (gear icon).
     2. Enter your InvenTree server URL.
     3. Enter your InvenTree username and password, then Save.
        The password is used once to request an API token — it is not
