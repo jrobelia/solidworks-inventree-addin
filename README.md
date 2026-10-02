@@ -136,3 +136,5 @@ This add-in does **not** replace the InvenTree web UI for purchasing, build orde
 ## License
 
 [MIT](LICENSE). Copyright (c) 2026 Jon Robelia.
+
+This add-in ships artwork derived from the InvenTree logo — see [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).

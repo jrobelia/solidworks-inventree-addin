@@ -38,9 +38,15 @@ CloseApplications=yes
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
-SetupIconFile=inventree-icon.ico
+SetupIconFile=sw-inventree-logo.ico
+; Wizard artwork must be BMP. WizardImageFile is the tall left panel on the
+; welcome/finish pages, WizardSmallImageFile the image top-right on the inner
+; pages. The second file in each list is the 2x bitmap Inno picks on
+; high-DPI screens.
+WizardImageFile=wizard-image-164x314.bmp,wizard-image-328x628.bmp
+WizardSmallImageFile=wizard-small-55x55.bmp,wizard-small-110x110.bmp
 LicenseFile=..\LICENSE
-UninstallDisplayIcon={app}\inventree-icon.ico
+UninstallDisplayIcon={app}\sw-inventree-logo.ico
 OutputDir=.
 OutputBaseFilename={#AppName}-{#AppVersion}-Setup
 UninstallDisplayName={#AppName}
@@ -58,19 +64,20 @@ Type: files; Name: "{app}\Uninstall.ps1"
 Type: files; Name: "{app}\Uninstall (Run as Administrator).bat"
 
 [Files]
-Source: "inventree-icon.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "sw-inventree-logo.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\THIRD-PARTY-NOTICES.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "POST-INSTALL.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#BuildDir}\*.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#BuildDir}\Resources\*"; DestDir: "{app}\Resources"; \
     Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 
 [Run]
-; Finish-page checkbox for the post-install notes — unchecked so upgrades
-; don't keep reopening Notepad.
+; Finish-page checkbox for the post-install notes — checked by default so a
+; first install opens the orientation notes.
 Filename: "{app}\POST-INSTALL.txt"; \
     Description: "View post-install notes (finding the task pane, server setup)"; \
-    Flags: postinstall shellexec skipifsilent unchecked
+    Flags: postinstall shellexec skipifsilent
 
 [Code]
 const
