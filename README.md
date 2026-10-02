@@ -23,17 +23,14 @@ A SolidWorks task-pane add-in that bridges SolidWorks parts and assemblies with 
 
 ## Installation
 
-1. Download the latest release zip.
-2. Extract it anywhere (e.g. your Desktop).
-3. Right-click **Install (Run as Administrator).bat** → Run as administrator.
-4. Start SolidWorks. The InvenTree panel appears in the right-hand task pane.
-5. Click the gear icon → enter your server URL and API key → Save.
+1. Download the latest `SwInventreeAddin-*-Setup.exe` from Releases.
+2. Run it — the wizard installs to Program Files and registers the add-in with SolidWorks (admin rights required). If SmartScreen warns, click **More info → Run anyway** — the installer is not signed yet.
+3. Start SolidWorks. The InvenTree panel appears in the right-hand task pane.
+4. Click the gear icon → enter your server URL and InvenTree username + password → Save. The password is used once to request an API token and is not saved itself; an API key works as an alternative.
 
-To get an API key: InvenTree → click your username → **Account Settings** → **API Tokens**.
+**Updating:** Download and run the new Setup.exe — it upgrades in place. Settings are preserved.
 
-**Updating:** Download the new zip and run the installer again. Settings are preserved.
-
-**Uninstalling:** Windows Settings → Apps → SwInventreeAddin → Uninstall, or run `Uninstall (Run as Administrator).bat` from `C:\Program Files\SwInventreeAddin\`.
+**Uninstalling:** Windows Settings → Apps → SwInventreeAddin → Uninstall.
 
 ## Configuration
 

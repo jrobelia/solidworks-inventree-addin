@@ -4,6 +4,11 @@ SwInventreeAddin — After Installation
 The installer registered the add-in with SolidWorks. Server settings
 carry over between versions.
 
+REQUIREMENTS
+  - SolidWorks 2022 or newer
+  - Windows 10 or 11 (64-bit)
+  - .NET Framework 4.8 (the installer checks this for you)
+
 FINDING THE PANEL
   Start SolidWorks. The "InvenTree" tab appears in the task pane on
   the right edge of the window.

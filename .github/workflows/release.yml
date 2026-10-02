@@ -44,7 +44,6 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            Installer/SwInventreeAddin-*.zip
             Installer/SwInventreeAddin-*-Setup.exe
             Installer/SwInventreeAddin-*.sha256
           fail_on_unmatched_files: true
