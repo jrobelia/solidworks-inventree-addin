@@ -1,5 +1,5 @@
 ﻿# Package.ps1  Run this (no admin needed) to build the installer exe.
-# Output: Installer\SwInventreeAddin-<version>-Setup.exe (+ .sha256)
+# Output: Installer\SwInventreeAddin-<version>-Setup.exe
 # Version is derived from the nearest git tag (e.g. v1.0.0, or v1.0.0-3-gabcd123 if not on a tag).
 
 $repoRoot   = Split-Path $PSScriptRoot -Parent
@@ -32,12 +32,6 @@ if ($iscc) {
 } else {
     Write-Host "WARNING: ISCC.exe not found — Setup.exe skipped." -ForegroundColor Yellow
     Write-Host "  Install Inno Setup 6 or set `$env:INNO_SETUP to ISCC.exe's path."
-}
-
-# SHA256 sidecar — the unsigned binary's only integrity check for users
-if (Test-Path $exePath) {
-    $hash = (Get-FileHash $exePath -Algorithm SHA256).Hash.ToLower()
-    Set-Content -Path "$exePath.sha256" -Value "$hash  $(Split-Path $exePath -Leaf)" -Encoding ASCII
 }
 
 Write-Host ""
