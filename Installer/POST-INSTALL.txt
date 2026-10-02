@@ -17,9 +17,15 @@ FINDING THE PANEL
 
 SET UP YOUR SERVER
     1. In the InvenTree panel, click the Settings button (gear icon).
-    2. Enter your InvenTree server URL and API key, then Save.
-       (To get an API key: InvenTree -> click your name ->
-        Account Settings -> API Tokens.)
+    2. Enter your InvenTree server URL.
+    3. Enter your InvenTree username and password, then Save.
+       The password is used once to request an API token — it is not
+       saved.
+
+  If your server uses single sign-on or you already have a token,
+  enter an API key in Settings instead of a username and password.
+  (To get an API key: InvenTree -> click your name ->
+   Account Settings -> API Tokens.)
 
 UNINSTALLING
   Windows Settings -> Apps -> "SwInventreeAddin" -> Uninstall.
