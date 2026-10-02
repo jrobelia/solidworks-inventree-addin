@@ -66,22 +66,11 @@ Source: "{#BuildDir}\Resources\*"; DestDir: "{app}\Resources"; \
     Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 
 [Run]
-Filename: "{#RegAsm}"; \
-    Parameters: """{app}\SwInventreeAddin.dll"" /codebase /s"; \
-    Flags: runhidden waituntilterminated; \
-    StatusMsg: "Registering the add-in with SolidWorks..."
 ; Finish-page checkbox for the post-install notes — unchecked so upgrades
 ; don't keep reopening Notepad.
 Filename: "{app}\POST-INSTALL.txt"; \
     Description: "View post-install notes (finding the panel, server setup)"; \
     Flags: postinstall shellexec skipifsilent unchecked
-
-; Runs before files are removed, so the DLL still exists when RegAsm
-; unregisters it — [ComUnregisterFunction] removes the SolidWorks keys.
-[UninstallRun]
-Filename: "{#RegAsm}"; \
-    Parameters: """{app}\SwInventreeAddin.dll"" /u /s"; \
-    Flags: runhidden waituntilterminated; RunOnceId: "UnregisterAddin"
 
 [Code]
 // .NET Framework 4.8 is a hard prerequisite. Check the NDP Release value —
@@ -98,4 +87,63 @@ begin
     MsgBox('SwInventreeAddin requires .NET Framework 4.8 or later.' + #13#10 +
            'Install it from Microsoft and run this installer again.',
            mbError, MB_OK);
+end;
+
+// [Run]/[UninstallRun] entries never look at the exit code, so a failed
+// RegAsm would still end the wizard "successfully" with the add-in absent
+// from SolidWorks — the silent failure the old Install.ps1 caught via
+// $LASTEXITCODE. Exec gives the code back so we can surface it.
+function RunRegAsm(const Switches: String): Integer;
+var
+  ResultCode: Integer;
+begin
+  if Exec(ExpandConstant('{#RegAsm}'),
+          '"' + ExpandConstant('{app}\SwInventreeAddin.dll') + '" ' + Switches,
+          '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+    Result := ResultCode
+  else
+    Result := -1;
+  if Result <> 0 then
+    Log('RegAsm ' + Switches + ' failed with exit code ' + IntToStr(Result));
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  ExitCode: Integer;
+begin
+  if CurStep = ssPostInstall then
+  begin
+    ExitCode := RunRegAsm('/codebase /s');
+    if ExitCode <> 0 then
+      SuppressibleMsgBox(
+        'RegAsm could not register the add-in (exit code ' +
+          IntToStr(ExitCode) + ').' + #13#10 +
+        'The InvenTree task pane will not appear in SolidWorks.' + #13#10 +
+        'Re-run this installer, or register by hand as admin:' + #13#10 +
+        ExpandConstant('{#RegAsm}') + ' "' +
+          ExpandConstant('{app}\SwInventreeAddin.dll') + '" /codebase',
+        mbError, MB_OK, IDOK);
+  end;
+end;
+
+// usUninstall fires before file removal — same ordering the [UninstallRun]
+// entry held — so the DLL still exists when RegAsm unregisters it and
+// [ComUnregisterFunction] can clean the SolidWorks keys.
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  ExitCode: Integer;
+begin
+  if CurUninstallStep = usUninstall then
+  begin
+    ExitCode := RunRegAsm('/u /s');
+    if ExitCode <> 0 then
+      SuppressibleMsgBox(
+        'RegAsm could not unregister the add-in (exit code ' +
+          IntToStr(ExitCode) + ').' + #13#10 +
+        'Files are still removed, but SolidWorks may keep listing the add-in.' + #13#10 +
+        'To finish by hand as admin:' + #13#10 +
+        ExpandConstant('{#RegAsm}') + ' "' +
+          ExpandConstant('{app}\SwInventreeAddin.dll') + '" /u',
+        mbError, MB_OK, IDOK);
+  end;
 end;
