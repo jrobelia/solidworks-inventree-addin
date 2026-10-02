@@ -38,11 +38,14 @@ CloseApplications=yes
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile=inventree-icon.ico
+UninstallDisplayIcon={app}\inventree-icon.ico
 OutputDir=.
 OutputBaseFilename={#AppName}-{#AppVersion}-Setup
 UninstallDisplayName={#AppName}
 
 [Files]
+Source: "inventree-icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#BuildDir}\*.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#BuildDir}\Resources\*"; DestDir: "{app}\Resources"; \
     Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
