@@ -44,9 +44,10 @@ Copy-Item "$PSScriptRoot\Install.ps1"                          -Destination $add
 Copy-Item "$PSScriptRoot\Uninstall.ps1"                        -Destination $addinDir
 Copy-Item "$PSScriptRoot\Uninstall (Run as Administrator).bat" -Destination $addinDir
 
-# Only the Install launcher and README sit at the zip root
+# Only the Install launcher, README, and LICENSE sit at the zip root
 Copy-Item "$PSScriptRoot\Install (Run as Administrator).bat"   -Destination $distDir
 Copy-Item "$PSScriptRoot\README.txt"                           -Destination $distDir
+Copy-Item "$repoRoot\LICENSE"                                  -Destination $distDir
 
 # Zip it
 if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
@@ -71,6 +72,14 @@ if ($iscc) {
 } else {
     Write-Host "WARNING: ISCC.exe not found — Setup.exe skipped." -ForegroundColor Yellow
     Write-Host "  Install Inno Setup 6 or set `$env:INNO_SETUP to ISCC.exe's path."
+}
+
+# SHA256 sidecars — the unsigned binaries' only integrity check for users
+foreach ($artifact in @($zipPath, $exePath)) {
+    if (Test-Path $artifact) {
+        $hash = (Get-FileHash $artifact -Algorithm SHA256).Hash.ToLower()
+        Set-Content -Path "$artifact.sha256" -Value "$hash  $(Split-Path $artifact -Leaf)" -Encoding ASCII
+    }
 }
 
 Write-Host ""
