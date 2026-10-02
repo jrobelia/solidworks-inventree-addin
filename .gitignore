@@ -24,6 +24,9 @@ prototype/
 Installer/*.zip
 Installer/*-Setup.exe
 
+# --- Orphaned icon source art (superseded by drawn artwork in New-IconArtwork.ps1) ---
+SwInventreeAddin/Resources/sw-inventree-addin_icon.png
+
 # --- .NET / Visual Studio build outputs ---
 bin/
 obj/
