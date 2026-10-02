@@ -1,12 +1,13 @@
 # New-InstallerIcon.ps1 — regenerates Installer\inventree-icon.ico from the
-# add-in artwork. Run after changing sw-inventree-addin_icon.png; the .ico is
-# committed so Package.ps1 does not depend on this script.
+# installer artwork produced by New-IconArtwork.ps1. Run after regenerating
+# inventree-icon.png; the .ico is committed so Package.ps1 does not depend
+# on this script.
 #
 # Emits a multi-size ICO (16/32/48 PNG-encoded frames + 256 PNG frame).
 # PNG-encoded ICO frames are supported on Windows Vista+, which covers the
 # Win10/11 requirement, and by Inno Setup's SetupIconFile.
 
-$src  = "$PSScriptRoot\..\SwInventreeAddin\Resources\sw-inventree-addin_icon.png"
+$src  = "$PSScriptRoot\inventree-icon.png"
 $dest = "$PSScriptRoot\inventree-icon.ico"
 $sizes = 16, 32, 48, 256
 
