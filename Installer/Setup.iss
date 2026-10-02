@@ -60,6 +60,7 @@ Type: files; Name: "{app}\Uninstall (Run as Administrator).bat"
 [Files]
 Source: "inventree-icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+Source: "POST-INSTALL.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#BuildDir}\*.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#BuildDir}\Resources\*"; DestDir: "{app}\Resources"; \
     Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
@@ -69,6 +70,11 @@ Filename: "{#RegAsm}"; \
     Parameters: """{app}\SwInventreeAddin.dll"" /codebase /s"; \
     Flags: runhidden waituntilterminated; \
     StatusMsg: "Registering the add-in with SolidWorks..."
+; Finish-page checkbox for the post-install notes — unchecked so upgrades
+; don't keep reopening Notepad.
+Filename: "{app}\POST-INSTALL.txt"; \
+    Description: "View post-install notes (finding the panel, server setup)"; \
+    Flags: postinstall shellexec skipifsilent unchecked
 
 ; Runs before files are removed, so the DLL still exists when RegAsm
 ; unregisters it — [ComUnregisterFunction] removes the SolidWorks keys.
