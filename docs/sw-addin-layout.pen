@@ -1,5 +1,5 @@
 {
-  "version": "2.17",
+  "version": "2.20",
   "children": [
     {
       "type": "frame",
@@ -13596,6 +13596,97 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "rbq8B",
+      "x": 1340,
+      "y": -965,
+      "name": "Add-in Icon v2",
+      "clip": true,
+      "width": 256,
+      "height": 256,
+      "fill": "#00000000",
+      "layout": "none",
+      "children": [
+        {
+          "type": "icon",
+          "id": "K2mVpi",
+          "x": 12,
+          "y": 14,
+          "name": "Cube (lucide box)",
+          "width": 140,
+          "height": 140,
+          "icon": "box",
+          "library": "lucide",
+          "fill": "#F2233C"
+        },
+        {
+          "type": "icon",
+          "id": "aF6ea",
+          "x": 104,
+          "y": 112,
+          "name": "Database (lucide)",
+          "width": 144,
+          "height": 144,
+          "icon": "database",
+          "library": "lucide",
+          "fill": {
+            "type": "gradient",
+            "gradientType": "linear",
+            "enabled": true,
+            "rotation": 180,
+            "size": {
+              "height": 1
+            },
+            "colors": [
+              {
+                "color": "#F7B500",
+                "position": 0
+              },
+              {
+                "color": "#E89A00",
+                "position": 0.5
+              },
+              {
+                "color": "#3D7BD9",
+                "position": 0.55
+              },
+              {
+                "color": "#3D7BD9",
+                "position": 1
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "type": "rectangle",
+      "id": "xzTZm",
+      "x": 1090,
+      "y": -940,
+      "name": "Original icon artwork (reference)",
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "../Installer/sw-inventree-addin_icon.png",
+        "mode": "contain"
+      },
+      "width": 200,
+      "height": 200
+    },
+    {
+      "type": "text",
+      "id": "lA7jy",
+      "x": 1090,
+      "y": -725,
+      "name": "Ref label",
+      "fill": "#707070",
+      "content": "original artwork (reference)",
+      "fontFamily": "Inter",
+      "fontSize": 14,
+      "fontWeight": "normal"
     }
   ],
   "variables": {
