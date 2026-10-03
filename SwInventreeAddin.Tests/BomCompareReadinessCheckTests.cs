@@ -79,6 +79,19 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public async Task CheckAsync_NoSessionUnstamped_ReturnsSessionNotPopulated()
+        {
+            // A session-absent, PK-unstamped snapshot must still hit the no-session
+            // outcome — discriminates the SessionNotPopulated-before-PkNotStamped order.
+            var context = new StubContext { InMemoryPartPk = 0 };
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
+
+            var result = await check.CheckAsync();
+
+            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.SessionNotPopulated));
+        }
+
+        [Test]
         public async Task CheckAsync_Always_CapturesExactlyOneSnapshot()
         {
             var context = new StubContext
