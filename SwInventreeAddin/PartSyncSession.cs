@@ -43,7 +43,7 @@ namespace SwInventreeAddin
         /// <summary>Thumbnail PNG bytes; null if not yet fetched or not available.</summary>
         public byte[]? ThumbnailBytes { get; private set; }
 
-        /// <summary>The mapping captured at construction — sessions are rebuilt on mapping replacement.</summary>
+        /// <summary>The session-owned copy of the mapping captured at construction — sessions are rebuilt on mapping replacement.</summary>
         public PropertyMappingConfig Mapping => _mapping;
 
         // ── Constructor ───────────────────────────────────────────────────────
@@ -59,9 +59,12 @@ namespace SwInventreeAddin
             Part = part;
             _client = client;
             _propertyService = propertyService;
-            _mapping = mapping;
+            // The session owns its inputs: the caller's mapping instance and
+            // thumbnail array are copied so later caller mutation cannot
+            // reach a live session without advancing the lifecycle revision.
+            _mapping = mapping.Clone();
             _pendingWrites = pendingWrites;
-            ThumbnailBytes = thumbnailBytes;
+            ThumbnailBytes = thumbnailBytes == null ? null : (byte[])thumbnailBytes.Clone();
         }
 
         // ── Apply (InvenTree → SolidWorks) ────────────────────────────────────
@@ -123,8 +126,8 @@ namespace SwInventreeAddin
 
         // ── Thumbnail ─────────────────────────────────────────────────────────
 
-        /// <summary>Updates the thumbnail bytes after a successful Push Image.</summary>
-        public void SetThumbnail(byte[] bytes) => ThumbnailBytes = bytes;
+        /// <summary>Updates the thumbnail bytes after a successful Push Image — copied; the caller's array stays caller-owned.</summary>
+        public void SetThumbnail(byte[] bytes) => ThumbnailBytes = (byte[])bytes.Clone();
 
         // ── Helpers ───────────────────────────────────────────────────────────
 

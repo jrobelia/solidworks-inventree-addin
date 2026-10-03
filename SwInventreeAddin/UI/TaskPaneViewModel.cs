@@ -812,7 +812,7 @@ namespace SwInventreeAddin.UI
         /// <summary>
         /// Runs the confirmation prompt for a fetch/BOM outcome and resumes the
         /// pending coordinator operation. Used by the BOM readiness path where
-        /// the typed outcome travels through <see cref="BomReadinessResult"/>.
+        /// the typed outcome travels through <see cref="Bom.BomCompareReadiness.FetchResult"/>.
         /// </summary>
         internal async Task<PartSyncResult> ResumeFetchConfirmationAsync(PartSyncResult fetchResult)
         {
@@ -904,6 +904,8 @@ namespace SwInventreeAddin.UI
                         if (!string.IsNullOrEmpty(result.Diagnostic))
                             SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error);
                         break;
+                    case PartSyncOutcome.Stale:
+                        break;
                 }
             });
         }
@@ -957,6 +959,8 @@ namespace SwInventreeAddin.UI
                     case PartSyncOutcome.InvalidOperation:
                         if (!string.IsNullOrEmpty(result.Diagnostic))
                             SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error);
+                        break;
+                    case PartSyncOutcome.Stale:
                         break;
                 }
             });
@@ -1012,6 +1016,8 @@ namespace SwInventreeAddin.UI
                         case PartSyncOutcome.InvalidOperation:
                             if (!string.IsNullOrEmpty(result.Diagnostic))
                                 SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error);
+                            break;
+                        case PartSyncOutcome.Stale:
                             break;
                     }
                 });

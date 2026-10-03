@@ -252,7 +252,7 @@ namespace SwInventreeAddin.UI
                     case BomCompareOutcome.PkNotFound:
                         MessageDialog.ShowOK(
                             SolidWorksWindowHandle.Get(),
-                            $"'{readiness.PartNumber}' was not found in InvenTree.\n\nCreate the part in InvenTree first, then try again.",
+                            $"{readiness.NotFoundIdentifier} was not found in InvenTree.\n\nCreate the part in InvenTree first, then try again.",
                             "BOM Compare",
                             System.Windows.Forms.MessageBoxIcon.Warning);
                         return;

@@ -272,6 +272,39 @@ namespace SwInventreeAddin.Tests
             Assert.That(result.FetchResult, Is.SameAs(context.EnsureResult));
         }
 
+        // -- NotFoundIdentifier -------------------------------------------------
+        // The not-found dialog must always name something usable.
+
+        [Test]
+        public void NotFoundIdentifier_IpnPresent_ReturnsQuotedIpn()
+        {
+            var readiness = new BomCompareReadiness(
+                BomCompareOutcome.PkNotFound, "PART-001", "A", "A");
+
+            Assert.That(readiness.NotFoundIdentifier, Is.EqualTo("'PART-001'"));
+        }
+
+        [Test]
+        public void NotFoundIdentifier_BlankIpn_ReturnsLookedUpPartPk()
+        {
+            // A PK-addressed auto-fetch can fail for a document with an empty
+            // IPN — the dialog names the PK it actually looked up, not ''.
+            var fetch = new PartSyncResult(PartSyncOutcome.PartNotFound) { PartPk = 77 };
+            var readiness = new BomCompareReadiness(
+                BomCompareOutcome.PkNotFound, string.Empty, "A", "A", fetch);
+
+            Assert.That(readiness.NotFoundIdentifier, Is.EqualTo("InvenTree Part PK 77"));
+        }
+
+        [Test]
+        public void NotFoundIdentifier_NoIpnNoFetchResult_ReturnsGenericLabel()
+        {
+            var readiness = new BomCompareReadiness(
+                BomCompareOutcome.PkNotFound, string.Empty, "A", "A");
+
+            Assert.That(readiness.NotFoundIdentifier, Is.EqualTo("The part"));
+        }
+
         [Test]
         public async Task CheckAsync_EnsureReturnsFailed_ReturnsFetchFailedWithResult()
         {

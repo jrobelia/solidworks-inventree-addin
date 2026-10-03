@@ -857,6 +857,42 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public void CompleteCreatePart_ZeroPk_ReturnsInvalidOperationNoWritesNoSession()
+        {
+            SeedIpnDocument(string.Empty);
+            _coordinator.UpdateDocument();
+            var token = _coordinator.BeginCreatePart();
+
+            // A create that came back without a server-assigned InvenTree
+            // Part PK can never satisfy the session validity rules.
+            var result = _coordinator.CompleteCreatePart(
+                token, new InventreePart { Pk = 0, Ipn = "NEW-001", Name = "New Part" });
+
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.InvalidOperation));
+            Assert.That(result.Diagnostic, Is.Not.Null.And.Not.Empty);
+            Assert.That(_propertyService.WriteLog, Is.Empty);
+            Assert.That(_coordinator.FetchedPart, Is.Null);
+            Assert.That(_coordinator.Kind, Is.Not.EqualTo(TaskPaneStateKind.Populated));
+        }
+
+        [Test]
+        public void CompleteCreatePart_NoClient_ReturnsInvalidOperationNoWritesNoSession()
+        {
+            var coordinator = new PartSyncCoordinator(_propertyService, _dispatcher, client: null);
+            SeedIpnDocument(string.Empty);
+            coordinator.UpdateDocument();
+            var token = coordinator.BeginCreatePart();
+
+            var result = coordinator.CompleteCreatePart(
+                token, new InventreePart { Pk = 99, Ipn = "NEW-001", Name = "New Part" });
+
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.InvalidOperation));
+            Assert.That(result.Diagnostic, Is.Not.Null.And.Not.Empty);
+            Assert.That(_propertyService.WriteLog, Is.Empty);
+            Assert.That(coordinator.FetchedPart, Is.Null);
+        }
+
+        [Test]
         public void CompleteCreatePart_DocumentSwitched_ReturnsStaleNoWrites()
         {
             SeedIpnDocument(string.Empty);
@@ -1107,6 +1143,105 @@ namespace SwInventreeAddin.Tests
                 "the server update already ran — only the session commit is stale");
         }
 
+        [Test]
+        public async Task PushAsync_UndeliveredSwitchAtEntry_Stale_NoMappedRead_NoClientCall()
+        {
+            _client.PartToReturn = SamplePart;
+            _propertyService.Seed(Mapping.NameProperty!, "New Name");
+            await InstallSessionViaFetch();
+
+            // ActiveDoc switched but the host notification has not run — the
+            // entry validation must discover it before the mapped-property
+            // read and before any remote write.
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+            var readsBefore = _propertyService.ReadsOf(Mapping.NameProperty!);
+
+            var result = await _coordinator.PushAsync(PushField.Name);
+
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Stale));
+            Assert.That(_propertyService.ReadsOf(Mapping.NameProperty!),
+                Is.EqualTo(readsBefore + 1),
+                "the recapture's snapshot read is the only mapped-property read — the push value read never runs");
+            Assert.That(_client.LastPushedPk, Is.EqualTo(0));
+        }
+
+        [Test]
+        public async Task PushImageAsync_UndeliveredSwitchAtEntry_Stale_NoUpload()
+        {
+            _client.PartToReturn = SamplePart;
+            await InstallSessionViaFetch();
+
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+            using var image = new Bitmap(10, 10);
+            var result = await _coordinator.PushImageAsync(image, Rectangle.Empty);
+
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Stale));
+            Assert.That(_client.LastUploadedPk, Is.EqualTo(0));
+        }
+
+        [Test]
+        public async Task PushAsync_EntryRecaptureDiscoversSwitch_RaisesChangedOnce()
+        {
+            _client.PartToReturn = SamplePart;
+            _propertyService.Seed(Mapping.NameProperty!, "New Name");
+            await InstallSessionViaFetch();
+
+            // The entry recapture discovers the undelivered switch and drops
+            // the session — the pane must refresh now, not when the delayed
+            // host notification arrives.
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+            var changed = 0;
+            _coordinator.Changed += (_, __) => changed++;
+
+            var result = await _coordinator.PushAsync(PushField.Name);
+
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Stale));
+            Assert.That(_coordinator.FetchedPart, Is.Null);
+            Assert.That(changed, Is.EqualTo(1));
+        }
+
+        [Test]
+        public async Task PushAsync_CommitRecaptureDiscoversSwitch_RaisesChangedOnce()
+        {
+            _client.PartToReturn = SamplePart;
+            _propertyService.Seed(Mapping.NameProperty!, "New Name");
+            await InstallSessionViaFetch();
+
+            _dispatcher.DeferRun = true;
+            var push = _coordinator.PushAsync(PushField.Name);
+            Assert.That(_dispatcher.QueuedCount, Is.EqualTo(1));
+
+            var changed = 0;
+            _coordinator.Changed += (_, __) => changed++;
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+            _dispatcher.RunAll();
+
+            var result = await push;
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Stale));
+            Assert.That(_coordinator.FetchedPart, Is.Null);
+            Assert.That(changed, Is.EqualTo(1));
+        }
+
+        [Test]
+        public async Task ResumeConfirmationAsync_CommitRecaptureDiscoversSwitch_RaisesChangedOnce()
+        {
+            _client.PartToReturn = SamplePart;
+            await InstallSessionViaFetch();
+            var confirm = _coordinator.Apply(ApplyField.Name);
+            Assert.That(confirm.Confirmation, Is.Not.Null);
+
+            // The resume commit's recapture discovers the undelivered switch,
+            // dropping both the session and the pending confirmation.
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+            var changed = 0;
+            _coordinator.Changed += (_, __) => changed++;
+
+            var resumed = await _coordinator.ResumeConfirmationAsync(confirm.Confirmation!, approved: true);
+
+            Assert.That(resumed.Outcome, Is.EqualTo(PartSyncOutcome.Stale));
+            Assert.That(changed, Is.EqualTo(1));
+        }
+
         // ── Push image / thumbnail ───────────────────────────────────────────
 
         [Test]
@@ -1310,6 +1445,59 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public async Task SessionMapping_ProviderConfigMutatedAfterInstall_SessionIsolated()
+        {
+            // A provider that mutates its own config instance post-install
+            // must not alter a live session — the lifecycle revision does not
+            // advance for an in-place mutation.
+            var provider = new StubPropertyMappingProvider();
+            var coordinator = new PartSyncCoordinator(_propertyService, _dispatcher, _client, provider);
+            _client.PartToReturn = SamplePart;
+            _propertyService.Seed(Mapping.IpnProperty!, "R-10K-0402");
+            _propertyService.Seed(Mapping.NameProperty!, "old");
+            coordinator.UpdateDocument();
+            await coordinator.FetchAsync("R-10K-0402");
+
+            provider.Config.NameProperty = "POISONED";
+
+            var result = coordinator.Apply(ApplyField.Name);
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Success));
+            Assert.That(_propertyService.DidWrite(Mapping.NameProperty!, "Resistor 10k"), Is.True);
+            Assert.That(_propertyService.DidWrite("POISONED"), Is.False);
+        }
+
+        [Test]
+        public async Task ThumbnailBytes_InstallFromFetch_CallerArrayMutationCannotReachSession()
+        {
+            var thumb = new byte[] { 1, 2, 3 };
+            _client.PartByPkToReturn = new InventreePart { Pk = 42, ThumbnailUrl = "/t.png" };
+            _client.ThumbnailBytesToReturn = thumb;
+            SeedPkDocument();
+            _coordinator.UpdateDocument();
+
+            await _coordinator.FetchAsync(string.Empty);
+            thumb[0] = 99;
+
+            Assert.That(_coordinator.ThumbnailBytes![0], Is.EqualTo(1));
+        }
+
+        [Test]
+        public async Task ThumbnailBytes_PushImage_CallerArrayMutationCannotReachSession()
+        {
+            _client.PartToReturn = SamplePart;
+            await InstallSessionViaFetch();
+            _client.PartByPkToReturn = new InventreePart { Pk = 42, ThumbnailUrl = "/t.png" };
+            var thumb = new byte[] { 4, 5, 6 };
+            _client.ThumbnailBytesToReturn = thumb;
+            using var image = new Bitmap(10, 10);
+
+            await _coordinator.PushImageAsync(image, Rectangle.Empty);
+            thumb[0] = 99;
+
+            Assert.That(_coordinator.ThumbnailBytes![0], Is.EqualTo(4));
+        }
+
+        [Test]
         public void CurrentMapping_MutatingReturnedConfig_DoesNotCorruptCoordinator()
         {
             SeedIpnDocument();
@@ -1486,6 +1674,55 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public async Task ResumeConfirmationAsync_Decline_AllStateAccessIsMarshalled()
+        {
+            _client.PartToReturn = SamplePart;
+            await InstallSessionViaFetch();
+            var confirm = _coordinator.Apply(ApplyField.Name);
+            Assert.That(confirm.Confirmation, Is.Not.Null);
+
+            _dispatcher.DeferRun = true;
+            var resumed = _coordinator.ResumeConfirmationAsync(confirm.Confirmation!, approved: false);
+
+            // Even the cheap decline path crosses the dispatcher — nothing
+            // reads or clears the pending slot on the caller's thread.
+            WaitForQueuedCommits();
+            _dispatcher.RunAll();
+
+            var result = await resumed;
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Cancelled));
+            Assert.That(_propertyService.DidWrite(Mapping.NameProperty!), Is.False);
+        }
+
+        [Test]
+        public async Task ResumeConfirmationAsync_ForeignHandle_AllStateAccessIsMarshalled()
+        {
+            _dispatcher.DeferRun = true;
+            var resumed = _coordinator.ResumeConfirmationAsync(
+                new PartSyncConfirmationHandle(9999), approved: true);
+
+            WaitForQueuedCommits();
+            _dispatcher.RunAll();
+
+            var result = await resumed;
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.InvalidOperation));
+        }
+
+        [Test]
+        public async Task ResumeConfirmationAsync_PoolContinuationCaller_SameResultAsStaCaller()
+        {
+            _client.PartToReturn = SamplePart;
+            await InstallSessionViaFetch();
+            var confirm = _coordinator.Apply(ApplyField.Name);
+
+            var result = await Task.Run(() =>
+                _coordinator.ResumeConfirmationAsync(confirm.Confirmation!, approved: true));
+
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Success));
+            Assert.That(_propertyService.DidWrite(Mapping.NameProperty!, "Resistor 10k"), Is.True);
+        }
+
+        [Test]
         public async Task FetchAsync_DuplicateIpn_Candidates_AreNotCastableToMutableList()
         {
             _client.PartsByIpnToReturn = new System.Collections.Generic.List<InventreePart>
@@ -1525,6 +1762,254 @@ namespace SwInventreeAddin.Tests
             SeedIpnDocument();
             _coordinator.UpdateDocument();
             Assert.That(_coordinator.Generation, Is.EqualTo(generation + 1));
+        }
+
+        // ── Stale-matrix coverage ────────────────────────────────────────────
+
+        public enum LifecycleInvalidation { ClientReplaced, MappingReplaced, Disposed }
+
+        private void Invalidate(LifecycleInvalidation kind)
+        {
+            switch (kind)
+            {
+                case LifecycleInvalidation.ClientReplaced:
+                    _coordinator.UpdateClient(new StubInventreeClient());
+                    break;
+                case LifecycleInvalidation.MappingReplaced:
+                    _coordinator.UpdateMapping(new StubPropertyMappingProvider());
+                    break;
+                case LifecycleInvalidation.Disposed:
+                    _coordinator.Dispose();
+                    break;
+            }
+        }
+
+        [Test]
+        public async Task PushAsync_ParkedCommit_LifecycleInvalidation_IsStale(
+            [Values] LifecycleInvalidation kind)
+        {
+            _client.PartToReturn = SamplePart;
+            _propertyService.Seed(Mapping.NameProperty!, "New Name");
+            await InstallSessionViaFetch();
+
+            _dispatcher.DeferRun = true;
+            var push = _coordinator.PushAsync(PushField.Name);
+            Assert.That(_dispatcher.QueuedCount, Is.EqualTo(1));
+
+            Invalidate(kind);
+            _dispatcher.RunAll();
+
+            var result = await push;
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Stale));
+            Assert.That(_coordinator.FetchedPart?.Name ?? "Resistor 10k",
+                Is.EqualTo("Resistor 10k"), "the pushed value is never committed");
+        }
+
+        [Test]
+        public async Task PushImageAsync_ParkedCommit_LifecycleInvalidation_IsStale(
+            [Values] LifecycleInvalidation kind)
+        {
+            _client.PartToReturn = SamplePart;
+            await InstallSessionViaFetch();
+            _client.PartByPkToReturn = new InventreePart { Pk = 42, ThumbnailUrl = "/t.png" };
+            _client.ThumbnailBytesToReturn = new byte[] { 1, 2, 3 };
+
+            _dispatcher.DeferRun = true;
+            using var image = new Bitmap(10, 10);
+            var push = _coordinator.PushImageAsync(image, Rectangle.Empty);
+            Assert.That(_dispatcher.QueuedCount, Is.EqualTo(1));
+
+            Invalidate(kind);
+            _dispatcher.RunAll();
+
+            var result = await push;
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Stale));
+            Assert.That(_coordinator.ThumbnailBytes, Is.Null,
+                "the downloaded thumbnail is never installed");
+        }
+
+        [Test]
+        public void CompleteCreatePart_LifecycleInvalidation_RejectsWithoutWrites(
+            [Values] LifecycleInvalidation kind)
+        {
+            SeedIpnDocument(string.Empty);
+            _coordinator.UpdateDocument();
+            var token = _coordinator.BeginCreatePart();
+
+            Invalidate(kind);
+
+            var result = _coordinator.CompleteCreatePart(
+                token, new InventreePart { Pk = 99, Ipn = "NEW-001", Name = "New Part" });
+
+            var expected = kind == LifecycleInvalidation.Disposed
+                ? PartSyncOutcome.InvalidOperation
+                : PartSyncOutcome.Stale;
+            Assert.That(result.Outcome, Is.EqualTo(expected));
+            Assert.That(_propertyService.WriteLog, Is.Empty);
+            Assert.That(_coordinator.FetchedPart, Is.Null);
+        }
+
+        [Test]
+        public async Task ResumeConfirmationAsync_ParkedCommit_LifecycleInvalidation_IsStale(
+            [Values] LifecycleInvalidation kind)
+        {
+            _client.PartToReturn = SamplePart;
+            await InstallSessionViaFetch();
+            var confirm = _coordinator.Apply(ApplyField.Name);
+            Assert.That(confirm.Confirmation, Is.Not.Null);
+
+            _dispatcher.DeferRun = true;
+            var resumed = _coordinator.ResumeConfirmationAsync(confirm.Confirmation!, approved: true);
+
+            // Gate hop parks; the resume commit parks behind it.
+            WaitForQueuedCommits();
+            _dispatcher.RunAll();
+            WaitForQueuedCommits();
+
+            Invalidate(kind);
+            _dispatcher.RunAll();
+
+            var result = await resumed;
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Stale));
+            Assert.That(_propertyService.DidWrite(Mapping.NameProperty!), Is.False);
+        }
+
+        [Test]
+        public async Task ResumeConfirmationAsync_LinkMismatch_UndeliveredSwitch_IsStaleNoSession()
+        {
+            _client.PartByPkToReturn = new InventreePart
+            { Pk = 42, Ipn = "RENAMED-001", Revision = "A" };
+            SeedPkDocument();
+            _propertyService.Seed(Mapping.IpnProperty!, "DOC-001");
+            _coordinator.UpdateDocument();
+            var confirm = await _coordinator.FetchAsync(string.Empty);
+            Assert.That(confirm.Outcome, Is.EqualTo(PartSyncOutcome.LinkMismatchConfirmation));
+
+            // Undelivered switch — the resume's recapture must catch it
+            // before the link is rewritten and the session installed.
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+
+            var resumed = await _coordinator.ResumeConfirmationAsync(confirm.Confirmation!, approved: true);
+
+            Assert.That(resumed.Outcome, Is.EqualTo(PartSyncOutcome.Stale));
+            Assert.That(_coordinator.FetchedPart, Is.Null);
+        }
+
+        [Test]
+        public async Task PushImageAsync_Success_ParkedCommit_DocumentSwitch_IsStaleNoThumbnail()
+        {
+            _client.PartToReturn = SamplePart;
+            await InstallSessionViaFetch();
+            _client.PartByPkToReturn = new InventreePart { Pk = 42, ThumbnailUrl = "/t.png" };
+            _client.ThumbnailBytesToReturn = new byte[] { 4, 5, 6 };
+
+            _dispatcher.DeferRun = true;
+            using var image = new Bitmap(10, 10);
+            var push = _coordinator.PushImageAsync(image, Rectangle.Empty);
+            Assert.That(_dispatcher.QueuedCount, Is.EqualTo(1));
+
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+            _coordinator.UpdateDocument();
+            _dispatcher.RunAll();
+
+            var result = await push;
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Stale));
+            Assert.That(_coordinator.ThumbnailBytes, Is.Null,
+                "commit validation precedes the thumbnail install — the download is dropped");
+        }
+
+        [Test]
+        public async Task PushImageAsync_Warning_ParkedCommit_DocumentSwitch_IsStaleNoWarning()
+        {
+            _client.PartToReturn = SamplePart;
+            await InstallSessionViaFetch();
+            _client.ThrowOnDownload = new Exception("download failed");
+
+            _dispatcher.DeferRun = true;
+            using var image = new Bitmap(10, 10);
+            var push = _coordinator.PushImageAsync(image, Rectangle.Empty);
+            Assert.That(_dispatcher.QueuedCount, Is.EqualTo(1));
+
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+            _coordinator.UpdateDocument();
+            _dispatcher.RunAll();
+
+            var result = await push;
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Stale),
+                "a stale warning must never surface on the new document's pane");
+        }
+
+        [Test]
+        public async Task ResumeConfirmationAsync_DuplicateIpn_SwitchInsideDownloadWindow_IsStale()
+        {
+            _client.PartsByIpnToReturn = new System.Collections.Generic.List<InventreePart>
+            {
+                new InventreePart { Pk = 11, Ipn = "PART-001", Revision = "B", ThumbnailUrl = "/t-11.png" },
+                new InventreePart { Pk = 12, Ipn = "PART-001", Revision = "A", ThumbnailUrl = "/t-12.png" },
+            };
+            SeedIpnDocument("PART-001", "B");
+            _coordinator.UpdateDocument();
+            var confirm = await _coordinator.FetchAsync("PART-001");
+            Assert.That(confirm.Outcome, Is.EqualTo(PartSyncOutcome.DuplicateIpnConfirmation));
+
+            _client.DeferDownloadImage = true;
+            var resumed = _coordinator.ResumeConfirmationAsync(confirm.Confirmation!, approved: true);
+
+            // The pre-download validation already passed; a switch landing
+            // inside the download window is caught by the post-download commit.
+            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+            while (_client.PendingDownloadImageCalls.Count == 0)
+            {
+                if (DateTime.UtcNow > deadline)
+                    Assert.Fail("Timed out waiting for the candidate thumbnail download.");
+                System.Threading.Thread.Sleep(5);
+            }
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+            _client.PendingDownloadImageCalls[0].Complete(new byte[] { 1, 2, 3 });
+
+            var result = await resumed;
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Stale));
+            Assert.That(_coordinator.FetchedPart, Is.Null);
+        }
+
+        [Test]
+        public async Task FetchAsync_DuplicateIpn_Candidates_IListMutationIsRejected()
+        {
+            _client.PartsByIpnToReturn = new System.Collections.Generic.List<InventreePart>
+            {
+                new InventreePart { Pk = 11, Ipn = "PART-001", Revision = "B" },
+                new InventreePart { Pk = 12, Ipn = "PART-001", Revision = "A" },
+            };
+            SeedIpnDocument("PART-001", "B");
+            _coordinator.UpdateDocument();
+
+            var result = await _coordinator.FetchAsync("PART-001");
+            var mutable = result.Candidates as System.Collections.Generic.IList<PartSnapshot>;
+
+            Assert.That(mutable, Is.Not.Null);
+            Assert.Throws<NotSupportedException>(() => mutable!.Add(result.MatchedCandidate!));
+            Assert.Throws<NotSupportedException>(() => mutable!.RemoveAt(0));
+            Assert.That(result.Candidates!.Count, Is.EqualTo(2));
+            Assert.That(result.Candidates![0].Pk, Is.EqualTo(11));
+        }
+
+        [Test]
+        public async Task FetchAsync_StampedPk_NullIpnProperty_NoWriteBackFetchSucceeds()
+        {
+            var provider = new StubPropertyMappingProvider();
+            provider.Config.IpnProperty = null;
+            var coordinator = new PartSyncCoordinator(_propertyService, _dispatcher, _client, provider);
+            _client.PartByPkToReturn = SamplePart;
+            SeedPkDocument();
+            coordinator.UpdateDocument();
+
+            var result = await coordinator.FetchAsync(string.Empty);
+
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Success));
+            Assert.That(result.Ipn, Is.Null);
+            Assert.That(_propertyService.WriteLog, Is.Empty,
+                "no IPN write-back is attempted when the mapping has no IPN property");
+            Assert.That(coordinator.FetchedPart!.Pk, Is.EqualTo(42));
         }
     }
 }

@@ -70,11 +70,26 @@ namespace SwInventreeAddin.Bom
         public string ItRevision { get; }
 
         /// <summary>
-        /// The coordinator fetch result that requires confirmation; non-null
-        /// only when <see cref="Outcome"/> is
-        /// <see cref="BomCompareOutcome.FetchConfirmationRequired"/>.
+        /// The coordinator fetch result produced by the auto-populate fetch;
+        /// non-null when <see cref="Outcome"/> is
+        /// <see cref="BomCompareOutcome.FetchConfirmationRequired"/>,
+        /// <see cref="BomCompareOutcome.PkNotFound"/> (ensure returned
+        /// <see cref="PartSyncOutcome.PartNotFound"/>), or
+        /// <see cref="BomCompareOutcome.FetchFailed"/>.
         /// </summary>
         public PartSyncResult? FetchResult { get; }
+
+        /// <summary>
+        /// The identifier a not-found dialog names — the document IPN when one
+        /// is stamped, otherwise the InvenTree Part PK the fetch looked up.
+        /// Falls back to a generic label when neither is available.
+        /// </summary>
+        public string NotFoundIdentifier =>
+            !string.IsNullOrEmpty(PartNumber)
+                ? $"'{PartNumber}'"
+                : FetchResult?.PartPk > 0
+                    ? $"InvenTree Part PK {FetchResult!.PartPk}"
+                    : "The part";
 
         public BomCompareReadiness(
             BomCompareOutcome outcome,

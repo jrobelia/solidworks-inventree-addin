@@ -9,6 +9,7 @@ namespace SwInventreeAddin.Tests.Stubs
         private readonly Dictionary<string, string> _properties = new Dictionary<string, string>();
         private readonly List<(string Name, string Value)> _writeLog =
             new List<(string Name, string Value)>();
+        private readonly List<string> _readLog = new List<string>();
 
         /// <summary>Every SetCustomProperty call, in order — name and value written.</summary>
         public IReadOnlyList<(string Name, string Value)> WriteLog => _writeLog;
@@ -22,6 +23,12 @@ namespace SwInventreeAddin.Tests.Stubs
         /// </summary>
         public bool DidWrite(string name, string? value = null) =>
             _writeLog.Any(w => w.Name == name && (value == null || w.Value == value));
+
+        /// <summary>Every GetCustomProperty call's name, in order.</summary>
+        public IReadOnlyList<string> ReadLog => _readLog;
+
+        /// <summary>Reads of <paramref name="name"/> so far — distinguishes a recapture's snapshot read from an operation's own property read.</summary>
+        public int ReadsOf(string name) => _readLog.Count(n => n == name);
 
         /// <summary>Set this to control what GetDocumentType() returns in tests. Defaults to Part.</summary>
         public DocumentType DocumentTypeToReturn { get; set; } = DocumentType.Part;
@@ -46,8 +53,11 @@ namespace SwInventreeAddin.Tests.Stubs
 
         public void Seed(string name, string value) => _properties[name] = value;
 
-        public string GetCustomProperty(string name) =>
-            ReturnStaleReads ? StaleValue : _properties.TryGetValue(name, out var val) ? val : string.Empty;
+        public string GetCustomProperty(string name)
+        {
+            _readLog.Add(name);
+            return ReturnStaleReads ? StaleValue : _properties.TryGetValue(name, out var val) ? val : string.Empty;
+        }
 
         public void SetCustomProperty(string name, string value)
         {
