@@ -141,9 +141,8 @@ namespace SwInventreeAddin
         /// The light counterpart of <see cref="UpdateDocument"/>: STA
         /// capture → install with the same Activated semantics (drops the
         /// session, clears pending writes) but <em>no</em> same-document
-        /// session revalidation — today's <c>RefreshCurrentProperties</c>
-        /// path. Internal: consumed by <see cref="Bom.CoordinatorBomReadinessContext"/>
-        /// and the ViewModel's light refresh paths; deliberately off
+        /// session revalidation. Internal: consumed only by
+        /// <see cref="Bom.CoordinatorBomReadinessContext"/>; deliberately off
         /// <see cref="IPartSyncCoordinator"/>, whose document-lifecycle
         /// surface is the approved full evaluation only.
         /// </summary>

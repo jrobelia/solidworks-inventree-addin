@@ -9,8 +9,9 @@ namespace SwInventreeAddin.UI
 {
     /// <summary>
     /// Code-behind for TaskPaneView.xaml.
-    /// All business logic lives in TaskPaneViewModel — this file is purely
-    /// wiring: route button clicks and keep the status-stripe colour in sync.
+    /// Part Sync workflow lives in the coordinator and presentation logic in
+    /// the ViewModel — this file is purely wiring: route button clicks and
+    /// keep the status-stripe colour in sync.
     /// </summary>
     public partial class TaskPaneView : UserControl
     {

@@ -13,16 +13,20 @@ namespace SwInventreeAddin.UI
     /// <summary>
     /// Thin WinForms wrapper that gives SolidWorks a native HWND while hosting
     /// the real UI in a WPF UserControl via <see cref="ElementHost"/>.
-    /// All business logic lives in <see cref="TaskPaneViewModel"/>; Part Sync
-    /// session lifecycle and workflow live in <see cref="PartSyncCoordinator"/>.
+    /// Composition root and host adapter: builds the
+    /// <see cref="PartSyncCoordinator"/> and <see cref="TaskPaneViewModel"/>,
+    /// routes SolidWorks host callbacks into the coordinator's lifecycle
+    /// methods, and hands the results to the ViewModel's projection entries.
     /// </summary>
     public class TaskPaneControl : UserControl
     {
         private readonly TaskPaneViewModel _vm;
         private readonly PartSyncCoordinator _coordinator;
+        private readonly IHostStaDispatcher _dispatcher;
         private IInventreeClient? _client;
         private readonly ICreatePartValidationErrorService _createPartValidator;
         private IPropertyMappingProvider? _mappingProvider;
+        private MappingChangedSubscription? _mappingChangedSubscription;
 
         public event EventHandler? SettingsRequested;
 
@@ -43,11 +47,24 @@ namespace SwInventreeAddin.UI
             // The dispatcher captures the host STA SynchronizationContext at
             // construction — the coordinator marshals every async commit and
             // document mutation through it.
-            var dispatcher = new SynchronizationContextStaDispatcher();
-            _coordinator = new PartSyncCoordinator(propertyService, dispatcher, client, mappingProvider);
-            _vm = new TaskPaneViewModel(_coordinator, dispatcher, client, mappingProvider, configProvider, _createPartValidator);
+            _dispatcher = new SynchronizationContextStaDispatcher();
+            _coordinator = new PartSyncCoordinator(propertyService, _dispatcher, client, mappingProvider);
+            _vm = new TaskPaneViewModel(
+                _coordinator,
+                new CoordinatorBomReadinessContext(_coordinator, _dispatcher),
+                _dispatcher,
+                client,
+                mappingProvider,
+                configProvider,
+                _createPartValidator);
             _vm.SettingsRequested += (s, e) => SettingsRequested?.Invoke(this, e);
             _vm.CompareBomRequested += OnCompareBomRequested;
+
+            // Host-driven initial evaluation: capture the active document on
+            // the coordinator, then project the pane.
+            _coordinator.UpdateDocument();
+            _vm.ProjectDocumentUpdate();
+            AttachMappingProvider();
 
             // Host seam: viewport capture + crop dialog stay UI concerns; the
             // coordinator only receives the processed image and rectangle.
@@ -400,23 +417,47 @@ namespace SwInventreeAddin.UI
             }
         }
 
-        // -- Delegation to ViewModel -------------------------------------------
+        // -- Host callback routing ---------------------------------------------
+        // Each entry drives the coordinator lifecycle member first, then hands
+        // the result to the ViewModel's projection entries — the ViewModel
+        // never calls document-lifecycle members itself.
 
         /// <summary>
         /// The active SolidWorks document changed (opened, activated, loaded) —
-        /// the ViewModel re-evaluates the pane against the new document.
+        /// the coordinator re-captures and revalidates, then the pane projects.
         /// </summary>
-        public void NotifyActiveDocumentChanged() => _vm.LoadPartNumber();
+        public void NotifyActiveDocumentChanged()
+        {
+            _coordinator.UpdateDocument();
+            _vm.ProjectDocumentUpdate();
+        }
 
-        /// <summary>The last document was closed — the ViewModel clears the pane.</summary>
-        public void NotifyLastDocumentClosed() => _vm.ClearAll();
+        /// <summary>The last document was closed — the pane clears.</summary>
+        public void NotifyLastDocumentClosed()
+        {
+            _coordinator.NotifyDocumentClosed();
+            _vm.ProjectDocumentClosed();
+        }
 
-        public void RefreshProperties() => _vm.RefreshCurrentProperties();
-        public void OnDocumentPropertyChanged(string name, string value) => _vm.OnDocumentPropertyChanged(name, value);
+        /// <summary>
+        /// A mapped SolidWorks Document Property changed: the coordinator
+        /// consumes write echoes, re-captures, and classifies; a re-evaluation
+        /// classification runs the full document update, then the pane maps
+        /// the classification.
+        /// </summary>
+        public void OnDocumentPropertyChanged(string name, string value)
+        {
+            var change = _coordinator.NotifyDocumentPropertyChanged(name, value);
+            if (change == PartSyncPropertyChange.Reevaluated)
+                _coordinator.UpdateDocument();
+            _vm.ProjectPropertyChange(change);
+        }
 
         public void UpdateClient(IInventreeClient? client)
         {
             _client = client;
+            _coordinator.UpdateClient(client);
+            _coordinator.UpdateDocument();
             _vm.UpdateClient(client);
             _vm.UpdateCreatePartValidationService(_createPartValidator);
         }
@@ -424,8 +465,25 @@ namespace SwInventreeAddin.UI
         public void UpdateMapping(IPropertyMappingProvider provider)
         {
             _mappingProvider = provider;
+            _coordinator.UpdateMapping(provider);
             _vm.UpdateMapping(provider);
+            AttachMappingProvider();
         }
+
+        /// <summary>
+        /// The mapping file changed under the same provider: rebind the
+        /// coordinator, then re-project — marshalled onto the host STA thread.
+        /// </summary>
+        private void OnMappingFileChanged() =>
+            _dispatcher.Run(() =>
+            {
+                _coordinator.UpdateMapping(_mappingProvider);
+                _vm.UpdateMapping(_mappingProvider);
+            });
+
+        private void AttachMappingProvider() =>
+            MappingChangedSubscription.SubscribeTo(
+                ref _mappingChangedSubscription, _mappingProvider, OnMappingFileChanged);
 
         public void UpdateWaitForServerAssignedIpn(bool value)
         {
@@ -436,13 +494,19 @@ namespace SwInventreeAddin.UI
             => _vm.UpdateBomState(bomService);
 
         /// <summary>
-        /// Teardown: disposes the coordinator first so any in-flight Part Sync
-        /// operation is invalidated before the hosted view goes away.
+        /// Teardown: detach the ViewModel's coordinator subscription and the
+        /// mapping-provider subscription first so nothing retains the pane,
+        /// then dispose the coordinator so any in-flight Part Sync operation
+        /// is invalidated before the hosted view goes away.
         /// </summary>
         protected override void Dispose(bool disposing)
         {
             if (disposing)
+            {
+                MappingChangedSubscription.UnsubscribeFrom(ref _mappingChangedSubscription);
+                _vm.Dispose();
                 _coordinator.Dispose();
+            }
             base.Dispose(disposing);
         }
     }

@@ -30,8 +30,8 @@ document warrants.
   represents an actual active-document change, not a SolidWorks callback
   count — duplicate `DocumentLoadNotify2` / `ActiveDocChangeNotify` callbacks
   for the same document are refreshes and do not advance it. A same-document
-  property refresh (`OnDocumentPropertyChanged`, or a reload that re-reads
-  identical identity stamps) does not advance it either.
+  property refresh (a Document Property change notification, or a reload that
+  re-reads identical identity stamps) does not advance it either.
 - **Operation token.** `PartSyncCoordinator` captures an opaque
   `PartSyncOperationToken` — document generation + coordinator lifecycle
   revision + session-family order — at STA capture time. The lifecycle
@@ -99,4 +99,4 @@ case where a commit is parked on the STA queue while the document changes.
 The five
 completed-session cases pinned in
 `TaskPaneLifecycleCharacterizationTests` describe what
-`LoadPartNumber` / `OnDocumentPropertyChanged` do once a session exists.
+`UpdateDocument` / `NotifyDocumentPropertyChanged` do once a session exists.
