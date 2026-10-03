@@ -218,8 +218,7 @@ namespace SwInventreeAddin.UI
                     case BomCompareActionKind.Unrecognized:
                         // Fail fast through the existing error dialog — never
                         // proceed and never re-loop on an unknown outcome.
-                        ShowBomCompareError(
-                            action.Message ?? $"Unrecognized BOM Compare outcome: {readiness.Outcome}");
+                        ShowBomCompareError(action.Message!);
                         return false;
 
                     case BomCompareActionKind.ShowBomTableMissing:
