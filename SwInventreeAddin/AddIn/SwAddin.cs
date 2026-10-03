@@ -268,6 +268,7 @@ namespace SwInventreeAddin.AddIn
                     _assemblyDocEvents.ChangeCustomPropertyNotify += OnDocCustomPropertyChange;
                     _assemblyDocEvents.DeleteCustomPropertyNotify += OnDocCustomPropertyDelete;
                     _assemblyDocEvents.FileSaveAsNotify2 += OnDocFileSaveAs;
+                    _assemblyDocEvents.FileSavePostNotify += OnAssemblyDocSavePost;
                     _assemblyDocEvents.RenamedDocumentNotify += OnDocRenamed;
                 }
             }
@@ -296,6 +297,7 @@ namespace SwInventreeAddin.AddIn
                 _assemblyDocEvents.ChangeCustomPropertyNotify -= OnDocCustomPropertyChange;
                 _assemblyDocEvents.DeleteCustomPropertyNotify -= OnDocCustomPropertyDelete;
                 _assemblyDocEvents.FileSaveAsNotify2 -= OnDocFileSaveAs;
+                _assemblyDocEvents.FileSavePostNotify -= OnAssemblyDocSavePost;
                 _assemblyDocEvents.RenamedDocumentNotify -= OnDocRenamed;
                 _assemblyDocEvents = null;
             }
@@ -314,6 +316,15 @@ namespace SwInventreeAddin.AddIn
         // changed, so the recapture inside UpdateDocument sees the new Document
         // Token. FileSaveAsNotify (the pre-notification) would still see the old one.
         private int OnDocFileSaveAs(string fileName)
+        { _taskPaneControl?.NotifyActiveDocumentChanged(); return 0; }
+
+        // On assemblies FileSaveAsNotify2 is not a reliable post-save signal on
+        // some SolidWorks versions (observed on 2023 SP05): it fires before the
+        // path changes — or not at all — so the recapture still sees the old
+        // Document Token. FileSavePostNotify fires after every completed save:
+        // a rename recaptures the new token and drops the session, while a
+        // plain save recaptures an unchanged token, a no-op refresh.
+        private int OnAssemblyDocSavePost(int saveType, string fileName)
         { _taskPaneControl?.NotifyActiveDocumentChanged(); return 0; }
 
         private int OnDocRenamed(ref object renamedDocumentInterface)
