@@ -269,5 +269,22 @@ namespace SwInventreeAddin.Tests
             Assert.That(action.Message, Is.EqualTo(
                 $"Failed to update revision in InvenTree:{Environment.NewLine}{expectedDetail}"));
         }
+
+        // -- RevisionPushFailed factory -----------------------------------------
+
+        [Test]
+        public void RevisionPushFailed_BuildsPushFailedShowMessage()
+        {
+            // The shared push-failure dialog spec: AfterRevisionPush's default
+            // arm and the executor's push-threw catch both build it — one
+            // factory, one wording.
+            var action = BomCompareAction.RevisionPushFailed("connection refused");
+
+            Assert.That(action.Kind, Is.EqualTo(BomCompareActionKind.ShowMessage));
+            Assert.That(action.Title, Is.EqualTo("BOM Compare — Revision Update Failed"));
+            Assert.That(action.Icon, Is.EqualTo(BomCompareDialogIcon.Error));
+            Assert.That(action.Message, Is.EqualTo(
+                $"Failed to update revision in InvenTree:{Environment.NewLine}connection refused"));
+        }
     }
 }

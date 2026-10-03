@@ -85,6 +85,18 @@ namespace SwInventreeAddin.Bom
             string message, string title, BomCompareDialogIcon icon) =>
             new BomCompareAction(BomCompareActionKind.ShowMessage, message, title, icon);
 
+        /// <summary>
+        /// The shared revision-push-failure dialog spec — used both when a push
+        /// returns a non-success <see cref="PartSyncResult"/> and when the push
+        /// itself throws, so the wording lives in exactly one place.
+        /// </summary>
+        public static BomCompareAction RevisionPushFailed(string detail) =>
+            new BomCompareAction(
+                BomCompareActionKind.ShowMessage,
+                $"Failed to update revision in InvenTree:{Environment.NewLine}{detail}",
+                "BOM Compare — Revision Update Failed",
+                BomCompareDialogIcon.Error);
+
         public static BomCompareAction ShowBomTableMissing() =>
             new BomCompareAction(BomCompareActionKind.ShowBomTableMissing, null, null, BomCompareDialogIcon.Information);
 
@@ -201,11 +213,8 @@ namespace SwInventreeAddin.Bom
                 case PartSyncOutcome.Cancelled:
                     return BomCompareAction.StopSilently();
                 default:
-                    return BomCompareAction.ShowMessage(
-                        $"Failed to update revision in InvenTree:{Environment.NewLine}"
-                        + (pushResult.Diagnostic ?? pushResult.Outcome.ToString()),
-                        "BOM Compare — Revision Update Failed",
-                        BomCompareDialogIcon.Error);
+                    return BomCompareAction.RevisionPushFailed(
+                        pushResult.Diagnostic ?? pushResult.Outcome.ToString());
             }
         }
 

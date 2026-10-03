@@ -200,11 +200,7 @@ namespace SwInventreeAddin.UI
                 var action = BomCompareDispatch.Next(readiness, revisionPushAttempted, mapping);
 
                 if (action.Kind == BomCompareActionKind.OfferRevisionPush)
-                {
-                    var triaged = await PromptAndPushRevisionAsync(preFlightCheck, action).ConfigureAwait(true);
-                    if (triaged == null) return false; // push threw — the error dialog already showed
-                    action = triaged;
-                }
+                    action = await PromptAndPushRevisionAsync(preFlightCheck, action).ConfigureAwait(true);
 
                 switch (action.Kind)
                 {
@@ -282,10 +278,10 @@ namespace SwInventreeAddin.UI
         /// Executes an <see cref="BomCompareActionKind.OfferRevisionPush"/> action:
         /// shows the payload prompt, pushes the revision on OK, and triages the
         /// result through <see cref="BomCompareDispatch.AfterRevisionPush"/>.
-        /// Null means the push threw and the error dialog already showed — the
-        /// caller stops.
+        /// A thrown push becomes the shared push-failed dialog action — the
+        /// caller's ShowMessage arm shows it and stops.
         /// </summary>
-        private static async Task<BomCompareAction?> PromptAndPushRevisionAsync(
+        private static async Task<BomCompareAction> PromptAndPushRevisionAsync(
             BomCompareReadinessCheck preFlightCheck, BomCompareAction offer)
         {
             var answer = MessageDialog.ShowOKCancel(
@@ -303,12 +299,7 @@ namespace SwInventreeAddin.UI
                 }
                 catch (Exception ex)
                 {
-                    MessageDialog.ShowOK(
-                        SolidWorksWindowHandle.Get(),
-                        $"Failed to update revision in InvenTree:{System.Environment.NewLine}{ex.Message}",
-                        "BOM Compare \u2014 Revision Update Failed",
-                        System.Windows.Forms.MessageBoxIcon.Error);
-                    return null;
+                    return BomCompareAction.RevisionPushFailed(ex.Message);
                 }
             }
 
