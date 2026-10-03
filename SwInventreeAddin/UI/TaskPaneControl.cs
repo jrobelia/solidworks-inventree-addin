@@ -159,84 +159,10 @@ namespace SwInventreeAddin.UI
             if (!mappingResult.CanUseForPartSync)
                 return;
 
-            var readiness = await RunReadinessCheckAsync(preFlightCheck).ConfigureAwait(true);
-            if (readiness == null) return;
-
-            var pushedRevision = false;
-            while (true)
-            {
-                if (readiness.Outcome == BomCompareOutcome.Ready)
-                    break;
-
-                if (readiness.Outcome == BomCompareOutcome.BomColumnAliasesMissing)
-                {
-                    ShowBomColumnAliasesMissingDialog(mappingResult.Config);
-                    break;
-                }
-
-                if (readiness.Outcome == BomCompareOutcome.SwIsNewer)
-                {
-                    if (pushedRevision)
-                    {
-                        ShowBomCompareError("The SolidWorks revision is still newer after the update. Close this file and pull the latest revision from InvenTree.");
-                        return;
-                    }
-
-                    if (!await AskAndPushRevisionAsync(preFlightCheck, readiness).ConfigureAwait(true))
-                        return;
-
-                    pushedRevision = true;
-                    readiness = await RunReadinessCheckAsync(preFlightCheck).ConfigureAwait(true);
-                    if (readiness == null) return;
-                    continue;
-                }
-
-                // All remaining outcomes are terminal.
-                switch (readiness.Outcome)
-                {
-                    case BomCompareOutcome.SessionNotPopulated:
-                        // The session dropped between button enablement and the
-                        // check — stop silently, like a Stale/Cancelled resume.
-                        return;
-
-                    case BomCompareOutcome.PkNotStamped:
-                        MessageDialog.ShowOK(
-                            SolidWorksWindowHandle.Get(),
-                            "No InvenTree Part PK is stored in this assembly\u2019s Document Properties.\n\n"
-                            + "Apply the InvenTree PK to the document first, then try again.",
-                            "BOM Compare \u2014 PK Missing",
-                            System.Windows.Forms.MessageBoxIcon.Warning);
-                        return;
-
-                    case BomCompareOutcome.ItIsNewer:
-                        MessageDialog.ShowOK(
-                            SolidWorksWindowHandle.Get(),
-                            $"InvenTree is at revision \u201c{readiness.ItRevision}\u201d but this file is revision \u201c{readiness.SwRevision}\u201d.\n\n"
-                            + "You have an older file open. Close it \u2014 do not push its BOM to InvenTree.",
-                            "BOM Compare \u2014 Old Revision",
-                            System.Windows.Forms.MessageBoxIcon.Stop);
-                        return;
-
-                    case BomCompareOutcome.Ambiguous:
-                        {
-                            var swLabel = string.IsNullOrEmpty(readiness.SwRevision) ? "(blank)" : readiness.SwRevision;
-                            var itLabel = string.IsNullOrEmpty(readiness.ItRevision) ? "(blank)" : readiness.ItRevision;
-                            MessageDialog.ShowOK(
-                                SolidWorksWindowHandle.Get(),
-                                $"Revision mismatch (SolidWorks: {swLabel} / InvenTree: {itLabel}).\n\n"
-                                + "The order cannot be determined automatically. Resolve the revision manually before comparing the BOM.",
-                                "BOM Compare \u2014 Revision Ambiguous",
-                                System.Windows.Forms.MessageBoxIcon.Warning);
-                            return;
-                        }
-
-                    case BomCompareOutcome.BomTableMissing:
-                        {
-                            new BomTableMissingDialog(_vm.BomKeyword, SolidWorksWindowHandle.Get()).ShowDialog();
-                            return;
-                        }
-                }
-            }
+            // The dispatch owns the outcome→action mapping; this handler only
+            // executes the mechanical steps it returns.
+            if (!await DispatchBomCompareReadinessAsync(preFlightCheck, mappingResult.Config).ConfigureAwait(true))
+                return;
 
             int pk = _vm.CurrentInvenTreePk;
             var bomVm = _vm.CreateBomCompareViewModel(mappingResult.Config, pk);
@@ -255,6 +181,67 @@ namespace SwInventreeAddin.UI
             }
         }
 
+        /// <summary>
+        /// Runs the readiness dispatch loop: <see cref="BomCompareDispatch.Next"/>
+        /// decides each step and this method executes it — dialogs, the revision
+        /// push, and the re-check. True means proceed to compare-window
+        /// construction; false means the flow already ended in a dialog or a
+        /// silent stop.
+        /// </summary>
+        private async Task<bool> DispatchBomCompareReadinessAsync(
+            BomCompareReadinessCheck preFlightCheck, PropertyMappingConfig mapping)
+        {
+            var readiness = await RunReadinessCheckAsync(preFlightCheck).ConfigureAwait(true);
+            if (readiness == null) return false;
+
+            var revisionPushAttempted = false;
+            while (true)
+            {
+                var action = BomCompareDispatch.Next(readiness, revisionPushAttempted, mapping);
+
+                if (action.Kind == BomCompareActionKind.OfferRevisionPush)
+                    action = await PromptAndPushRevisionAsync(preFlightCheck, action).ConfigureAwait(true);
+
+                switch (action.Kind)
+                {
+                    case BomCompareActionKind.Proceed:
+                        return true;
+
+                    case BomCompareActionKind.WarnAndProceed:
+                        ShowBomCompareMessage(action);
+                        return true;
+
+                    case BomCompareActionKind.ShowMessage:
+                        ShowBomCompareMessage(action);
+                        return false;
+
+                    case BomCompareActionKind.Unrecognized:
+                        // Fail fast through the existing error dialog — never
+                        // proceed and never re-loop on an unknown outcome.
+                        ShowBomCompareError(action.Message!);
+                        return false;
+
+                    case BomCompareActionKind.ShowBomTableMissing:
+                        new BomTableMissingDialog(_vm.BomKeyword, SolidWorksWindowHandle.Get()).ShowDialog();
+                        return false;
+
+                    case BomCompareActionKind.Recheck:
+                        revisionPushAttempted = true;
+                        readiness = await RunReadinessCheckAsync(preFlightCheck).ConfigureAwait(true);
+                        if (readiness == null) return false;
+                        break;
+
+                    case BomCompareActionKind.StopSilently:
+                        return false;
+
+                    default:
+                        // An action kind the executor does not know must never proceed.
+                        ShowBomCompareError($"Unrecognized BOM Compare action: {action.Kind}");
+                        return false;
+                }
+            }
+        }
+
         // -- Message helpers ---------------------------------------------------
 
         private static void ShowBomCompareError(string message)
@@ -266,74 +253,56 @@ namespace SwInventreeAddin.UI
                 System.Windows.Forms.MessageBoxIcon.Error);
         }
 
-        private static void ShowBomColumnAliasesMissingDialog(PropertyMappingConfig mapping)
+        private static void ShowBomCompareMessage(BomCompareAction action)
         {
-            var missing = mapping.GetMissingBomCompareAliases();
-            var aliasList = string.Join(" and ", missing);
-            var valueList = string.Join(" or ", missing);
-            var verb = missing.Count == 1 ? "is" : "are";
-            var pronoun = missing.Count == 1 ? "it is" : "they are";
-            var aliasWord = missing.Count == 1 ? "Alias" : "Aliases";
-
-            var message = $"The {aliasList} BOM Column {aliasWord} {verb} blank.\n\n"
-                        + $"BOM Compare will not find {valueList} values until {pronoun} set "
-                        + "in Settings > Property Mappings.\n\n"
-                        + "Click OK to open the comparison anyway.";
-
             MessageDialog.ShowOK(
                 SolidWorksWindowHandle.Get(),
-                message,
-                "BOM Compare \u2014 Missing Alias",
-                System.Windows.Forms.MessageBoxIcon.Warning);
+                action.Message ?? string.Empty,
+                action.Title ?? "BOM Compare",
+                ToMessageBoxIcon(action.Icon));
         }
 
-        private static async Task<bool> AskAndPushRevisionAsync(BomCompareReadinessCheck preFlightCheck, BomCompareReadiness readiness)
+        private static System.Windows.Forms.MessageBoxIcon ToMessageBoxIcon(BomCompareDialogIcon icon) =>
+            icon switch
+            {
+                BomCompareDialogIcon.Information => System.Windows.Forms.MessageBoxIcon.Information,
+                BomCompareDialogIcon.Warning => System.Windows.Forms.MessageBoxIcon.Warning,
+                BomCompareDialogIcon.Stop => System.Windows.Forms.MessageBoxIcon.Stop,
+                BomCompareDialogIcon.Question => System.Windows.Forms.MessageBoxIcon.Question,
+                BomCompareDialogIcon.Error => System.Windows.Forms.MessageBoxIcon.Error,
+                _ => System.Windows.Forms.MessageBoxIcon.None,
+            };
+
+        /// <summary>
+        /// Executes an <see cref="BomCompareActionKind.OfferRevisionPush"/> action:
+        /// shows the payload prompt, pushes the revision on OK, and triages the
+        /// result through <see cref="BomCompareDispatch.AfterRevisionPush"/>.
+        /// A thrown push becomes the shared push-failed dialog action — the
+        /// caller's ShowMessage arm shows it and stops.
+        /// </summary>
+        private static async Task<BomCompareAction> PromptAndPushRevisionAsync(
+            BomCompareReadinessCheck preFlightCheck, BomCompareAction offer)
         {
-            var swLabel = string.IsNullOrEmpty(readiness.SwRevision) ? "(blank)" : readiness.SwRevision;
-            var itLabel = string.IsNullOrEmpty(readiness.ItRevision) ? "(blank)" : readiness.ItRevision;
             var answer = MessageDialog.ShowOKCancel(
                 SolidWorksWindowHandle.Get(),
-                $"Revision mismatch:\n  SolidWorks:  {swLabel}\n  InvenTree:   {itLabel}\n\n"
-                + $"Update InvenTree to revision \u201c{swLabel}\u201d and proceed?",
-                "BOM Compare \u2014 Revision Mismatch",
-                System.Windows.Forms.MessageBoxIcon.Question);
+                offer.Message ?? string.Empty,
+                offer.Title ?? "BOM Compare",
+                ToMessageBoxIcon(offer.Icon));
 
-            if (answer != MessageDialogResult.Ok) return false;
-
-            PartSyncResult pushResult;
-            try
+            PartSyncResult? pushResult = null;
+            if (answer == MessageDialogResult.Ok)
             {
-                pushResult = await preFlightCheck.PushRevisionAsync().ConfigureAwait(true);
-            }
-            catch (Exception ex)
-            {
-                MessageDialog.ShowOK(
-                    SolidWorksWindowHandle.Get(),
-                    $"Failed to update revision in InvenTree:{System.Environment.NewLine}{ex.Message}",
-                    "BOM Compare \u2014 Revision Update Failed",
-                    System.Windows.Forms.MessageBoxIcon.Error);
-                return false;
+                try
+                {
+                    pushResult = await preFlightCheck.PushRevisionAsync().ConfigureAwait(true);
+                }
+                catch (Exception ex)
+                {
+                    return BomCompareAction.RevisionPushFailed(ex.Message);
+                }
             }
 
-            // Surface the typed result: stale is silent (a newer operation
-            // owns the pane); anything non-success reports its diagnostic.
-            switch (pushResult.Outcome)
-            {
-                case PartSyncOutcome.Success:
-                case PartSyncOutcome.SucceededWithWarning:
-                    return true;
-                case PartSyncOutcome.Stale:
-                case PartSyncOutcome.Cancelled:
-                    return false;
-                default:
-                    MessageDialog.ShowOK(
-                        SolidWorksWindowHandle.Get(),
-                        $"Failed to update revision in InvenTree:{System.Environment.NewLine}"
-                        + (pushResult.Diagnostic ?? pushResult.Outcome.ToString()),
-                        "BOM Compare \u2014 Revision Update Failed",
-                        System.Windows.Forms.MessageBoxIcon.Error);
-                    return false;
-            }
+            return BomCompareDispatch.AfterRevisionPush(pushResult);
         }
 
         /// <summary>
