@@ -328,18 +328,6 @@ namespace SwInventreeAddin
             return await FetchByIpnAsync(token, ipn).ConfigureAwait(false);
         }
 
-        /// <inheritdoc/>
-        public Task<PartSyncResult> EnsurePartPopulatedAsync()
-        {
-            if (_disposed)
-                return Task.FromResult(InvalidOp("The coordinator is disposed."));
-            if (_session != null)
-                return Task.FromResult(new PartSyncResult(PartSyncOutcome.Success));
-
-            // Addressed by document identity — never the textbox.
-            return FetchAsync(_state.Document?.Ipn ?? string.Empty);
-        }
-
         private async Task<PartSyncResult> FetchByPkAsync(PartSyncOperationToken token, int stampedPk)
         {
             InventreePart? part = null;

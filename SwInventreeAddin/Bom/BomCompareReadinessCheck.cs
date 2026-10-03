@@ -7,16 +7,18 @@ namespace SwInventreeAddin.Bom
     /// <summary>
     /// Evaluates whether a BOM Compare can proceed given the current Task Pane state.
     /// Encapsulates the pre-flight rules that gate the BOM Compare workflow:
-    /// BOM table existence for the configured keyword, the IPN and Qty BOM Column Aliases,
-    /// auto-fetch if the InvenTree PK is not yet in memory, PK-in-memory check,
-    /// PK-stamped-in-document check, and four-way revision comparison.
+    /// BOM table existence for the configured keyword, a populated Part Sync
+    /// session, the PK-stamped-in-document check, four-way revision comparison,
+    /// and the IPN and Qty BOM Column Aliases.
     /// </summary>
     /// <remarks>
-    /// All state reads go through <see cref="IBomReadinessContext"/> snapshots —
-    /// one coherent capture per rule stage — and the only commands are the
-    /// explicit ensure-populated and push-revision operations. SolidWorks is
-    /// never read on a post-await continuation: the context marshals the
-    /// re-capture onto the host STA thread.
+    /// All state reads go through <see cref="IBomReadinessContext"/> — one
+    /// coherent capture per check — and the only command is the explicit
+    /// push-revision operation. The check evaluates the existing session only
+    /// and never fetches: Compare BOM is session-gated, so a session-absent
+    /// snapshot is the dropped-session race, not a fetch trigger. SolidWorks
+    /// is never read on a post-await continuation: the context marshals the
+    /// capture onto the host STA thread.
     /// </remarks>
     internal sealed class BomCompareReadinessCheck
     {
@@ -35,57 +37,38 @@ namespace SwInventreeAddin.Bom
         }
 
         /// <summary>
-        /// Runs all pre-flight checks and returns the readiness outcome.
-        /// Automatically fetches from InvenTree if the PK is not yet held in memory.
+        /// Runs all pre-flight checks over a single snapshot and returns the
+        /// readiness outcome. Evaluates the existing session only — never fetches.
         /// </summary>
-        public async Task<BomCompareReadiness> CheckAsync()
+        public Task<BomCompareReadiness> CheckAsync()
         {
             var snapshot = _context.CaptureSnapshot();
 
-            BomCompareReadiness Result(BomCompareOutcome outcome, PartSyncResult? fetchResult = null) =>
+            BomCompareReadiness Result(BomCompareOutcome outcome) =>
                 new BomCompareReadiness(
                     outcome,
                     snapshot.Ipn,
                     snapshot.SwRevision.Trim(),
-                    snapshot.FetchedRevision.Trim(),
-                    fetchResult);
+                    snapshot.FetchedRevision.Trim());
 
-            // If there is no SolidWorks BOM table for the configured keyword, there is
-            // nothing to compare and we should not incur an InvenTree round-trip.
+            // If there is no SolidWorks BOM table for the configured keyword,
+            // there is nothing to compare.
             if (!_bomService.HasBomTable(_bomKeyword))
-                return Result(BomCompareOutcome.BomTableMissing);
+                return Task.FromResult(Result(BomCompareOutcome.BomTableMissing));
 
-            // Auto-fetch if we don't already have the PK in memory.
+            // A session-absent snapshot means the session dropped between
+            // button enablement and this check — a stop, never a fetch trigger.
             if (snapshot.InMemoryPartPk == 0)
-            {
-                var ensure = await _context.EnsurePartPopulatedAsync().ConfigureAwait(false);
-                if (IsConfirmationOutcome(ensure.Outcome))
-                    return Result(BomCompareOutcome.FetchConfirmationRequired, ensure);
-                // PartNotFound is the honest "create the part" case; every
-                // other non-success outcome keeps its typed diagnostic —
-                // a server/lifecycle failure must never masquerade as
-                // PkNotFound.
-                if (ensure.Outcome == PartSyncOutcome.PartNotFound)
-                    return Result(BomCompareOutcome.PkNotFound, ensure);
-                if (ensure.Outcome != PartSyncOutcome.Success)
-                    return Result(BomCompareOutcome.FetchFailed, ensure);
-            }
-
-            // Re-capture: the ensure may have installed a session or stamped
-            // values — never read SolidWorks on this continuation directly.
-            snapshot = _context.CaptureSnapshot();
-
-            if (snapshot.InMemoryPartPk == 0)
-                return Result(BomCompareOutcome.PkNotFound);
+                return Task.FromResult(Result(BomCompareOutcome.SessionNotPopulated));
 
             // PK must be stamped in the SolidWorks Document Properties.
             if (string.IsNullOrWhiteSpace(snapshot.StampedPkText))
-                return Result(BomCompareOutcome.PkNotStamped);
+                return Task.FromResult(Result(BomCompareOutcome.PkNotStamped));
 
             var revOrder = RevisionComparer.Compare(
                 snapshot.SwRevision.Trim(), snapshot.FetchedRevision.Trim());
 
-            return revOrder switch
+            return Task.FromResult(revOrder switch
             {
                 RevisionOrder.ItIsNewer => Result(BomCompareOutcome.ItIsNewer),
                 RevisionOrder.Ambiguous => Result(BomCompareOutcome.Ambiguous),
@@ -93,7 +76,7 @@ namespace SwInventreeAddin.Bom
                 _ => snapshot.Mapping.GetMissingBomCompareAliases().Count > 0
                         ? Result(BomCompareOutcome.BomColumnAliasesMissing)
                         : Result(BomCompareOutcome.Ready),
-            };
+            });
         }
 
         /// <summary>
@@ -101,10 +84,5 @@ namespace SwInventreeAddin.Bom
         /// confirmed a <see cref="BomCompareOutcome.SwIsNewer"/> result.
         /// </summary>
         public Task<PartSyncResult> PushRevisionAsync() => _context.PushRevisionAsync();
-
-        private static bool IsConfirmationOutcome(PartSyncOutcome outcome) =>
-            outcome == PartSyncOutcome.DuplicateIpnConfirmation
-            || outcome == PartSyncOutcome.LinkMismatchConfirmation
-            || outcome == PartSyncOutcome.MissingPropertyConfirmation;
     }
 }

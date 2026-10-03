@@ -750,52 +750,6 @@ namespace SwInventreeAddin.Tests
             Assert.That(_coordinator.FetchedPart!.Pk, Is.EqualTo(42));
         }
 
-        // ── EnsurePartPopulatedAsync ─────────────────────────────────────────
-
-        [Test]
-        public async Task EnsurePartPopulatedAsync_SessionCurrent_ReturnsSuccessImmediately()
-        {
-            _client.PartToReturn = SamplePart;
-            await InstallSessionViaFetch();
-
-            _client.DeferGetPartsByIpn = true;
-            var result = await _coordinator.EnsurePartPopulatedAsync();
-
-            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Success));
-            Assert.That(_client.PendingGetPartsByIpnCalls, Is.Empty,
-                "no fetch may run while a session is current");
-        }
-
-        [Test]
-        public async Task EnsurePartPopulatedAsync_NoSession_FetchesByDocumentIdentity()
-        {
-            // Document identity addresses the fetch — never a typed IPN.
-            _client.PartByPkToReturn = SamplePart;
-            SeedPkDocument();
-            _coordinator.UpdateDocument();
-
-            var result = await _coordinator.EnsurePartPopulatedAsync();
-
-            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Success));
-            Assert.That(_client.LastGetPartByPkPk, Is.EqualTo(42));
-            Assert.That(_coordinator.FetchedPart!.Pk, Is.EqualTo(42));
-        }
-
-        [Test]
-        public async Task EnsurePartPopulatedAsync_Confirmation_PropagatesForResume()
-        {
-            _client.PartByPkToReturn = new InventreePart
-            { Pk = 42, Ipn = "RENAMED-001", Revision = "A" };
-            SeedPkDocument();
-            _propertyService.Seed(Mapping.IpnProperty!, "DOC-001");
-            _coordinator.UpdateDocument();
-
-            var result = await _coordinator.EnsurePartPopulatedAsync();
-
-            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.LinkMismatchConfirmation));
-            Assert.That(result.Confirmation, Is.Not.Null);
-        }
-
         // ── Create Part ──────────────────────────────────────────────────────
 
         [Test]

@@ -64,11 +64,11 @@ its lifecycle, behind the narrow `IPartSyncCoordinator` interface.
   and the set is cleared only on generation advance.
 - **BOM readiness** consumes `IBomReadinessContext` — one coherent
   `BomReadinessSnapshot` (immutable; clones its mapping in and out) plus
-  the explicit ensure-populated and push-revision commands — replacing
-  `IBomReadinessSource`'s property-and-command mixture. Non-success,
-  non-confirmation ensure outcomes surface as `BomCompareOutcome.FetchFailed`
-  carrying the typed `PartSyncResult` — a server or lifecycle failure never
-  masquerades as "create the part". The production adapter marshals snapshot
+  the explicit push-revision command — replacing
+  `IBomReadinessSource`'s property-and-command mixture. Compare BOM is
+  session-gated, so the check evaluates the existing session only and
+  never fetches; a session-absent snapshot is the dropped-session race
+  and the caller stops silently. The production adapter marshals snapshot
   captures through the dispatcher, so readiness checks never touch
   SolidWorks COM on a pool continuation.
 - **`IHostStaDispatcher`** is the marshalling seam:

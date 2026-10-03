@@ -97,14 +97,6 @@ namespace SwInventreeAddin
         Task<PartSyncResult> FetchAsync(string ipn);
 
         /// <summary>
-        /// Explicit BOM populate: <see cref="PartSyncOutcome.Success"/>
-        /// immediately when a session is current; otherwise the same fetch flow
-        /// addressed by document identity (stamped PK else the document's IPN —
-        /// never the textbox). Confirmation outcomes propagate for prompting.
-        /// </summary>
-        Task<PartSyncResult> EnsurePartPopulatedAsync();
-
-        /// <summary>
         /// Mints the session-family token a Create Part dialog is opened under;
         /// supersedes in-flight fetches and is itself staled by later mints.
         /// </summary>
