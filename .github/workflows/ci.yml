@@ -20,12 +20,7 @@ jobs:
 
       - name: Ensure Inno Setup
         shell: pwsh
-        run: |
-          $iscc = & .\Installer\Resolve-ISCC.ps1
-          if (-not $iscc) {
-            winget install --id JRSoftware.InnoSetup -e --version 6.7.3 --accept-source-agreements --accept-package-agreements
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          }
+        run: .\Installer\Ensure-ISCC.ps1
 
       - name: Build installer package
         shell: pwsh
@@ -34,5 +29,5 @@ jobs:
           .\Installer\Package.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if (-not (Get-Item "Installer\SwInventreeAddin-*-Setup.exe" -ErrorAction SilentlyContinue)) {
-            throw "Setup exe was not produced — is Inno Setup installed on the runner? Set the INNO_SETUP env var to ISCC.exe's path"
+            throw "Setup exe was not produced — check the ISCC output above"
           }
