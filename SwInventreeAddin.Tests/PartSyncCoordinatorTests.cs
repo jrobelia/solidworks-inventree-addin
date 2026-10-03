@@ -68,23 +68,32 @@ namespace SwInventreeAddin.Tests
         }
 
         /// <summary>
+        /// Spins until <paramref name="until"/> holds or the 10 s deadline
+        /// expires; <paramref name="describe"/> names the awaited condition in
+        /// the failure message.
+        /// </summary>
+        private void WaitFor(Func<bool> until, Func<string> describe)
+        {
+            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+            while (!until())
+            {
+                if (DateTime.UtcNow > deadline)
+                    Assert.Fail($"Timed out waiting for {describe()}.");
+                System.Threading.Thread.Sleep(5);
+            }
+        }
+
+        /// <summary>
         /// Spins until the coordinator has parked <paramref name="expected"/>
         /// commits on the deferred dispatcher. Deferred client calls run their
         /// continuations asynchronously, so the commit lands in the queue a
         /// beat after <c>PendingCall.Complete</c> returns — asserting or
         /// draining the queue without this wait races the continuation.
         /// </summary>
-        private void WaitForQueuedCommits(int expected = 1)
-        {
-            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
-            while (_dispatcher.QueuedCount < expected)
-            {
-                if (DateTime.UtcNow > deadline)
-                    Assert.Fail(
-                        $"Timed out waiting for {expected} parked commit(s); queue holds {_dispatcher.QueuedCount}.");
-                System.Threading.Thread.Sleep(5);
-            }
-        }
+        private void WaitForQueuedCommits(int expected = 1) =>
+            WaitFor(
+                () => _dispatcher.QueuedCount >= expected,
+                () => $"{expected} parked commit(s); queue holds {_dispatcher.QueuedCount}");
 
         // ── Document lifecycle ───────────────────────────────────────────────
 
@@ -1957,13 +1966,9 @@ namespace SwInventreeAddin.Tests
 
             // The pre-download validation already passed; a switch landing
             // inside the download window is caught by the post-download commit.
-            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
-            while (_client.PendingDownloadImageCalls.Count == 0)
-            {
-                if (DateTime.UtcNow > deadline)
-                    Assert.Fail("Timed out waiting for the candidate thumbnail download.");
-                System.Threading.Thread.Sleep(5);
-            }
+            WaitFor(
+                () => _client.PendingDownloadImageCalls.Count > 0,
+                () => "the candidate thumbnail download");
             _propertyService.ActiveDocumentTokenToReturn = "doc-2";
             _client.PendingDownloadImageCalls[0].Complete(new byte[] { 1, 2, 3 });
 

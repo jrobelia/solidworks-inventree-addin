@@ -43,9 +43,6 @@ namespace SwInventreeAddin
         /// <summary>Thumbnail PNG bytes; null if not yet fetched or not available.</summary>
         public byte[]? ThumbnailBytes { get; private set; }
 
-        /// <summary>The session-owned copy of the mapping captured at construction — sessions are rebuilt on mapping replacement.</summary>
-        public PropertyMappingConfig Mapping => _mapping;
-
         // ── Constructor ───────────────────────────────────────────────────────
 
         public PartSyncSession(

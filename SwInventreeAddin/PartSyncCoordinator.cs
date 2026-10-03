@@ -550,7 +550,7 @@ namespace SwInventreeAddin
             // A successful create always links the document by PK; IPN and Name
             // stamp alongside. Each write registers its pending echo first —
             // SolidWorks can raise it synchronously during the write.
-            var wrotePk = part.Pk > 0 && !string.IsNullOrEmpty(mapping.PkProperty);
+            var wrotePk = !string.IsNullOrEmpty(mapping.PkProperty);
             if (wrotePk)
             {
                 RegisterPendingWrite(mapping.PkProperty, part.Pk.ToString());
@@ -614,7 +614,7 @@ namespace SwInventreeAddin
             // confirmation so its resume correlates to this exact point.
             var session = _session;
             var token = CaptureScopedToken();
-            if (!IsCommitCurrent(token) || !ReferenceEquals(_session, session))
+            if (!IsSessionCommitCurrent(token, session))
                 return Stale();
 
             var propertyName = session.ApplyPropertyName(field);
@@ -663,7 +663,7 @@ namespace SwInventreeAddin
             // remotely to the old session's part.
             var session = _session;
             var token = CaptureScopedToken();
-            if (!IsCommitCurrent(token) || !ReferenceEquals(_session, session))
+            if (!IsSessionCommitCurrent(token, session))
                 return Stale();
 
             var value = session.CapturePushValue(field);
@@ -678,7 +678,7 @@ namespace SwInventreeAddin
             {
                 // Validate BEFORE examining the network outcome — a stale
                 // failure must never reach the pane as a status write.
-                if (!IsCommitCurrent(token) || !ReferenceEquals(_session, session))
+                if (!IsSessionCommitCurrent(token, session))
                     return Stale();
                 if (error != null)
                     return Failed(error.Message);
@@ -706,7 +706,7 @@ namespace SwInventreeAddin
             // Validate + recapture BEFORE image processing and upload — an
             // undelivered ActiveDoc switch must not upload to the old
             // session's part.
-            if (!IsCommitCurrent(token) || !ReferenceEquals(_session, session))
+            if (!IsSessionCommitCurrent(token, session))
                 return Stale();
 
             var partPk = session.PartPk;
@@ -743,7 +743,7 @@ namespace SwInventreeAddin
             return await RunOnStaAsync(() =>
             {
                 // Validate BEFORE examining the upload/preview outcome.
-                if (!IsCommitCurrent(token) || !ReferenceEquals(_session, session))
+                if (!IsSessionCommitCurrent(token, session))
                     return Stale();
                 if (error != null)
                     return Failed(error.Message);
@@ -1031,6 +1031,10 @@ namespace SwInventreeAddin
         private bool IsCommitCurrent(PartSyncOperationToken token) =>
             IsTokenCurrent(token) && RecaptureAndRevalidate(token);
 
+        /// <summary>Commit validity plus session identity — the guard every session-scoped commit runs.</summary>
+        private bool IsSessionCommitCurrent(PartSyncOperationToken token, PartSyncSession session) =>
+            IsCommitCurrent(token) && ReferenceEquals(_session, session);
+
         /// <summary>
         /// Re-reads document values inside a validated commit and confirms the
         /// token is still current — catches a document switch whose host
@@ -1041,9 +1045,10 @@ namespace SwInventreeAddin
         /// </summary>
         private bool RecaptureAndRevalidate(PartSyncOperationToken token)
         {
-            var droppable = _session != null || _pendingConfirmation != null;
+            var hadSession = _session != null;
+            var hadPending = _pendingConfirmation != null;
             LightCaptureInstall();
-            if (droppable && _session == null && _pendingConfirmation == null)
+            if ((hadSession && _session == null) || (hadPending && _pendingConfirmation == null))
                 RaiseChanged();
             return IsTokenCurrent(token);
         }
