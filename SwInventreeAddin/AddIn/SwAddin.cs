@@ -258,6 +258,8 @@ namespace SwInventreeAddin.AddIn
                     _partDocEvents.AddCustomPropertyNotify += OnDocCustomPropertyAdd;
                     _partDocEvents.ChangeCustomPropertyNotify += OnDocCustomPropertyChange;
                     _partDocEvents.DeleteCustomPropertyNotify += OnDocCustomPropertyDelete;
+                    _partDocEvents.FileSaveAsNotify2 += OnDocFileSaveAs;
+                    _partDocEvents.RenamedDocumentNotify += OnDocRenamed;
                 }
                 else if (doc is AssemblyDoc asm)
                 {
@@ -265,6 +267,8 @@ namespace SwInventreeAddin.AddIn
                     _assemblyDocEvents.AddCustomPropertyNotify += OnDocCustomPropertyAdd;
                     _assemblyDocEvents.ChangeCustomPropertyNotify += OnDocCustomPropertyChange;
                     _assemblyDocEvents.DeleteCustomPropertyNotify += OnDocCustomPropertyDelete;
+                    _assemblyDocEvents.FileSaveAsNotify2 += OnDocFileSaveAs;
+                    _assemblyDocEvents.RenamedDocumentNotify += OnDocRenamed;
                 }
             }
             catch (Exception ex)
@@ -281,6 +285,8 @@ namespace SwInventreeAddin.AddIn
                 _partDocEvents.AddCustomPropertyNotify -= OnDocCustomPropertyAdd;
                 _partDocEvents.ChangeCustomPropertyNotify -= OnDocCustomPropertyChange;
                 _partDocEvents.DeleteCustomPropertyNotify -= OnDocCustomPropertyDelete;
+                _partDocEvents.FileSaveAsNotify2 -= OnDocFileSaveAs;
+                _partDocEvents.RenamedDocumentNotify -= OnDocRenamed;
                 _partDocEvents = null;
             }
 
@@ -289,6 +295,8 @@ namespace SwInventreeAddin.AddIn
                 _assemblyDocEvents.AddCustomPropertyNotify -= OnDocCustomPropertyAdd;
                 _assemblyDocEvents.ChangeCustomPropertyNotify -= OnDocCustomPropertyChange;
                 _assemblyDocEvents.DeleteCustomPropertyNotify -= OnDocCustomPropertyDelete;
+                _assemblyDocEvents.FileSaveAsNotify2 -= OnDocFileSaveAs;
+                _assemblyDocEvents.RenamedDocumentNotify -= OnDocRenamed;
                 _assemblyDocEvents = null;
             }
         }
@@ -301,6 +309,15 @@ namespace SwInventreeAddin.AddIn
 
         private int OnDocCustomPropertyDelete(string propName, string configuration, string value, int valueType)
         { _taskPaneControl?.OnDocumentPropertyChanged(propName, string.Empty); return 0; }
+
+        // FileSaveAsNotify2 is the post-notification: it fires after the path has
+        // changed, so the recapture inside UpdateDocument sees the new Document
+        // Token. FileSaveAsNotify (the pre-notification) would still see the old one.
+        private int OnDocFileSaveAs(string fileName)
+        { _taskPaneControl?.NotifyActiveDocumentChanged(); return 0; }
+
+        private int OnDocRenamed(ref object renamedDocumentInterface)
+        { _taskPaneControl?.NotifyActiveDocumentChanged(); return 0; }
 
         private void OnSettingsRequested(object sender, EventArgs e)
         {
