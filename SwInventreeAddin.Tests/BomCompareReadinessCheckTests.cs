@@ -42,6 +42,13 @@ namespace SwInventreeAddin.Tests
             public string StampedPkText { get; set; } = string.Empty;
             public string SwRevision { get; set; } = string.Empty;
             public string FetchedRevision { get; set; } = string.Empty;
+
+            /// <summary>
+            /// The fetched part's Assembly flag — defaults true so existing
+            /// populated-session fixtures stay valid.
+            /// </summary>
+            public bool FetchedPartIsAssembly { get; set; } = true;
+
             public PropertyMappingConfig Mapping { get; set; } = CreateMapping();
 
             /// <summary>How many times the check captured a snapshot — the contract is exactly once.</summary>
@@ -53,7 +60,8 @@ namespace SwInventreeAddin.Tests
             {
                 SnapshotCount++;
                 return new BomReadinessSnapshot(
-                    Ipn, InMemoryPartPk, StampedPkText, SwRevision, FetchedRevision, Mapping);
+                    Ipn, InMemoryPartPk, StampedPkText, SwRevision, FetchedRevision,
+                    FetchedPartIsAssembly, Mapping);
             }
 
             public Task<PartSyncResult> PushRevisionAsync()
@@ -243,13 +251,91 @@ namespace SwInventreeAddin.Tests
             Assert.That(context.SnapshotCount, Is.EqualTo(1));
         }
 
+        // -- Assembly-flag pre-flight --------------------------------------------
+
+        [Test]
+        public async Task CheckAsync_FetchedPartNotAssembly_ReturnsPartNotAssembly()
+        {
+            // A part that cannot hold a BOM fails before any revision question —
+            // compare-open against it is meaningless and the push is refused anyway.
+            var context = new StubContext
+            {
+                InMemoryPartPk = 42,
+                StampedPkText = "42",
+                SwRevision = "A",
+                FetchedRevision = "A",
+                FetchedPartIsAssembly = false,
+            };
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
+
+            var result = await check.CheckAsync();
+
+            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.PartNotAssembly));
+        }
+
+        [Test]
+        public async Task CheckAsync_FetchedPartNotAssembly_ItIsNewer_ReturnsPartNotAssembly()
+        {
+            // The Assembly-flag gate sits before the revision comparison — a
+            // flag-unchecked session can never surface a revision outcome.
+            var context = new StubContext
+            {
+                InMemoryPartPk = 42,
+                StampedPkText = "42",
+                SwRevision = "A",
+                FetchedRevision = "B",
+                FetchedPartIsAssembly = false,
+            };
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
+
+            var result = await check.CheckAsync();
+
+            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.PartNotAssembly));
+        }
+
+        [Test]
+        public async Task CheckAsync_FetchedPartNotAssembly_PkUnstamped_ReturnsPkNotStamped()
+        {
+            // PK presence precedes the Assembly flag — discriminates the
+            // PkNotStamped-before-PartNotAssembly order.
+            var context = new StubContext
+            {
+                InMemoryPartPk = 42,
+                StampedPkText = string.Empty,
+                FetchedPartIsAssembly = false,
+            };
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
+
+            var result = await check.CheckAsync();
+
+            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.PkNotStamped));
+        }
+
+        [Test]
+        public async Task CheckAsync_NoSession_FetchedPartNotAssembly_ReturnsSessionNotPopulated()
+        {
+            // An unpopulated session hits SessionNotPopulated — the flag
+            // defaults false without a session but is never read that early.
+            var context = new StubContext
+            {
+                InMemoryPartPk = 0,
+                StampedPkText = "42",
+                FetchedPartIsAssembly = false,
+            };
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
+
+            var result = await check.CheckAsync();
+
+            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.SessionNotPopulated));
+        }
+
         // -- Snapshot immutability ------------------------------------------------
 
         [Test]
         public void BomReadinessSnapshot_Mapping_IsDefensivelyCopiedInAndOut()
         {
             var mapping = CreateMapping();
-            var snapshot = new BomReadinessSnapshot("PART-001", 0, string.Empty, "A", "A", mapping);
+            var snapshot = new BomReadinessSnapshot("PART-001", 0, string.Empty, "A", "A", true, mapping);
 
             mapping.BomColumnIpn = "POISONED";
             Assert.That(snapshot.Mapping.BomColumnIpn, Is.EqualTo("IPN"),

@@ -42,6 +42,7 @@ namespace SwInventreeAddin.Bom
                     stampedPkText: doc?.PkText ?? string.Empty,
                     swRevision: doc?.Revision ?? string.Empty,
                     fetchedRevision: _coordinator.FetchedPart?.Revision ?? string.Empty,
+                    fetchedPartIsAssembly: _coordinator.FetchedPart?.Assembly ?? false,
                     mapping: _coordinator.CurrentMapping);
             });
             return snapshot!;

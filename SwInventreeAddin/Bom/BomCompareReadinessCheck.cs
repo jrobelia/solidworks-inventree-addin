@@ -8,8 +8,9 @@ namespace SwInventreeAddin.Bom
     /// Evaluates whether a BOM Compare can proceed given the current Task Pane state.
     /// Encapsulates the pre-flight rules that gate the BOM Compare workflow:
     /// BOM table existence for the configured keyword, a populated Part Sync
-    /// session, the PK-stamped-in-document check, four-way revision comparison,
-    /// and the IPN and Qty BOM Column Aliases.
+    /// session, the PK-stamped-in-document check, the fetched part's Assembly
+    /// flag, four-way revision comparison, and the IPN and Qty BOM Column
+    /// Aliases.
     /// </summary>
     /// <remarks>
     /// All state reads go through <see cref="IBomReadinessContext"/> — one
@@ -64,6 +65,12 @@ namespace SwInventreeAddin.Bom
             // PK must be stamped in the SolidWorks Document Properties.
             if (string.IsNullOrWhiteSpace(snapshot.StampedPkText))
                 return Task.FromResult(Result(BomCompareOutcome.PkNotStamped));
+
+            // A part that cannot hold a BOM fails before any revision
+            // question — compare-open against it is meaningless and the
+            // push would be refused afterwards anyway.
+            if (!snapshot.FetchedPartIsAssembly)
+                return Task.FromResult(Result(BomCompareOutcome.PartNotAssembly));
 
             var revOrder = RevisionComparer.Compare(
                 snapshot.SwRevision.Trim(), snapshot.FetchedRevision.Trim());
