@@ -809,49 +809,6 @@ namespace SwInventreeAddin.UI
             }
         }
 
-        /// <summary>
-        /// Runs the confirmation prompt for a fetch/BOM outcome and resumes the
-        /// pending coordinator operation. Used by the BOM readiness path where
-        /// the typed outcome travels through <see cref="Bom.BomCompareReadiness.FetchResult"/>.
-        /// </summary>
-        internal async Task<PartSyncResult> ResumeFetchConfirmationAsync(PartSyncResult fetchResult)
-        {
-            switch (fetchResult.Outcome)
-            {
-                case PartSyncOutcome.DuplicateIpnConfirmation when fetchResult.Confirmation != null:
-                    {
-                        var approved = fetchResult.MatchedCandidate != null
-                            && ConfirmDuplicateIpn(
-                                fetchResult.Candidates ?? Array.Empty<PartSnapshot>(),
-                                fetchResult.MatchedCandidate);
-                        return await _coordinator
-                            .ResumeConfirmationAsync(fetchResult.Confirmation, approved)
-                            .ConfigureAwait(false);
-                    }
-                case PartSyncOutcome.LinkMismatchConfirmation when fetchResult.Confirmation != null:
-                    {
-                        var approved = fetchResult.FetchedPart != null
-                            && ConfirmLinkMismatch(
-                                fetchResult.DocumentIpn ?? string.Empty,
-                                fetchResult.DocumentRevision ?? string.Empty,
-                                fetchResult.FetchedPart);
-                        return await _coordinator
-                            .ResumeConfirmationAsync(fetchResult.Confirmation, approved)
-                            .ConfigureAwait(false);
-                    }
-                case PartSyncOutcome.MissingPropertyConfirmation when fetchResult.Confirmation != null:
-                    {
-                        var approved = ConfirmMissingProperties(
-                            fetchResult.MissingProperties ?? Array.Empty<string>());
-                        return await _coordinator
-                            .ResumeConfirmationAsync(fetchResult.Confirmation, approved)
-                            .ConfigureAwait(false);
-                    }
-                default:
-                    return fetchResult;
-            }
-        }
-
         // ── Apply (InvenTree → SolidWorks) ────────────────────────────────────
 
         /// <summary>Applies the fetched Name to the SolidWorks document.</summary>

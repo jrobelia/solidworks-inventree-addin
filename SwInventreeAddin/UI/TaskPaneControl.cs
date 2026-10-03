@@ -159,62 +159,14 @@ namespace SwInventreeAddin.UI
             if (!mappingResult.CanUseForPartSync)
                 return;
 
-            BomCompareReadiness readiness;
-            try
-            {
-                readiness = await preFlightCheck.CheckAsync().ConfigureAwait(true);
-            }
-            catch (Exception ex)
-            {
-                ShowBomCompareError($"Could not load part from InvenTree:{System.Environment.NewLine}{ex.Message}");
-                return;
-            }
+            var readiness = await RunReadinessCheckAsync(preFlightCheck).ConfigureAwait(true);
+            if (readiness == null) return;
 
             var pushedRevision = false;
             while (true)
             {
                 if (readiness.Outcome == BomCompareOutcome.Ready)
                     break;
-
-                if (readiness.Outcome == BomCompareOutcome.FetchConfirmationRequired
-                    && readiness.FetchResult != null)
-                {
-                    // The ensure-fetch parked on a typed confirmation (duplicate
-                    // IPN, Link Mismatch): prompt here, resume the coordinator's
-                    // pending operation, then re-run the check. A declined,
-                    // cancelled, or stale resume stops the flow silently — the
-                    // user already answered the prompt.
-                    var resumed = await _vm
-                        .ResumeFetchConfirmationAsync(readiness.FetchResult)
-                        .ConfigureAwait(true);
-                    if (resumed.Outcome != PartSyncOutcome.Success)
-                        return;
-
-                    try
-                    {
-                        readiness = await preFlightCheck.CheckAsync().ConfigureAwait(true);
-                    }
-                    catch (Exception ex)
-                    {
-                        ShowBomCompareError($"Could not load part from InvenTree:{System.Environment.NewLine}{ex.Message}");
-                        return;
-                    }
-                    continue;
-                }
-
-                if (readiness.Outcome == BomCompareOutcome.FetchFailed)
-                {
-                    // Preserve the typed ensure outcome: stale/cancelled are
-                    // silent (a newer operation owns the pane / the user
-                    // declined); everything else surfaces an honest error —
-                    // never "create the part" for a server or lifecycle failure.
-                    var r = readiness.FetchResult;
-                    if (r?.Outcome == PartSyncOutcome.Stale
-                        || r?.Outcome == PartSyncOutcome.Cancelled)
-                        return;
-                    ShowBomCompareError(DescribeBomFetchFailure(r));
-                    return;
-                }
 
                 if (readiness.Outcome == BomCompareOutcome.BomColumnAliasesMissing)
                 {
@@ -234,27 +186,17 @@ namespace SwInventreeAddin.UI
                         return;
 
                     pushedRevision = true;
-                    try
-                    {
-                        readiness = await preFlightCheck.CheckAsync().ConfigureAwait(true);
-                    }
-                    catch (Exception ex)
-                    {
-                        ShowBomCompareError($"Could not load part from InvenTree:{System.Environment.NewLine}{ex.Message}");
-                        return;
-                    }
+                    readiness = await RunReadinessCheckAsync(preFlightCheck).ConfigureAwait(true);
+                    if (readiness == null) return;
                     continue;
                 }
 
                 // All remaining outcomes are terminal.
                 switch (readiness.Outcome)
                 {
-                    case BomCompareOutcome.PkNotFound:
-                        MessageDialog.ShowOK(
-                            SolidWorksWindowHandle.Get(),
-                            $"{readiness.NotFoundIdentifier} was not found in InvenTree.\n\nCreate the part in InvenTree first, then try again.",
-                            "BOM Compare",
-                            System.Windows.Forms.MessageBoxIcon.Warning);
+                    case BomCompareOutcome.SessionNotPopulated:
+                        // The session dropped between button enablement and the
+                        // check — stop silently, like a Stale/Cancelled resume.
                         return;
 
                     case BomCompareOutcome.PkNotStamped:
@@ -395,25 +337,22 @@ namespace SwInventreeAddin.UI
         }
 
         /// <summary>
-        /// Words a non-success ensure-populate outcome for the BOM Compare
-        /// error dialog — the duplicate-IPN sentences are the same wording the
-        /// status line shows (<see cref="PartSyncWording"/>).
+        /// Runs the readiness check and turns a thrown failure into the BOM
+        /// Compare error dialog; null means the failure was already shown.
+        /// The check itself never fetches — snapshot capture can still throw
+        /// crossing the STA dispatcher.
         /// </summary>
-        private static string DescribeBomFetchFailure(PartSyncResult? result)
+        private static async Task<BomCompareReadiness?> RunReadinessCheckAsync(
+            BomCompareReadinessCheck preFlightCheck)
         {
-            if (result == null)
-                return "Could not load part from InvenTree.";
-
-            switch (result.Outcome)
+            try
             {
-                case PartSyncOutcome.DuplicateNoRevisionMatch:
-                case PartSyncOutcome.DuplicateAmbiguous:
-                    return PartSyncWording.DuplicateIpnStatus(result);
-                case PartSyncOutcome.InvalidOperation:
-                    return result.Diagnostic ?? "The part fetch is not available right now.";
-                default:
-                    return $"Could not load part from InvenTree:{System.Environment.NewLine}"
-                         + (result.Diagnostic ?? result.Outcome.ToString());
+                return await preFlightCheck.CheckAsync().ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                ShowBomCompareError($"Could not evaluate BOM Compare readiness:{System.Environment.NewLine}{ex.Message}");
+                return null;
             }
         }
 

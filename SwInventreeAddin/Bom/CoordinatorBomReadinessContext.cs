@@ -11,8 +11,8 @@ namespace SwInventreeAddin.Bom
     /// the host STA thread, so it is callable from a thread-pool
     /// continuation — SolidWorks COM never runs off the STA thread. The
     /// light refresh (not the full <see cref="IPartSyncCoordinator.UpdateDocument"/>)
-    /// is deliberate: revalidation would drop the session an ensure-fetch
-    /// just installed on a document with no stamped PK. It stays off
+    /// is deliberate: the check evaluates the session as it stands —
+    /// revalidation could drop or alter the session mid-check. It stays off
     /// <see cref="IPartSyncCoordinator"/> — this adapter is internal and
     /// binds the concrete type.
     /// </summary>
@@ -46,10 +46,6 @@ namespace SwInventreeAddin.Bom
             });
             return snapshot!;
         }
-
-        /// <inheritdoc/>
-        public Task<PartSyncResult> EnsurePartPopulatedAsync() =>
-            _coordinator.EnsurePartPopulatedAsync();
 
         /// <inheritdoc/>
         public Task<PartSyncResult> PushRevisionAsync() =>

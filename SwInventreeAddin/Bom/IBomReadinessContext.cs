@@ -1,12 +1,11 @@
 using System.Threading.Tasks;
-using SwInventreeAddin.Config;
 
 namespace SwInventreeAddin.Bom
 {
     /// <summary>
     /// The narrow workflow/context seam <see cref="BomCompareReadinessCheck"/>
-    /// consumes: one coherent readiness snapshot plus the two explicit
-    /// coordinator operations the pre-flight may invoke. Replaces
+    /// consumes: one coherent readiness snapshot plus the explicit
+    /// push-revision command the pre-flight may invoke. Replaces
     /// IBomReadinessSource's property-and-command mixture.
     /// </summary>
     /// <remarks>
@@ -24,14 +23,6 @@ namespace SwInventreeAddin.Bom
         /// projection, as of a single STA read.
         /// </summary>
         BomReadinessSnapshot CaptureSnapshot();
-
-        /// <summary>
-        /// Ensures a Part Sync session is populated for the active document —
-        /// a no-op when one is current, otherwise the coordinator's
-        /// document-identity-addressed fetch. Confirmation outcomes propagate
-        /// so the caller can prompt and resume.
-        /// </summary>
-        Task<PartSyncResult> EnsurePartPopulatedAsync();
 
         /// <summary>
         /// Pushes the SolidWorks revision to InvenTree — an explicit command

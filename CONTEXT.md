@@ -114,7 +114,7 @@ _Avoid_: indicator, banner
 ## Example dialogue
 
 > **Dev:** "When the engineer clicks Compare BOM, do we re-fetch from InvenTree?"
-> **Domain expert:** "Only if the Task Pane isn't POPULATED — if we already have the **InvenTree Part PK** in memory from a previous Part Sync, we use it directly and skip the fetch."
+> **Domain expert:** "No — Compare BOM runs against the Part Sync session already in memory. The button stays disabled until the Task Pane is POPULATED; **Fetch** is what populates the session."
 
 ## Flagged ambiguities
 

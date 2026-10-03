@@ -4330,22 +4330,30 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.StatusText, Is.EqualTo("Part created in InvenTree."));
         }
 
-        // ── BOM readiness auto-fetch ─────────────────────────────────────────
+        // ── BOM readiness ────────────────────────────────────────────────────
 
         [Test]
-        public async Task BomReadiness_NoSession_AutoFetchesThenRequiresStampedPk()
+        public async Task BomReadiness_NoSession_ReturnsSessionNotPopulated()
         {
+            // The readiness check evaluates the existing session only — a
+            // session-absent snapshot is the dropped-session race, never a
+            // fetch trigger.
             _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
             _propertyService.Seed(Mapping.IpnProperty!, "ASSY-001");
+            _propertyService.Seed(Mapping.PkProperty!, "42");
             _client.PartToReturn = new InventreePart { Pk = 42, Ipn = "ASSY-001" };
+            _client.DeferGetPartByPk = true;
+            _client.DeferGetPartsByIpn = true;
             var vm = CreateVm();
             vm.UpdateBomState(new StubAssemblyBomService { HasBomTableResult = true });
 
             var result = await vm.CreateBomCompareReadinessCheck()!.CheckAsync();
 
-            Assert.That(_client.LastIpnRequested, Is.EqualTo("ASSY-001"));
-            Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(42));   // auto-fetch populated the session
-            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.PkNotStamped));
+            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.SessionNotPopulated));
+            Assert.That(_client.PendingGetPartByPkCalls, Is.Empty, "no fetch may run");
+            Assert.That(_client.PendingGetPartsByIpnCalls, Is.Empty, "no fetch may run");
+            Assert.That(_client.LastIpnRequested, Is.Empty, "no fetch may run");
+            Assert.That(_client.LastGetPartByPkPk, Is.EqualTo(0), "no fetch may run");
         }
 
         [Test]

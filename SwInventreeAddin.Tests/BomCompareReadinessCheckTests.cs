@@ -1,4 +1,3 @@
-using System;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using SwInventreeAddin.Bom;
@@ -34,7 +33,7 @@ namespace SwInventreeAddin.Tests
 
         /// <summary>
         /// In-memory <see cref="IBomReadinessContext"/>: one coherent snapshot per
-        /// capture plus recording for the two coordinator commands.
+        /// capture plus recording for the push command and the capture count.
         /// </summary>
         private sealed class StubContext : IBomReadinessContext
         {
@@ -45,25 +44,16 @@ namespace SwInventreeAddin.Tests
             public string FetchedRevision { get; set; } = string.Empty;
             public PropertyMappingConfig Mapping { get; set; } = CreateMapping();
 
-            public bool FetchCalled { get; private set; }
+            /// <summary>How many times the check captured a snapshot — the contract is exactly once.</summary>
+            public int SnapshotCount { get; private set; }
+
             public bool PushRevisionCalled { get; private set; }
 
-            /// <summary>Side-effect applied when EnsurePartPopulatedAsync is called.</summary>
-            public Action? OnFetch { get; set; }
-
-            /// <summary>The typed result EnsurePartPopulatedAsync returns.</summary>
-            public PartSyncResult EnsureResult { get; set; } =
-                new PartSyncResult(PartSyncOutcome.Success);
-
-            public BomReadinessSnapshot CaptureSnapshot() =>
-                new BomReadinessSnapshot(
-                    Ipn, InMemoryPartPk, StampedPkText, SwRevision, FetchedRevision, Mapping);
-
-            public Task<PartSyncResult> EnsurePartPopulatedAsync()
+            public BomReadinessSnapshot CaptureSnapshot()
             {
-                FetchCalled = true;
-                OnFetch?.Invoke();
-                return Task.FromResult(EnsureResult);
+                SnapshotCount++;
+                return new BomReadinessSnapshot(
+                    Ipn, InMemoryPartPk, StampedPkText, SwRevision, FetchedRevision, Mapping);
             }
 
             public Task<PartSyncResult> PushRevisionAsync()
@@ -76,47 +66,46 @@ namespace SwInventreeAddin.Tests
         // -- CheckAsync ---------------------------------------------------------
 
         [Test]
-        public async Task CheckAsync_PkInMemory_DoesNotFetch()
+        public async Task CheckAsync_NoSession_ReturnsSessionNotPopulated()
         {
-            var context = new StubContext { InMemoryPartPk = 42, StampedPkText = "42" };
-            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
-
-            await check.CheckAsync();
-
-            Assert.That(context.FetchCalled, Is.False);
-        }
-
-        [Test]
-        public async Task CheckAsync_PkNotInMemory_AutoFetches()
-        {
-            var context = new StubContext { InMemoryPartPk = 0 };
-            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
-
-            await check.CheckAsync();
-
-            Assert.That(context.FetchCalled, Is.True);
-        }
-
-        [Test]
-        public async Task CheckAsync_StillNoPkAfterFetch_ReturnsPkNotFound()
-        {
-            var context = new StubContext { InMemoryPartPk = 0 };
+            // Compare BOM is session-gated: a session-absent snapshot is the
+            // dropped-session race, never a fetch trigger.
+            var context = new StubContext { InMemoryPartPk = 0, StampedPkText = "42" };
             var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
 
-            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.PkNotFound));
+            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.SessionNotPopulated));
         }
 
         [Test]
-        public async Task CheckAsync_FetchSucceeds_PkNotStampedInDocument_ReturnsPkNotStamped()
+        public async Task CheckAsync_Always_CapturesExactlyOneSnapshot()
         {
             var context = new StubContext
             {
-                InMemoryPartPk = 0,
+                InMemoryPartPk = 42,
+                StampedPkText = "42",
+                SwRevision = "A",
+                FetchedRevision = "A",
+            };
+            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
+
+            var result = await check.CheckAsync();
+
+            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.Ready));
+            Assert.That(context.SnapshotCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public async Task CheckAsync_SessionWithoutStampedPk_ReturnsPkNotStamped()
+        {
+            // An IPN-fetched session on an unstamped document: the check
+            // evaluates the existing session and finds no stamped PK.
+            var context = new StubContext
+            {
+                InMemoryPartPk = 42,
                 StampedPkText = string.Empty,
             };
-            context.OnFetch = () => context.InMemoryPartPk = 99;
             var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
@@ -228,157 +217,17 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public async Task CheckAsync_NoBomTable_PkNotInMemory_DoesNotFetch()
+        public async Task CheckAsync_NoBomTable_NoSession_ReturnsBomTableMissing()
         {
+            // The BOM-table probe runs before the session check — no fetch and
+            // no session outcome for an assembly with nothing to compare.
             var context = new StubContext { InMemoryPartPk = 0 };
-            context.OnFetch = () => context.InMemoryPartPk = 99;
             var check = new BomCompareReadinessCheck(context, CreateBomService(false), DefaultBomKeyword);
 
             var result = await check.CheckAsync();
 
             Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.BomTableMissing));
-            Assert.That(context.FetchCalled, Is.False);
-            Assert.That(context.InMemoryPartPk, Is.EqualTo(0));
-        }
-
-        // -- Confirmation propagation -----------------------------------------
-
-        [Test]
-        public async Task CheckAsync_EnsureReturnsConfirmation_PropagatesFetchResult()
-        {
-            var context = new StubContext { InMemoryPartPk = 0 };
-            context.EnsureResult = new PartSyncResult(PartSyncOutcome.LinkMismatchConfirmation);
-            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
-
-            var result = await check.CheckAsync();
-
-            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.FetchConfirmationRequired));
-            Assert.That(result.FetchResult, Is.SameAs(context.EnsureResult));
-        }
-
-        // -- Typed ensure-outcome preservation ----------------------------------
-        // A server/lifecycle failure must never masquerade as "create the part".
-
-        [Test]
-        public async Task CheckAsync_EnsureReturnsPartNotFound_ReturnsPkNotFound()
-        {
-            var context = new StubContext { InMemoryPartPk = 0 };
-            context.EnsureResult = new PartSyncResult(PartSyncOutcome.PartNotFound) { Ipn = "PART-001" };
-            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
-
-            var result = await check.CheckAsync();
-
-            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.PkNotFound));
-            Assert.That(result.FetchResult, Is.SameAs(context.EnsureResult));
-        }
-
-        // -- NotFoundIdentifier -------------------------------------------------
-        // The not-found dialog must always name something usable.
-
-        [Test]
-        public void NotFoundIdentifier_IpnPresent_ReturnsQuotedIpn()
-        {
-            var readiness = new BomCompareReadiness(
-                BomCompareOutcome.PkNotFound, "PART-001", "A", "A");
-
-            Assert.That(readiness.NotFoundIdentifier, Is.EqualTo("'PART-001'"));
-        }
-
-        [Test]
-        public void NotFoundIdentifier_BlankIpn_ReturnsLookedUpPartPk()
-        {
-            // A PK-addressed auto-fetch can fail for a document with an empty
-            // IPN — the dialog names the PK it actually looked up, not ''.
-            var fetch = new PartSyncResult(PartSyncOutcome.PartNotFound) { PartPk = 77 };
-            var readiness = new BomCompareReadiness(
-                BomCompareOutcome.PkNotFound, string.Empty, "A", "A", fetch);
-
-            Assert.That(readiness.NotFoundIdentifier, Is.EqualTo("InvenTree Part PK 77"));
-        }
-
-        [Test]
-        public void NotFoundIdentifier_NoIpnNoFetchResult_ReturnsGenericLabel()
-        {
-            var readiness = new BomCompareReadiness(
-                BomCompareOutcome.PkNotFound, string.Empty, "A", "A");
-
-            Assert.That(readiness.NotFoundIdentifier, Is.EqualTo("The part"));
-        }
-
-        [Test]
-        public async Task CheckAsync_EnsureReturnsFailed_ReturnsFetchFailedWithResult()
-        {
-            var context = new StubContext { InMemoryPartPk = 0 };
-            context.EnsureResult = new PartSyncResult(PartSyncOutcome.Failed)
-            {
-                Diagnostic = "connection refused",
-            };
-            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
-
-            var result = await check.CheckAsync();
-
-            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.FetchFailed));
-            Assert.That(result.FetchResult!.Outcome, Is.EqualTo(PartSyncOutcome.Failed));
-            Assert.That(result.FetchResult.Diagnostic, Is.EqualTo("connection refused"));
-        }
-
-        [Test]
-        public async Task CheckAsync_EnsureReturnsStale_ReturnsFetchFailedWithResult()
-        {
-            var context = new StubContext { InMemoryPartPk = 0 };
-            context.EnsureResult = new PartSyncResult(PartSyncOutcome.Stale);
-            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
-
-            var result = await check.CheckAsync();
-
-            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.FetchFailed));
-            Assert.That(result.FetchResult!.Outcome, Is.EqualTo(PartSyncOutcome.Stale));
-        }
-
-        [Test]
-        public async Task CheckAsync_EnsureReturnsCancelled_ReturnsFetchFailedWithResult()
-        {
-            var context = new StubContext { InMemoryPartPk = 0 };
-            context.EnsureResult = new PartSyncResult(PartSyncOutcome.Cancelled);
-            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
-
-            var result = await check.CheckAsync();
-
-            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.FetchFailed));
-            Assert.That(result.FetchResult!.Outcome, Is.EqualTo(PartSyncOutcome.Cancelled));
-        }
-
-        [Test]
-        public async Task CheckAsync_EnsureReturnsInvalidOperation_ReturnsFetchFailedWithResult()
-        {
-            var context = new StubContext { InMemoryPartPk = 0 };
-            context.EnsureResult = new PartSyncResult(PartSyncOutcome.InvalidOperation)
-            {
-                Diagnostic = "No Part Sync session or client.",
-            };
-            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
-
-            var result = await check.CheckAsync();
-
-            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.FetchFailed));
-            Assert.That(result.FetchResult!.Outcome, Is.EqualTo(PartSyncOutcome.InvalidOperation));
-        }
-
-        [Test]
-        public async Task CheckAsync_EnsureReturnsDuplicateTerminal_ReturnsFetchFailedWithResult()
-        {
-            var context = new StubContext { InMemoryPartPk = 0 };
-            context.EnsureResult = new PartSyncResult(PartSyncOutcome.DuplicateNoRevisionMatch)
-            {
-                Ipn = "PART-001",
-                SwRevision = "B",
-            };
-            var check = new BomCompareReadinessCheck(context, CreateBomService(), DefaultBomKeyword);
-
-            var result = await check.CheckAsync();
-
-            Assert.That(result.Outcome, Is.EqualTo(BomCompareOutcome.FetchFailed));
-            Assert.That(result.FetchResult!.Outcome, Is.EqualTo(PartSyncOutcome.DuplicateNoRevisionMatch));
+            Assert.That(context.SnapshotCount, Is.EqualTo(1));
         }
 
         // -- Snapshot immutability ------------------------------------------------
