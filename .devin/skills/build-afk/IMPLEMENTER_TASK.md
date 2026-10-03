@@ -67,14 +67,17 @@ Your granted toolset is `read`, `edit`, `exec`, `grep`, `glob` (shown in your fu
 3. Green: the smallest change that passes. Refactor after green.
 4. Feedback loops — all green before the commit:
    - `dotnet test "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj" --disable-build-servers` from the worktree root.
-   - `dotnet format` on your changed C# files:
+   - `dotnet format` on your changed C# files, scoped to each changed file's project — a solution-wide workspace load is the documented stall:
 
      ```bash
      mapfile -t files < <( { git diff --name-only --diff-filter=AM HEAD; git ls-files --others --exclude-standard; } | grep '\.cs$' )
-     if ((${#files[@]})); then dotnet format "Solidworks Inventree Add-In.sln" --include "${files[@]}"; fi
+     for proj in SwInventreeAddin SwInventreeAddin.Tests; do
+       mapfile -t inc < <(printf '%s\n' "${files[@]}" | grep "^$proj/")
+       ((${#inc[@]})) && dotnet format "$proj/$proj.csproj" --include "${inc[@]}"
+     done
      ```
 
-     A stall on workspace load doesn't recover — kill the `dotnet.exe` PID and re-run.
+     `--include` takes git's repo-root-relative paths as-is. A stall on workspace load doesn't recover — kill the `dotnet.exe` PID and re-run the project-scoped command.
 
    - The WPF smoke harness when the UI pointer fired.
 

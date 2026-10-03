@@ -22,6 +22,8 @@ During resolution, for each child ticket:
 - Search branches matching `build/*<N>` or `afk/<N>`: `git branch -a --list "build/*<N>*" --list "afk/<N>"`.
 - When neither source finds anything, do not declare "no prior work" yet — closeout deletes `afk/<N>` branches, so an absent branch proves nothing. Fall back to merged ancestry — `git log <PARENT_BRANCH> --oneline --grep="#<N>"`, `git branch --contains <sha>`, or patch-id comparison against `PARENT_BRANCH` — and to prior run ledgers (`.scratch/build-afk/*/STATUS.json` commit fields).
 
+Audit `git worktree list` once per run alongside: a `.worktrees/afk-<N>` left by a dead run keeps `afk/<N>` checked out — a later `git worktree add` on that branch fails — and uncommitted work inside it is invisible to the branch and ancestry scans. An entry no live `.scratch/build-afk/*/STATUS.json` owns is stale: remove it at setup when `git -C <path> status --porcelain` is clean; a dirty one may hold uncommitted prior work, so it is surfaced at the gate beside the ticket's disposition, never discarded unseen. Entries outside `.worktrees/` belong to other skills — report them, do not remove.
+
 Each finding gets a disposition at the batch gate — record the disposition and its source in `PROGRESS.md`:
 
 - **satisfied** — the work already landed or is covered elsewhere; drop the ticket from the batch. Separately, a `## Blocked by` reference to a *closed* issue is a satisfied edge — the dependent is unblocked without a search — but the ticket itself still needs its own disposition; a closed blocker does not imply the dependent's work exists.
