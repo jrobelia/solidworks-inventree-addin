@@ -50,6 +50,9 @@ namespace SwInventreeAddin
         /// Raised once per committed mutation (document transition, session
         /// install/clear, post-Push field update, thumbnail set) on the host
         /// STA thread, strictly after the change is visible through the surface.
+        /// Also raised when a commit's document recapture discovers a switch or
+        /// close the host has not notified yet and drops the session or pending
+        /// confirmation — observers must not wait for the delayed notification.
         /// </summary>
         event EventHandler? Changed;
 
@@ -111,6 +114,10 @@ namespace SwInventreeAddin
         /// Synchronous STA commit for a created part: validates the token,
         /// writes PK/IPN/Name (each pending-registered before its write),
         /// substitute-refreshes the document, installs the session.
+        /// <see cref="PartSyncOutcome.InvalidOperation"/> when no client is
+        /// configured or <paramref name="part"/> carries no server-assigned
+        /// InvenTree Part PK — a session the validity rules could never keep
+        /// is never installed.
         /// </summary>
         PartSyncResult CompleteCreatePart(PartSyncOperationToken token, InventreePart part);
 
@@ -125,21 +132,30 @@ namespace SwInventreeAddin
         /// <summary>
         /// STA capture of the mapped property value → client update off-thread
         /// → validated commit (token + session identity) mutating the session
-        /// part and raising <see cref="Changed"/>.
+        /// part and raising <see cref="Changed"/>. The same validation runs at
+        /// entry, before the mapped property is read — an already-undelivered
+        /// document switch returns <see cref="PartSyncOutcome.Stale"/> with no
+        /// read and no remote write.
         /// </summary>
         Task<PartSyncResult> PushAsync(PushField field);
 
         /// <summary>
+        /// Entry validation (token + document recapture) →
         /// <c>ImagePipeline.Process</c> on STA → upload → re-fetch/download the
         /// thumbnail off-thread → validated commit installing the thumbnail.
-        /// The viewport capture and crop dialog live in the host, which passes
-        /// the image and rectangle in.
+        /// An already-undelivered document switch at entry returns
+        /// <see cref="PartSyncOutcome.Stale"/> with no processing and no
+        /// upload. The viewport capture and crop dialog live in the host,
+        /// which passes the image and rectangle in.
         /// </summary>
         Task<PartSyncResult> PushImageAsync(Image image, Rectangle cropRect);
 
         /// <summary>
         /// Resumes the pending confirmation identified by
-        /// <paramref name="handle"/>. For duplicate candidates,
+        /// <paramref name="handle"/>. May be called from any thread: only the
+        /// handle null-check runs before the call is marshalled through the
+        /// dispatcher — every coordinator-state read or clear happens inside
+        /// the hop. For duplicate candidates,
         /// <paramref name="selectedCandidatePk"/> chooses by immutable PK and
         /// is validated against the captured candidate set. An unknown or
         /// obsolete handle returns <see cref="PartSyncOutcome.InvalidOperation"/>;

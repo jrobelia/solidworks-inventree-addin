@@ -75,6 +75,21 @@ namespace SwInventreeAddin.Tests.Stubs
         public int DownloadImageCallCount { get; private set; }
         public Exception? ThrowOnDownload { get; set; }
 
+        private readonly PendingCallSource<string, byte[]?> _downloadImageCalls
+            = new PendingCallSource<string, byte[]?>();
+
+        /// <summary>
+        /// When true, DownloadImageAsync appends a <see cref="PendingCall{TRequest, TResult}"/>
+        /// to <see cref="PendingDownloadImageCalls"/> and returns its incomplete task, so
+        /// the test lands changes inside the download window.
+        /// </summary>
+        public bool DeferDownloadImage
+        {
+            get => _downloadImageCalls.Defer;
+            set => _downloadImageCalls.Defer = value;
+        }
+        public List<PendingCall<string, byte[]?>> PendingDownloadImageCalls => _downloadImageCalls.Calls;
+
         /// <summary>
         /// When true, GetPartByIpnAsync returns a task that completes on the thread pool.
         /// This lets Create Part tests exercise the WPF UI-thread marshalling path.
@@ -85,6 +100,8 @@ namespace SwInventreeAddin.Tests.Stubs
         {
             DownloadImageCallCount++;
             if (ThrowOnDownload != null) throw ThrowOnDownload;
+            if (_downloadImageCalls.Capture(url) is { } deferred)
+                return deferred;
             return Task.FromResult(ThumbnailBytesToReturn);
         }
 

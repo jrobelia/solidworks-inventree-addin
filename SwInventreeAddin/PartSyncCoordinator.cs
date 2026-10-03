@@ -533,6 +533,15 @@ namespace SwInventreeAddin
             if (!IsCommitCurrent(token))
                 return Stale();
 
+            // A completion without a server-assigned InvenTree Part PK — or
+            // one arriving while no server is configured — can never satisfy
+            // the session validity rules (StampedPartPk > 0). No writes, no
+            // install.
+            if (_client == null)
+                return InvalidOp("No server configured.");
+            if (part.Pk <= 0)
+                return InvalidOp("The created part carries no server-assigned InvenTree Part PK.");
+
             var mapping = ResolveMapping();
             var doc = _state.Document;
             if (doc == null)
@@ -541,7 +550,7 @@ namespace SwInventreeAddin
             // A successful create always links the document by PK; IPN and Name
             // stamp alongside. Each write registers its pending echo first —
             // SolidWorks can raise it synchronously during the write.
-            var wrotePk = part.Pk > 0 && !string.IsNullOrEmpty(mapping.PkProperty);
+            var wrotePk = !string.IsNullOrEmpty(mapping.PkProperty);
             if (wrotePk)
             {
                 RegisterPendingWrite(mapping.PkProperty, part.Pk.ToString());
@@ -605,7 +614,7 @@ namespace SwInventreeAddin
             // confirmation so its resume correlates to this exact point.
             var session = _session;
             var token = CaptureScopedToken();
-            if (!IsCommitCurrent(token) || !ReferenceEquals(_session, session))
+            if (!IsSessionCommitCurrent(token, session))
                 return Stale();
 
             var propertyName = session.ApplyPropertyName(field);
@@ -648,8 +657,15 @@ namespace SwInventreeAddin
             if (field == PushField.Revision && _session.Part.Pk == 0)
                 return InvalidOp("cannot push revision \u2014 InvenTree part ID is missing.");
 
+            // Same commit discipline as Apply: validate + recapture BEFORE
+            // the mapped-property read — an undelivered ActiveDoc switch
+            // would otherwise read the new document's values and push them
+            // remotely to the old session's part.
             var session = _session;
             var token = CaptureScopedToken();
+            if (!IsSessionCommitCurrent(token, session))
+                return Stale();
+
             var value = session.CapturePushValue(field);
             if (value == null)
                 return InvalidOp("The mapped property is not configured.");
@@ -662,7 +678,7 @@ namespace SwInventreeAddin
             {
                 // Validate BEFORE examining the network outcome — a stale
                 // failure must never reach the pane as a status write.
-                if (!IsCommitCurrent(token) || !ReferenceEquals(_session, session))
+                if (!IsSessionCommitCurrent(token, session))
                     return Stale();
                 if (error != null)
                     return Failed(error.Message);
@@ -687,6 +703,12 @@ namespace SwInventreeAddin
 
             var session = _session;
             var token = CaptureScopedToken();
+            // Validate + recapture BEFORE image processing and upload — an
+            // undelivered ActiveDoc switch must not upload to the old
+            // session's part.
+            if (!IsSessionCommitCurrent(token, session))
+                return Stale();
+
             var partPk = session.PartPk;
 
             byte[] pngData;
@@ -721,7 +743,7 @@ namespace SwInventreeAddin
             return await RunOnStaAsync(() =>
             {
                 // Validate BEFORE examining the upload/preview outcome.
-                if (!IsCommitCurrent(token) || !ReferenceEquals(_session, session))
+                if (!IsSessionCommitCurrent(token, session))
                     return Stale();
                 if (error != null)
                     return Failed(error.Message);
@@ -743,29 +765,43 @@ namespace SwInventreeAddin
             PartSyncConfirmationHandle handle, bool approved, int? selectedCandidatePk = null)
         {
             if (handle == null) throw new ArgumentNullException(nameof(handle));
-            if (_disposed)
-                return InvalidOp("The coordinator is disposed.");
 
-            var pending = _pendingConfirmation;
-            if (pending == null || pending.Handle!.Id != handle.Id)
-                return InvalidOp("No pending confirmation matches this handle.");
-
-            if (!approved)
+            // STA entry contract: every read or clear of coordinator state is
+            // marshalled through the dispatcher — a resume arriving on a pool
+            // continuation must not touch the pending slot before the hop.
+            // Only handle validation runs on the caller's thread.
+            var (terminal, pending) = await RunOnStaAsync(() =>
             {
-                _pendingConfirmation = null;
-                return new PartSyncResult(PartSyncOutcome.Cancelled);
-            }
+                if (_disposed)
+                    return ((PartSyncResult?)InvalidOp("The coordinator is disposed."), (PendingConfirmation?)null);
 
-            // Validate on resume, BEFORE dispatching any download or commit
-            // work — the in-commit validation then re-checks after the
-            // download window. A stale pending can never succeed; drop it.
-            if (!IsTokenCurrent(pending.Token))
-            {
-                _pendingConfirmation = null;
-                return Stale();
-            }
+                var p = _pendingConfirmation;
+                if (p == null || p.Handle!.Id != handle.Id)
+                    return ((PartSyncResult?)InvalidOp("No pending confirmation matches this handle."), (PendingConfirmation?)null);
 
-            switch (pending.Kind)
+                if (!approved)
+                {
+                    _pendingConfirmation = null;
+                    return ((PartSyncResult?)new PartSyncResult(PartSyncOutcome.Cancelled), (PendingConfirmation?)null);
+                }
+
+                // Validate on resume, BEFORE dispatching any download or
+                // commit work — the in-commit validation then re-checks
+                // after the download window. A stale pending can never
+                // succeed; drop it.
+                if (!IsTokenCurrent(p.Token))
+                {
+                    _pendingConfirmation = null;
+                    return ((PartSyncResult?)Stale(), (PendingConfirmation?)null);
+                }
+
+                return ((PartSyncResult?)null, p);
+            }).ConfigureAwait(false);
+
+            if (terminal != null)
+                return terminal;
+
+            switch (pending!.Kind)
             {
                 case PendingConfirmationKind.DuplicateIpn:
                     return await ResumeDuplicateIpnAsync(pending, selectedCandidatePk)
@@ -777,8 +813,11 @@ namespace SwInventreeAddin
                     return await RunOnStaAsync(() => CommitMissingPropertyResume(pending))
                         .ConfigureAwait(false);
                 default:
-                    _pendingConfirmation = null;
-                    return InvalidOp("Unknown pending confirmation.");
+                    return await RunOnStaAsync(() =>
+                    {
+                        _pendingConfirmation = null;
+                        return InvalidOp("Unknown pending confirmation.");
+                    }).ConfigureAwait(false);
             }
         }
 
@@ -792,8 +831,11 @@ namespace SwInventreeAddin
             var chosen = pending.Candidates?.FirstOrDefault(c => c.Pk == pk);
             if (chosen == null)
             {
-                _pendingConfirmation = null;
-                return InvalidOp("The selected candidate is not part of the captured set.");
+                return await RunOnStaAsync(() =>
+                {
+                    _pendingConfirmation = null;
+                    return InvalidOp("The selected candidate is not part of the captured set.");
+                }).ConfigureAwait(false);
             }
 
             // Validate on resume — marshalled, WITH document recapture —
@@ -989,14 +1031,25 @@ namespace SwInventreeAddin
         private bool IsCommitCurrent(PartSyncOperationToken token) =>
             IsTokenCurrent(token) && RecaptureAndRevalidate(token);
 
+        /// <summary>Commit validity plus session identity — the guard every session-scoped commit runs.</summary>
+        private bool IsSessionCommitCurrent(PartSyncOperationToken token, PartSyncSession session) =>
+            IsCommitCurrent(token) && ReferenceEquals(_session, session);
+
         /// <summary>
         /// Re-reads document values inside a validated commit and confirms the
         /// token is still current — catches a document switch whose host
-        /// notification has not been delivered yet.
+        /// notification has not been delivered yet. A discovery that drops the
+        /// session or pending confirmation raises <see cref="Changed"/> itself:
+        /// the caller is about to return Stale and the pane must not wait for
+        /// the delayed host notification.
         /// </summary>
         private bool RecaptureAndRevalidate(PartSyncOperationToken token)
         {
+            var hadSession = _session != null;
+            var hadPending = _pendingConfirmation != null;
             LightCaptureInstall();
+            if ((hadSession && _session == null) || (hadPending && _pendingConfirmation == null))
+                RaiseChanged();
             return IsTokenCurrent(token);
         }
 

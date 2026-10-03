@@ -100,6 +100,46 @@ namespace SwInventreeAddin.Tests
             Assert.That(session.ThumbnailBytes, Is.EqualTo(bytes));
         }
 
+        // ── Session-owned inputs ──────────────────────────────────────────────
+
+        [Test]
+        public void Constructor_MappingMutatedAfterConstruction_SessionKeepsCapturedNames()
+        {
+            var capturedName = _mapping.NameProperty;
+            var session = CreateSession();
+
+            // The provider's config instance is caller state — mutating it
+            // post-construction must not rewrite the session's field table.
+            _mapping.NameProperty = "POISONED";
+
+            Assert.That(session.ApplyPropertyName(ApplyField.Name), Is.EqualTo(capturedName));
+        }
+
+        [Test]
+        public void Apply_MappingMutatedAfterConstruction_WritesCapturedProperty()
+        {
+            var capturedName = _mapping.NameProperty!;
+            _propertyService.Seed(capturedName, "old");
+            var session = CreateSession();
+
+            _mapping.NameProperty = "POISONED";
+            session.Apply(ApplyField.Name);
+
+            Assert.That(_propertyService.DidWrite(capturedName, SamplePart.Name), Is.True);
+            Assert.That(_propertyService.DidWrite("POISONED"), Is.False);
+        }
+
+        [Test]
+        public void Constructor_ThumbnailBytes_CopiesCallerArray()
+        {
+            var bytes = new byte[] { 1, 2, 3 };
+            var session = CreateSession(thumbnailBytes: bytes);
+
+            bytes[0] = 99;
+
+            Assert.That(session.ThumbnailBytes![0], Is.EqualTo(1));
+        }
+
         // ── Apply ─────────────────────────────────────────────────────────────
 
         [Test]
@@ -443,6 +483,18 @@ namespace SwInventreeAddin.Tests
             session.SetThumbnail(updated);
 
             Assert.That(session.ThumbnailBytes, Is.EqualTo(updated));
+        }
+
+        [Test]
+        public void SetThumbnail_CopiesCallerArray()
+        {
+            var session = CreateSession();
+            var bytes = new byte[] { 4, 5, 6 };
+
+            session.SetThumbnail(bytes);
+            bytes[0] = 99;
+
+            Assert.That(session.ThumbnailBytes![0], Is.EqualTo(4));
         }
     }
 }
