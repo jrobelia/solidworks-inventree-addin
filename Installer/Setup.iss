@@ -100,6 +100,14 @@ begin
            mbError, MB_OK);
 end;
 
+// The failure messages quote the RegAsm command back as the manual-repair
+// hint, so the hint and the Exec params must be built in one place — if
+// they drifted, the hint would tell the user to run the wrong command.
+function RegAsmArgs(const Switches: String): String;
+begin
+  Result := '"' + ExpandConstant('{app}\SwInventreeAddin.dll') + '" ' + Switches;
+end;
+
 // [Run]/[UninstallRun] entries never look at the exit code, so a failed
 // RegAsm would still end the wizard "successfully" with the add-in absent
 // from SolidWorks — the silent failure the old Install.ps1 caught via
@@ -108,8 +116,7 @@ function RunRegAsm(const Switches: String): Integer;
 var
   ResultCode: Integer;
 begin
-  if Exec(ExpandConstant('{#RegAsm}'),
-          '"' + ExpandConstant('{app}\SwInventreeAddin.dll') + '" ' + Switches,
+  if Exec(ExpandConstant('{#RegAsm}'), RegAsmArgs(Switches),
           '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
     Result := ResultCode
   else
@@ -131,8 +138,7 @@ begin
           IntToStr(ExitCode) + ').' + #13#10 +
         'The InvenTree task pane will not appear in SolidWorks.' + #13#10 +
         'Re-run this installer, or register by hand as admin:' + #13#10 +
-        ExpandConstant('{#RegAsm}') + ' "' +
-          ExpandConstant('{app}\SwInventreeAddin.dll') + '" /codebase',
+        ExpandConstant('{#RegAsm}') + ' ' + RegAsmArgs('/codebase'),
         mbError, MB_OK, IDOK);
   end;
 end;
@@ -153,8 +159,7 @@ begin
           IntToStr(ExitCode) + ').' + #13#10 +
         'Files are still removed, but SolidWorks may keep listing the add-in.' + #13#10 +
         'To finish by hand as admin:' + #13#10 +
-        ExpandConstant('{#RegAsm}') + ' "' +
-          ExpandConstant('{app}\SwInventreeAddin.dll') + '" /u',
+        ExpandConstant('{#RegAsm}') + ' ' + RegAsmArgs('/u'),
         mbError, MB_OK, IDOK);
   end;
 end;
