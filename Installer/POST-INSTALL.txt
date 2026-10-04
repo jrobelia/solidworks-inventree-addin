@@ -1,0 +1,31 @@
+SwInventreeAddin — After Installation
+=====================================
+
+The installer registered the add-in with SolidWorks. Server settings
+carry over between versions.
+
+FINDING THE TASK PANE
+  Start SolidWorks. The "InvenTree" tab appears in the task pane on
+  the right edge of the window.
+
+  If it does not appear:
+    1. In SolidWorks, choose Tools > Add-Ins.
+    2. Find "InvenTree" in the list.
+    3. Tick the box in the left column to load it now, and the right
+       column to load it every time SolidWorks starts.
+    4. Click OK.
+
+SET UP YOUR SERVER
+    1. In the InvenTree task pane, click the Settings button (gear icon).
+    2. Enter your InvenTree server URL.
+    3. Enter your InvenTree username and password, then Save.
+       The password is used once to request an API token — it is not
+       saved.
+
+  If your server uses single sign-on or you already have a token,
+  enter an API key in Settings instead of a username and password.
+  (To get an API key: InvenTree -> click your name ->
+   Account Settings -> API Tokens.)
+
+UNINSTALLING
+  Windows Settings -> Apps -> "SwInventreeAddin" -> Uninstall.

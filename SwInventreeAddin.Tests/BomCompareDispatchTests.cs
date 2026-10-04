@@ -65,6 +65,31 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public void Next_PartNotAssembly_ReturnsNotAnAssemblyWarning()
+        {
+            var action = Next(BomCompareOutcome.PartNotAssembly);
+
+            Assert.That(action.Kind, Is.EqualTo(BomCompareActionKind.ShowMessage));
+            Assert.That(action.Title, Is.EqualTo("BOM Compare — Not an Assembly"));
+            Assert.That(action.Icon, Is.EqualTo(BomCompareDialogIcon.Warning));
+            Assert.That(action.Message, Is.EqualTo(
+                "InvenTree part “PART-001” is not flagged as Assembly and cannot hold a BOM.\n\n"
+                + "Set the Assembly flag on the part in InvenTree first, then Fetch again."));
+        }
+
+        [Test]
+        public void Next_PartNotAssembly_BlankIpn_UsesGenericPartLabel()
+        {
+            var action = BomCompareDispatch.Next(
+                new BomCompareReadiness(BomCompareOutcome.PartNotAssembly, "", "A", "A"),
+                revisionPushAttempted: false,
+                CreateMapping());
+
+            Assert.That(action.Message, Does.StartWith(
+                "The linked InvenTree part is not flagged as Assembly"));
+        }
+
+        [Test]
         public void Next_ItIsNewer_ReturnsOldRevisionStop()
         {
             var action = Next(BomCompareOutcome.ItIsNewer, swRevision: "A", itRevision: "B");

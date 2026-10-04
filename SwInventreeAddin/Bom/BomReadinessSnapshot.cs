@@ -7,7 +7,8 @@ namespace SwInventreeAddin.Bom
     /// One coherent, immutable read of the state
     /// <see cref="BomCompareReadinessCheck"/> evaluates: the document's IPN
     /// and stamped InvenTree Part PK, the SolidWorks revision, the session's
-    /// in-memory part PK and fetched revision, and the resolved mapping
+    /// in-memory part PK, fetched revision, and fetched Assembly flag, plus
+    /// the resolved mapping
     /// (a defensive copy — callers cannot mutate the coordinator's mapping).
     /// </summary>
     internal sealed class BomReadinessSnapshot
@@ -23,6 +24,7 @@ namespace SwInventreeAddin.Bom
             string stampedPkText,
             string swRevision,
             string fetchedRevision,
+            bool fetchedPartIsAssembly,
             PropertyMappingConfig mapping)
         {
             Ipn = ipn ?? string.Empty;
@@ -30,6 +32,7 @@ namespace SwInventreeAddin.Bom
             StampedPkText = stampedPkText ?? string.Empty;
             SwRevision = swRevision ?? string.Empty;
             FetchedRevision = fetchedRevision ?? string.Empty;
+            FetchedPartIsAssembly = fetchedPartIsAssembly;
             _mapping = (mapping ?? throw new ArgumentNullException(nameof(mapping))).Clone();
         }
 
@@ -47,6 +50,14 @@ namespace SwInventreeAddin.Bom
 
         /// <summary>The fetched part's revision; empty without a session.</summary>
         public string FetchedRevision { get; }
+
+        /// <summary>
+        /// The fetched part's Assembly flag — whether it can hold a BOM;
+        /// false without a session. Same staleness profile as
+        /// <see cref="FetchedRevision"/>: read from the same fetch, no extra
+        /// server call.
+        /// </summary>
+        public bool FetchedPartIsAssembly { get; }
 
         /// <summary>The resolved mapping (defensive copy), including BOM column aliases.</summary>
         public PropertyMappingConfig Mapping => _mapping.Clone();

@@ -1,0 +1,165 @@
+; SwInventreeAddin Inno Setup script
+;
+; Build:  iscc /DAppVersion=2.1.0 Installer\Setup.iss
+; Output: Installer\SwInventreeAddin-<version>-Setup.exe
+;
+; Replaces the zip + Install.bat + Install.ps1 flow with a standard Windows
+; installer. Admin rights are still required — SolidWorks only discovers
+; add-ins under HKLM\SOFTWARE\SolidWorks\Addins and COM registration lands
+; in HKLM\Software\Classes — but the user sees a normal wizard, a UAC prompt,
+; and a real entry in Settings > Apps instead of a batch file.
+;
+; COM registration still goes through RegAsm so the registry layout stays
+; owned by [ComRegisterFunction]/[ComUnregisterFunction] in SwAddin.cs.
+
+#ifndef AppVersion
+  #define AppVersion "0.0.0-dev"
+#endif
+
+#define AppName "SwInventreeAddin"
+#define BuildDir "..\SwInventreeAddin\bin\Release\net48"
+#define RegAsm "{win}\Microsoft.NET\Framework64\v4.0.30319\RegAsm.exe"
+
+[Setup]
+; The add-in's CLSID doubles as the AppId — a stable identity that lets Inno
+; recognise previous installs and upgrade them in place.
+AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}}
+AppName={#AppName}
+AppVersion={#AppVersion}
+AppPublisher={#AppName}
+DefaultDirName={autopf}\{#AppName}
+DisableProgramGroupPage=yes
+PrivilegesRequired=admin
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
+; Prompt to close SolidWorks when it has the DLL loaded — the usual
+; "install while SolidWorks is open" failure becomes a guided close.
+CloseApplications=yes
+Compression=lzma2
+SolidCompression=yes
+WizardStyle=modern
+SetupIconFile=sw-inventree-logo.ico
+; Wizard artwork must be BMP. WizardImageFile is the tall left panel on the
+; welcome/finish pages, WizardSmallImageFile the image top-right on the inner
+; pages. The second file in each list is the 2x bitmap Inno picks on
+; high-DPI screens.
+WizardImageFile=wizard-image-164x314.bmp,wizard-image-328x628.bmp
+WizardSmallImageFile=wizard-small-55x55.bmp,wizard-small-110x110.bmp
+LicenseFile=..\LICENSE
+UninstallDisplayIcon={app}\sw-inventree-logo.ico
+OutputDir=.
+OutputBaseFilename={#AppName}-{#AppVersion}-Setup
+UninstallDisplayName={#AppName}
+
+[Registry]
+; Zip installs wrote a hand-made Add/Remove Programs key whose UninstallString
+; pointed at a bat copied into {app}. Left alone, upgraders see two same-named
+; entries and running the old one unregisters the new install's DLLs.
+Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{#AppName}"; Flags: deletekey
+
+[InstallDelete]
+; Leftovers from zip installs: the copied bat uninstaller would unregister
+; the new files if run.
+Type: files; Name: "{app}\Uninstall.ps1"
+Type: files; Name: "{app}\Uninstall (Run as Administrator).bat"
+
+[Files]
+Source: "sw-inventree-logo.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\THIRD-PARTY-NOTICES.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "POST-INSTALL.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#BuildDir}\*.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#BuildDir}\Resources\*"; DestDir: "{app}\Resources"; \
+    Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+
+[Run]
+; Finish-page checkbox for the post-install notes — checked by default so a
+; first install opens the orientation notes.
+Filename: "{app}\POST-INSTALL.txt"; \
+    Description: "View post-install notes (finding the task pane, server setup)"; \
+    Flags: postinstall shellexec skipifsilent
+
+[Code]
+const
+  // NDP Release value Microsoft assigned to .NET Framework 4.8
+  DotNet48MinRelease = 528040;
+
+// .NET Framework 4.8 is a hard prerequisite. Check the NDP Release value —
+// RegAsm ships with every 4.x, so a FileExists gate would let 4.6/4.7
+// machines through and then fail mid-install at the [Run] step.
+function InitializeSetup(): Boolean;
+var
+  Release: Cardinal;
+begin
+  Result := RegQueryDWordValue(HKLM,
+    'SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full', 'Release', Release)
+    and (Release >= DotNet48MinRelease);
+  if not Result then
+    MsgBox('SwInventreeAddin requires .NET Framework 4.8 or later.' + #13#10 +
+           'Install it from Microsoft and run this installer again.',
+           mbError, MB_OK);
+end;
+
+// The failure messages quote the RegAsm command back as the manual-repair
+// hint, so the hint and the Exec params must be built in one place — if
+// they drifted, the hint would tell the user to run the wrong command.
+function RegAsmArgs(const Switches: String): String;
+begin
+  Result := '"' + ExpandConstant('{app}\SwInventreeAddin.dll') + '" ' + Switches;
+end;
+
+// [Run]/[UninstallRun] entries never look at the exit code, so a failed
+// RegAsm would still end the wizard "successfully" with the add-in absent
+// from SolidWorks — the silent failure the old Install.ps1 caught via
+// $LASTEXITCODE. Exec gives the code back so we can surface it.
+function RunRegAsm(const Switches: String): Integer;
+var
+  ResultCode: Integer;
+begin
+  if Exec(ExpandConstant('{#RegAsm}'), RegAsmArgs(Switches),
+          '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+    Result := ResultCode
+  else
+    Result := -1;
+  if Result <> 0 then
+    Log('RegAsm ' + Switches + ' failed with exit code ' + IntToStr(Result));
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  ExitCode: Integer;
+begin
+  if CurStep = ssPostInstall then
+  begin
+    ExitCode := RunRegAsm('/codebase /s');
+    if ExitCode <> 0 then
+      SuppressibleMsgBox(
+        'RegAsm could not register the add-in (exit code ' +
+          IntToStr(ExitCode) + ').' + #13#10 +
+        'The InvenTree task pane will not appear in SolidWorks.' + #13#10 +
+        'Re-run this installer, or register by hand as admin:' + #13#10 +
+        ExpandConstant('{#RegAsm}') + ' ' + RegAsmArgs('/codebase'),
+        mbError, MB_OK, IDOK);
+  end;
+end;
+
+// usUninstall fires before file removal — same ordering the [UninstallRun]
+// entry held — so the DLL still exists when RegAsm unregisters it and
+// [ComUnregisterFunction] can clean the SolidWorks keys.
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  ExitCode: Integer;
+begin
+  if CurUninstallStep = usUninstall then
+  begin
+    ExitCode := RunRegAsm('/u /s');
+    if ExitCode <> 0 then
+      SuppressibleMsgBox(
+        'RegAsm could not unregister the add-in (exit code ' +
+          IntToStr(ExitCode) + ').' + #13#10 +
+        'Files are still removed, but SolidWorks may keep listing the add-in.' + #13#10 +
+        'To finish by hand as admin:' + #13#10 +
+        ExpandConstant('{#RegAsm}') + ' ' + RegAsmArgs('/u'),
+        mbError, MB_OK, IDOK);
+  end;
+end;

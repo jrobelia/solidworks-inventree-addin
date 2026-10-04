@@ -154,6 +154,13 @@ namespace SwInventreeAddin.Bom
                         "BOM Compare — PK Missing",
                         BomCompareDialogIcon.Warning);
 
+                case BomCompareOutcome.PartNotAssembly:
+                    return BomCompareAction.ShowMessage(
+                        $"{PartLabel(readiness)} is not flagged as Assembly and cannot hold a BOM.\n\n"
+                        + "Set the Assembly flag on the part in InvenTree first, then Fetch again.",
+                        "BOM Compare — Not an Assembly",
+                        BomCompareDialogIcon.Warning);
+
                 case BomCompareOutcome.ItIsNewer:
                     return BomCompareAction.ShowMessage(
                         $"InvenTree is at revision “{readiness.ItRevision}” but this file is revision “{readiness.SwRevision}”.\n\n"
@@ -220,6 +227,11 @@ namespace SwInventreeAddin.Bom
 
         private static string RevisionLabel(string revision) =>
             string.IsNullOrEmpty(revision) ? "(blank)" : revision;
+
+        private static string PartLabel(BomCompareReadiness readiness) =>
+            string.IsNullOrEmpty(readiness.Ipn)
+                ? "The linked InvenTree part"
+                : $"InvenTree part “{readiness.Ipn}”";
 
         private static string DescribeMissingBomColumnAliases(PropertyMappingConfig mapping)
         {
