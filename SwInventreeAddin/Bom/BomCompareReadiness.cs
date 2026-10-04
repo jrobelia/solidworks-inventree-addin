@@ -47,23 +47,30 @@ namespace SwInventreeAddin.Bom
         /// still allow the compare window to open.
         /// </summary>
         BomColumnAliasesMissing,
+
+        /// <summary>
+        /// The populated session's fetched InvenTree part is not flagged as
+        /// Assembly, so it cannot hold a BOM. The caller should warn the user
+        /// and not open BOM Compare.
+        /// </summary>
+        PartNotAssembly,
     }
 
     internal sealed class BomCompareReadiness
     {
         public BomCompareOutcome Outcome { get; }
-        public string PartNumber { get; }
+        public string Ipn { get; }
         public string SwRevision { get; }
         public string ItRevision { get; }
 
         public BomCompareReadiness(
             BomCompareOutcome outcome,
-            string partNumber,
+            string ipn,
             string swRevision,
             string itRevision)
         {
             Outcome = outcome;
-            PartNumber = partNumber;
+            Ipn = ipn;
             SwRevision = swRevision;
             ItRevision = itRevision;
         }

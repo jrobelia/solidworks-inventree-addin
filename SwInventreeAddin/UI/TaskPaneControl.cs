@@ -208,6 +208,20 @@ namespace SwInventreeAddin.UI
                             System.Windows.Forms.MessageBoxIcon.Warning);
                         return;
 
+                    case BomCompareOutcome.PartNotAssembly:
+                        {
+                            var partLabel = string.IsNullOrEmpty(readiness.Ipn)
+                                ? "The linked InvenTree part"
+                                : $"InvenTree part \u201c{readiness.Ipn}\u201d";
+                            MessageDialog.ShowOK(
+                                SolidWorksWindowHandle.Get(),
+                                $"{partLabel} is not flagged as Assembly and cannot hold a BOM.\n\n"
+                                + "Set the Assembly flag on the part in InvenTree first, then Fetch again.",
+                                "BOM Compare \u2014 Not an Assembly",
+                                System.Windows.Forms.MessageBoxIcon.Warning);
+                            return;
+                        }
+
                     case BomCompareOutcome.ItIsNewer:
                         MessageDialog.ShowOK(
                             SolidWorksWindowHandle.Get(),

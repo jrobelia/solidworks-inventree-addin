@@ -4364,7 +4364,7 @@ namespace SwInventreeAddin.Tests
             _propertyService.Seed(Mapping.PkProperty!, "42");
             _propertyService.Seed(Mapping.RevisionProperty!, "A");
             _client.PartByPkToReturn =
-                new InventreePart { Pk = 42, Ipn = "ASSY-001", Revision = "A" };
+                new InventreePart { Pk = 42, Ipn = "ASSY-001", Revision = "A", Assembly = true };
             var vm = CreateVm();
             await vm.FetchPartAsync();
             vm.UpdateBomState(new StubAssemblyBomService { HasBomTableResult = true });
