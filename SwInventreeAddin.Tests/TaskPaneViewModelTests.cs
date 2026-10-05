@@ -4878,6 +4878,50 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public async Task FetchPartAsync_DroplessCommitDiscovery_ReprojectsBoxBeforeFetch()
+        {
+            SeedLinkedDocument();
+            Assert.That(_vm.PartNumber, Is.EqualTo("R-10K-0402"));
+
+            // Park a fetch commit on the deferred dispatcher: its recapture
+            // installs doc-2 while dropping nothing — the entry mint already
+            // cleared session and pending confirmation — so no Changed fires
+            // and the watermark stays on doc-1's generation. The stored box
+            // IPN then belongs to the superseded document.
+            _client.PartToReturn = FetchedPart;
+            _dispatcher.DeferRun = true;
+            var parked = _vm.FetchPartAsync();
+            Assert.That(_dispatcher.QueuedCount, Is.EqualTo(2),
+                "the family-mint Changed marshalling plus the parked commit");
+
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+            _propertyService.Seed(Mapping.IpnProperty!, "DOC2-IPN");
+
+            _dispatcher.RunAll();
+            await parked;
+            _dispatcher.RunAll();
+
+            // Pin the stale window: the drop-less discovery raised no
+            // Changed, so the box still shows doc-1's IPN while doc-2 is
+            // the coordinator's active document.
+            Assert.That(_vm.PartNumber, Is.EqualTo("R-10K-0402"));
+
+            // The next fetch must re-project before reading the box: it goes
+            // out with doc-2's IPN and its session lands under doc-2's
+            // generation — the superseded IPN never reaches the server.
+            _dispatcher.DeferRun = false;
+            _client.PartToReturn = new InventreePart { Pk = 7, Ipn = "DOC2-IPN", Name = "Doc-2 part" };
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_client.LastIpnRequested, Is.EqualTo("DOC2-IPN"));
+            Assert.That(_vm.PartNumber, Is.EqualTo("DOC2-IPN"));
+            Assert.That(_vm.NamePreview, Is.EqualTo("Doc-2 part"),
+                "the fetch installed doc-2's session under the new generation");
+            Assert.That(_vm.ApplyEnabled, Is.True);
+        }
+
+        [Test]
         public void CoordinatorChanged_SameGeneration_PreservesTypedPartNumber()
         {
             SeedLinkedDocument();

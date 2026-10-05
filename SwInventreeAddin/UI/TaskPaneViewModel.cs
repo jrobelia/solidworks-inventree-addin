@@ -710,6 +710,13 @@ namespace SwInventreeAddin.UI
         /// </summary>
         public async Task FetchPartAsync()
         {
+            // The box IPN belongs to the last projected generation: a commit's
+            // recapture can install a new document while dropping nothing —
+            // no Changed, no host notification yet — leaving the watermark
+            // stale. Re-project before reading the box so a superseded
+            // document's IPN never reaches FetchAsync (#317).
+            ReprojectIfGenerationAdvanced();
+
             RefreshMappingResult();
             if (_mappingResult?.CanFetch != true)
                 return;
@@ -1092,18 +1099,29 @@ namespace SwInventreeAddin.UI
         }
 
         private void OnCoordinatorChanged(object? sender, EventArgs e) =>
-            RunOnUiThread(() =>
-            {
-                // Compare generations at execution time — a commit's recapture
-                // can discover an undelivered document switch between the event
-                // and this callback, and the stored projections then belong to
-                // the superseded document. ProjectDocumentUpdate alone raises
-                // nothing for the computed previews, so the notifies still run.
-                if (_coordinator.Generation != _projectedGeneration)
-                    ProjectDocumentUpdate();
-                NotifyDocumentProperties();
-                NotifySessionProperties();
-            });
+            RunOnUiThread(ReprojectIfGenerationAdvanced);
+
+        /// <summary>
+        /// The single reprojection check, run on the UI thread: when the
+        /// coordinator's document generation has moved past the watermark —
+        /// a commit's recapture discovered a transition the host has not
+        /// routed yet — the stored fields belong to the superseded document
+        /// and are rebuilt through <see cref="ProjectDocumentUpdate"/>.
+        /// Called both from <see cref="OnCoordinatorChanged"/> (where the
+        /// generation is read at callback-execution time, after any
+        /// intervening discovery) and from pane-initiated boundaries that
+        /// consume a stored projection — a recapture that dropped nothing
+        /// raises no Changed at all, so the watermark is the only signal.
+        /// The notifies still run: ProjectDocumentUpdate alone raises
+        /// nothing for the computed previews.
+        /// </summary>
+        private void ReprojectIfGenerationAdvanced()
+        {
+            if (_coordinator.Generation != _projectedGeneration)
+                ProjectDocumentUpdate();
+            NotifyDocumentProperties();
+            NotifySessionProperties();
+        }
 
         private void ResetDocumentPanel()
         {
