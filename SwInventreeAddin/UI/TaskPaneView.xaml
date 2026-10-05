@@ -518,7 +518,6 @@
                         <TextBox Grid.Column="2"
                                  Text="{Binding RevisionPreview, Mode=OneWay}"
                                  Style="{StaticResource InvenTreeFieldStyle}"
-                                 IsReadOnly="True"
                                  Height="26" />
                     </Grid>
 
@@ -586,7 +585,6 @@
                         <TextBox Grid.Column="2" Grid.Row="0"
                                  Text="{Binding PkPreview, Mode=OneWay}"
                                  Style="{StaticResource InvenTreeFieldStyle}"
-                                 IsReadOnly="True"
                                  Height="26" />
                         <Button Grid.Column="2" Grid.Row="2"
                                 Style="{StaticResource SecondaryButtonStyle}"
@@ -672,7 +670,7 @@
                         <TextBox Grid.Column="1"
                                  Text="{Binding InStockDisplay, Mode=OneWay}"
                                  Style="{StaticResource InvenTreeFieldStyle}"
-                                 IsReadOnly="True" Height="26" />
+                                 Height="26" />
                     </Grid>
 
                     <!-- Ordering row -->
@@ -687,7 +685,7 @@
                         <TextBox Grid.Column="1"
                                  Text="{Binding OrderingDisplay, Mode=OneWay}"
                                  Style="{StaticResource InvenTreeFieldStyle}"
-                                 IsReadOnly="True" Height="26" />
+                                 Height="26" />
                     </Grid>
 
                     <!-- Flag chips -->

@@ -182,8 +182,6 @@
     <Style x:Key="InvenTreeFieldStyle" TargetType="TextBox"
            BasedOn="{StaticResource ValueFieldStyle}">
         <Setter Property="Background"  Value="{StaticResource BrushInventreeField}" />
-        <Setter Property="IsReadOnly"  Value="True" />
-        <Setter Property="Focusable"   Value="False" />
     </Style>
 
     <!-- ── Password box style ────────────────────────────────────────────── -->
