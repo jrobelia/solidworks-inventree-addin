@@ -1683,7 +1683,7 @@ namespace SwInventreeAddin.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(provider.LastSavedConfig!.ApiKey,
-                            Is.EqualTo("stub-resolved-token"),
+                            Is.EqualTo(StubSettingsApplyService.StubResolvedToken),
                             "the tested pair resolves to a token on Apply");
                 Assert.That(vm.Password, Is.Empty,
                             "clear-on-persist: the draft is gone once a save consumed it");
