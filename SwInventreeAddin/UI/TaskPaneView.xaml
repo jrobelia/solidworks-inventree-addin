@@ -281,8 +281,6 @@
                         <TextBox Grid.Column="0" Grid.Row="0"
                                  Text="{Binding CurrentName, Mode=OneWay}"
                                  Style="{StaticResource ValueFieldStyle}"
-                                 IsReadOnly="True"
-                                 Focusable="False"
                                  Height="26" />
 
                         <!-- Match indicator -->
@@ -352,8 +350,6 @@
                         <TextBox Grid.Column="0" Grid.Row="0"
                                  Text="{Binding CurrentDescription, Mode=OneWay}"
                                  Style="{StaticResource ValueFieldStyle}"
-                                 IsReadOnly="True"
-                                 Focusable="False"
                                  Height="26" />
 
                         <!-- Match indicator -->
@@ -423,8 +419,6 @@
                         <TextBox Grid.Column="0" Grid.Row="0"
                                  Text="{Binding CurrentNotes, Mode=OneWay}"
                                  Style="{StaticResource ValueFieldStyle}"
-                                 IsReadOnly="True"
-                                 Focusable="False"
                                  Height="52"
                                  TextWrapping="Wrap"
                                  AcceptsReturn="True"
@@ -497,8 +491,6 @@
                         <TextBox Grid.Column="0"
                                  Text="{Binding CurrentRevision, Mode=OneWay}"
                                  Style="{StaticResource ValueFieldStyle}"
-                                 IsReadOnly="True"
-                                 Focusable="False"
                                  Height="26" />
 
                         <!-- Match indicator -->
@@ -567,8 +559,6 @@
                         <TextBox Grid.Column="0" Grid.Row="0"
                                  Text="{Binding CurrentPk, Mode=OneWay}"
                                  Style="{StaticResource ValueFieldStyle}"
-                                 IsReadOnly="True"
-                                 Focusable="False"
                                  Height="26" />
 
                         <!-- Match indicator -->

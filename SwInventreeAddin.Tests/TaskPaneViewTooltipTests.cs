@@ -65,7 +65,7 @@ namespace SwInventreeAddin.Tests
             Assert.That(box.ToolTip, Is.Null);
         }
 
-        // ── Status strip: tooltip still StatusToolTip, suppressed when empty
+        // ── Status strip: tooltip still StatusToolTip, suppressed when empty ─────
 
         [Test]
         public void StatusTextBoxStyle_WhenTextPresent_ToolTipShowsStatusToolTip()

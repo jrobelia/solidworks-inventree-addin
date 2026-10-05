@@ -161,13 +161,15 @@
         </Style.Triggers>
     </Style>
 
-    <!-- Read-only value-display field: the tooltip echoes the field's own
-         text, and the trigger nulls it while the text is empty so a blank
-         field shows no tooltip rectangle. Consumers must not set a local
-         ToolTip — a local value outranks the suppression trigger; a field
-         needing a different tooltip uses a different style. -->
+    <!-- Read-only, unfocusable value-display field: the tooltip echoes the
+         field's own text, and the trigger nulls it while the text is empty
+         so a blank field shows no tooltip rectangle. Consumers must not set
+         a local ToolTip — a local value outranks the suppression trigger; a
+         field needing a different tooltip uses a different style. -->
     <Style x:Key="ValueFieldStyle" TargetType="TextBox"
            BasedOn="{StaticResource SWFieldStyle}">
+        <Setter Property="IsReadOnly" Value="True" />
+        <Setter Property="Focusable"  Value="False" />
         <Setter Property="ToolTip"
                 Value="{Binding Text, RelativeSource={RelativeSource Self}}" />
         <Style.Triggers>
