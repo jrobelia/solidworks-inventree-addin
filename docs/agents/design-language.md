@@ -33,7 +33,8 @@ Tokens are defined in `SwInventreeAddin/UI/DesignTokens.xaml` — this doc says 
 ## Fields and input
 
 - `SWFieldStyle` (TextBox, 28px) and `SWPasswordBoxStyle` — white background, `BrushBorder` 1px, a `BrushAccentBlue` 2px focus ring.
-- `InvenTreeFieldStyle` — cream `BrushInventreeField`, read-only. Reserved for values that came *from* InvenTree — the color itself signals "server data, not editable".
+- `ValueFieldStyle` — `SWFieldStyle` for read-only value display: the tooltip echoes the field's own text and is suppressed while the text is empty (no empty tooltip rectangle on a blank field). Never set a local `ToolTip` on a field using it — a local value outranks the suppression trigger; a field needing a different tooltip uses a different style.
+- `InvenTreeFieldStyle` — `ValueFieldStyle` with cream `BrushInventreeField` and read-only. Reserved for values that came *from* InvenTree — the color itself signals "server data, not editable".
 - Spacing tokens: `PanelPadding` (Task Pane content margin), `RowSpacing` between stacked controls, `SectionSpacing` between sections.
 
 ## Buttons and icons
