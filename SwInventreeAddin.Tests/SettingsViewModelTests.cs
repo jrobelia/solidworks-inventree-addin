@@ -1629,6 +1629,31 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public async Task TestConnectionAsync_WhenServiceThrows_LeavesTheCredentialDraftsAndDirtyFlag()
+        {
+            var applyService = new StubSettingsApplyService
+            {
+                ExceptionToThrowOnTestConnection = new HttpRequestException("boom"),
+            };
+            var vm = CreateVm(applyService: applyService);
+            await vm.OpenProbeTask!;
+            vm.Username = "engineer";
+            vm.Password = "s3cret";
+            Assert.That(vm.IsDirty, Is.True);
+
+            await vm.TestConnectionAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.Username, Is.EqualTo("engineer"));
+                Assert.That(vm.Password, Is.EqualTo("s3cret"),
+                            "the password survives a thrown probe — it clears on persist, not on test");
+                Assert.That(vm.IsDirty, Is.True,
+                            "the tested pair stays persistable — Apply/Save stay enabled");
+            });
+        }
+
+        [Test]
         public async Task TestConnectionAsync_LeavesTheApiKeyDraftInPlace()
         {
             var vm = CreateVm();
