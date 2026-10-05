@@ -46,6 +46,14 @@ namespace SwInventreeAddin.Tests.Stubs
         /// <summary>The stale value GetCustomProperty returns when ReturnStaleReads is true.</summary>
         public string StaleValue { get; set; } = string.Empty;
 
+        /// <summary>
+        /// Invoked inside <see cref="SetCustomProperty"/> after the write has
+        /// applied and logged — models a synchronous host callback where COM
+        /// reentrancy flips <see cref="ActiveDocumentTokenToReturn"/>
+        /// mid-write.
+        /// </summary>
+        public System.Action<string, string>? OnSetCustomProperty { get; set; }
+
         public DocumentType GetDocumentType() => DocumentTypeToReturn;
 
         public string? GetActiveDocumentToken() =>
@@ -63,6 +71,7 @@ namespace SwInventreeAddin.Tests.Stubs
         {
             _properties[name] = value;
             _writeLog.Add((name, value));
+            OnSetCustomProperty?.Invoke(name, value);
         }
 
         public bool PropertyExists(string name) => _properties.ContainsKey(name);

@@ -1970,5 +1970,131 @@ namespace SwInventreeAddin.Tests
                 "no IPN write-back is attempted when the mapping has no IPN property");
             Assert.That(coordinator.FetchedPart!.Pk, Is.EqualTo(42));
         }
+
+        // ── Switch discovered at Fetch entry or inside a Document Property write (#317) ──
+
+        [Test]
+        public async Task FetchAsync_EntryRecaptureDiscoversSwitch_IpnPath_StaleNoFetchNoSession()
+        {
+            SeedIpnDocument("OLD-IPN");
+            _coordinator.UpdateDocument();
+
+            // A document switch is already in effect but its host notification
+            // never ran — Fetch's own entry recapture discovers it, which makes
+            // the caller-supplied IPN untrusted: it was captured against the
+            // superseded document.
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+
+            var result = await _coordinator.FetchAsync("OLD-IPN");
+
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Stale));
+            Assert.That(_client.LastIpnRequested, Is.Empty,
+                "the stale IPN argument must never reach a fetch");
+            Assert.That(_client.PendingGetPartsByIpnCalls, Is.Empty);
+            Assert.That(_coordinator.FetchedPart, Is.Null);
+
+            // No session was installed — no Apply or Push can ride it.
+            Assert.That(_coordinator.Apply(ApplyField.Name).Outcome,
+                Is.EqualTo(PartSyncOutcome.InvalidOperation));
+        }
+
+        [Test]
+        public async Task FetchAsync_EntryRecaptureDiscoversSwitch_StampedPk_StillFetchesByPk()
+        {
+            SeedPkDocument();
+            _coordinator.UpdateDocument();
+            _client.PartByPkToReturn = SamplePart;
+
+            // Same undelivered switch, but the new document carries a stamped
+            // InvenTree Part PK — the PK path never reads the untrusted IPN
+            // argument, so the fetch proceeds.
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+
+            var result = await _coordinator.FetchAsync("STALE-IPN");
+
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Success));
+            Assert.That(_client.LastGetPartByPkPk, Is.EqualTo(SamplePart.Pk));
+            Assert.That(_client.LastIpnRequested, Is.Empty);
+            Assert.That(_coordinator.FetchedPart!.Pk, Is.EqualTo(SamplePart.Pk));
+        }
+
+        [Test]
+        public void CompleteCreatePart_SwitchInsidePropertyWrite_StaleNoSession_RaisesChanged()
+        {
+            SeedIpnDocument(string.Empty);
+            _coordinator.UpdateDocument();
+            var token = _coordinator.BeginCreatePart();
+
+            // COM reentrancy inside the synchronous Document Property write
+            // flips the active document mid-commit — the post-write refresh is
+            // the first place that can discover it.
+            _propertyService.OnSetCustomProperty = (_, __) =>
+                _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+
+            var changed = 0;
+            _coordinator.Changed += (_, __) => changed++;
+
+            var result = _coordinator.CompleteCreatePart(
+                token, new InventreePart { Pk = 99, Ipn = "NEW-001", Name = "New Part" });
+
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Stale));
+            Assert.That(_coordinator.FetchedPart, Is.Null);
+            Assert.That(changed, Is.EqualTo(1),
+                "the abandoned commit must notify observers — not wait for the delayed host notification");
+        }
+
+        [Test]
+        public async Task FetchAsync_StampedPk_IpnWriteBack_SwitchInsideWrite_StaleNoSession()
+        {
+            // Blank document IPN so the PK-path fetch runs the IPN write-back —
+            // the write's COM reentrancy flips the active document.
+            SeedPkDocument();
+            _coordinator.UpdateDocument();
+            _client.PartByPkToReturn = SamplePart;
+
+            _propertyService.OnSetCustomProperty = (_, __) =>
+                _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+
+            var changed = 0;
+            _coordinator.Changed += (_, __) => changed++;
+
+            var result = await _coordinator.FetchAsync(string.Empty);
+
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Stale));
+            Assert.That(_coordinator.FetchedPart, Is.Null);
+            Assert.That(changed, Is.EqualTo(2),
+                "the family-mint raise plus the post-write abandon raise");
+        }
+
+        [Test]
+        public async Task ResumeConfirmation_LinkMismatch_SwitchInsideWriteBack_StaleNoSession()
+        {
+            // Stamped PK, no document IPN, a revision divergence — the PK fetch
+            // surfaces a Link Mismatch confirmation; approving it rewrites the
+            // document link through WriteBackIpnIfNeeded.
+            _client.PartByPkToReturn = new InventreePart
+            { Pk = 42, Ipn = "RENAMED-001", Revision = "B" };
+            SeedPkDocument();
+            _propertyService.Seed(Mapping.RevisionProperty!, "A");
+            _coordinator.UpdateDocument();
+
+            var confirm = await _coordinator.FetchAsync(string.Empty);
+            Assert.That(confirm.Outcome, Is.EqualTo(PartSyncOutcome.LinkMismatchConfirmation));
+
+            // A COM-reentrant switch inside the write-back must abandon the
+            // commit under the new generation — no session, no Success.
+            _propertyService.OnSetCustomProperty = (_, __) =>
+                _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+
+            var changed = 0;
+            _coordinator.Changed += (_, __) => changed++;
+
+            var resumed = await _coordinator.ResumeConfirmationAsync(
+                confirm.Confirmation!, approved: true);
+
+            Assert.That(resumed.Outcome, Is.EqualTo(PartSyncOutcome.Stale));
+            Assert.That(_coordinator.FetchedPart, Is.Null);
+            Assert.That(changed, Is.EqualTo(1));
+        }
     }
 }
