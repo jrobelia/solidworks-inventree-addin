@@ -114,3 +114,23 @@ The card's read-model is also publicly reachable:
 `ConnectionStateChanged` firing only when a field actually moves — the reach
 path a Task Pane consumer needs (#241) without committing either deferred
 integration option.
+
+## Addendum — the password draft clears on persist, not on probe (#306)
+
+"The password never lingers" narrows in scope. The original rule cleared the
+password draft when a Test connection probe completed, which left a
+username-only half-typed pair — never a persistable change — so `IsDirty`
+flipped false and Apply/Save greyed out on the very credential the user had
+just tested.
+
+The narrowed rule: the password draft is cleared only when it is consumed —
+by a successful Apply/Save persist (`ClearSecrets` plus `MarkPersisted`) or by
+Remove API key (`OnCredentialRemoved`). `TestConnectionAsync` writes nothing
+and touches no draft on any exit: success verdict, failure verdict, or thrown
+error. A typed username/password pair survives the test, `IsDirty` stays true,
+and Apply/Save persist the same credential that was probed — no re-typing.
+
+The invariants are unchanged: the password never reaches persisted config,
+status-bar text, or logs; a half-typed pair still never counts as a
+persistable change; and the API-key draft is untouched by a test exactly as
+before.

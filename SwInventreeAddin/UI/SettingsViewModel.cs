@@ -190,7 +190,11 @@ namespace SwInventreeAddin.UI
             set { if (Set(ref _username, value)) OnDraftsChanged(); }
         }
 
-        /// <summary>Password draft — never persisted; cleared after Apply and Test.</summary>
+        /// <summary>
+        /// Password draft — never persisted. Cleared only once a successful
+        /// Apply/Save persist or Remove API key consumes it; a connection test
+        /// leaves it in place so the tested pair stays saveable (#306).
+        /// </summary>
         public string Password
         {
             get => _password;
@@ -537,7 +541,10 @@ namespace SwInventreeAddin.UI
                 SetActionStatus(outcome.Text, outcome.Severity);
             });
 
-        /// <summary>Clears the password draft — the Test path calls this so the password never lingers.</summary>
+        /// <summary>
+        /// Clears the password draft — the Apply path calls this once the
+        /// persist has consumed it; a connection test is not a consumer.
+        /// </summary>
         public void ClearSecrets() => RunOnUiThread(() => Password = string.Empty);
 
         // ── Orchestration commands ──────────────────────────────────────────
@@ -660,8 +667,9 @@ namespace SwInventreeAddin.UI
         /// <summary>
         /// Probes the <see cref="EffectiveUrl"/> with the effective credential —
         /// writes nothing. The verdict lands on the connection axis and the
-        /// connection-scoped status pair; the password draft is cleared either
-        /// way. A user-initiated probe supersedes the open probe.
+        /// connection-scoped status pair; the credential drafts are untouched
+        /// on every exit so a tested pair stays persistable (#306). A
+        /// user-initiated probe supersedes the open probe.
         /// </summary>
         public async Task TestConnectionAsync()
         {
@@ -688,10 +696,6 @@ namespace SwInventreeAddin.UI
                     SetConnectionStatus(
                         result.Succeeded ? result.Message : $"Connection failed. {result.Message}",
                         result.Succeeded ? StatusSeverity.Success : StatusSeverity.Error);
-
-                    // The password never lingers — whether it was sent for
-                    // token resolution or shadowed by a winning key draft.
-                    Password = string.Empty;
                 });
             }
             catch (InvalidOperationException ex)
