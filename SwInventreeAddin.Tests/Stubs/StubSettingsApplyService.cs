@@ -8,6 +8,12 @@ namespace SwInventreeAddin.Tests.Stubs
 {
     public class StubSettingsApplyService : ISettingsApplyService
     {
+        /// <summary>
+        /// The stand-in token a complete username+password pair resolves to on
+        /// Apply — tests assert against this constant, never a retyped literal.
+        /// </summary>
+        public const string StubResolvedToken = "stub-resolved-token";
+
         public StubSettingsApplyService(IConfigProvider? configProvider = null)
         {
             ConfigProvider = configProvider;
@@ -93,7 +99,7 @@ namespace SwInventreeAddin.Tests.Stubs
                 else if (!string.IsNullOrWhiteSpace(input.Username) &&
                          !string.IsNullOrWhiteSpace(input.Password))
                 {
-                    apiKey = "stub-resolved-token";
+                    apiKey = StubResolvedToken;
                 }
                 else
                 {

@@ -1597,16 +1597,98 @@ namespace SwInventreeAddin.Tests
                 "the user probe's verdict owns the card");
         }
 
-        [Test]
-        public async Task TestConnectionAsync_ClearsThePasswordDraft()
+        // A probe consumes nothing: the credential drafts survive every
+        // verdict and IsDirty stays true, so the tested pair can be saved
+        // without re-typing (#306). The password clears only once a persist
+        // or Remove API key uses it.
+        [TestCase(ConnectionProbeStatus.Connected)]
+        [TestCase(ConnectionProbeStatus.CredentialRejected)]
+        [TestCase(ConnectionProbeStatus.Unreachable)]
+        public async Task TestConnectionAsync_WhenVerdictLands_LeavesTheCredentialDraftsAndDirtyFlag(
+            ConnectionProbeStatus verdict)
         {
-            var vm = CreateVm();
+            var applyService = new StubSettingsApplyService
+            {
+                ResultToReturnOnTestConnection = new ConnectionProbeResult(verdict, "verdict"),
+            };
+            var vm = CreateVm(applyService: applyService);
+            await vm.OpenProbeTask!;
             vm.Username = "engineer";
             vm.Password = "s3cret";
 
             await vm.TestConnectionAsync();
 
-            Assert.That(vm.Password, Is.Empty, "the password never lingers");
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.Username, Is.EqualTo("engineer"));
+                Assert.That(vm.Password, Is.EqualTo("s3cret"),
+                            "the password survives the probe — it clears on persist, not on test");
+                Assert.That(vm.IsDirty, Is.True,
+                            "the tested pair stays persistable — Apply/Save stay enabled");
+            });
+        }
+
+        [Test]
+        public async Task TestConnectionAsync_WhenServiceThrows_LeavesTheCredentialDraftsAndDirtyFlag()
+        {
+            var applyService = new StubSettingsApplyService
+            {
+                ExceptionToThrowOnTestConnection = new HttpRequestException("boom"),
+            };
+            var vm = CreateVm(applyService: applyService);
+            await vm.OpenProbeTask!;
+            vm.Username = "engineer";
+            vm.Password = "s3cret";
+            Assert.That(vm.IsDirty, Is.True);
+
+            await vm.TestConnectionAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.Username, Is.EqualTo("engineer"));
+                Assert.That(vm.Password, Is.EqualTo("s3cret"),
+                            "the password survives a thrown probe — it clears on persist, not on test");
+                Assert.That(vm.IsDirty, Is.True,
+                            "the tested pair stays persistable — Apply/Save stay enabled");
+            });
+        }
+
+        [Test]
+        public async Task TestConnectionAsync_LeavesTheApiKeyDraftInPlace()
+        {
+            var vm = CreateVm();
+            await vm.OpenProbeTask!;
+            vm.ApiKeyDraft = "inv-typed";
+
+            await vm.TestConnectionAsync();
+
+            Assert.That(vm.ApiKeyDraft, Is.EqualTo("inv-typed"));
+        }
+
+        [Test]
+        public async Task ApplyAsync_AfterTestConnection_PersistsTheTestedCredential()
+        {
+            var provider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var applyService = new StubSettingsApplyService(provider);
+            var vm = CreateVm(provider, applyService);
+            await vm.OpenProbeTask!;
+            vm.Username = "engineer";
+            vm.Password = "s3cret";
+
+            await vm.TestConnectionAsync();
+            Assert.That(vm.IsDirty, Is.True,
+                        "the tested pair must stay persistable — no re-typing");
+            await vm.ApplyAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(provider.LastSavedConfig!.ApiKey,
+                            Is.EqualTo(StubSettingsApplyService.StubResolvedToken),
+                            "the tested pair resolves to a token on Apply");
+                Assert.That(vm.Password, Is.Empty,
+                            "clear-on-persist: the draft is gone once a save consumed it");
+                Assert.That(vm.IsDirty, Is.False);
+            });
         }
 
         [Test]
