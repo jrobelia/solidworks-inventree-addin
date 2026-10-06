@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using SwInventreeAddin.SolidWorks;
 
@@ -52,7 +53,7 @@ namespace SwInventreeAddin.Tests.Stubs
         /// reentrancy flips <see cref="ActiveDocumentTokenToReturn"/>
         /// mid-write.
         /// </summary>
-        public System.Action<string, string>? OnSetCustomProperty { get; set; }
+        public Action<string, string>? OnSetCustomProperty { get; set; }
 
         public DocumentType GetDocumentType() => DocumentTypeToReturn;
 
