@@ -29,6 +29,12 @@
                 <Setter Property="Foreground"                 Value="{StaticResource BrushForeground}" />
                 <Setter Property="Margin"                     Value="4,0,4,0" />
                 <Setter Property="ToolTip"                    Value="{Binding StatusToolTip}" />
+                <Style.Triggers>
+                    <!-- An empty strip shows no tooltip rectangle. -->
+                    <Trigger Property="Text" Value="">
+                        <Setter Property="ToolTip" Value="{x:Null}" />
+                    </Trigger>
+                </Style.Triggers>
             </Style>
 
             <!-- Visibility converters -->
@@ -274,10 +280,7 @@
 
                         <TextBox Grid.Column="0" Grid.Row="0"
                                  Text="{Binding CurrentName, Mode=OneWay}"
-                                 ToolTip="{Binding CurrentName}"
-                                 Style="{StaticResource SWFieldStyle}"
-                                 IsReadOnly="True"
-                                 Focusable="False"
+                                 Style="{StaticResource ValueFieldStyle}"
                                  Height="26" />
 
                         <!-- Match indicator -->
@@ -304,7 +307,6 @@
 
                         <TextBox Grid.Column="2" Grid.Row="0"
                                  Text="{Binding NamePreview, Mode=OneWay}"
-                                 ToolTip="{Binding NamePreview}"
                                  Style="{StaticResource InvenTreeFieldStyle}"
                                  Height="26" />
                         <Button Grid.Column="0" Grid.Row="2"
@@ -347,10 +349,7 @@
 
                         <TextBox Grid.Column="0" Grid.Row="0"
                                  Text="{Binding CurrentDescription, Mode=OneWay}"
-                                 ToolTip="{Binding CurrentDescription}"
-                                 Style="{StaticResource SWFieldStyle}"
-                                 IsReadOnly="True"
-                                 Focusable="False"
+                                 Style="{StaticResource ValueFieldStyle}"
                                  Height="26" />
 
                         <!-- Match indicator -->
@@ -377,7 +376,6 @@
 
                         <TextBox Grid.Column="2" Grid.Row="0"
                                  Text="{Binding DescriptionPreview, Mode=OneWay}"
-                                 ToolTip="{Binding DescriptionPreview}"
                                  Style="{StaticResource InvenTreeFieldStyle}"
                                  Height="26" />
                         <Button Grid.Column="0" Grid.Row="2"
@@ -420,10 +418,7 @@
 
                         <TextBox Grid.Column="0" Grid.Row="0"
                                  Text="{Binding CurrentNotes, Mode=OneWay}"
-                                 ToolTip="{Binding CurrentNotes}"
-                                 Style="{StaticResource SWFieldStyle}"
-                                 IsReadOnly="True"
-                                 Focusable="False"
+                                 Style="{StaticResource ValueFieldStyle}"
                                  Height="52"
                                  TextWrapping="Wrap"
                                  AcceptsReturn="True"
@@ -454,7 +449,6 @@
 
                         <TextBox Grid.Column="2" Grid.Row="0"
                                  Text="{Binding NotesPreview, Mode=OneWay}"
-                                 ToolTip="{Binding NotesPreview}"
                                  Style="{StaticResource InvenTreeFieldStyle}"
                                  Height="52"
                                  TextWrapping="Wrap"
@@ -496,9 +490,7 @@
 
                         <TextBox Grid.Column="0"
                                  Text="{Binding CurrentRevision, Mode=OneWay}"
-                                 Style="{StaticResource SWFieldStyle}"
-                                 IsReadOnly="True"
-                                 Focusable="False"
+                                 Style="{StaticResource ValueFieldStyle}"
                                  Height="26" />
 
                         <!-- Match indicator -->
@@ -526,7 +518,6 @@
                         <TextBox Grid.Column="2"
                                  Text="{Binding RevisionPreview, Mode=OneWay}"
                                  Style="{StaticResource InvenTreeFieldStyle}"
-                                 IsReadOnly="True"
                                  Height="26" />
                     </Grid>
 
@@ -566,10 +557,7 @@
 
                         <TextBox Grid.Column="0" Grid.Row="0"
                                  Text="{Binding CurrentPk, Mode=OneWay}"
-                                 ToolTip="{Binding CurrentPk}"
-                                 Style="{StaticResource SWFieldStyle}"
-                                 IsReadOnly="True"
-                                 Focusable="False"
+                                 Style="{StaticResource ValueFieldStyle}"
                                  Height="26" />
 
                         <!-- Match indicator -->
@@ -596,9 +584,7 @@
 
                         <TextBox Grid.Column="2" Grid.Row="0"
                                  Text="{Binding PkPreview, Mode=OneWay}"
-                                 ToolTip="{Binding PkPreview}"
                                  Style="{StaticResource InvenTreeFieldStyle}"
-                                 IsReadOnly="True"
                                  Height="26" />
                         <Button Grid.Column="2" Grid.Row="2"
                                 Style="{StaticResource SecondaryButtonStyle}"
@@ -684,7 +670,7 @@
                         <TextBox Grid.Column="1"
                                  Text="{Binding InStockDisplay, Mode=OneWay}"
                                  Style="{StaticResource InvenTreeFieldStyle}"
-                                 IsReadOnly="True" Height="26" />
+                                 Height="26" />
                     </Grid>
 
                     <!-- Ordering row -->
@@ -699,7 +685,7 @@
                         <TextBox Grid.Column="1"
                                  Text="{Binding OrderingDisplay, Mode=OneWay}"
                                  Style="{StaticResource InvenTreeFieldStyle}"
-                                 IsReadOnly="True" Height="26" />
+                                 Height="26" />
                     </Grid>
 
                     <!-- Flag chips -->
