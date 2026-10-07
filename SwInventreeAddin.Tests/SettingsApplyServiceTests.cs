@@ -540,10 +540,11 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public async Task ApplyAsync_WhenUrlCleared_PersistsMappingFieldsFromInput()
+        public async Task ApplyAsync_WhenUrlCleared_PersistsMappingFieldsAndPreservesWaitForServerAssignedIpn()
         {
             var configProvider = new StubConfigProvider("https://example.com", "saved-key");
             configProvider.Config!.MappingSourcePath = "\\\\share\\old.json";
+            configProvider.Config.WaitForServerAssignedIpn = false;
 
             var tokenService = new StubInventreeTokenService { TokenToReturn = "token" };
             var service = new SettingsApplyService(configProvider, tokenService);
@@ -553,7 +554,6 @@ namespace SwInventreeAddin.Tests
             input.RawApiKey = string.Empty;
             input.SharedMappingPath = "\\\\share\\mapping.json";
             input.BomKeyword = "custom-bom";
-            input.WaitForServerAssignedIpn = false;
 
             await service.ApplyAsync(input, OkClient());
 
@@ -562,7 +562,8 @@ namespace SwInventreeAddin.Tests
             {
                 Assert.That(saved.MappingSourcePath, Is.EqualTo("\\\\share\\mapping.json"));
                 Assert.That(saved.BomKeyword, Is.EqualTo("custom-bom"));
-                Assert.That(saved.WaitForServerAssignedIpn, Is.False);
+                Assert.That(saved.WaitForServerAssignedIpn, Is.False,
+                    "the flag is not an apply input — the saved value survives a URL clear");
             });
         }
 
@@ -609,6 +610,87 @@ namespace SwInventreeAddin.Tests
                     "the provider read on the clear path is wrapped like any other pre-persistence failure");
                 Assert.That(configProvider.LastSavedConfig, Is.Null);
             });
+        }
+
+        // ── Wait-flag preservation (#275) ─────────────────────────────
+        // The flag's only editor is the Create Part dialog — a Settings
+        // apply must never move it. Apply builds a fresh ServerConfig on
+        // every save, so the service reads the prior config inside the
+        // save try and carries the flag forward, falling back to the
+        // declared default only when nothing was ever saved.
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public async Task ApplyAsync_WhenPriorConfigExists_PreservesWaitForServerAssignedIpn(
+            bool priorFlag)
+        {
+            var configProvider = new StubConfigProvider("https://example.com", "key");
+            configProvider.Config!.WaitForServerAssignedIpn = priorFlag;
+            var tokenService = new StubInventreeTokenService { TokenToReturn = "token" };
+            var service = new SettingsApplyService(configProvider, tokenService);
+
+            await service.ApplyAsync(CreateInput(), OkClient());
+
+            Assert.That(configProvider.LastSavedConfig!.WaitForServerAssignedIpn,
+                        Is.EqualTo(priorFlag),
+                        "a Settings apply must never move the flag — only the Create Part write-back does");
+        }
+
+        [Test]
+        public async Task ApplyAsync_WhenNoPriorConfig_SavesDefaultWaitForServerAssignedIpn()
+        {
+            var configProvider = StubConfigProvider.WithNoSavedConfig();
+            var tokenService = new StubInventreeTokenService { TokenToReturn = "token" };
+            var service = new SettingsApplyService(configProvider, tokenService);
+
+            await service.ApplyAsync(CreateInput(), OkClient());
+
+            Assert.That(configProvider.LastSavedConfig!.WaitForServerAssignedIpn,
+                        Is.EqualTo(ServerConfig.DefaultWaitForServerAssignedIpn));
+        }
+
+        [Test]
+        public void ApplyAsync_WhenProviderReadFailsOnNormalApply_ThrowsSettingsApplyException()
+        {
+            var configProvider = new StubConfigProvider("https://example.com", "key")
+            {
+                ThrowOnGet = new InvalidOperationException("read failed"),
+            };
+            var tokenService = new StubInventreeTokenService { TokenToReturn = "token" };
+            var service = new SettingsApplyService(configProvider, tokenService);
+
+            var ex = Assert.ThrowsAsync<SettingsApplyException>(
+                () => service.ApplyAsync(CreateInput(), OkClient()));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(ex!.Message, Does.Contain("Failed to save server settings"));
+                Assert.That(ex.Message, Does.Contain("read failed"));
+                Assert.That(configProvider.LastSavedConfig, Is.Null);
+            });
+        }
+
+        [Test]
+        public void ApplyAsync_WhenProviderReadFailsAndUrlIsInvalid_ValidationErrorWins()
+        {
+            // The prior-config read sits after credential resolution — an
+            // invalid input throws its own message without touching the
+            // provider.
+            var configProvider = new StubConfigProvider("https://example.com", "key")
+            {
+                ThrowOnGet = new InvalidOperationException("read failed"),
+            };
+            var tokenService = new StubInventreeTokenService { TokenToReturn = "token" };
+            var service = new SettingsApplyService(configProvider, tokenService);
+
+            var input = CreateInput();
+            input.Url = "http://example.com";
+
+            var ex = Assert.ThrowsAsync<SettingsApplyException>(
+                () => service.ApplyAsync(input, OkClient()));
+
+            Assert.That(ex!.Message, Does.Contain("https://"),
+                "validation runs before the provider read — its message must surface, not the read failure");
         }
 
         // ── RemoveApiKeyAsync (#232) ────────────────────────────────────
@@ -761,6 +843,24 @@ namespace SwInventreeAddin.Tests
             });
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task StubApplyService_PreservesWaitForServerAssignedIpnFromPrior(bool clearing)
+        {
+            var configProvider = new StubConfigProvider("https://example.com", "key");
+            configProvider.Config!.WaitForServerAssignedIpn = false;
+            var stub = new StubSettingsApplyService(configProvider);
+
+            var input = CreateInput();
+            if (clearing)
+                input.Url = string.Empty;
+
+            await stub.ApplyAsync(input, OkClient());
+
+            Assert.That(configProvider.LastSavedConfig!.WaitForServerAssignedIpn, Is.False,
+                "the stub mirrors the real service — the saved flag survives both apply paths");
+        }
+
         private static HttpClient OkClient() =>
             new HttpClient(new StubHttpMessageHandler(HttpStatusCode.OK, "[]"));
 
@@ -772,7 +872,6 @@ namespace SwInventreeAddin.Tests
                 RawApiKey = "api-key",
                 SharedMappingPath = null,
                 BomKeyword = "inventree",
-                WaitForServerAssignedIpn = true,
             };
         }
 

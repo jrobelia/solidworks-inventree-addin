@@ -19,8 +19,7 @@ namespace SwInventreeAddin.Tests
                 password: string.Empty,
                 sharedPath: string.Empty,
                 bomKeyword: "inventree",
-                useLocalMapping: true,
-                waitForServerAssignedIpn: true);
+                useLocalMapping: true);
 
         private static SettingsSnapshot Current(
             string url = "https://inventree.example.com",
@@ -30,11 +29,10 @@ namespace SwInventreeAddin.Tests
             string password = "",
             string sharedPath = "",
             string bomKeyword = "inventree",
-            bool useLocalMapping = true,
-            bool waitForServerAssignedIpn = true) =>
+            bool useLocalMapping = true) =>
             new SettingsSnapshot(
                 url, apiKeyDraft, hasSavedApiKey, username, password,
-                sharedPath, bomKeyword, useLocalMapping, waitForServerAssignedIpn);
+                sharedPath, bomKeyword, useLocalMapping);
 
         [Test]
         public void HasPersistableChangeFrom_IdenticalValues_IsFalse()
@@ -130,14 +128,6 @@ namespace SwInventreeAddin.Tests
         {
             Assert.That(
                 Current(useLocalMapping: false).HasPersistableChangeFrom(Saved()),
-                Is.True);
-        }
-
-        [Test]
-        public void HasPersistableChangeFrom_WaitFlagChanged_IsTrue()
-        {
-            Assert.That(
-                Current(waitForServerAssignedIpn: false).HasPersistableChangeFrom(Saved()),
                 Is.True);
         }
     }
