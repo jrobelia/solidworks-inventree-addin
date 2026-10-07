@@ -19,7 +19,7 @@ QA orients from the current branch, builds a GUI-focused test plan, runs the pre
 - [FINDINGS.md](FINDINGS.md) — per-run findings ledger format and dispositions
 - [PREFLIGHT.md](PREFLIGHT.md) — SolidWorks/build/test/registration preflight
 - [CHECKLIST.md](CHECKLIST.md) — severity, step quality, edge cases, anti-patterns
-- `docs/agents/domain.md` and `CONTEXT.md` — domain vocabulary
+- `docs/agents/domain.md` and `GLOSSARY.md` — domain vocabulary
 - `docs/agents/issue-tracker.md` — `gh` CLI conventions
 - `docs/agents/triage-labels.md` — label vocabulary
 - [`git`](../git/SKILL.md) — PR merge and branch cleanup
@@ -93,7 +93,7 @@ Run `git diff` and `git status --short`. If unlinked changes are present, ask th
 
 After orienting, produce a short internal summary of the changed areas:
 
-1. Group changed files by feature area using the path and filename. Use `CONTEXT.md` and `docs/agents/domain.md` to name the areas in domain language (Task Pane, Settings, Create Part, BOM Compare, etc.).
+1. Group changed files by feature area using the path and filename. Use `GLOSSARY.md` and `docs/agents/domain.md` to name the areas in domain language (Task Pane, Settings, Create Part, BOM Compare, etc.).
 2. Note which changes touch user-facing surfaces: XAML files, ViewModels that drive the UI, `Config/` types that affect Mapping Health or gating, and ADRs that describe new behavior.
 3. Note new or renamed domain terms, removed controls or options, and changed gating conditions. Look for `-` lines (deletions) in the diff hunk to spot removed controls, commands, or options.
 
@@ -105,7 +105,7 @@ Once the pass's anchor is known, create `.scratch/qa/<run>/`, where `<run>` is `
 
 ## 2. Build the test plan
 
-Read `docs/agents/domain.md` and `CONTEXT.md` first if they exist. Use their vocabulary throughout the plan.
+Read `docs/agents/domain.md` and `GLOSSARY.md` first if they exist. Use their vocabulary throughout the plan.
 
 Default: one issue per Test Group. Merge issues into one group only when they share a changed surface or acceptance criteria that cannot be verified in isolation.
 
@@ -116,7 +116,7 @@ For each Test Group, generate test steps from two sources:
 1. **Issues (why)** — the acceptance criteria and expected behavior.
 2. **Diff (what)** — the changed GUI surfaces, controls, and gating logic.
 
-Every step must be a user action in the SolidWorks InvenTree Add-In GUI with an observable result. Use domain terms from `CONTEXT.md` (Task Pane, IPN, InvenTree Part PK, Fetch, Apply, Push, Part Sync, BOM Compare, etc.). Do not cite source files, line numbers, or diff content in user-facing steps.
+Every step must be a user action in the SolidWorks InvenTree Add-In GUI with an observable result. Use domain terms from `GLOSSARY.md` (Task Pane, IPN, InvenTree Part PK, Fetch, Apply, Push, Part Sync, BOM Compare, etc.). Do not cite source files, line numbers, or diff content in user-facing steps.
 
 Use the diff to identify which specific controls, properties, or gating conditions changed and therefore need coverage. For example, if the diff shows that a button is now gated on `MappingHealth.Healthy`, add a step that exercises both the enabled and disabled states. See the [diff-to-test signals](TEST-PLAN.md#diff-to-test-signals) in [TEST-PLAN.md](TEST-PLAN.md) for common patterns.
 
@@ -175,7 +175,7 @@ Interpret the answer. If the result is unclear, confirm before moving on:
 ### On Fail
 
 1. Ask for the severity (P0–P3, see [CHECKLIST.md](CHECKLIST.md)) and whether to **fix-now or defer** — one `ask_user_question` carrying both. Fix-now is the user's call for quick fixes worth addressing while the failure is fresh; the agent may flag which findings look cheap to fix, but does not choose.
-2. Explore the codebase only to understand the domain area. Write the finding in domain terms from `CONTEXT.md`; leave out file paths, line numbers, and module names.
+2. Explore the codebase only to understand the domain area. Write the finding in domain terms from `GLOSSARY.md`; leave out file paths, line numbers, and module names.
 3. Record the finding in the run's findings ledger before continuing — see [FINDINGS.md](FINDINGS.md). Every failure becomes a ledger entry with a proposed blocking flag; issues are created later in the disposition pass, when the run's full failure set is visible at once.
 4. If the user picked **fix-now**: pause the walk and fix. `dotnet test` still runs while SolidWorks is open, but a GUI retest needs the add-in rebuilt and reloaded — closing SolidWorks, rebuilding, and relaunching. The ledger and `plan.md` mark where the walk resumes. After a green retest of the failed step (and any same-surface steps it casts doubt on), mark the finding `fixed (<commit>)` and continue.
 5. If the fix-now does not land, return the finding to `pending` for the disposition pass.

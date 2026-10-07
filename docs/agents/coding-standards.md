@@ -130,7 +130,7 @@ For the shared vocabulary, design-it-twice patterns, and deepening guidance, con
 - **Batch data-bound collection updates.** When updating a data-bound `ObservableCollection`, update items in place or raise a single `Reset` notification rather than calling `Clear()` followed by multiple `Add()` calls. Each `Clear`/`Add` raises a separate `CollectionChanged` event and triggers a WPF layout pass; during a host repaint callback (e.g. a SolidWorks view notification), re-entrant layout can crash the host process.
 - **Section separator comments.** Use `// ── Section name ─────` dividers to separate logical sections within a class (Dependencies, Bindable properties, State, Constructors, Commands, Behaviour, Helpers). Match the existing style exactly.
 - **No column-aligned declarations.** `dotnet format` enforces single-space layout — do not hand-align columns; the verify step in CI rejects it.
-- **Domain terminology.** Use terms from `CONTEXT.md`: IPN (not part number), Fetch (not load/pull), Apply (InvenTree → SW), Push (SW → InvenTree), Task Pane (not sidebar/panel). Use these in identifiers, comments, and status strings.
+- **Domain terminology.** Use terms from `GLOSSARY.md`: IPN (not part number), Fetch (not load/pull), Apply (InvenTree → SW), Push (SW → InvenTree), Task Pane (not sidebar/panel). Use these in identifiers, comments, and status strings.
 
 ---
 

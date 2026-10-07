@@ -13,7 +13,7 @@ Reach each pointer only when its branch fires.
 - `docs/agents/issue-tracker.md` — needed in step 1 to resolve the task graph and frontier.
 - `docs/agents/coding-standards.md` — needed before proposing any public seam (`## Module Design`) and for `## Build & Test Commands`.
 - `docs/agents/pr-conventions.md` — needed when creating or updating a PR (step 5 branch naming, step 10 PR body).
-- `CONTEXT.md` / `docs/agents/domain.md` — needed when the ticket or spec language needs the repo's domain terms.
+- `GLOSSARY.md` / `docs/agents/domain.md` — needed when the ticket or spec language needs the repo's domain terms.
 
 ## Inputs and issue hierarchy
 

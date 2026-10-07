@@ -9,8 +9,8 @@
         "evals/pr-156-summary/source.md"
       ],
       "expectations": [
-        "Uses CONTEXT.md preferred terms verbatim for every domain concept it names (Part Sync, Task Pane, Mapping Health, IPN, Create Part, Property Mapping, Settings, BOM Compare, Fetch, Push, Apply)",
-        "Uses no CONTEXT.md avoid-list term where the preferred term applies, even when the input uses them",
+        "Uses GLOSSARY.md preferred terms verbatim for every domain concept it names (Part Sync, Task Pane, Mapping Health, IPN, Create Part, Property Mapping, Settings, BOM Compare, Fetch, Push, Apply)",
+        "Uses no GLOSSARY.md avoid-list term where the preferred term applies, even when the input uses them",
         "Passes the unslop audit: no AI vocabulary, filler, chatbot phrases, em/en dashes, curly quotes, title-case headings, bold-as-headers, or promotional language",
         "Every sentence carries one idea and stays under roughly 30 words",
         "Opens with orienting context: the first two sentences name the workflow or domain framing before listing details",
@@ -30,8 +30,8 @@
         "evals/can-create-part-change/source.md"
       ],
       "expectations": [
-        "Uses CONTEXT.md preferred terms verbatim for every domain concept it names (Task Pane, Create Part; Part Sync if mentioned)",
-        "Uses no CONTEXT.md avoid-list term where the preferred term applies, even when the input uses them",
+        "Uses GLOSSARY.md preferred terms verbatim for every domain concept it names (Task Pane, Create Part; Part Sync if mentioned)",
+        "Uses no GLOSSARY.md avoid-list term where the preferred term applies, even when the input uses them",
         "Passes the unslop audit: no AI vocabulary, filler, chatbot phrases, em/en dashes, curly quotes, title-case headings, bold-as-headers, or promotional language",
         "Every sentence carries one idea and stays under roughly 30 words",
         "Opens with orienting context: names the Create Part workflow or the effect before the identifier detail",
@@ -50,8 +50,8 @@
         "evals/copy-to-local/source.md"
       ],
       "expectations": [
-        "Uses CONTEXT.md preferred terms verbatim for every domain concept it names (Property Mapping or Property Mappings editor, Settings window, Mapping Health or Invalid if mentioned)",
-        "Uses no CONTEXT.md avoid-list term where the preferred term applies, even when the input uses them",
+        "Uses GLOSSARY.md preferred terms verbatim for every domain concept it names (Property Mapping or Property Mappings editor, Settings window, Mapping Health or Invalid if mentioned)",
+        "Uses no GLOSSARY.md avoid-list term where the preferred term applies, even when the input uses them",
         "Passes the unslop audit: no AI vocabulary, filler, chatbot phrases, em/en dashes, curly quotes, title-case headings, bold-as-headers, or promotional language",
         "Every sentence carries one idea and stays under roughly 30 words",
         "Opens with orienting context: names the workflow or the user-facing effect before the detail",
@@ -65,12 +65,12 @@
     {
       "id": 4,
       "prompt": "Summarize what this commit changes for the user.",
-      "expected_output": "A domain-language summary that rewrites the source's avoid-list vocabulary into CONTEXT.md terms (Task Pane not sidebar, IPN not part number, Part Sync not sync, Fetch not load) while staying factually accurate.",
+      "expected_output": "A domain-language summary that rewrites the source's avoid-list vocabulary into GLOSSARY.md terms (Task Pane not sidebar, IPN not part number, Part Sync not sync, Fetch not load) while staying factually accurate.",
       "files": [
         "evals/poisoned-terms-fetch/source.md"
       ],
       "expectations": [
-        "Uses CONTEXT.md preferred terms verbatim despite the source using avoid-list terms (Task Pane for sidebar/panel, IPN for part number, Part Sync for sync, Fetch for load/reload, SolidWorks Document Property for custom property, Property Mapping for field mapping)",
+        "Uses GLOSSARY.md preferred terms verbatim despite the source using avoid-list terms (Task Pane for sidebar/panel, IPN for part number, Part Sync for sync, Fetch for load/reload, SolidWorks Document Property for custom property, Property Mapping for field mapping)",
         "Zero avoid-list leakage: no 'sidebar', 'part number', 'custom property', 'field mapping', or loose 'sync'/'load' where a preferred term applies",
         "Passes the unslop audit: no AI vocabulary, filler, chatbot phrases, em/en dashes, curly quotes, title-case headings, bold-as-headers, or promotional language",
         "Every sentence carries one idea and stays under roughly 30 words",
@@ -89,8 +89,8 @@
       ],
       "expectations": [
         "Follows the PR-body contract from docs/agents/pr-conventions.md: 'Closes #173' and the milestone note are present, and the '/qa' handoff line appears at the end",
-        "Uses CONTEXT.md preferred terms verbatim for every domain concept it names (BOM Compare, BOM Diff State, IpnNotFound, Push, IPN, InvenTree)",
-        "Uses no CONTEXT.md avoid-list term where the preferred term applies (no 'BOM sync', 'BOM check', 'upload', loose 'sync')",
+        "Uses GLOSSARY.md preferred terms verbatim for every domain concept it names (BOM Compare, BOM Diff State, IpnNotFound, Push, IPN, InvenTree)",
+        "Uses no GLOSSARY.md avoid-list term where the preferred term applies (no 'BOM sync', 'BOM check', 'upload', loose 'sync')",
         "Passes the unslop audit: no AI vocabulary, filler, chatbot phrases, em/en dashes, curly quotes, title-case headings, bold-as-headers, or promotional language",
         "Explains the before/after in observable terms: IpnNotFound lines could be pushed and failed server-side; now they are unchecked and the row explains why",
         "Structure serves scanning (headings, short bullets) rather than hiding the contract inside dense paragraphs",

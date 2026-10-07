@@ -17,7 +17,7 @@ Every test step must have:
 - A concrete observable result (e.g. "The Task Pane State shows POPULATED and the preview displays the part name")
 - Preconditions listed (even if "none")
 - At least one edge case per feature area
-- Domain language from `CONTEXT.md` (Task Pane, IPN, Fetch, etc.) instead of source paths or code terms
+- Domain language from `GLOSSARY.md` (Task Pane, IPN, Fetch, etc.) instead of source paths or code terms
 
 ## Edge Case Triggers (add at least one per feature area)
 
@@ -42,7 +42,7 @@ Every test step must have:
 | No test data | Tester gets blocked | Provide sample IPN or property values |
 | Generic bug titles ("button broken") | Hard to triage and search | Be specific: "[Task Pane] Fetch does nothing when IPN is blank" |
 | Skipping error paths | Miss critical bugs | Include empty IPN, not-found, and offline behavior |
-| Source-file references in issues | Go stale after refactors | Describe the symptom in domain terms from `CONTEXT.md` |
+| Source-file references in issues | Go stale after refactors | Describe the symptom in domain terms from `GLOSSARY.md` |
 
 ## Smoke test
 

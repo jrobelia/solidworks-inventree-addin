@@ -2,7 +2,7 @@
 
 Every producer that writes an add-in status surface, classified under the ADR-0024 status model — which domain emits which **Status Entry**, with what persistence class and severity. Snapshot post-#93 (`build/issue-93`, `milestone-3`): line numbers rot as the files change; the producer, trigger, and classification outlive them.
 
-Consumers: #90's characterization tests pin this surface; #271's implementation children re-platform each domain onto entries. Vocabulary is `CONTEXT.md` (**Status Entry**, **Transient Status**, **Persistent Status**); arbitration rules are ADR-0024 — this map records what writes today, not what the model prescribes.
+Consumers: #90's characterization tests pin this surface; #271's implementation children re-platform each domain onto entries. Vocabulary is `GLOSSARY.md` (**Status Entry**, **Transient Status**, **Persistent Status**); arbitration rules are ADR-0024 — this map records what writes today, not what the model prescribes.
 
 ## Task Pane strip
 

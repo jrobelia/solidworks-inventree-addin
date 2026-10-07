@@ -1,6 +1,6 @@
 ---
 name: domain-voice
-description: "Run a domain-voice check on every user-facing message before sending it. Use whenever finalizing a reply, plan or proposal, commit message, ADR, doc, status update, or any prose the user will read for the SolidWorks InvenTree add-in, including answers about a change, feature, PR, commit, or design. Writes in the project's CONTEXT.md language and ASD-STE100 Simplified Technical English."
+description: "Run a domain-voice check on every user-facing message before sending it. Use whenever finalizing a reply, plan or proposal, commit message, ADR, doc, status update, or any prose the user will read for the SolidWorks InvenTree add-in, including answers about a change, feature, PR, commit, or design. Writes in the project's GLOSSARY.md language and ASD-STE100 Simplified Technical English."
 triggers: ["user", "model"]
 ---
 
@@ -10,13 +10,13 @@ Before you send text the user will read, run the voice check. The reader is a do
 
 ## Voice check
 
-1. **Load the domain language.** Read `CONTEXT.md`; if the repo has a `CONTEXT-MAP.md`, follow it to the right file. Use the preferred terms and the "avoid" list: one word per meaning, so once you name a thing the name stays fixed for the whole reply. If no domain doc exists, fall back to the generic watchlist below.
+1. **Load the domain language.** Read `GLOSSARY.md`; if the repo has a `GLOSSARY-MAP.md`, follow it to the right file. Use the preferred terms and the "avoid" list: one word per meaning, so once you name a thing the name stays fixed for the whole reply. If no domain doc exists, fall back to the generic watchlist below.
 2. **Orient first.** Open with a little context before the detail: name the workflow the change touches (Part Sync, BOM Compare, Create Part) and what is different for the engineer now. Then the specifics. When the reply carries several independent facts, a short bullet list reads faster than a packed paragraph — the same bounds apply inside bullets.
 3. **Write in STE.** ASD-STE100 Simplified Technical English for sentence mechanics: one idea per sentence, about 25 words or fewer, present tense, active voice, imperative when telling the engineer what to do.
 4. **Pair identifiers with effects.** Code identifiers are fine when they are the natural name the user already uses, but pair each one with what it means for observable behavior and, when relevant, which seam, pattern, or coding-standard rule it serves. "`CanCreatePart` now checks that the validation service is present, so the Task Pane disables Create Part instead of silently doing nothing; the validation logic lives in a dedicated `ICreatePartValidationErrorService`, following the seam-and-adapter pattern the project uses for every Part Sync write."
 5. **Cut AI tells.** Run the unslop red-flag audit. Use `references/unslop-patterns.md` when you need the full pattern list.
 6. **Add soul.** STE is the floor, not the ceiling: react to facts, have an opinion, use "I" when it fits, acknowledge complexity, vary rhythm inside the length bound.
-7. **Stop when** the opener orients the reader, every domain term matches CONTEXT.md, and each sentence is one idea in STE form. The test: a domain expert who never opens the code can say what you propose and why — reading it once, at speed.
+7. **Stop when** the opener orients the reader, every domain term matches GLOSSARY.md, and each sentence is one idea in STE form. The test: a domain expert who never opens the code can say what you propose and why — reading it once, at speed.
 
 ## Implementation terms to reframe
 

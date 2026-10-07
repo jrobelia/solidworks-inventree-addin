@@ -47,7 +47,7 @@ Every file edit and every command runs inside the worktree, never the main check
 Reach each only when its branch fires:
 
 - `docs/agents/coding-standards.md` — before writing any C#. `## Module Design` governs the seam; `## Build & Test Commands` owns the commands below.
-- `CONTEXT.md` — before writing anything a user will see: identifiers, status strings, commit text. Domain terms: IPN, Fetch, Apply, Push, Task Pane.
+- `GLOSSARY.md` — before writing anything a user will see: identifiers, status strings, commit text. Domain terms: IPN, Fetch, Apply, Push, Task Pane.
 - `.devin/skills/solidworks-inventree-testing/SKILL.md` — when the diff touches `SwInventreeAddin/UI/`, any `*ViewModel*.cs`, any `*.xaml`, or a dialog/window class: run the WPF smoke harness before committing.
 
 Skills cannot be invoked from inside a subagent — every pointer above is a file to read.

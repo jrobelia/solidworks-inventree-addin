@@ -42,4 +42,4 @@ Default label vocabulary (needs-triage, needs-info, ready-for-agent, ready-for-h
 
 ### Domain docs
 
-Single-context repo. Domain glossary in `CONTEXT.md`; architectural decisions in `docs/adr/`. See `docs/agents/domain.md`.
+Single-context repo. Domain glossary in `GLOSSARY.md`; architectural decisions in `docs/adr/`. See `docs/agents/domain.md`.

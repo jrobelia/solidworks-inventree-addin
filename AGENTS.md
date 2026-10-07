@@ -28,5 +28,5 @@ Before a spec is published to the issue tracker, run the **playback** in `.devin
 - [Branch and pull request conventions](docs/agents/pr-conventions.md)
 - [Scope: what the add-in does and out-of-bounds](docs/agents/scope.md)
 - [User communication preferences](docs/agents/user-preferences.md)
-- [Domain glossary and ADRs](docs/agents/domain.md) — see also [CONTEXT.md](CONTEXT.md)
+- [Domain glossary and ADRs](docs/agents/domain.md) — see also [GLOSSARY.md](GLOSSARY.md)
 - [Issue tracker conventions](docs/agents/issue-tracker.md) — see also [triage labels](docs/agents/triage-labels.md)

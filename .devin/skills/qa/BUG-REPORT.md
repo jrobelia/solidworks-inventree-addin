@@ -16,7 +16,7 @@ Body template:
 <expected behavior>
 
 ## Steps to reproduce
-1. <step — use domain terms from CONTEXT.md; leave out module names>
+1. <step — use domain terms from GLOSSARY.md; leave out module names>
 2. <include relevant inputs or configuration>
 
 ## Additional context

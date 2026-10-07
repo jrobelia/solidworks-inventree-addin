@@ -36,4 +36,4 @@ is not evidence of a stale link.
 - A stale PK costs one prompt instead of a silent wrong link.
 - The check runs only on the PK fetch path; IPN resolution and the duplicate-IPN prompt are
   unchanged.
-- **Link Mismatch** is a glossary term (CONTEXT.md).
+- **Link Mismatch** is a glossary term (GLOSSARY.md).

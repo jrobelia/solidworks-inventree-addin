@@ -18,7 +18,7 @@ This ADR supersedes the status, Copy-to-local, and Part-Sync-gating portions of 
   - `Invalid` continues to block all Part Sync, including **Fetch**.
 - The `MappingHealth` status message is shown in both **Settings** and the **Task Pane**, using the same source from `IPropertyMappingProvider.GetMappingResult()`.
   - The base message is source-independent.
-  - The status wording uses **"Property Mapping"** and **"Property Mapping Schema"** from `CONTEXT.md`.
+  - The status wording uses **"Property Mapping"** and **"Property Mapping Schema"** from `GLOSSARY.md`.
 - The **Settings** window has one status area per section, using the same colored-stripe + selectable message visual pattern as the **Task Pane**.
   - Each status bar is always visible and positioned to the left of the action button it reports on:
     - Connection status is left of **Test Connection**.
@@ -66,4 +66,4 @@ The same source text is used by Settings, the Task Pane, and the mapping editor,
 - `DesignTokens.xaml` exposes a shared `StatusBarTextStyle` for read-only, selectable status text; `SettingsWindow` and `PropertyMappingEditorWindow` use it for consistent status-bar presentation.
 - `MappingEditorViewModel` exposes `StatusMessage` and `StatusSeverity` so the editor status bar follows the same always-visible, grey-by-default, red-on-error pattern as the Settings status bars.
 - Tests must be updated or removed for `CopyToLocal` and for the previous `NeedsUpgrade` / `NewerSchema` `Fetch` behavior.
-- `CONTEXT.md` and `docs/adr/0017-...` are superseded for status, Copy-to-local, and Part-Sync gating by this ADR.
+- `GLOSSARY.md` and `docs/adr/0017-...` are superseded for status, Copy-to-local, and Part-Sync gating by this ADR.

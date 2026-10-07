@@ -16,7 +16,7 @@ A read-back: restate what the add-in will do in the engineer's terms and wait fo
 
 ## Write the playback
 
-Read `CONTEXT.md` first (follow `CONTEXT-MAP.md` when present) and write in domain voice — `/domain-voice` carries the full check: preferred terms only, STE sentences, one idea each.
+Read `GLOSSARY.md` first (follow `GLOSSARY-MAP.md` when present) and write in domain voice — `/domain-voice` carries the full check: preferred terms only, STE sentences, one idea each.
 
 Group by the feature or workflow the engineer recognizes (Part Sync, BOM Compare, Create Part, Task Pane) — not by ticket or module. For each feature:
 
@@ -31,7 +31,7 @@ Then two flat sections:
 
 Rules:
 
-- Observable behavior only — no module names, code identifiers, or file paths. When a thing needs a name, use the UI label or the CONTEXT.md term.
+- Observable behavior only — no module names, code identifiers, or file paths. When a thing needs a name, use the UI label or the GLOSSARY.md term.
 - The source is the spec draft plus the conversation that produced it — re-narrate, do not reformat the user-story list.
 - When the playback exposes a behavior the spec never settled, surface it as an open question in the playback rather than guessing — the answer goes back into the spec.
 - Short enough to read once at speed. If it needs a second pass, cut.

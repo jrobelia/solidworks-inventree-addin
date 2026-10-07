@@ -89,7 +89,7 @@ Every step must be:
 - A specific action in the SolidWorks InvenTree Add-In GUI
 - A concrete observable result the user can see (e.g. "the preview shows the part name")
 - Preconditions listed, even if "none"
-- Phrased in domain terms from `CONTEXT.md` (Task Pane, IPN, InvenTree Part PK, Fetch, Apply, Push, Part Sync, BOM Compare, etc.)
+- Phrased in domain terms from `GLOSSARY.md` (Task Pane, IPN, InvenTree Part PK, Fetch, Apply, Push, Part Sync, BOM Compare, etc.)
 - Stays in the GUI and domain language; source files, diffs, and line numbers are not test-step content
 - Covering at least one edge case per feature area
 

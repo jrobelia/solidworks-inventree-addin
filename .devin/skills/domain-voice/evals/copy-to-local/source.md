@@ -14,4 +14,4 @@ Commit body:
 Context from the PR body:
 - Copy-to-local moved from Property Mapping Editor to Settings window.
 - Removes `CanCopyToLocal` / `CopyToLocalInstruction` from `MappingEditorViewModel`.
-- Updates ADR-0017 and `CONTEXT.md`.
+- Updates ADR-0017 and `GLOSSARY.md`.
