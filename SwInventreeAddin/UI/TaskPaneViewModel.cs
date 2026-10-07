@@ -22,7 +22,9 @@ namespace SwInventreeAddin.UI
     /// <see cref="IPartSyncCoordinator"/> — this ViewModel owns only WPF
     /// property notifications, status wording, confirmation prompts, and
     /// command routing. Every bindable document/session projection reads the
-    /// coordinator's immutable surface; nothing here stores document state.
+    /// coordinator's immutable surface; the only retained state is the
+    /// projection watermark (<c>_projectedGeneration</c>) recording which
+    /// document generation the stored fields were built from.
     /// <para>
     /// SolidWorks host callbacks are routed by <see cref="TaskPaneControl"/>:
     /// it invokes the coordinator's lifecycle methods and hands the typed
@@ -109,6 +111,16 @@ namespace SwInventreeAddin.UI
         private bool _createPartEnabled;
         private bool _propertiesSectionVisible;
         private StatusSeverity _statusSeverity = StatusSeverity.None;
+
+        /// <summary>
+        /// The document generation the stored projections above were last
+        /// built from — a projection cursor, not document data. -1 until the
+        /// first projection. A coordinator <see cref="IPartSyncCoordinator.Changed"/>
+        /// that arrives with a newer generation means a document transition
+        /// the host has not routed yet (a commit's recapture discovered it);
+        /// the pane re-projects rather than keep the superseded values.
+        /// </summary>
+        private int _projectedGeneration = -1;
 
         /// <summary>User-editable IPN entry box.</summary>
         public string PartNumber
@@ -455,6 +467,7 @@ namespace SwInventreeAddin.UI
         /// </summary>
         internal void ProjectDocumentUpdate()
         {
+            _projectedGeneration = _coordinator.Generation;
             RefreshMappingResult();
 
             if (_coordinator.Kind == TaskPaneStateKind.Empty)
@@ -557,6 +570,7 @@ namespace SwInventreeAddin.UI
         /// </summary>
         internal void ProjectDocumentClosed()
         {
+            _projectedGeneration = _coordinator.Generation;
             ResetDocumentPanel();
             NotifyBomVisibility();
         }
@@ -643,7 +657,14 @@ namespace SwInventreeAddin.UI
             {
                 var result = _coordinator.CompleteCreatePart(token, part);
                 if (result.Outcome != PartSyncOutcome.Success)
-                    return;   // Stale or invalid — the coordinator already dropped the pending operation.
+                {
+                    // Stale/Cancelled stay silent — a stale completion never
+                    // touches a newer operation's status — but outcomes with a
+                    // diagnostic (e.g. the created part carried no server-assigned
+                    // InvenTree Part PK) must surface on the status strip.
+                    MapTerminalOutcome(result);
+                    return;
+                }
 
                 PartNumber = result.Ipn ?? part.Ipn ?? string.Empty;
                 FetchEnabled = ShouldEnableFetch();
@@ -689,6 +710,13 @@ namespace SwInventreeAddin.UI
         /// </summary>
         public async Task FetchPartAsync()
         {
+            // The box IPN belongs to the last projected generation: a commit's
+            // recapture can install a new document while dropping nothing —
+            // no Changed, no host notification yet — leaving the watermark
+            // stale. Re-project before reading the box so a superseded
+            // document's IPN never reaches FetchAsync (#317).
+            ReprojectIfGenerationAdvanced();
+
             RefreshMappingResult();
             if (_mappingResult?.CanFetch != true)
                 return;
@@ -1071,11 +1099,29 @@ namespace SwInventreeAddin.UI
         }
 
         private void OnCoordinatorChanged(object? sender, EventArgs e) =>
-            RunOnUiThread(() =>
-            {
-                NotifyDocumentProperties();
-                NotifySessionProperties();
-            });
+            RunOnUiThread(ReprojectIfGenerationAdvanced);
+
+        /// <summary>
+        /// The single reprojection check, run on the UI thread: when the
+        /// coordinator's document generation has moved past the watermark —
+        /// a commit's recapture discovered a transition the host has not
+        /// routed yet — the stored fields belong to the superseded document
+        /// and are rebuilt through <see cref="ProjectDocumentUpdate"/>.
+        /// Called both from <see cref="OnCoordinatorChanged"/> (where the
+        /// generation is read at callback-execution time, after any
+        /// intervening discovery) and from pane-initiated boundaries that
+        /// consume a stored projection — a recapture that dropped nothing
+        /// raises no Changed at all, so the watermark is the only signal.
+        /// The notifies still run: ProjectDocumentUpdate alone raises
+        /// nothing for the computed previews.
+        /// </summary>
+        private void ReprojectIfGenerationAdvanced()
+        {
+            if (_coordinator.Generation != _projectedGeneration)
+                ProjectDocumentUpdate();
+            NotifyDocumentProperties();
+            NotifySessionProperties();
+        }
 
         private void ResetDocumentPanel()
         {

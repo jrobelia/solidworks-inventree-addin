@@ -3252,6 +3252,62 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.FetchEnabled, Is.True);
             Assert.That(vm.CreatePartEnabled, Is.False);
         }
+
+        // ── Non-Success completion outcomes (#317) ───────────────────────────
+
+        [Test]
+        public void PartCreated_NoServerAssignedPk_SurfacesDiagnosticOnStatusStrip()
+        {
+            var pair = VmFactory.Create(_client, _propertyService, createPartValidator: _createPartValidator);
+            var vm = pair.ViewModel;
+
+            // A completion carrying no valid InvenTree Part PK is an
+            // InvalidOperation — its diagnostic must reach the pane, not be
+            // swallowed the way Stale is.
+            vm.OpenCreatePartWindow(createVm =>
+            {
+                var handler = typeof(CreatePartViewModel)
+                    .GetField("PartCreated",
+                        System.Reflection.BindingFlags.NonPublic |
+                        System.Reflection.BindingFlags.Instance |
+                        System.Reflection.BindingFlags.Public)
+                    ?.GetValue(createVm) as System.EventHandler<InventreePart>;
+                handler?.Invoke(createVm, new InventreePart { Pk = 0, Ipn = "NEW-001", Name = "New Part" });
+            });
+
+            Assert.That(vm.StatusText, Does.Contain("server-assigned"));
+            Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+            Assert.That(pair.Coordinator.FetchedPart, Is.Null);
+        }
+
+        [Test]
+        public async Task PartCreated_SupersededToken_Stale_LeavesStatusUntouched()
+        {
+            var pair = VmFactory.Create(_client, _propertyService, createPartValidator: _createPartValidator);
+            var vm = pair.ViewModel;
+
+            // Put a real status on the strip first — a Stale completion must
+            // never touch a newer operation's status.
+            await vm.FetchPartAsync();   // unlinked document → "Open a part or assembly…"
+            var statusBefore = vm.StatusText;
+            Assert.That(statusBefore, Is.Not.Empty);
+
+            vm.OpenCreatePartWindow(createVm =>
+            {
+                // A second BeginCreatePart supersedes the dialog's token.
+                pair.Coordinator.BeginCreatePart();
+                var handler = typeof(CreatePartViewModel)
+                    .GetField("PartCreated",
+                        System.Reflection.BindingFlags.NonPublic |
+                        System.Reflection.BindingFlags.Instance |
+                        System.Reflection.BindingFlags.Public)
+                    ?.GetValue(createVm) as System.EventHandler<InventreePart>;
+                handler?.Invoke(createVm, new InventreePart { Pk = 99, Ipn = "NEW-001", Name = "New Part" });
+            });
+
+            Assert.That(vm.StatusText, Is.EqualTo(statusBefore));
+            Assert.That(pair.Coordinator.FetchedPart, Is.Null);
+        }
     }
 
     [TestFixture]
@@ -4728,6 +4784,156 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(_vm.NamePreview, Is.EqualTo("Resistor 10k"));
             Assert.That(_vm.ApplyEnabled, Is.True);
+        }
+
+        // ── Changed-driven reprojection (#317) ─────────────────────────────
+        // A commit's document recapture can discover a switch whose host
+        // notification has not been delivered; the coordinator raises Changed
+        // and the pane must re-project — the stored fields (IPN box, enabled
+        // flags, status) cannot keep the superseded document's values.
+
+        /// <summary>
+        /// Installs a session on doc-1, starts a Push whose commit parks on the
+        /// deferred dispatcher, then switches the active document to doc-2
+        /// without delivering the host notification. Returns the push task.
+        /// </summary>
+        private async Task<Task> ParkedPushThenUndeliveredSwitch()
+        {
+            _client.PartToReturn = FetchedPart;
+            _propertyService.Seed(Mapping.NameProperty!, "New Name");
+            SeedLinkedDocument();
+            await _vm.FetchPartAsync();
+            Assert.That(_vm.ApplyEnabled, Is.True);
+
+            _dispatcher.DeferRun = true;
+            var push = _vm.PushNameToInvenTreeAsync();
+            Assert.That(_dispatcher.QueuedCount, Is.EqualTo(1));
+            Assert.That(_vm.StatusText, Is.EqualTo("Pushing name to InvenTree\u2026"));
+
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+            _propertyService.Seed(Mapping.IpnProperty!, "DOC2-IPN");
+            return push;
+        }
+
+        [Test]
+        public async Task CoordinatorChanged_ParkedCommitDiscoversSwitch_ReprojectsStoredFields()
+        {
+            var push = await ParkedPushThenUndeliveredSwitch();
+
+            // The parked commit's recapture discovers the switch, raises
+            // Changed, and returns Stale — the pane must re-project doc-2 now,
+            // not when the delayed host notification arrives.
+            _dispatcher.RunAll();
+            await push;
+            _dispatcher.RunAll();   // drain the stale completion's marshalled status mapping
+
+            Assert.That(_vm.PartNumber, Is.EqualTo("DOC2-IPN"));
+            Assert.That(_vm.StatusText, Is.EqualTo(string.Empty),
+                "the superseded operation's in-progress text must not survive the reprojection");
+            Assert.That(_vm.FetchEnabled, Is.True);
+            Assert.That(_vm.CreatePartEnabled, Is.False);
+            Assert.That(_vm.ApplyEnabled, Is.False);
+            Assert.That(_vm.PropertiesSectionVisible, Is.True);
+        }
+
+        [Test]
+        public async Task FetchPartAsync_AfterReprojection_UsesNewDocumentIpn()
+        {
+            var push = await ParkedPushThenUndeliveredSwitch();
+            _dispatcher.RunAll();
+            await push;
+            _dispatcher.RunAll();
+            Assert.That(_vm.PartNumber, Is.EqualTo("DOC2-IPN"));
+
+            _dispatcher.DeferRun = false;
+            _client.PartToReturn = new InventreePart { Pk = 7, Ipn = "DOC2-IPN", Name = "Doc-2 part" };
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_client.LastIpnRequested, Is.EqualTo("DOC2-IPN"),
+                "Fetch must use the reprojected box value, not the superseded document's IPN");
+            Assert.That(_vm.NamePreview, Is.EqualTo("Doc-2 part"));
+        }
+
+        [Test]
+        public async Task FetchPartAsync_EntryDiscoversSwitch_Stale_BoxReprojectsToNewIpn()
+        {
+            SeedLinkedDocument();
+            Assert.That(_vm.PartNumber, Is.EqualTo("R-10K-0402"));
+
+            // No commit ran first — the entry recapture inside FetchAsync
+            // itself discovers the switch, so the box value it was called with
+            // belongs to the superseded document.
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+            _propertyService.Seed(Mapping.IpnProperty!, "DOC2-IPN");
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_client.LastIpnRequested, Is.Empty,
+                "the stale box IPN must never reach the server");
+            Assert.That(_vm.PartNumber, Is.EqualTo("DOC2-IPN"));
+            Assert.That(_vm.StatusText, Is.EqualTo(string.Empty),
+                "the in-progress 'Fetching' text is superseded by the reprojection");
+            Assert.That(_vm.ApplyEnabled, Is.False);
+        }
+
+        [Test]
+        public async Task FetchPartAsync_DroplessCommitDiscovery_ReprojectsBoxBeforeFetch()
+        {
+            SeedLinkedDocument();
+            Assert.That(_vm.PartNumber, Is.EqualTo("R-10K-0402"));
+
+            // Park a fetch commit on the deferred dispatcher: its recapture
+            // installs doc-2 while dropping nothing — the entry mint already
+            // cleared session and pending confirmation — so no Changed fires
+            // and the watermark stays on doc-1's generation. The stored box
+            // IPN then belongs to the superseded document.
+            _client.PartToReturn = FetchedPart;
+            _dispatcher.DeferRun = true;
+            var parked = _vm.FetchPartAsync();
+            Assert.That(_dispatcher.QueuedCount, Is.EqualTo(2),
+                "the family-mint Changed marshalling plus the parked commit");
+
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+            _propertyService.Seed(Mapping.IpnProperty!, "DOC2-IPN");
+
+            _dispatcher.RunAll();
+            await parked;
+            _dispatcher.RunAll();
+
+            // Pin the stale window: the drop-less discovery raised no
+            // Changed, so the box still shows doc-1's IPN while doc-2 is
+            // the coordinator's active document.
+            Assert.That(_vm.PartNumber, Is.EqualTo("R-10K-0402"));
+
+            // The next fetch must re-project before reading the box: it goes
+            // out with doc-2's IPN and its session lands under doc-2's
+            // generation — the superseded IPN never reaches the server.
+            _dispatcher.DeferRun = false;
+            _client.PartToReturn = new InventreePart { Pk = 7, Ipn = "DOC2-IPN", Name = "Doc-2 part" };
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_client.LastIpnRequested, Is.EqualTo("DOC2-IPN"));
+            Assert.That(_vm.PartNumber, Is.EqualTo("DOC2-IPN"));
+            Assert.That(_vm.NamePreview, Is.EqualTo("Doc-2 part"),
+                "the fetch installed doc-2's session under the new generation");
+            Assert.That(_vm.ApplyEnabled, Is.True);
+        }
+
+        [Test]
+        public void CoordinatorChanged_SameGeneration_PreservesTypedPartNumber()
+        {
+            SeedLinkedDocument();
+
+            // A user edit in the IPN box must survive a Changed carrying no
+            // document transition — the generation watermark, not the event,
+            // decides whether to re-project.
+            _vm.PartNumber = "USER-TYPED";
+
+            _pair.Coordinator.UpdateClient(new StubInventreeClient());
+
+            Assert.That(_vm.PartNumber, Is.EqualTo("USER-TYPED"));
         }
 
         // ── Binding-name compatibility with the XAML ──────────────────────────

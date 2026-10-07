@@ -299,7 +299,7 @@ namespace SwInventreeAddin
 
             // Re-capture before choosing the path so a PK stamped mid-session
             // (Apply or a manual edit that only got a light refresh) is honored.
-            LightCaptureInstall();
+            var entryTransition = LightCaptureInstall();
 
             // Session-family mint at capture: this fetch supersedes in-flight
             // fetches and create completions, and clears the pending
@@ -321,6 +321,13 @@ namespace SwInventreeAddin
             var stampedPk = document.StampedPartPk;
             if (stampedPk > 0)
                 return await FetchByPkAsync(token, stampedPk).ConfigureAwait(false);
+
+            // An entry-time document transition makes the ipn argument
+            // untrusted — it was captured against the superseded document (or
+            // an unprojected pane). The family-mint RaiseChanged already told
+            // observers to re-project; never fetch or install under it.
+            if (entryTransition == TaskPaneDocumentTransition.Activated)
+                return Stale();
 
             if (string.IsNullOrEmpty(ipn))
                 return InvalidOp("No IPN to fetch.");
@@ -396,9 +403,8 @@ namespace SwInventreeAddin
             }
 
             var stampedIpn = WriteBackIpnIfNeeded(part, docIpn);
-            // The substitute refresh may have found the document gone.
-            if (_state.Document == null)
-                return Stale();
+            if (PostWriteAbandonment(token) is { } abandoned)
+                return abandoned;
             InstallSession(part, thumb);
             RaiseChanged();
             return new PartSyncResult(PartSyncOutcome.Success)
@@ -566,9 +572,8 @@ namespace SwInventreeAddin
                 pkText: wrotePk ? part.Pk.ToString() : null,
                 name: wroteName ? part.Name : null);
 
-            // The substitute refresh may have found the document gone.
-            if (_state.Document == null)
-                return Stale();
+            if (PostWriteAbandonment(token) is { } abandoned)
+                return abandoned;
             InstallSession(part, thumbnail: null);
             RaiseChanged();
             return new PartSyncResult(PartSyncOutcome.Success)
@@ -872,8 +877,8 @@ namespace SwInventreeAddin
 
             var part = pending.Part!.ToPart();
             var stampedIpn = WriteBackIpnIfNeeded(part, _state.Document!.Ipn);
-            if (_state.Document == null)
-                return Stale();
+            if (PostWriteAbandonment(pending.Token) is { } abandoned)
+                return abandoned;
             InstallSession(part, pending.ThumbnailBytes);
             RaiseChanged();
             return new PartSyncResult(PartSyncOutcome.Success)
@@ -1022,6 +1027,23 @@ namespace SwInventreeAddin
         /// <summary>Commit validity plus session identity — the guard every session-scoped commit runs.</summary>
         private bool IsSessionCommitCurrent(PartSyncOperationToken token, PartSyncSession session) =>
             IsCommitCurrent(token) && ReferenceEquals(_session, session);
+
+        /// <summary>
+        /// The post-write abandon check shared by commit paths that just ran
+        /// Document Property writes: each write's substitute refresh may have
+        /// found the document gone or discovered a COM-reentrant switch inside
+        /// the synchronous write — either advances the generation, so the
+        /// captured token covers both. Returns the Stale result after raising
+        /// Changed (observers re-project rather than wait for the delayed host
+        /// notification), or null when the commit remains current (#317).
+        /// </summary>
+        private PartSyncResult? PostWriteAbandonment(PartSyncOperationToken token)
+        {
+            if (IsTokenCurrent(token))
+                return null;
+            RaiseChanged();
+            return Stale();
+        }
 
         /// <summary>
         /// Re-reads document values inside a validated commit and confirms the

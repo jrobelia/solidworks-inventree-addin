@@ -52,7 +52,10 @@ namespace SwInventreeAddin
         /// STA thread, strictly after the change is visible through the surface.
         /// Also raised when a commit's document recapture discovers a switch or
         /// close the host has not notified yet and drops the session or pending
-        /// confirmation — observers must not wait for the delayed notification.
+        /// confirmation — observers must not wait for the delayed notification —
+        /// and when a post-write substitute refresh abandons a commit under a
+        /// new document generation. Observers should compare
+        /// <see cref="Generation"/> against what they last projected.
         /// </summary>
         event EventHandler? Changed;
 
@@ -93,6 +96,12 @@ namespace SwInventreeAddin
         /// when the document carries one. Mints a session-family token at
         /// capture, clears the current session, works off-thread, and commits
         /// through the dispatcher with token revalidation inside the commit.
+        /// When the entry recapture itself discovers a document transition,
+        /// <paramref name="ipn"/> is untrusted — it was captured against the
+        /// superseded document — and the IPN path returns
+        /// <see cref="PartSyncOutcome.Stale"/> without a fetch or install; the
+        /// stamped-PK path is unaffected because it never reads
+        /// <paramref name="ipn"/>.
         /// </summary>
         Task<PartSyncResult> FetchAsync(string ipn);
 
