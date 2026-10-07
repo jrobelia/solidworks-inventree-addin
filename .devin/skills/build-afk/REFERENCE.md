@@ -36,6 +36,7 @@ Each finding gets a disposition at the batch gate — record the disposition and
 
 - The dispatch contract is profile + filled task template → structured status JSON. Templates: `IMPLEMENTER_TASK.md` (implementers), `DESIGNER_TASK.md` (designer). Fill every `{{slot}}`, then scan the filled template for leftover `{{` markers and interleaved fragments before dispatch — a garbled ruling inside `{{extra_context}}` is applied as settled spec, silently.
 - A dispatch whose contract names a file artifact (`REPORT_PATH`, `{{report_path}}`) is done when the file exists and is non-empty, not when the agent returns. An empty return with no artifact is a failed dispatch: resume it once in the foreground — a background write denial is invisible to the caller — before escalating.
+- The same exists-and-is-non-empty invariant applies to writes the orchestrator performs: `test -s` a body file before `gh --body-file` consumes it — an empty file silently overwrites a live PR body — and read back persisted artifacts (seam notes, `gh pr view --json body`) after writing.
 - Profiles: `build-implementer` (`swe-2-high`, rounds 1–3), `build-implementer-max` (`swe-2-max`, rounds 4–5), `build-designer` (`swe-2-high`, read-only), `review-spec` (`swe-2-max`).
 - Subagents get five tools — `read`, `edit`, `exec`, `grep`, `glob` (exposed as `find_file_by_name`) — and `edit` cannot create files. New files go through `exec` heredoc or `git apply`; `IMPLEMENTER_TASK.md` `## Tool reality` carries this for the implementer. `skill` and `ask_user_question` are unreachable inside a subagent — every context pointer is a file to read, and a question is a `BLOCKED`.
 
@@ -55,6 +56,7 @@ Each finding gets a disposition at the batch gate — record the disposition and
 
 - The implementer's status JSON routes the loop: `COMPLETE`/`COMPLETE_WITH_CONCERNS` → merge; `BLOCKED` → record `blocked_kind` (`context` | `capability` | `size` | `ambiguity`), mark its dependents blocked-by-predecessor (`context`), continue with unblocked tickets. Persist the implementer's full report under `reports/` and reference it by path.
 - A dispatch that dies mid-run — rate limit, session loss — is an infra failure, not a work result: re-dispatch on the same worktree with triage instructions for the partial work left behind — keep, repair, or discard per file — plus an explicit pass verifying wording-bearing literals byte-for-byte against their spec sources. A dying agent can leave escape-corrupted text that a keep/discard scan reads as complete.
+- At each `PROGRESS.md` write, snapshot every in-flight worktree — its `git diff HEAD` output and untracked-file list — to `reports/<N>-wip.patch`: an implementer commits once at the end, so until then a dead dispatch's partial work exists only as uncommitted hunks.
 
 ## Run state
 
@@ -65,7 +67,7 @@ Each finding gets a disposition at the batch gate — record the disposition and
 - `seams/<ticket>.md` — designer output, persisted verbatim.
 - `reports/` — implementer reports, reviewer output (`<N>-review-<round>.md` per ticket, `<axis>-review-<pass>.md` for the final review), adjudication rulings, `run-retro.md`.
 
-After compaction or a session break, trust the ledger and `git log` over session memory. On resume, refetch every issue's body and comments and flag any that changed mid-run — spec drift is surfaced to the maintainer, never silently built on. Reports stay on disk referenced by path — the status JSON is the routing signal: load `reports/<N>-implementer.md` only on `BLOCKED` or `COMPLETE_WITH_CONCERNS` (the detail lives in the report) and at closeout to compose the PR body; adjudicate reviews from the digest and open the persisted file only when the digest can't settle a ruling. Resuming a mid-ladder ticket needs the implementer's live agent handle, which may not survive a break — if it is unresolvable, dispatch a fresh `build-implementer` on the same worktree with the persisted findings; the round count still applies.
+After compaction or a session break, trust the ledger and `git log` over session memory. On resume, first audit every dispatch marked in-flight in `PROGRESS.md` — a unit past its artifact window is dead; re-dispatch it per `## Dispatch mechanics` rather than waiting on it — then refetch every issue's body and comments and flag any that changed mid-run — spec drift is surfaced to the maintainer, never silently built on. Reports stay on disk referenced by path — the status JSON is the routing signal: load `reports/<N>-implementer.md` only on `BLOCKED` or `COMPLETE_WITH_CONCERNS` (the detail lives in the report) and at closeout to compose the PR body; adjudicate reviews from the digest and open the persisted file only when the digest can't settle a ruling. Resuming a mid-ladder ticket needs the implementer's live agent handle, which may not survive a break — if it is unresolvable, dispatch a fresh `build-implementer` on the same worktree with the persisted findings; the round count still applies.
 
 ## Per-ticket review
 
@@ -81,14 +83,22 @@ After a ticket merges into the batch branch:
 
 ## Run retro
 
-After the final review, dispatch a read-only subagent (`build-designer` or `subagent_explore`) in the background — it needs no grant and overlaps the closeout — over the run directory — `STATUS.json`, `PROGRESS.md`, `seams/`, `reports/` — to write `reports/run-retro.md`: severity-ordered improvement candidates in the spirit of `.agents/skills/retro/SKILL.md`'s categories, plus the run-specific signals:
+After the final review, dispatch a read-only subagent (`build-designer` or `subagent_explore`) in the background — it needs no grant and overlaps the closeout — over the run directory — `STATUS.json`, `PROGRESS.md`, `seams/`, `reports/`. The agent **returns the report body** — it is read-only and cannot write files; the orchestrator persists the return verbatim to `reports/run-retro.md`. The report carries severity-ordered improvement candidates in the spirit of `.agents/skills/retro/SKILL.md`'s categories, plus the run-specific signals:
 
 - `blocked_kind` clusters — under-specified tickets feed back to `/to-tickets`.
 - Per-ticket fix-round counts — repeated round 4–5 escalations evidence the tier floor is wrong.
 - Parked rulings — reviewer noise or gaps in `coding-standards.md`.
 - Seam-gate escalation rate, permission denials, merge conflicts.
 
-Surface the top candidates in the run summary next to the PR link. The deeper session-level pass stays a user-invoked `/retro`.
+The report ends with a `## Ranked fixes` section — the deliverable the maintainer actually reads: a bulleted list ordered by severity, each bullet one or two plain sentences naming the fix, where it lands (file, skill, or doc), and why. No jargon the maintainer would have to decode — "the orchestrator's writes weren't verified" not "file-mediated artifact invariant gap".
+
+The run summary pastes `## Ranked fixes` verbatim and marks each item:
+
+- `apply now` — a trivial skill/doc edit the orchestrator can land in-session; the maintainer's yes applies it, it does not get filed to rot.
+- `file` — real work; offer to open the issue in the same breath (a filed issue is actionable, a report line is not).
+- `defer` — needs a decision or more evidence; say what unblocks it.
+
+The deeper session-level pass stays a user-invoked `/retro`.
 
 ## Carried-list triage
 

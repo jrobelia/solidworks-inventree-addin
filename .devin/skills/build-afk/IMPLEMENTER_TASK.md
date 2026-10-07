@@ -93,7 +93,7 @@ Your granted toolset is `read`, `edit`, `exec`, `grep`, `glob` (shown in your fu
 
 ## Report
 
-Write the full report to `{{report_path}}`: what you implemented, the TDD evidence (the red command and its failing output, the green command and its passing output), files changed, self-review findings, concerns.
+Write the full report to `{{report_path}}`: what you implemented, the TDD evidence (the red command and its failing output, the green command and its passing output), files changed, self-review findings, concerns, and a watch-item disposition — one line per `Watch items` entry in the confirmed seam: `done`, `n/a — <why>`, or `orchestrator — <stated where>` for items you cannot satisfy (e.g. PR-body statements); naming them lets review verify the claim instead of re-finding it.
 
 Then return only this JSON — no prose around it:
 
