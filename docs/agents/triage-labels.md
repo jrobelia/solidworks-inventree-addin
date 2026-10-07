@@ -19,3 +19,18 @@ Edit the right-hand column to match whatever vocabulary you actually use.
 | Label         | Meaning                                            |
 | ------------- | -------------------------------------------------- |
 | `qa-verified` | Issue has been verified by QA / human testing      |
+
+## Blocked issues
+
+Blocking is a native GitHub issue dependency, not a label. A blocked issue shows an inline "Blocked" chip in the issue list and a "Blocked by" section in its sidebar.
+
+```bash
+# Mark <issue> blocked by <blocker-number>
+gh api repos/{owner}/{repo}/issues/<issue>/dependencies/blocked_by \
+  -X POST -F issue_id=$(gh api repos/{owner}/{repo}/issues/<blocker-number> --jq .id)
+
+# List an issue's blockers
+gh api repos/{owner}/{repo}/issues/<issue>/dependencies/blocked_by
+```
+
+Note: `issue_id` in the POST body is the issue's database ID, not its number — fetch it first as shown. Keep the body's `## Blocked by` section in sync; it records the history (which blockers landed, which are still open) that the chip doesn't show.
