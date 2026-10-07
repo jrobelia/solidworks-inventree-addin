@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using SwInventreeAddin.Config;
 using SwInventreeAddin.InvenTree;
@@ -175,11 +176,13 @@ namespace SwInventreeAddin
         public PushFieldInfo(
             Func<PropertyMappingConfig, string?> propertyName,
             Func<IInventreeClient, int, string, Task> push,
-            Action<InventreePart, string> commit)
+            Action<InventreePart, string> commit,
+            Func<InventreePart, string> value)
         {
             PropertyName = propertyName;
             Push = push;
             Commit = commit;
+            Value = value;
         }
 
         /// <summary>The mapped Document Property name under a mapping.</summary>
@@ -190,6 +193,9 @@ namespace SwInventreeAddin
 
         /// <summary>Applies a successfully pushed value to the session part.</summary>
         public Action<InventreePart, string> Commit { get; }
+
+        /// <summary>The part-side session value the mapped property carries.</summary>
+        public Func<InventreePart, string> Value { get; }
     }
 
     /// <summary>
@@ -229,19 +235,23 @@ namespace SwInventreeAddin
                 [PushField.Name] = new PushFieldInfo(
                     m => m.NameProperty,
                     (c, pk, v) => c.UpdatePartNameAsync(pk, v),
-                    (p, v) => p.Name = v),
+                    (p, v) => p.Name = v,
+                    p => p.Name),
                 [PushField.Notes] = new PushFieldInfo(
                     m => m.NotesProperty,
                     (c, pk, v) => c.UpdatePartNotesAsync(pk, v),
-                    (p, v) => p.Notes = v),
+                    (p, v) => p.Notes = v,
+                    p => p.Notes),
                 [PushField.Description] = new PushFieldInfo(
                     m => m.DescriptionProperty,
                     (c, pk, v) => c.UpdatePartDescriptionAsync(pk, v),
-                    (p, v) => p.Description = v),
+                    (p, v) => p.Description = v,
+                    p => p.Description),
                 [PushField.Revision] = new PushFieldInfo(
                     m => m.RevisionProperty,
                     (c, pk, v) => c.UpdatePartRevisionAsync(pk, v),
-                    (p, v) => p.Revision = v),
+                    (p, v) => p.Revision = v,
+                    p => p.Revision),
             };
 
         /// <summary>The row for <paramref name="field"/>; null when the enum value has no row.</summary>
@@ -251,5 +261,39 @@ namespace SwInventreeAddin
         /// <summary>The row for <paramref name="field"/>; null when the enum value has no row.</summary>
         public static PushFieldInfo? ForPush(PushField field) =>
             PushTable.TryGetValue(field, out var info) ? info : null;
+
+        /// <summary>
+        /// The reverse lookup the tables own: which mapped Document Property
+        /// name carries which part-side session value. A row matches when its
+        /// mapped name is non-empty and Ordinal-equals
+        /// <paramref name="propertyName"/>; Apply-table rows are consulted in
+        /// declaration order, then Push-table rows — on a collision the first
+        /// row wins (the never-mutated tables enumerate in insertion order).
+        /// Every row added to a table participates automatically.
+        /// </summary>
+        public static bool TryGetSessionValue(
+            string propertyName,
+            PropertyMappingConfig mapping,
+            InventreePart part,
+            out string? value)
+        {
+            value = null;
+            if (string.IsNullOrEmpty(propertyName))
+                return false;
+
+            foreach (var row in ApplyTable.Values
+                .Select(r => (r.PropertyName, r.Value))
+                .Concat(PushTable.Values.Select(r => (r.PropertyName, r.Value))))
+            {
+                var mappedName = row.PropertyName(mapping);
+                if (string.IsNullOrEmpty(mappedName)
+                    || !string.Equals(mappedName, propertyName, StringComparison.Ordinal))
+                    continue;
+                value = row.Value(part);
+                return true;
+            }
+
+            return false;
+        }
     }
 }

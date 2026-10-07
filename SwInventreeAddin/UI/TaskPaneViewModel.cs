@@ -710,35 +710,45 @@ namespace SwInventreeAddin.UI
         /// </summary>
         public async Task FetchPartAsync()
         {
-            // The box IPN belongs to the last projected generation: a commit's
-            // recapture can install a new document while dropping nothing —
-            // no Changed, no host notification yet — leaving the watermark
-            // stale. Re-project before reading the box so a superseded
-            // document's IPN never reaches FetchAsync (#317).
-            ReprojectIfGenerationAdvanced();
-
-            RefreshMappingResult();
-            if (_mappingResult?.CanFetch != true)
-                return;
-
-            var ipn = PartNumber;
-
-            if (!DocumentHasStampedPk && string.IsNullOrEmpty(ipn))
+            // The Task Pane buttons discard this Task — a thrown exception
+            // must surface here, never as an unobserved faulted Task.
+            try
             {
-                SetStatus("Open a part or assembly in SolidWorks to get started.", StatusSeverity.None);
-                return;
+                // The box IPN belongs to the last projected generation: a commit's
+                // recapture can install a new document while dropping nothing —
+                // no Changed, no host notification yet — leaving the watermark
+                // stale. Re-project before reading the box so a superseded
+                // document's IPN never reaches FetchAsync (#317).
+                ReprojectIfGenerationAdvanced();
+
+                RefreshMappingResult();
+                if (_mappingResult?.CanFetch != true)
+                    return;
+
+                var ipn = PartNumber;
+
+                if (!DocumentHasStampedPk && string.IsNullOrEmpty(ipn))
+                {
+                    SetStatus("Open a part or assembly in SolidWorks to get started.", StatusSeverity.None);
+                    return;
+                }
+
+                SetStatus("Fetching from InvenTree…", StatusSeverity.None);
+
+                if (_client == null)
+                {
+                    SetStatus("No server configured — click ⚙ Settings to get started", StatusSeverity.Warning);
+                    return;
+                }
+
+                var result = await _coordinator.FetchAsync(ipn).ConfigureAwait(false);
+                await ApplyFetchOutcomeAsync(result).ConfigureAwait(false);
             }
-
-            SetStatus("Fetching from InvenTree…", StatusSeverity.None);
-
-            if (_client == null)
+            catch (Exception ex)
             {
-                SetStatus("No server configured — click ⚙ Settings to get started", StatusSeverity.Warning);
-                return;
+                Trace.WriteLine($"[SwInventreeAddin] FetchPartAsync failed: {ex}");
+                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error));
             }
-
-            var result = await _coordinator.FetchAsync(ipn).ConfigureAwait(false);
-            await ApplyFetchOutcomeAsync(result).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -859,40 +869,51 @@ namespace SwInventreeAddin.UI
         /// </summary>
         private async Task ApplyFieldAsync(ApplyField field, string successText)
         {
-            if (Fetched == null || _mappingResult?.CanUseForPartSync != true)
-                return;
-
-            var result = _coordinator.Apply(field);
-
-            if (result.Outcome == PartSyncOutcome.MissingPropertyConfirmation && result.Confirmation != null)
+            // The Task Pane buttons discard this Task — a thrown exception
+            // (e.g. a COMException from a Document Property write) must
+            // surface here, never as an unobserved faulted Task.
+            try
             {
-                var approved = ConfirmMissingProperties(
-                    result.MissingProperties ?? Array.Empty<string>());
-                result = await _coordinator
-                    .ResumeConfirmationAsync(result.Confirmation, approved)
-                    .ConfigureAwait(false);
-                if (!approved)
+                if (Fetched == null || _mappingResult?.CanUseForPartSync != true)
                     return;
-            }
 
-            RunOnUiThread(() =>
-            {
-                switch (result.Outcome)
+                var result = _coordinator.Apply(field);
+
+                if (result.Outcome == PartSyncOutcome.MissingPropertyConfirmation && result.Confirmation != null)
                 {
-                    case PartSyncOutcome.Success:
-                        SetStatus(successText, StatusSeverity.Success);
-                        break;
-                    case PartSyncOutcome.Failed:
-                        SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error);
-                        break;
-                    case PartSyncOutcome.InvalidOperation:
-                        if (!string.IsNullOrEmpty(result.Diagnostic))
-                            SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error);
-                        break;
-                    case PartSyncOutcome.Stale:
-                        break;
+                    var approved = ConfirmMissingProperties(
+                        result.MissingProperties ?? Array.Empty<string>());
+                    result = await _coordinator
+                        .ResumeConfirmationAsync(result.Confirmation, approved)
+                        .ConfigureAwait(false);
+                    if (!approved)
+                        return;
                 }
-            });
+
+                RunOnUiThread(() =>
+                {
+                    switch (result.Outcome)
+                    {
+                        case PartSyncOutcome.Success:
+                            SetStatus(successText, StatusSeverity.Success);
+                            break;
+                        case PartSyncOutcome.Failed:
+                            SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error);
+                            break;
+                        case PartSyncOutcome.InvalidOperation:
+                            if (!string.IsNullOrEmpty(result.Diagnostic))
+                                SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error);
+                            break;
+                        case PartSyncOutcome.Stale:
+                            break;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[SwInventreeAddin] ApplyFieldAsync failed: {ex}");
+                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error));
+            }
         }
 
         // ── Push (SolidWorks → InvenTree) ─────────────────────────────────────
@@ -920,35 +941,45 @@ namespace SwInventreeAddin.UI
         /// </summary>
         private async Task PushFieldAsync(PushField field, string busyText, string successText)
         {
-            if (!HasSessionAndHealthyMapping || _client == null)
-                return;
-
-            if (field == PushField.Revision && (Fetched?.Pk ?? 0) == 0)
+            // The Task Pane buttons discard this Task — a thrown exception
+            // must surface here, never as an unobserved faulted Task.
+            try
             {
-                SetStatus("Error: cannot push revision — InvenTree part ID is missing.", StatusSeverity.Error);
-                return;
-            }
+                if (!HasSessionAndHealthyMapping || _client == null)
+                    return;
 
-            SetStatus(busyText, StatusSeverity.None);
-
-            var result = await _coordinator.PushAsync(field).ConfigureAwait(false);
-
-            RunOnUiThread(() =>
-            {
-                switch (result.Outcome)
+                if (field == PushField.Revision && (Fetched?.Pk ?? 0) == 0)
                 {
-                    case PartSyncOutcome.Success:
-                        SetStatus(successText, StatusSeverity.Success);
-                        break;
-                    case PartSyncOutcome.Failed:
-                    case PartSyncOutcome.InvalidOperation:
-                        if (!string.IsNullOrEmpty(result.Diagnostic))
-                            SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error);
-                        break;
-                    case PartSyncOutcome.Stale:
-                        break;
+                    SetStatus("Error: cannot push revision — InvenTree part ID is missing.", StatusSeverity.Error);
+                    return;
                 }
-            });
+
+                SetStatus(busyText, StatusSeverity.None);
+
+                var result = await _coordinator.PushAsync(field).ConfigureAwait(false);
+
+                RunOnUiThread(() =>
+                {
+                    switch (result.Outcome)
+                    {
+                        case PartSyncOutcome.Success:
+                            SetStatus(successText, StatusSeverity.Success);
+                            break;
+                        case PartSyncOutcome.Failed:
+                        case PartSyncOutcome.InvalidOperation:
+                            if (!string.IsNullOrEmpty(result.Diagnostic))
+                                SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error);
+                            break;
+                        case PartSyncOutcome.Stale:
+                            break;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[SwInventreeAddin] PushFieldAsync failed: {ex}");
+                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error));
+            }
         }
 
         /// <summary>
@@ -964,25 +995,30 @@ namespace SwInventreeAddin.UI
         /// </param>
         public async Task PushImageAsync(Image? imageOverride = null)
         {
-            if (Fetched == null || _client == null || _mappingResult?.CanUseForPartSync != true)
-                return;
-
-            Image? image = imageOverride;
-            var cropRect = Rectangle.Empty;
+            // The Task Pane buttons discard this Task — a thrown exception
+            // must surface here, never as an unobserved faulted Task. The
+            // catch sits beside the finally so a host-provided capture is
+            // still disposed on the thrown path.
+            Image? image = null;
             var ownImage = false;
-
-            if (image == null)
-            {
-                var captured = CaptureImageForPush?.Invoke();
-                if (captured == null)
-                    return;
-                image = captured.Value.Image;
-                cropRect = captured.Value.CropRect;
-                ownImage = true;
-            }
-
             try
             {
+                if (Fetched == null || _client == null || _mappingResult?.CanUseForPartSync != true)
+                    return;
+
+                image = imageOverride;
+                var cropRect = Rectangle.Empty;
+
+                if (image == null)
+                {
+                    var captured = CaptureImageForPush?.Invoke();
+                    if (captured == null)
+                        return;
+                    image = captured.Value.Image;
+                    cropRect = captured.Value.CropRect;
+                    ownImage = true;
+                }
+
                 SetStatus("Pushing image to InvenTree…", StatusSeverity.None);
 
                 var result = await _coordinator.PushImageAsync(image, cropRect).ConfigureAwait(false);
@@ -1006,6 +1042,11 @@ namespace SwInventreeAddin.UI
                             break;
                     }
                 });
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[SwInventreeAddin] PushImageAsync failed: {ex}");
+                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error));
             }
             finally
             {

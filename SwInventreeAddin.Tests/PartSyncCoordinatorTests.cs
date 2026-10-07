@@ -22,7 +22,7 @@ namespace SwInventreeAddin.Tests
         private StubInventreeClient _client = null!;
         private StubDocumentPropertyService _propertyService = null!;
         private StubHostStaDispatcher _dispatcher = null!;
-        private PartSyncCoordinator _coordinator = null!;
+        private IPartSyncCoordinator _coordinator = null!;
 
         private static readonly PropertyMappingConfig Mapping = PropertyMappingConfig.WithDefaults();
 
@@ -54,9 +54,9 @@ namespace SwInventreeAddin.Tests
             _propertyService.Seed(Mapping.RevisionProperty!, revision);
         }
 
-        private void SeedPkDocument(int pk = 42)
+        private void SeedPkDocument(int? pk = null)
         {
-            _propertyService.Seed(Mapping.PkProperty!, pk.ToString());
+            _propertyService.Seed(Mapping.PkProperty!, (pk ?? SamplePart.Pk).ToString());
         }
 
         /// <summary>Runs the full document evaluation and installs a fetched session.</summary>
@@ -244,6 +244,21 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public async Task NotifyDocumentPropertyChanged_PkIdentityMismatch_Reevaluates()
+        {
+            _client.PartToReturn = SamplePart;
+            await InstallSessionViaFetch();
+
+            // PK is identity-classified before the mapped-value lookup — a
+            // divergent stamp means the document now points at a different
+            // part, not a user edit of a mapped field.
+            var change = _coordinator.NotifyDocumentPropertyChanged(
+                Mapping.PkProperty!, "999");
+
+            Assert.That(change, Is.EqualTo(PartSyncPropertyChange.Reevaluated));
+        }
+
+        [Test]
         public async Task NotifyDocumentPropertyChanged_MismatchedEcho_StaysPending_AndClassifies()
         {
             _client.PartToReturn = SamplePart;
@@ -279,9 +294,9 @@ namespace SwInventreeAddin.Tests
             var result = await _coordinator.FetchAsync("R-10K-0402");
 
             Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Success));
-            Assert.That(result.PartPk, Is.EqualTo(42));
+            Assert.That(result.PartPk, Is.EqualTo(SamplePart.Pk));
             Assert.That(_coordinator.Kind, Is.EqualTo(TaskPaneStateKind.Populated));
-            Assert.That(_coordinator.FetchedPart!.Pk, Is.EqualTo(42));
+            Assert.That(_coordinator.FetchedPart!.Pk, Is.EqualTo(SamplePart.Pk));
             Assert.That(changed, Is.GreaterThanOrEqualTo(1));
         }
 
@@ -315,7 +330,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task FetchAsync_NoClient_ReturnsInvalidOperation()
         {
-            var coordinator = new PartSyncCoordinator(_propertyService, _dispatcher, client: null);
+            IPartSyncCoordinator coordinator = new PartSyncCoordinator(_propertyService, _dispatcher, client: null);
             SeedIpnDocument();
             coordinator.UpdateDocument();
 
@@ -328,7 +343,7 @@ namespace SwInventreeAddin.Tests
         public async Task FetchAsync_UnhealthyMapping_ReturnsInvalidOperation()
         {
             var provider = new StubPropertyMappingProvider { Health = MappingHealth.Invalid };
-            var coordinator = new PartSyncCoordinator(_propertyService, _dispatcher, _client, provider);
+            IPartSyncCoordinator coordinator = new PartSyncCoordinator(_propertyService, _dispatcher, _client, provider);
             _propertyService.Seed("PartNo", "R-10K-0402");
             coordinator.UpdateDocument();
 
@@ -349,8 +364,8 @@ namespace SwInventreeAddin.Tests
             var result = await _coordinator.FetchAsync(string.Empty);
 
             Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Success));
-            Assert.That(_client.LastGetPartByPkPk, Is.EqualTo(42));
-            Assert.That(_coordinator.FetchedPart!.Pk, Is.EqualTo(42));
+            Assert.That(_client.LastGetPartByPkPk, Is.EqualTo(SamplePart.Pk));
+            Assert.That(_coordinator.FetchedPart!.Pk, Is.EqualTo(SamplePart.Pk));
         }
 
         [Test]
@@ -385,7 +400,7 @@ namespace SwInventreeAddin.Tests
         public async Task FetchAsync_StampedPk_IpnMismatch_ReturnsConfirmation()
         {
             _client.PartByPkToReturn = new InventreePart
-            { Pk = 42, Ipn = "RENAMED-001", Revision = "A" };
+            { Pk = SamplePart.Pk, Ipn = "RENAMED-001", Revision = "A" };
             SeedPkDocument();
             _propertyService.Seed(Mapping.IpnProperty!, "DOC-001");
             _coordinator.UpdateDocument();
@@ -395,7 +410,7 @@ namespace SwInventreeAddin.Tests
             Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.LinkMismatchConfirmation));
             Assert.That(result.Confirmation, Is.Not.Null);
             Assert.That(result.DocumentIpn, Is.EqualTo("DOC-001"));
-            Assert.That(result.FetchedPart!.Pk, Is.EqualTo(42));
+            Assert.That(result.FetchedPart!.Pk, Is.EqualTo(SamplePart.Pk));
             Assert.That(_coordinator.FetchedPart, Is.Null, "no session before confirmation");
         }
 
@@ -403,7 +418,7 @@ namespace SwInventreeAddin.Tests
         public async Task FetchAsync_LinkMismatch_Approved_InstallsSession()
         {
             _client.PartByPkToReturn = new InventreePart
-            { Pk = 42, Ipn = "RENAMED-001", Revision = "A" };
+            { Pk = SamplePart.Pk, Ipn = "RENAMED-001", Revision = "A" };
             SeedPkDocument();
             _propertyService.Seed(Mapping.IpnProperty!, "DOC-001");
             _coordinator.UpdateDocument();
@@ -412,7 +427,7 @@ namespace SwInventreeAddin.Tests
             var resumed = await _coordinator.ResumeConfirmationAsync(confirm.Confirmation!, approved: true);
 
             Assert.That(resumed.Outcome, Is.EqualTo(PartSyncOutcome.Success));
-            Assert.That(_coordinator.FetchedPart!.Pk, Is.EqualTo(42));
+            Assert.That(_coordinator.FetchedPart!.Pk, Is.EqualTo(SamplePart.Pk));
             Assert.That(_coordinator.Kind, Is.EqualTo(TaskPaneStateKind.Populated));
         }
 
@@ -420,7 +435,7 @@ namespace SwInventreeAddin.Tests
         public async Task FetchAsync_LinkMismatch_Declined_ReturnsCancelledNoSession()
         {
             _client.PartByPkToReturn = new InventreePart
-            { Pk = 42, Ipn = "RENAMED-001", Revision = "A" };
+            { Pk = SamplePart.Pk, Ipn = "RENAMED-001", Revision = "A" };
             SeedPkDocument();
             _propertyService.Seed(Mapping.IpnProperty!, "DOC-001");
             _coordinator.UpdateDocument();
@@ -604,7 +619,7 @@ namespace SwInventreeAddin.Tests
                 new System.Collections.Generic.List<InventreePart> { SamplePart });
             var secondResult = await second;
             Assert.That(secondResult.Outcome, Is.EqualTo(PartSyncOutcome.Success));
-            Assert.That(_coordinator.FetchedPart!.Pk, Is.EqualTo(42));
+            Assert.That(_coordinator.FetchedPart!.Pk, Is.EqualTo(SamplePart.Pk));
 
             // The older fetch now completes — it must not overwrite the newer session.
             _client.PendingGetPartsByIpnCalls[0].Complete(
@@ -615,7 +630,7 @@ namespace SwInventreeAddin.Tests
             var firstResult = await first;
 
             Assert.That(firstResult.Outcome, Is.EqualTo(PartSyncOutcome.Stale));
-            Assert.That(_coordinator.FetchedPart!.Pk, Is.EqualTo(42));
+            Assert.That(_coordinator.FetchedPart!.Pk, Is.EqualTo(SamplePart.Pk));
             Assert.That(_coordinator.FetchedPart!.Name, Is.EqualTo("Resistor 10k"));
         }
 
@@ -747,7 +762,7 @@ namespace SwInventreeAddin.Tests
 
             var result = await fetch;
             Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Success));
-            Assert.That(_coordinator.FetchedPart!.Pk, Is.EqualTo(42));
+            Assert.That(_coordinator.FetchedPart!.Pk, Is.EqualTo(SamplePart.Pk));
         }
 
         // ── Create Part ──────────────────────────────────────────────────────
@@ -841,7 +856,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void CompleteCreatePart_NoClient_ReturnsInvalidOperationNoWritesNoSession()
         {
-            var coordinator = new PartSyncCoordinator(_propertyService, _dispatcher, client: null);
+            IPartSyncCoordinator coordinator = new PartSyncCoordinator(_propertyService, _dispatcher, client: null);
             SeedIpnDocument(string.Empty);
             coordinator.UpdateDocument();
             var token = coordinator.BeginCreatePart();
@@ -899,8 +914,8 @@ namespace SwInventreeAddin.Tests
             var result = _coordinator.Apply(ApplyField.Pk);
 
             Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Success));
-            Assert.That(_propertyService.DidWrite(Mapping.PkProperty!, "42"), Is.True);
-            Assert.That(_coordinator.Document!.StampedPartPk, Is.EqualTo(42));
+            Assert.That(_propertyService.DidWrite(Mapping.PkProperty!, SamplePart.Pk.ToString()), Is.True);
+            Assert.That(_coordinator.Document!.StampedPartPk, Is.EqualTo(SamplePart.Pk));
         }
 
         [Test]
@@ -1037,7 +1052,7 @@ namespace SwInventreeAddin.Tests
             var result = await _coordinator.PushAsync(PushField.Name);
 
             Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Success));
-            Assert.That(_client.LastPushedPk, Is.EqualTo(42));
+            Assert.That(_client.LastPushedPk, Is.EqualTo(SamplePart.Pk));
             Assert.That(_client.LastPushedName, Is.EqualTo("New Name"));
             Assert.That(_coordinator.FetchedPart!.Name, Is.EqualTo("New Name"));
         }
@@ -1213,14 +1228,14 @@ namespace SwInventreeAddin.Tests
             _client.PartToReturn = SamplePart;
             await InstallSessionViaFetch();
             _client.PartByPkToReturn = new InventreePart
-            { Pk = 42, ThumbnailUrl = "/media/test.png" };
+            { Pk = SamplePart.Pk, ThumbnailUrl = "/media/test.png" };
             _client.ThumbnailBytesToReturn = new byte[] { 4, 5, 6 };
 
             using var image = new Bitmap(10, 10);
             var result = await _coordinator.PushImageAsync(image, Rectangle.Empty);
 
             Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Success));
-            Assert.That(_client.LastUploadedPk, Is.EqualTo(42));
+            Assert.That(_client.LastUploadedPk, Is.EqualTo(SamplePart.Pk));
             Assert.That(_client.LastUploadedImageData, Is.Not.Null.And.Not.Empty);
             Assert.That(_coordinator.ThumbnailBytes, Is.EqualTo(new byte[] { 4, 5, 6 }));
         }
@@ -1245,7 +1260,7 @@ namespace SwInventreeAddin.Tests
             _client.PartToReturn = SamplePart;
             await InstallSessionViaFetch();
             _client.PartByPkToReturn = new InventreePart
-            { Pk = 42, ThumbnailUrl = "/media/test.png" };
+            { Pk = SamplePart.Pk, ThumbnailUrl = "/media/test.png" };
             _client.ThrowOnDownload = new Exception("download failed");
 
             using var image = new Bitmap(10, 10);
@@ -1253,7 +1268,7 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.SucceededWithWarning));
             Assert.That(result.Diagnostic, Does.Contain("could not be refreshed"));
-            Assert.That(_client.LastUploadedPk, Is.EqualTo(42));
+            Assert.That(_client.LastUploadedPk, Is.EqualTo(SamplePart.Pk));
         }
 
         [Test]
@@ -1261,7 +1276,7 @@ namespace SwInventreeAddin.Tests
         {
             _client.PartToReturn = SamplePart;
             await InstallSessionViaFetch();
-            _client.PartByPkToReturn = new InventreePart { Pk = 42 };
+            _client.PartByPkToReturn = new InventreePart { Pk = SamplePart.Pk };
 
             using var image = new Bitmap(10, 10);
             var result = await _coordinator.PushImageAsync(image, Rectangle.Empty);
@@ -1379,16 +1394,18 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task FetchedPart_ClientPartMutatedAfterFetch_SessionIsolated()
         {
-            var livePart = new InventreePart { Pk = 42, Ipn = "R-10K-0402", Name = "original" };
+            var livePart = new InventreePart { Pk = 55, Ipn = "R-10K-0402", Name = "original" };
             _client.PartToReturn = livePart;
             await InstallSessionViaFetch();
+            var originalPk = livePart.Pk;
+            var originalName = livePart.Name;
 
             // Someone mutates the object the client handed back.
             livePart.Name = "changed underneath";
             livePart.Pk = 777;
 
-            Assert.That(_coordinator.FetchedPart!.Name, Is.EqualTo("original"));
-            Assert.That(_coordinator.FetchedPart!.Pk, Is.EqualTo(42));
+            Assert.That(_coordinator.FetchedPart!.Name, Is.EqualTo(originalName));
+            Assert.That(_coordinator.FetchedPart!.Pk, Is.EqualTo(originalPk));
         }
 
         [Test]
@@ -1396,7 +1413,7 @@ namespace SwInventreeAddin.Tests
         {
             _client.PartToReturn = SamplePart;
             await InstallSessionViaFetch();
-            _client.PartByPkToReturn = new InventreePart { Pk = 42, ThumbnailUrl = "/t.png" };
+            _client.PartByPkToReturn = new InventreePart { Pk = SamplePart.Pk, ThumbnailUrl = "/t.png" };
             _client.ThumbnailBytesToReturn = new byte[] { 1, 2, 3 };
             using var image = new Bitmap(10, 10);
             await _coordinator.PushImageAsync(image, Rectangle.Empty);
@@ -1414,7 +1431,7 @@ namespace SwInventreeAddin.Tests
             // must not alter a live session — the lifecycle revision does not
             // advance for an in-place mutation.
             var provider = new StubPropertyMappingProvider();
-            var coordinator = new PartSyncCoordinator(_propertyService, _dispatcher, _client, provider);
+            IPartSyncCoordinator coordinator = new PartSyncCoordinator(_propertyService, _dispatcher, _client, provider);
             _client.PartToReturn = SamplePart;
             _propertyService.Seed(Mapping.IpnProperty!, "R-10K-0402");
             _propertyService.Seed(Mapping.NameProperty!, "old");
@@ -1433,7 +1450,7 @@ namespace SwInventreeAddin.Tests
         public async Task ThumbnailBytes_InstallFromFetch_CallerArrayMutationCannotReachSession()
         {
             var thumb = new byte[] { 1, 2, 3 };
-            _client.PartByPkToReturn = new InventreePart { Pk = 42, ThumbnailUrl = "/t.png" };
+            _client.PartByPkToReturn = new InventreePart { Pk = SamplePart.Pk, ThumbnailUrl = "/t.png" };
             _client.ThumbnailBytesToReturn = thumb;
             SeedPkDocument();
             _coordinator.UpdateDocument();
@@ -1449,7 +1466,7 @@ namespace SwInventreeAddin.Tests
         {
             _client.PartToReturn = SamplePart;
             await InstallSessionViaFetch();
-            _client.PartByPkToReturn = new InventreePart { Pk = 42, ThumbnailUrl = "/t.png" };
+            _client.PartByPkToReturn = new InventreePart { Pk = SamplePart.Pk, ThumbnailUrl = "/t.png" };
             var thumb = new byte[] { 4, 5, 6 };
             _client.ThumbnailBytesToReturn = thumb;
             using var image = new Bitmap(10, 10);
@@ -1774,7 +1791,7 @@ namespace SwInventreeAddin.Tests
         {
             _client.PartToReturn = SamplePart;
             await InstallSessionViaFetch();
-            _client.PartByPkToReturn = new InventreePart { Pk = 42, ThumbnailUrl = "/t.png" };
+            _client.PartByPkToReturn = new InventreePart { Pk = SamplePart.Pk, ThumbnailUrl = "/t.png" };
             _client.ThumbnailBytesToReturn = new byte[] { 1, 2, 3 };
 
             _dispatcher.DeferRun = true;
@@ -1841,7 +1858,7 @@ namespace SwInventreeAddin.Tests
         public async Task ResumeConfirmationAsync_LinkMismatch_UndeliveredSwitch_IsStaleNoSession()
         {
             _client.PartByPkToReturn = new InventreePart
-            { Pk = 42, Ipn = "RENAMED-001", Revision = "A" };
+            { Pk = SamplePart.Pk, Ipn = "RENAMED-001", Revision = "A" };
             SeedPkDocument();
             _propertyService.Seed(Mapping.IpnProperty!, "DOC-001");
             _coordinator.UpdateDocument();
@@ -1863,7 +1880,7 @@ namespace SwInventreeAddin.Tests
         {
             _client.PartToReturn = SamplePart;
             await InstallSessionViaFetch();
-            _client.PartByPkToReturn = new InventreePart { Pk = 42, ThumbnailUrl = "/t.png" };
+            _client.PartByPkToReturn = new InventreePart { Pk = SamplePart.Pk, ThumbnailUrl = "/t.png" };
             _client.ThumbnailBytesToReturn = new byte[] { 4, 5, 6 };
 
             _dispatcher.DeferRun = true;
@@ -1957,7 +1974,7 @@ namespace SwInventreeAddin.Tests
         {
             var provider = new StubPropertyMappingProvider();
             provider.Config.IpnProperty = null;
-            var coordinator = new PartSyncCoordinator(_propertyService, _dispatcher, _client, provider);
+            IPartSyncCoordinator coordinator = new PartSyncCoordinator(_propertyService, _dispatcher, _client, provider);
             _client.PartByPkToReturn = SamplePart;
             SeedPkDocument();
             coordinator.UpdateDocument();
@@ -1968,7 +1985,7 @@ namespace SwInventreeAddin.Tests
             Assert.That(result.Ipn, Is.Null);
             Assert.That(_propertyService.WriteLog, Is.Empty,
                 "no IPN write-back is attempted when the mapping has no IPN property");
-            Assert.That(coordinator.FetchedPart!.Pk, Is.EqualTo(42));
+            Assert.That(coordinator.FetchedPart!.Pk, Is.EqualTo(SamplePart.Pk));
         }
 
         // ── Switch discovered at Fetch entry or inside a Document Property write (#317) ──
@@ -2073,7 +2090,7 @@ namespace SwInventreeAddin.Tests
             // surfaces a Link Mismatch confirmation; approving it rewrites the
             // document link through WriteBackIpnIfNeeded.
             _client.PartByPkToReturn = new InventreePart
-            { Pk = 42, Ipn = "RENAMED-001", Revision = "B" };
+            { Pk = SamplePart.Pk, Ipn = "RENAMED-001", Revision = "B" };
             SeedPkDocument();
             _propertyService.Seed(Mapping.RevisionProperty!, "A");
             _coordinator.UpdateDocument();

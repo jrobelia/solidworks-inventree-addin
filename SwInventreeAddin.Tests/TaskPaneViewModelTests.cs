@@ -1785,6 +1785,69 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(openedUrl, Is.Null);
         }
+
+        // ── Task-method exception guards ────────────────────────────────────
+        // The Task Pane buttons discard these Tasks (_ = call sites in
+        // TaskPaneView.xaml.cs) — a throw inside must surface as status text,
+        // never as an unobserved faulted Task.
+
+        [Test]
+        public async Task FetchPartAsync_PropertyReadThrows_CompletesWithErrorStatus()
+        {
+            CreateVm();
+            // Set after Create — the fixture's own UpdateDocument reads properties.
+            _propertyService.ThrowOnGetCustomProperty = new Exception("read exploded");
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Error));
+            Assert.That(_vm.StatusText, Does.Contain("read exploded"));
+        }
+
+        [Test]
+        public async Task ApplyNameToDocument_PropertyWriteThrows_CompletesWithErrorStatus()
+        {
+            _client.PartToReturn = SamplePart;
+            _propertyService.Seed(DefaultMapping.NameProperty!, "old");
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            _propertyService.OnSetCustomProperty = (_, __) => throw new Exception("write exploded");
+
+            await _vm.ApplyNameToDocument();
+
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Error));
+            Assert.That(_vm.StatusText, Does.Contain("write exploded"));
+        }
+
+        [Test]
+        public async Task PushRevisionToInventreeAsync_PropertyReadThrows_CompletesWithErrorStatus()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+
+            _propertyService.ThrowOnGetCustomProperty = new Exception("read exploded");
+
+            await _vm.PushRevisionToInventreeAsync();
+
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Error));
+            Assert.That(_vm.StatusText, Does.Contain("read exploded"));
+        }
+
+        [Test]
+        public async Task PushImageAsync_CaptureThrows_CompletesWithErrorStatus()
+        {
+            _client.PartToReturn = SamplePart;
+            CreateVm();
+            await _vm.FetchPartAsync();
+            _vm.CaptureImageForPush = () => throw new Exception("capture exploded");
+
+            await _vm.PushImageAsync();
+
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Error));
+            Assert.That(_vm.StatusText, Does.Contain("capture exploded"));
+        }
     }
 
     /// <summary>Stub client that throws on GetPartByIpnAsync — used to test the fetch error path.</summary>
