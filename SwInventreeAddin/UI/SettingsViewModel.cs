@@ -560,8 +560,8 @@ namespace SwInventreeAddin.UI
         /// exactly once. Returns <c>true</c> once the settings are persisted —
         /// a failed connection probe is reported as the outcome, not an apply
         /// failure; <c>false</c> only when an error was reported to the user
-        /// (a <see cref="SettingsApplyException"/>, or a mapping
-        /// load/result failure — the save persisted but Save must not close).
+        /// (a <see cref="SettingsApplyException"/> or any other service throw,
+        /// or a mapping load/result failure — Save must not close).
         /// </summary>
         public async Task<bool> ApplyAsync()
         {
@@ -602,6 +602,16 @@ namespace SwInventreeAddin.UI
             {
                 if (probing) EndUserProbe(null);
                 RunOnUiThread(() => SetActionStatus(ex.Message, StatusSeverity.Error));
+                return false;
+            }
+            catch (Exception ex)
+            {
+                // A non-contract throw (e.g. the HTTP pipeline) still reports
+                // through the status pair — the commands-never-throw contract
+                // is what keeps the window's async-void forwards safe.
+                if (probing) EndUserProbe(null);
+                RunOnUiThread(() => SetActionStatus(
+                    $"Failed to apply settings: {ex.Message}", StatusSeverity.Error));
                 return false;
             }
 
@@ -960,32 +970,36 @@ namespace SwInventreeAddin.UI
         public static (string Text, StatusSeverity Severity) FormatApplyOutcome(
             ConnectionProbeResult outcome, bool mappingOk)
         {
-            if (!mappingOk)
+            return (outcome.Status, mappingOk) switch
             {
-                string clause = outcome.Status switch
-                {
-                    ConnectionProbeStatus.Connected => " — connection successful",
-                    ConnectionProbeStatus.CredentialRejected => $" — authentication required ({outcome.Message})",
-                    ConnectionProbeStatus.NotConfigured => " — server connection cleared",
-                    ConnectionProbeStatus.NotProbed => string.Empty,
-                    _ => $" — connection failed ({outcome.Message})",
-                };
-                return ($"Saved{clause}; the Property Mapping file could not be loaded.",
-                        StatusSeverity.Error);
-            }
-
-            return outcome.Status switch
-            {
-                ConnectionProbeStatus.Connected =>
+                (ConnectionProbeStatus.Connected, true) =>
                     ("Saved — connection successful.", StatusSeverity.Success),
-                ConnectionProbeStatus.CredentialRejected =>
-                    ($"Saved — authentication required ({outcome.Message})", StatusSeverity.Warning),
-                ConnectionProbeStatus.NotConfigured =>
+                (ConnectionProbeStatus.CredentialRejected, true) =>
+                    ($"Saved — authentication required ({outcome.Message})",
+                     StatusSeverity.Warning),
+                (ConnectionProbeStatus.NotConfigured, true) =>
                     ("Saved — server connection cleared.", StatusSeverity.Success),
-                ConnectionProbeStatus.NotProbed =>
+                (ConnectionProbeStatus.NotProbed, true) =>
                     ("Saved.", StatusSeverity.Success),
-                _ =>
-                    ($"Saved — but the connection failed ({outcome.Message})", StatusSeverity.Error),
+                (_, true) =>
+                    ($"Saved — but the connection failed ({outcome.Message})",
+                     StatusSeverity.Error),
+
+                (ConnectionProbeStatus.Connected, false) =>
+                    ("Saved — connection successful; the Property Mapping file could not be loaded.",
+                     StatusSeverity.Error),
+                (ConnectionProbeStatus.CredentialRejected, false) =>
+                    ($"Saved — authentication required ({outcome.Message}); the Property Mapping file could not be loaded.",
+                     StatusSeverity.Error),
+                (ConnectionProbeStatus.NotConfigured, false) =>
+                    ("Saved — server connection cleared; the Property Mapping file could not be loaded.",
+                     StatusSeverity.Error),
+                (ConnectionProbeStatus.NotProbed, false) =>
+                    ("Saved; the Property Mapping file could not be loaded.",
+                     StatusSeverity.Error),
+                (_, false) =>
+                    ($"Saved — connection failed ({outcome.Message}); the Property Mapping file could not be loaded.",
+                     StatusSeverity.Error),
             };
         }
 

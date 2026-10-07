@@ -1083,6 +1083,32 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public async Task ApplyAsync_WhenServiceThrowsNonContract_ReportsErrorAndReturnsFalse()
+        {
+            var applyService = new StubSettingsApplyService
+            {
+                ExceptionToThrowOnApply = new HttpRequestException("boom"),
+            };
+            var vm = CreateVm(applyService: applyService);
+            await vm.OpenProbeTask!;   // settle to Connected first
+            vm.ApiKeyDraft = "inv-new";   // connection-relevant → the apply probes
+
+            bool result = await vm.ApplyAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.False);
+                Assert.That(vm.ActionStatusText, Does.Contain("Failed to apply settings"));
+                Assert.That(vm.ActionStatusText, Does.Contain("boom"));
+                Assert.That(vm.ActionStatusSeverity, Is.EqualTo(StatusSeverity.Error));
+                Assert.That(vm.StatusCard.Indicator,
+                            Is.Not.EqualTo(ServerConnectionIndicator.Testing),
+                            "a non-contract throw must still end the user probe — " +
+                            "the card cannot stick on Testing");
+            });
+        }
+
+        [Test]
         public async Task ApplyAsync_OnSuccess_FiresMappingAppliedOnceWithTheRebuiltProvider()
         {
             var newProvider = new StubPropertyMappingProvider
