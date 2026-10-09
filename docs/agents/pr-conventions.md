@@ -35,6 +35,7 @@ A PR body contains:
 - Changed GUI flows and edge cases.
 - `### Review notes` — paste `/review`'s `REVIEW_NOTES` here, including any deferred or escalated findings.
 - `### Deferred and follow-up issues` — list YELLOW findings intentionally deferred with the user's explicit reason, and RED findings converted into follow-up issues with their issue numbers.
+- If the diff edits a `.puml`/`.pen` source or renames a shipped string, list the rendered artifacts it makes stale (generated PNGs, signed-off mockups) — the drift is visible at merge time instead of surfacing at the next visual check.
 - The `/qa` handoff line at the end:
 
   `Run /qa on this branch. /qa will take the PR out of draft if QA passes and ask whether to merge.`
