@@ -1,6 +1,6 @@
 ---
 name: qa
-description: Verify the current branch through the SolidWorks InvenTree Add-In GUI, starting with a risk-ordered smoke test the engineer can skip.
+description: Verify the current branch through the SolidWorks InvenTree Add-In GUI with a minimal test plan the engineer walks step by step.
 disable-model-invocation: true
 ---
 
@@ -10,7 +10,7 @@ Human-in-the-loop verification for the SolidWorks InvenTree Add-In. QA sits afte
 
 `grill-with-docs → to-spec → to-tickets → build-hitl | build-afk → qa`
 
-QA orients from the current branch, builds a GUI-focused test plan, runs the preflight, walks the user through each step, records every failure in a per-run findings ledger, resolves each finding's disposition with the user (fix-now, file, wontfix, or park), labels verified issues, and hands off to the `git` skill for merge when QA passes.
+QA orients from the current branch, builds a minimal GUI-focused test plan, runs the preflight, walks the user through each step, records every failure in a per-run findings ledger, resolves each finding's disposition with the user (fix-now, file, wontfix, or park), labels verified issues, and hands off to the `git` skill for merge when QA passes.
 
 ## References
 
@@ -122,11 +122,9 @@ Use the diff to identify which specific controls, properties, or gating conditio
 
 Include at least one edge case per feature area. See [CHECKLIST.md](CHECKLIST.md).
 
+Keep the plan to the minimum set of steps that proves the changes under test — see Plan sizing in [TEST-PLAN.md](TEST-PLAN.md).
+
 If the change touches the **Task Pane**, a **dialog**, a **control**, or a **data-bound property**, add a GUI functionality group using the categories and example in the GUI functionality testing section of [TEST-PLAN.md](TEST-PLAN.md).
-
-### Smoke test group
-
-Add a smoke test group at the start of the plan, before the issue-specific groups. Derive the smoke tests from the diff: trace the changed files and methods back to the major user-facing flows they participate in and add one broad check per major flow using the mappings in [CHECKLIST.md](CHECKLIST.md). Do not repeat the specific issue acceptance criteria; the issue groups handle those. If the diff is narrow, fall back to the base list in [CHECKLIST.md](CHECKLIST.md). Present each as a suggestion the engineer can skip; track skipped steps. This group catches regressions in the surrounding general behavior the focused plan may miss.
 
 ### Present for approval
 
@@ -140,19 +138,15 @@ Run the preflight in [PREFLIGHT.md](PREFLIGHT.md) before the GUI test pass. Stop
 
 ## 4. Walk the steps
 
-### Smoke test pass
-
-Start with the smoke test group from the plan. Order the steps from the broadest, most user-facing flow to the narrowest, using the guidance in [CHECKLIST.md](CHECKLIST.md). Present each as a suggestion the engineer can skip; track skips. Smoke test failures are PR-blocking; skipped smoke tests do not block the issue groups.
-
 ### Severity reminder
 
-After the smoke test, before presenting the first issue step, print the Severity Guide table from [CHECKLIST.md](CHECKLIST.md) as a reminder of what each issue level means. Ask the user to confirm they are ready to continue testing.
+Before presenting the first step, print the Severity Guide table from [CHECKLIST.md](CHECKLIST.md) as a reminder of what each issue level means. Ask the user to confirm they are ready to begin the walk.
 
 ### Present one step at a time
 
 Present one step at a time from the approved plan. Put the full step (preconditions, action, and expected result) directly in the `question` field of `ask_user_question`, because a separate assistant message may render in the IDE's thoughts area instead of the chat panel.
 
-Number the steps with a running counter `k/M`: `k` is the step's position in the walk and `M` is the total step count across all groups, smoke test included. The counter tells the user where they are and how many steps remain — skipping a step still advances `k`, so `M` never changes mid-walk. Fix-now pauses resume on the same `k`.
+Number the steps with a running counter `k/M`: `k` is the step's position in the walk and `M` is the total step count across all groups. The counter tells the user where they are and how many steps remain — skipping a step still advances `k`, so `M` never changes mid-walk. Fix-now pauses resume on the same `k`.
 
 Format the `question` field like this:
 

@@ -75,10 +75,9 @@ Add a GUI functionality group when the change touches the **Task Pane**, a **dia
 
 ## Plan sizing
 
-Size the plan by risk, not step count.
+The plan is the minimum set of steps that proves the changes under test — size by risk, not by breadth of coverage.
 
 - One step per distinct behavior the diff changes, plus one per interaction the change has with a neighboring feature — shared state, a shared prompt, a shared command gate.
-- Run a smoke test pass from [CHECKLIST.md](CHECKLIST.md) at the start of the walk, before the issue-specific groups. Derive the smoke tests from the major user-facing flows the diff touches. The engineer can skip any smoke test, but the agent should recommend the full set. This catches regressions in the surrounding general behavior the focused steps may miss.
 - Cut a step when its observable result is produced by another step in the plan.
 - Unit-test coverage retires a step only for pure ViewModel logic — anything reached through a SolidWorks event, WPF binding, or the add-in load path keeps its step.
 

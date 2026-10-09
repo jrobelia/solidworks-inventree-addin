@@ -22,6 +22,4 @@ Append one block per failure:
 - Disposition: pending → fixed (<commit>) | filed #<N> (blocking | follow-up) | wontfix #<N> | parked
 ```
 
-Smoke test failures use the same format with `Step: Smoke <N>` and `Proposed blocking: yes`.
-
 Skipped steps are tracked in the plan, not the ledger — unless the skip conceals a suspected problem worth recording.
