@@ -8,6 +8,7 @@ A C# WPF add-in for SolidWorks that bridges parts and assemblies to an InvenTree
 - Build: `dotnet build "SwInventreeAddin/SwInventreeAddin.csproj" --disable-build-servers` — produces the SolidWorks-facing `bin\Debug\net48` output. Manual step only: SolidWorks locks `bin\Debug\net48\SwInventreeAddin.dll` while running, so agents verify with the test command and never run this one.
 - Full solution build: `dotnet build "Solidworks Inventree Add-In.sln" --disable-build-servers` — builds the solution and the test project; same SolidWorks-closed constraint as Build, so it is not an agent verification command.
 - Package manager: NuGet (restored automatically by `dotnet build`).
+- AFK loop regression tests: `python -m unittest discover -s ".devin/skills/afk-loop/tests" -p "test_*.py" -v` — isolated fixtures and stub external commands; no credentials or real agent sessions.
 
 ## Skill layout
 
