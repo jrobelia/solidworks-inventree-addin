@@ -213,20 +213,41 @@ namespace SwInventreeAddin.AddIn
             return true;
         }
 
+        // ── SolidWorks event callbacks ───────────────────────────────────────
+        // A throw inside any COM event callback propagates into the SolidWorks
+        // host and is silently swallowed — every callback catches, traces, and
+        // returns 0. One identical pattern for all of them.
+
         private int OnActiveDocChange()
         {
-            _hasActiveDoc = (_swApp?.ActiveDoc != null);
-            SubscribeToDocumentEvents();
-            _taskPaneControl?.NotifyActiveDocumentChanged();
-            return 0;
+            try
+            {
+                _hasActiveDoc = (_swApp?.ActiveDoc != null);
+                SubscribeToDocumentEvents();
+                _taskPaneControl?.NotifyActiveDocumentChanged();
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] OnActiveDocChange failed: {ex.Message}");
+                return 0;
+            }
         }
 
         private int OnDocumentLoad(string title, string path)
         {
-            _hasActiveDoc = true;
-            SubscribeToDocumentEvents();
-            _taskPaneControl?.NotifyActiveDocumentChanged();
-            return 0;
+            try
+            {
+                _hasActiveDoc = true;
+                SubscribeToDocumentEvents();
+                _taskPaneControl?.NotifyActiveDocumentChanged();
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] OnDocumentLoad failed: {ex.Message}");
+                return 0;
+            }
         }
 
         /// <summary>
@@ -237,11 +258,19 @@ namespace SwInventreeAddin.AddIn
         /// </summary>
         private int OnIdle()
         {
-            bool hasDoc = (_swApp?.ActiveDoc != null);
-            if (_hasActiveDoc && !hasDoc)
-                _taskPaneControl?.NotifyLastDocumentClosed();
-            _hasActiveDoc = hasDoc;
-            return 0;
+            try
+            {
+                bool hasDoc = (_swApp?.ActiveDoc != null);
+                if (_hasActiveDoc && !hasDoc)
+                    _taskPaneControl?.NotifyLastDocumentClosed();
+                _hasActiveDoc = hasDoc;
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] OnIdle failed: {ex.Message}");
+                return 0;
+            }
         }
 
         private void SubscribeToDocumentEvents()
@@ -288,6 +317,7 @@ namespace SwInventreeAddin.AddIn
                 _partDocEvents.DeleteCustomPropertyNotify -= OnDocCustomPropertyDelete;
                 _partDocEvents.FileSaveAsNotify2 -= OnDocFileSaveAs;
                 _partDocEvents.RenamedDocumentNotify -= OnDocRenamed;
+                Marshal.ReleaseComObject(_partDocEvents);
                 _partDocEvents = null;
             }
 
@@ -299,24 +329,69 @@ namespace SwInventreeAddin.AddIn
                 _assemblyDocEvents.FileSaveAsNotify2 -= OnDocFileSaveAs;
                 _assemblyDocEvents.FileSavePostNotify -= OnAssemblyDocSavePost;
                 _assemblyDocEvents.RenamedDocumentNotify -= OnDocRenamed;
+                Marshal.ReleaseComObject(_assemblyDocEvents);
                 _assemblyDocEvents = null;
             }
         }
 
         private int OnDocCustomPropertyAdd(string propName, string configuration, string value, int valueType)
-        { _taskPaneControl?.OnDocumentPropertyChanged(propName, value); return 0; }
+        {
+            try
+            {
+                _taskPaneControl?.OnDocumentPropertyChanged(propName, value);
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] OnDocCustomPropertyAdd failed: {ex.Message}");
+                return 0;
+            }
+        }
 
         private int OnDocCustomPropertyChange(string propName, string configuration, string oldValue, string newValue, int valueType)
-        { _taskPaneControl?.OnDocumentPropertyChanged(propName, newValue); return 0; }
+        {
+            try
+            {
+                _taskPaneControl?.OnDocumentPropertyChanged(propName, newValue);
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] OnDocCustomPropertyChange failed: {ex.Message}");
+                return 0;
+            }
+        }
 
         private int OnDocCustomPropertyDelete(string propName, string configuration, string value, int valueType)
-        { _taskPaneControl?.OnDocumentPropertyChanged(propName, string.Empty); return 0; }
+        {
+            try
+            {
+                _taskPaneControl?.OnDocumentPropertyChanged(propName, string.Empty);
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] OnDocCustomPropertyDelete failed: {ex.Message}");
+                return 0;
+            }
+        }
 
         // FileSaveAsNotify2 is the post-notification: it fires after the path has
         // changed, so the recapture inside UpdateDocument sees the new Document
         // Token. FileSaveAsNotify (the pre-notification) would still see the old one.
         private int OnDocFileSaveAs(string fileName)
-        { _taskPaneControl?.NotifyActiveDocumentChanged(); return 0; }
+        {
+            try
+            {
+                _taskPaneControl?.NotifyActiveDocumentChanged();
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] OnDocFileSaveAs failed: {ex.Message}");
+                return 0;
+            }
+        }
 
         // On assemblies FileSaveAsNotify2 is not a reliable post-save signal on
         // some SolidWorks versions (observed on 2023 SP05): it fires before the
@@ -325,10 +400,32 @@ namespace SwInventreeAddin.AddIn
         // a rename recaptures the new token and drops the session, while a
         // plain save recaptures an unchanged token, a no-op refresh.
         private int OnAssemblyDocSavePost(int saveType, string fileName)
-        { _taskPaneControl?.NotifyActiveDocumentChanged(); return 0; }
+        {
+            try
+            {
+                _taskPaneControl?.NotifyActiveDocumentChanged();
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] OnAssemblyDocSavePost failed: {ex.Message}");
+                return 0;
+            }
+        }
 
         private int OnDocRenamed(ref object renamedDocumentInterface)
-        { _taskPaneControl?.NotifyActiveDocumentChanged(); return 0; }
+        {
+            try
+            {
+                _taskPaneControl?.NotifyActiveDocumentChanged();
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] OnDocRenamed failed: {ex.Message}");
+                return 0;
+            }
+        }
 
         private void OnSettingsRequested(object sender, EventArgs e)
         {

@@ -48,6 +48,13 @@ namespace SwInventreeAddin.Tests.Stubs
         public string StaleValue { get; set; } = string.Empty;
 
         /// <summary>
+        /// When set, <see cref="GetCustomProperty"/> throws it before logging —
+        /// models a host read that fails outright (e.g. a COMException), so a
+        /// read that throws records no successful read.
+        /// </summary>
+        public Exception? ThrowOnGetCustomProperty { get; set; }
+
+        /// <summary>
         /// Invoked inside <see cref="SetCustomProperty"/> after the write has
         /// applied and logged — models a synchronous host callback where COM
         /// reentrancy flips <see cref="ActiveDocumentTokenToReturn"/>
@@ -64,6 +71,7 @@ namespace SwInventreeAddin.Tests.Stubs
 
         public string GetCustomProperty(string name)
         {
+            if (ThrowOnGetCustomProperty != null) throw ThrowOnGetCustomProperty;
             _readLog.Add(name);
             return ReturnStaleReads ? StaleValue : _properties.TryGetValue(name, out var val) ? val : string.Empty;
         }

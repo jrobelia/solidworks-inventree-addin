@@ -197,7 +197,7 @@ namespace SwInventreeAddin
             // Mapped non-identity properties: refresh from the document.
             // A divergence from the session is a user edit — the caller clears
             // any stale success status.
-            if (TryGetSessionValueFor(propertyName, config, out var expectedValue))
+            if (PartSyncFields.TryGetSessionValue(propertyName, config, _session.Part, out var expectedValue))
             {
                 var diverged = !ValuesMatch(newValue, expectedValue);
                 if (LightCaptureInstall() == TaskPaneDocumentTransition.Activated)
@@ -1219,18 +1219,6 @@ namespace SwInventreeAddin
             _propertyService.SetCustomProperty(mapping.IpnProperty!, part.Ipn);
             SubstituteRefresh(ipn: part.Ipn);
             return part.Ipn;
-        }
-
-        private bool TryGetSessionValueFor(
-            string propertyName, PropertyMappingConfig config, out string? value)
-        {
-            if (PropertyNameEquals(config.NameProperty, propertyName)) { value = _session!.Part.Name; return true; }
-            if (PropertyNameEquals(config.NotesProperty, propertyName)) { value = _session!.Part.Notes; return true; }
-            if (PropertyNameEquals(config.RevisionProperty, propertyName)) { value = _session!.Part.Revision; return true; }
-            if (PropertyNameEquals(config.DescriptionProperty, propertyName)) { value = _session!.Part.Description; return true; }
-
-            value = null;
-            return false;
         }
 
         private static bool PropertyNameEquals(string? left, string? right)
