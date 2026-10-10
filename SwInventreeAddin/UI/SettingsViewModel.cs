@@ -80,7 +80,6 @@ namespace SwInventreeAddin.UI
         private ServerConfig? _savedConfig;
         private CredentialEditorState _credentialState;
         private SettingsSnapshot _savedSnapshot;
-        private readonly bool _savedWaitForServerAssignedIpn = ServerConfig.DefaultWaitForServerAssignedIpn;
 
         private string _url = string.Empty;
         private string _username = string.Empty;
@@ -158,7 +157,6 @@ namespace SwInventreeAddin.UI
                 _url = _savedConfig.Url ?? string.Empty;
                 _sharedMappingPath = _savedConfig.MappingSourcePath ?? string.Empty;
                 _bomKeyword = _savedConfig.BomKeyword ?? "inventree";
-                _savedWaitForServerAssignedIpn = _savedConfig.WaitForServerAssignedIpn;
                 _useSharedMapping = !string.IsNullOrEmpty(_savedConfig.MappingSourcePath);
             }
 
@@ -445,7 +443,6 @@ namespace SwInventreeAddin.UI
                 Url = _url.Trim(),
                 SharedMappingPath = sharedPath,
                 BomKeyword = _bomKeyword,
-                WaitForServerAssignedIpn = _savedWaitForServerAssignedIpn,
                 ProbeConnection = ConnectionFieldsChanged(),
             };
 
@@ -463,8 +460,8 @@ namespace SwInventreeAddin.UI
 
         // A probe is only worth its latency when something the probe exercises
         // changed since the last save: the typed URL, a non-blank key draft, a
-        // complete credential pair, or saved-key presence. A mapping-path,
-        // BOM-keyword, or IPN-flag-only change is not connection-relevant.
+        // complete credential pair, or saved-key presence. A mapping-path
+        // or BOM-keyword change alone is not connection-relevant.
         private bool ConnectionFieldsChanged()
         {
             var current = CaptureSnapshot();
@@ -1006,8 +1003,7 @@ namespace SwInventreeAddin.UI
                 password: _password,
                 sharedPath: _sharedMappingPath.Trim(),
                 bomKeyword: _bomKeyword.Trim(),
-                useLocalMapping: !_useSharedMapping,
-                waitForServerAssignedIpn: _savedWaitForServerAssignedIpn);
+                useLocalMapping: !_useSharedMapping);
 
         // Every draft change can flip dirty gating, the Cancel/Close label, and
         // the Test button's effective-URL enablement.

@@ -11,8 +11,7 @@ namespace SwInventreeAddin.UI
         public SettingsSnapshot(
             string url, string apiKeyDraft, bool hasSavedApiKey,
             string username, string password,
-            string sharedPath, string bomKeyword, bool useLocalMapping,
-            bool waitForServerAssignedIpn)
+            string sharedPath, string bomKeyword, bool useLocalMapping)
         {
             Url = url;
             ApiKeyDraft = apiKeyDraft;
@@ -22,7 +21,6 @@ namespace SwInventreeAddin.UI
             SharedPath = sharedPath;
             BomKeyword = bomKeyword;
             UseLocalMapping = useLocalMapping;
-            WaitForServerAssignedIpn = waitForServerAssignedIpn;
         }
 
         public string Url { get; }
@@ -43,8 +41,6 @@ namespace SwInventreeAddin.UI
 
         public bool UseLocalMapping { get; }
 
-        public bool WaitForServerAssignedIpn { get; }
-
         /// <summary>
         /// True when this snapshot differs from <paramref name="saved"/> in a way Apply
         /// can persist: the URL or any non-credential field changed, the key draft is
@@ -57,8 +53,7 @@ namespace SwInventreeAddin.UI
             if (!string.Equals(Url, saved.Url, System.StringComparison.Ordinal)
                 || !string.Equals(SharedPath, saved.SharedPath, System.StringComparison.Ordinal)
                 || !string.Equals(BomKeyword, saved.BomKeyword, System.StringComparison.Ordinal)
-                || UseLocalMapping != saved.UseLocalMapping
-                || WaitForServerAssignedIpn != saved.WaitForServerAssignedIpn)
+                || UseLocalMapping != saved.UseLocalMapping)
             {
                 return true;
             }

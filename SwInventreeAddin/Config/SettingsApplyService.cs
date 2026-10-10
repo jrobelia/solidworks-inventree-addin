@@ -50,8 +50,14 @@ namespace SwInventreeAddin.Config
 
             try
             {
+                // The wait-for-server-assigned-IPN flag never crosses the apply
+                // seam (#275) — its only editor is the Create Part dialog — so
+                // the previously persisted value is carried forward onto the
+                // fresh record. The read sits inside the save try so a throwing
+                // provider wraps like any other pre-persistence failure.
+                var prior = _configProvider.GetServerConfig();
                 _configProvider.SaveServerConfig(
-                    BuildConfig(input.Url.Trim(), apiKey, input));
+                    BuildConfig(input.Url.Trim(), apiKey, input, prior));
             }
             catch (Exception ex)
             {
@@ -127,7 +133,7 @@ namespace SwInventreeAddin.Config
             {
                 var prior = _configProvider.GetServerConfig();
                 _configProvider.SaveServerConfig(
-                    BuildConfig(string.Empty, prior?.ApiKey ?? string.Empty, input));
+                    BuildConfig(string.Empty, prior?.ApiKey ?? string.Empty, input, prior));
             }
             catch (Exception ex)
             {
@@ -139,7 +145,8 @@ namespace SwInventreeAddin.Config
                 "Server URL cleared — the saved API key was kept. Nothing was probed.");
         }
 
-        private static ServerConfig BuildConfig(string url, string apiKey, SettingsApplyInput input) =>
+        private static ServerConfig BuildConfig(
+            string url, string apiKey, SettingsApplyInput input, ServerConfig? prior) =>
             new ServerConfig
             {
                 Url = url,
@@ -148,7 +155,8 @@ namespace SwInventreeAddin.Config
                 BomKeyword = string.IsNullOrWhiteSpace(input.BomKeyword)
                                         ? "inventree"
                                         : input.BomKeyword.Trim(),
-                WaitForServerAssignedIpn = input.WaitForServerAssignedIpn,
+                WaitForServerAssignedIpn = prior?.WaitForServerAssignedIpn
+                                           ?? ServerConfig.DefaultWaitForServerAssignedIpn,
             };
 
         // Apply and Test Connection share the same probe so both report the same

@@ -86,11 +86,16 @@ namespace SwInventreeAddin.Tests.Stubs
 
             if (ConfigProvider != null)
             {
+                // The wait-for-server-assigned-IPN flag is not an apply input —
+                // like the real service, the prior record's value is carried
+                // forward so a Settings apply can never move it.
+                var prior = ConfigProvider.GetServerConfig();
+
                 string apiKey;
                 if (clearing)
                 {
                     // The clear path ignores input credentials — the saved key wins.
-                    apiKey = ConfigProvider.GetServerConfig()?.ApiKey ?? string.Empty;
+                    apiKey = prior?.ApiKey ?? string.Empty;
                 }
                 else if (!string.IsNullOrWhiteSpace(input.RawApiKey))
                 {
@@ -103,7 +108,7 @@ namespace SwInventreeAddin.Tests.Stubs
                 }
                 else
                 {
-                    apiKey = ConfigProvider.GetServerConfig()?.ApiKey ?? string.Empty;
+                    apiKey = prior?.ApiKey ?? string.Empty;
                 }
 
                 ConfigProvider.SaveServerConfig(new ServerConfig
@@ -112,7 +117,8 @@ namespace SwInventreeAddin.Tests.Stubs
                     ApiKey = apiKey,
                     MappingSourcePath = input.SharedMappingPath,
                     BomKeyword = input.BomKeyword,
-                    WaitForServerAssignedIpn = input.WaitForServerAssignedIpn,
+                    WaitForServerAssignedIpn = prior?.WaitForServerAssignedIpn
+                                               ?? ServerConfig.DefaultWaitForServerAssignedIpn,
                 });
             }
 

@@ -223,16 +223,6 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void BuildApplyInput_CarriesTheSavedWaitForServerAssignedIpnFlag()
-        {
-            var provider = new StubConfigProvider("https://inventree.example.com", "saved-key");
-            provider.Config!.WaitForServerAssignedIpn = false;
-            var vm = CreateVm(provider);
-
-            Assert.That(vm.BuildApplyInput().WaitForServerAssignedIpn, Is.False);
-        }
-
-        [Test]
         public void BuildTestInput_UsesTheEffectiveUrlWithTheSameCredential()
         {
             var vm = CreateVm();
