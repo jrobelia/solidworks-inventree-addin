@@ -143,6 +143,7 @@ namespace SwInventreeAddin.UI
             var host = new ElementHost { Dock = DockStyle.Fill, Child = view };
             Controls.Add(host);
             Dock = DockStyle.Fill;
+            TaskPaneHostFit.Attach(this);
         }
 
         // -- BOM event handler -------------------------------------------------
