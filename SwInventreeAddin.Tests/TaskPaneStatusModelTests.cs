@@ -180,6 +180,21 @@ namespace SwInventreeAddin.Tests
                 + System.Environment.NewLine + "Connection needs attention"));
         }
 
+        [Test]
+        public void Publish_SameDomainWithDifferentPersistence_RetainsFactThroughTransientReign()
+        {
+            var persistent = new StatusEntry("Review Property Mapping", StatusSeverity.Warning,
+                StatusPersistence.Persistent, "MappingHealth");
+            _model.Publish(persistent);
+            _model.Publish(new StatusEntry("Review started", StatusSeverity.None,
+                StatusPersistence.Transient, "MappingHealth"));
+            var suppressed = _model.ToolTip;
+
+            _model.InvalidateTransients();
+
+            Assert.That((suppressed, _model.Current), Is.EqualTo((persistent.Text, persistent)));
+        }
+
         [TestCase(StatusPersistence.Transient)]
         [TestCase(StatusPersistence.Persistent)]
         public void InvalidateTransients_SuppressedError_ReemergesUntilRemedied(StatusPersistence persistence)

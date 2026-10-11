@@ -880,6 +880,7 @@ namespace SwInventreeAddin.UI
         /// </summary>
         private async Task ApplyFieldAsync(ApplyField field, string successText)
         {
+            var domain = $"Document.Apply.{field}";
             // The Task Pane buttons discard this Task — a thrown exception
             // (e.g. a COMException from a Document Property write) must
             // surface here, never as an unobserved faulted Task.
@@ -906,14 +907,14 @@ namespace SwInventreeAddin.UI
                     switch (result.Outcome)
                     {
                         case PartSyncOutcome.Success:
-                            SetStatus(successText, StatusSeverity.Success, $"Document.Apply.{field}");
+                            SetStatus(successText, StatusSeverity.Success, domain);
                             break;
                         case PartSyncOutcome.Failed:
-                            SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error, $"Document.Apply.{field}");
+                            SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error, domain);
                             break;
                         case PartSyncOutcome.InvalidOperation:
                             if (!string.IsNullOrEmpty(result.Diagnostic))
-                                SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error, $"Document.Apply.{field}");
+                                SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error, domain);
                             break;
                         case PartSyncOutcome.Stale:
                             break;
@@ -923,7 +924,7 @@ namespace SwInventreeAddin.UI
             catch (Exception ex)
             {
                 Trace.WriteLine($"[SwInventreeAddin] ApplyFieldAsync failed: {ex}");
-                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error, $"Document.Apply.{field}"));
+                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error, domain));
             }
         }
 
@@ -952,6 +953,7 @@ namespace SwInventreeAddin.UI
         /// </summary>
         private async Task PushFieldAsync(PushField field, string busyText, string successText)
         {
+            var domain = $"Document.Push.{field}";
             // The Task Pane buttons discard this Task — a thrown exception
             // must surface here, never as an unobserved faulted Task.
             try
@@ -961,11 +963,11 @@ namespace SwInventreeAddin.UI
 
                 if (field == PushField.Revision && (Fetched?.Pk ?? 0) == 0)
                 {
-                    SetStatus("Error: cannot push revision — InvenTree part ID is missing.", StatusSeverity.Error, $"Document.Push.{field}");
+                    SetStatus("Error: cannot push revision — InvenTree part ID is missing.", StatusSeverity.Error, domain);
                     return;
                 }
 
-                SetStatus(busyText, StatusSeverity.None, $"Document.Push.{field}");
+                SetStatus(busyText, StatusSeverity.None, domain);
 
                 var result = await _coordinator.PushAsync(field).ConfigureAwait(false);
 
@@ -974,12 +976,12 @@ namespace SwInventreeAddin.UI
                     switch (result.Outcome)
                     {
                         case PartSyncOutcome.Success:
-                            SetStatus(successText, StatusSeverity.Success, $"Document.Push.{field}");
+                            SetStatus(successText, StatusSeverity.Success, domain);
                             break;
                         case PartSyncOutcome.Failed:
                         case PartSyncOutcome.InvalidOperation:
                             if (!string.IsNullOrEmpty(result.Diagnostic))
-                                SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error, $"Document.Push.{field}");
+                                SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error, domain);
                             break;
                         case PartSyncOutcome.Stale:
                             break;
@@ -989,7 +991,7 @@ namespace SwInventreeAddin.UI
             catch (Exception ex)
             {
                 Trace.WriteLine($"[SwInventreeAddin] PushFieldAsync failed: {ex}");
-                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error, $"Document.Push.{field}"));
+                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error, domain));
             }
         }
 
@@ -1006,6 +1008,7 @@ namespace SwInventreeAddin.UI
         /// </param>
         public async Task PushImageAsync(Image? imageOverride = null)
         {
+            const string domain = "Document.PushImage";
             // The Task Pane buttons discard this Task — a thrown exception
             // must surface here, never as an unobserved faulted Task. The
             // catch sits beside the finally so a host-provided capture is
@@ -1030,7 +1033,7 @@ namespace SwInventreeAddin.UI
                     ownImage = true;
                 }
 
-                SetStatus("Pushing image to InvenTree…", StatusSeverity.None, "Document.PushImage");
+                SetStatus("Pushing image to InvenTree…", StatusSeverity.None, domain);
 
                 var result = await _coordinator.PushImageAsync(image, cropRect).ConfigureAwait(false);
 
@@ -1039,16 +1042,16 @@ namespace SwInventreeAddin.UI
                     switch (result.Outcome)
                     {
                         case PartSyncOutcome.Success:
-                            SetStatus("Image pushed to InvenTree.", StatusSeverity.Success, "Document.PushImage");
+                            SetStatus("Image pushed to InvenTree.", StatusSeverity.Success, domain);
                             break;
                         case PartSyncOutcome.SucceededWithWarning:
-                            _statusModel.Resolve("Document.PushImage");
-                            SetStatus(result.Diagnostic ?? "Image pushed.", StatusSeverity.Warning, "Document.PushImage");
+                            _statusModel.Resolve(domain);
+                            SetStatus(result.Diagnostic ?? "Image pushed.", StatusSeverity.Warning, domain);
                             break;
                         case PartSyncOutcome.Failed:
                         case PartSyncOutcome.InvalidOperation:
                             if (!string.IsNullOrEmpty(result.Diagnostic))
-                                SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error, "Document.PushImage");
+                                SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error, domain);
                             break;
                         case PartSyncOutcome.Stale:
                             break;
@@ -1058,7 +1061,7 @@ namespace SwInventreeAddin.UI
             catch (Exception ex)
             {
                 Trace.WriteLine($"[SwInventreeAddin] PushImageAsync failed: {ex}");
-                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error, "Document.PushImage"));
+                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error, domain));
             }
             finally
             {
