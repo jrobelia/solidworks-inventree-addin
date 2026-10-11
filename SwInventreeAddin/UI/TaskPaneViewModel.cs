@@ -47,6 +47,7 @@ namespace SwInventreeAddin.UI
 
         // ── Dependencies ──────────────────────────────────────────────────────
 
+        private readonly TaskPaneStatusModel _statusModel = new TaskPaneStatusModel();
         private readonly IPartSyncCoordinator _coordinator;
         private readonly IBomReadinessContext _bomReadinessContext;
         private readonly IHostStaDispatcher _dispatcher;
@@ -467,6 +468,11 @@ namespace SwInventreeAddin.UI
         /// </summary>
         internal void ProjectDocumentUpdate()
         {
+            if (_projectedGeneration != _coordinator.Generation)
+            {
+                _statusModel.Resolve("Document");
+                InvalidateStatus();
+            }
             _projectedGeneration = _coordinator.Generation;
             RefreshMappingResult();
 
@@ -483,7 +489,7 @@ namespace SwInventreeAddin.UI
             if (_coordinator.Kind == TaskPaneStateKind.Unsupported)
             {
                 ResetDocumentPanel();
-                SetStatus("Drawings are not supported — open a part or assembly.", StatusSeverity.Warning);
+                SetStatus("Drawings are not supported — open a part or assembly.", StatusSeverity.Warning, "Document.Guidance");
                 RefreshStatus();
                 return;
             }
@@ -493,16 +499,18 @@ namespace SwInventreeAddin.UI
                 ResetDocumentPanel();
                 CreatePartEnabled = CanCreatePart();
                 if (_client == null)
-                    SetStatus("No server configured — click ⚙ Settings to get started", StatusSeverity.Warning);
+                    SetStatus("No server configured — click ⚙ Settings to get started", StatusSeverity.Warning, "Configuration");
                 NotifyBomVisibility();
                 RefreshStatus();
                 return;
             }
 
+            _statusModel.Resolve("Document.Guidance");
+            ProjectStatus();
+
             // LINKED or POPULATED: a session that survived document revalidation
             // is projected by the coordinator Changed event; presentation only
             // needs enable/disable state and status wording.
-            var sessionKept = _coordinator.FetchedPart != null;
 
             if (string.IsNullOrEmpty(document.Ipn))
             {
@@ -512,9 +520,7 @@ namespace SwInventreeAddin.UI
                 CreatePartEnabled = false;
                 PropertiesSectionVisible = true;
                 if (_client == null)
-                    SetStatus("No server configured — click ⚙ Settings to get started", StatusSeverity.Warning);
-                else if (!sessionKept)
-                    SetStatus(string.Empty, StatusSeverity.None);
+                    SetStatus("No server configured — click ⚙ Settings to get started", StatusSeverity.Warning, "Configuration");
                 NotifyBomVisibility();
                 RefreshStatus();
                 return;
@@ -527,13 +533,12 @@ namespace SwInventreeAddin.UI
             {
                 FetchEnabled = false;
                 CreatePartEnabled = false;
-                SetStatus("No server configured — click ⚙ Settings to get started", StatusSeverity.Warning);
+                SetStatus("No server configured — click ⚙ Settings to get started", StatusSeverity.Warning, "Configuration");
             }
             else
             {
                 FetchEnabled = ShouldEnableFetch();
                 CreatePartEnabled = CanCreatePart();
-                SetStatus(string.Empty, StatusSeverity.None);
             }
             NotifyBomVisibility();
             RefreshStatus();
@@ -554,10 +559,11 @@ namespace SwInventreeAddin.UI
                 case PartSyncPropertyChange.Ignored:
                     return;
                 case PartSyncPropertyChange.Reevaluated:
+                    InvalidateStatus();
                     ProjectDocumentUpdate();
                     return;
                 case PartSyncPropertyChange.RefreshedDivergent:
-                    SetStatus(string.Empty, StatusSeverity.None);
+                    InvalidateStatus();
                     return;
                 case PartSyncPropertyChange.Refreshed:
                     return;
@@ -583,6 +589,8 @@ namespace SwInventreeAddin.UI
         public void UpdateClient(IInventreeClient? client)
         {
             _client = client;
+            _statusModel.Resolve("Configuration");
+            InvalidateStatus();
             ProjectDocumentUpdate();
         }
 
@@ -603,6 +611,7 @@ namespace SwInventreeAddin.UI
         public void UpdateMapping(IPropertyMappingProvider? mappingProvider)
         {
             _mappingProvider = mappingProvider;
+            InvalidateStatus();
             if (_coordinator.FetchedPart == null)
                 ProjectDocumentUpdate();
             else
@@ -662,7 +671,7 @@ namespace SwInventreeAddin.UI
                     // touches a newer operation's status — but outcomes with a
                     // diagnostic (e.g. the created part carried no server-assigned
                     // InvenTree Part PK) must surface on the status strip.
-                    MapTerminalOutcome(result);
+                    MapTerminalOutcome(result, "Document.CreatePart");
                     return;
                 }
 
@@ -674,7 +683,8 @@ namespace SwInventreeAddin.UI
                 var ipnNotice = vm.IpnMismatchNotice;
                 SetStatus(
                     ipnNotice ?? "Part created in InvenTree.",
-                    ipnNotice != null ? StatusSeverity.Warning : StatusSeverity.Success);
+                    ipnNotice != null ? StatusSeverity.Warning : StatusSeverity.Success,
+                    "Document.CreatePart");
             };
 
             showDialog(vm);
@@ -729,15 +739,15 @@ namespace SwInventreeAddin.UI
 
                 if (!DocumentHasStampedPk && string.IsNullOrEmpty(ipn))
                 {
-                    SetStatus("Open a part or assembly in SolidWorks to get started.", StatusSeverity.None);
+                    SetStatus("Open a part or assembly in SolidWorks to get started.", StatusSeverity.None, "Document.Guidance");
                     return;
                 }
 
-                SetStatus("Fetching from InvenTree…", StatusSeverity.None);
+                SetStatus("Fetching from InvenTree…", StatusSeverity.None, "Document.Fetch");
 
                 if (_client == null)
                 {
-                    SetStatus("No server configured — click ⚙ Settings to get started", StatusSeverity.Warning);
+                    SetStatus("No server configured — click ⚙ Settings to get started", StatusSeverity.Warning, "Configuration");
                     return;
                 }
 
@@ -747,7 +757,7 @@ namespace SwInventreeAddin.UI
             catch (Exception ex)
             {
                 Trace.WriteLine($"[SwInventreeAddin] FetchPartAsync failed: {ex}");
-                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error));
+                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error, "Document.Fetch"));
             }
         }
 
@@ -784,7 +794,7 @@ namespace SwInventreeAddin.UI
                                     result.FetchedPart);
                             linkMismatchDeclined = shouldResume && !approved;
                             if (linkMismatchDeclined)
-                                SetStatus("Fetch cancelled — Link Mismatch.", StatusSeverity.Warning);
+                                SetStatus("Fetch cancelled — Link Mismatch.", StatusSeverity.Warning, "Document.Fetch");
                             break;
                         default:
                             MapTerminalOutcome(result);
@@ -807,7 +817,7 @@ namespace SwInventreeAddin.UI
         /// touch a newer operation's status, and cancellation leaves whatever
         /// status the decline path already set.
         /// </summary>
-        private void MapTerminalOutcome(PartSyncResult result)
+        private void MapTerminalOutcome(PartSyncResult result, string domain = "Document.Fetch")
         {
             switch (result.Outcome)
             {
@@ -815,28 +825,29 @@ namespace SwInventreeAddin.UI
                     if (!string.IsNullOrEmpty(result.Ipn))
                         PartNumber = result.Ipn!;
                     PropertiesSectionVisible = true;
-                    SetStatus(string.Empty, StatusSeverity.None);
+                    _statusModel.Resolve(domain);
+                    InvalidateStatus();
                     break;
                 case PartSyncOutcome.PartNotFound:
                     SetStatus(
                         result.PartPk > 0
                             ? $"No part found in InvenTree for PK: {result.PartPk}"
                             : $"No part found in InvenTree for: {result.Ipn}",
-                        StatusSeverity.Warning);
+                        StatusSeverity.Warning, domain);
                     break;
                 case PartSyncOutcome.DuplicateNoRevisionMatch:
                 case PartSyncOutcome.DuplicateAmbiguous:
-                    SetStatus(PartSyncWording.DuplicateIpnStatus(result), StatusSeverity.Error);
+                    SetStatus(PartSyncWording.DuplicateIpnStatus(result), StatusSeverity.Error, domain);
                     break;
                 case PartSyncOutcome.SucceededWithWarning:
-                    SetStatus(result.Diagnostic ?? string.Empty, StatusSeverity.Warning);
+                    SetStatus(result.Diagnostic ?? string.Empty, StatusSeverity.Warning, domain);
                     break;
                 case PartSyncOutcome.InvalidOperation:
                     if (!string.IsNullOrEmpty(result.Diagnostic))
-                        SetStatus(result.Diagnostic!, StatusSeverity.Warning);
+                        SetStatus(result.Diagnostic!, StatusSeverity.Warning, domain);
                     break;
                 case PartSyncOutcome.Failed:
-                    SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error);
+                    SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error, domain);
                     break;
                 case PartSyncOutcome.Stale:
                 case PartSyncOutcome.Cancelled:
@@ -869,6 +880,7 @@ namespace SwInventreeAddin.UI
         /// </summary>
         private async Task ApplyFieldAsync(ApplyField field, string successText)
         {
+            var domain = $"Document.Apply.{field}";
             // The Task Pane buttons discard this Task — a thrown exception
             // (e.g. a COMException from a Document Property write) must
             // surface here, never as an unobserved faulted Task.
@@ -895,14 +907,14 @@ namespace SwInventreeAddin.UI
                     switch (result.Outcome)
                     {
                         case PartSyncOutcome.Success:
-                            SetStatus(successText, StatusSeverity.Success);
+                            SetStatus(successText, StatusSeverity.Success, domain);
                             break;
                         case PartSyncOutcome.Failed:
-                            SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error);
+                            SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error, domain);
                             break;
                         case PartSyncOutcome.InvalidOperation:
                             if (!string.IsNullOrEmpty(result.Diagnostic))
-                                SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error);
+                                SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error, domain);
                             break;
                         case PartSyncOutcome.Stale:
                             break;
@@ -912,7 +924,7 @@ namespace SwInventreeAddin.UI
             catch (Exception ex)
             {
                 Trace.WriteLine($"[SwInventreeAddin] ApplyFieldAsync failed: {ex}");
-                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error));
+                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error, domain));
             }
         }
 
@@ -941,6 +953,7 @@ namespace SwInventreeAddin.UI
         /// </summary>
         private async Task PushFieldAsync(PushField field, string busyText, string successText)
         {
+            var domain = $"Document.Push.{field}";
             // The Task Pane buttons discard this Task — a thrown exception
             // must surface here, never as an unobserved faulted Task.
             try
@@ -950,11 +963,11 @@ namespace SwInventreeAddin.UI
 
                 if (field == PushField.Revision && (Fetched?.Pk ?? 0) == 0)
                 {
-                    SetStatus("Error: cannot push revision — InvenTree part ID is missing.", StatusSeverity.Error);
+                    SetStatus("Error: cannot push revision — InvenTree part ID is missing.", StatusSeverity.Error, domain);
                     return;
                 }
 
-                SetStatus(busyText, StatusSeverity.None);
+                SetStatus(busyText, StatusSeverity.None, domain);
 
                 var result = await _coordinator.PushAsync(field).ConfigureAwait(false);
 
@@ -963,12 +976,12 @@ namespace SwInventreeAddin.UI
                     switch (result.Outcome)
                     {
                         case PartSyncOutcome.Success:
-                            SetStatus(successText, StatusSeverity.Success);
+                            SetStatus(successText, StatusSeverity.Success, domain);
                             break;
                         case PartSyncOutcome.Failed:
                         case PartSyncOutcome.InvalidOperation:
                             if (!string.IsNullOrEmpty(result.Diagnostic))
-                                SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error);
+                                SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error, domain);
                             break;
                         case PartSyncOutcome.Stale:
                             break;
@@ -978,7 +991,7 @@ namespace SwInventreeAddin.UI
             catch (Exception ex)
             {
                 Trace.WriteLine($"[SwInventreeAddin] PushFieldAsync failed: {ex}");
-                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error));
+                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error, domain));
             }
         }
 
@@ -995,6 +1008,7 @@ namespace SwInventreeAddin.UI
         /// </param>
         public async Task PushImageAsync(Image? imageOverride = null)
         {
+            const string domain = "Document.PushImage";
             // The Task Pane buttons discard this Task — a thrown exception
             // must surface here, never as an unobserved faulted Task. The
             // catch sits beside the finally so a host-provided capture is
@@ -1019,7 +1033,7 @@ namespace SwInventreeAddin.UI
                     ownImage = true;
                 }
 
-                SetStatus("Pushing image to InvenTree…", StatusSeverity.None);
+                SetStatus("Pushing image to InvenTree…", StatusSeverity.None, domain);
 
                 var result = await _coordinator.PushImageAsync(image, cropRect).ConfigureAwait(false);
 
@@ -1028,15 +1042,16 @@ namespace SwInventreeAddin.UI
                     switch (result.Outcome)
                     {
                         case PartSyncOutcome.Success:
-                            SetStatus("Image pushed to InvenTree.", StatusSeverity.Success);
+                            SetStatus("Image pushed to InvenTree.", StatusSeverity.Success, domain);
                             break;
                         case PartSyncOutcome.SucceededWithWarning:
-                            SetStatus(result.Diagnostic ?? "Image pushed.", StatusSeverity.Warning);
+                            _statusModel.Resolve(domain);
+                            SetStatus(result.Diagnostic ?? "Image pushed.", StatusSeverity.Warning, domain);
                             break;
                         case PartSyncOutcome.Failed:
                         case PartSyncOutcome.InvalidOperation:
                             if (!string.IsNullOrEmpty(result.Diagnostic))
-                                SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error);
+                                SetStatus($"Error: {result.Diagnostic}", StatusSeverity.Error, domain);
                             break;
                         case PartSyncOutcome.Stale:
                             break;
@@ -1046,7 +1061,7 @@ namespace SwInventreeAddin.UI
             catch (Exception ex)
             {
                 Trace.WriteLine($"[SwInventreeAddin] PushImageAsync failed: {ex}");
-                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error));
+                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error, domain));
             }
             finally
             {
@@ -1172,9 +1187,9 @@ namespace SwInventreeAddin.UI
             PropertiesSectionVisible = false;
 
             if (_client == null)
-                SetStatus("No server configured — click ⚙ Settings to get started", StatusSeverity.Warning);
+                SetStatus("No server configured — click ⚙ Settings to get started", StatusSeverity.Warning, "Configuration");
             else
-                SetStatus("Open a part or assembly in SolidWorks to get started.", StatusSeverity.None);
+                SetStatus("Open a part or assembly in SolidWorks to get started.", StatusSeverity.None, "Document.Guidance");
         }
 
         // ── Commands ──────────────────────────────────────────────────────────
@@ -1196,7 +1211,6 @@ namespace SwInventreeAddin.UI
         // ── Mapping / status / threading internals ────────────────────────────
 
         private MappingResult? _mappingResult;
-        private bool _mappingHealthWarningActive;
 
         private MappingResult GetMappingResultOrDefault() =>
             _mappingProvider?.GetMappingResult()
@@ -1223,39 +1237,44 @@ namespace SwInventreeAddin.UI
         // so any state change that could hide a schema mismatch must re-evaluate here.
         private void RefreshStatus()
         {
-            if (_mappingProvider == null) return;
-
             RefreshMappingResult();
+            _statusModel.Resolve("MappingHealth");
             var status = _mappingResult!.FullStatusMessage;
             switch (_mappingResult!.Health)
             {
                 case MappingHealth.Invalid:
-                    _mappingHealthWarningActive = true;
-                    SetStatus(status, StatusSeverity.Error, status);
+                    SetStatus(status, StatusSeverity.Error, "MappingHealth", status);
                     break;
                 case MappingHealth.NeedsUpgrade:
-                    _mappingHealthWarningActive = true;
-                    SetStatus(status, StatusSeverity.Warning, status);
+                    SetStatus(status, StatusSeverity.Warning, "MappingHealth", status);
                     break;
                 case MappingHealth.NewerSchema:
-                    _mappingHealthWarningActive = true;
-                    SetStatus(status, StatusSeverity.Warning, status);
+                    SetStatus(status, StatusSeverity.Warning, "MappingHealth", status);
                     break;
                 default:
-                    if (_mappingHealthWarningActive)
-                    {
-                        _mappingHealthWarningActive = false;
-                        SetStatus(string.Empty, StatusSeverity.None);
-                    }
+                    ProjectStatus();
                     break;
             }
         }
 
-        private void SetStatus(string text, StatusSeverity severity, string? toolTip = null)
+        private void SetStatus(string text, StatusSeverity severity, string domain, string? toolTip = null)
         {
-            StatusText = text;
-            StatusToolTip = toolTip;
-            StatusSeverity = severity;
+            _statusModel.Publish(new StatusEntry(text, severity, StatusPersistence.Transient, domain, toolTip));
+            ProjectStatus();
+        }
+
+        private void InvalidateStatus()
+        {
+            _statusModel.InvalidateTransients();
+            ProjectStatus();
+        }
+
+        private void ProjectStatus()
+        {
+            var current = _statusModel.Current;
+            StatusText = current?.Text ?? string.Empty;
+            StatusToolTip = _statusModel.ToolTip;
+            StatusSeverity = current?.Severity ?? StatusSeverity.None;
         }
 
         /// <summary>Marshals an action onto the STA/UI thread via the dispatcher.</summary>

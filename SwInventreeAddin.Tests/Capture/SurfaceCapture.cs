@@ -60,6 +60,8 @@ namespace SwInventreeAddin.Tests.Capture
                 button.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
                 return window;
             }),
+            new Entry("TaskPaneView", "suppressed-error", () => CreateTaskPaneWindow(false)),
+            new Entry("TaskPaneView", "mapping-error", () => CreateTaskPaneWindow(true)),
         };
 
         public static string PngPathFor(string surface, string state)
@@ -100,6 +102,42 @@ namespace SwInventreeAddin.Tests.Capture
             }
 
             return path;
+        }
+
+        private static Window CreateTaskPaneWindow(bool mappingError)
+        {
+            var mapping = new StubPropertyMappingProvider();
+            var properties = new StubDocumentPropertyService();
+            var part = new InvenTree.InventreePart { Pk = 42, Ipn = "CAPTURE", Name = "Captured part" };
+            properties.Seed(mapping.Config.IpnProperty!, part.Ipn);
+            var client = new StubInventreeClient { PartToReturn = part };
+            if (mappingError)
+                mapping.Health = MappingHealth.Invalid;
+            var pair = VmFactory.Create(client, properties, mapping, dispatcher: new StubHostStaDispatcher());
+            if (!mappingError)
+            {
+                pair.ViewModel.FetchPartAsync().GetAwaiter().GetResult();
+                client.ThrowOnUpdate = new InvalidOperationException("InvenTree could not accept Name.");
+                pair.ViewModel.PushNameToInvenTreeAsync().GetAwaiter().GetResult();
+                client.ThrowOnUpdate = null;
+                pair.ViewModel.PushNotesToInvenTreeAsync().GetAwaiter().GetResult();
+            }
+
+            var window = new Window
+            {
+                Content = new TaskPaneView { DataContext = pair.ViewModel, Background = SystemColors.ControlBrush },
+                Width = 360,
+                Height = 720,
+                ShowInTaskbar = false,
+                WindowStartupLocation = WindowStartupLocation.Manual,
+            };
+            WindowCentering.Attach(window, SolidWorksWindowHandle.Get());
+            window.Closed += (_, __) =>
+            {
+                pair.ViewModel.Dispose();
+                pair.Coordinator.Dispose();
+            };
+            return window;
         }
 
         private static StubConfigProvider SavedConfig()
