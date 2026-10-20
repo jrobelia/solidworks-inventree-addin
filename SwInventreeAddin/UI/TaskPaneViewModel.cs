@@ -1243,13 +1243,11 @@ namespace SwInventreeAddin.UI
             switch (_mappingResult!.Health)
             {
                 case MappingHealth.Invalid:
-                    SetStatus(status, StatusSeverity.Error, "MappingHealth", status);
+                    PublishMappingHealth(status, StatusSeverity.Error);
                     break;
                 case MappingHealth.NeedsUpgrade:
-                    SetStatus(status, StatusSeverity.Warning, "MappingHealth", status);
-                    break;
                 case MappingHealth.NewerSchema:
-                    SetStatus(status, StatusSeverity.Warning, "MappingHealth", status);
+                    PublishMappingHealth(status, StatusSeverity.Warning);
                     break;
                 default:
                     ProjectStatus();
@@ -1257,9 +1255,20 @@ namespace SwInventreeAddin.UI
             }
         }
 
-        private void SetStatus(string text, StatusSeverity severity, string domain, string? toolTip = null)
+        // Guidance hints still publish Transient entries until #285 re-platforms
+        // them; a hint written in the same pass would reign over the persistent
+        // health entry and hide it where the reading already owned the strip.
+        private void PublishMappingHealth(string status, StatusSeverity severity)
         {
-            _statusModel.Publish(new StatusEntry(text, severity, StatusPersistence.Transient, domain, toolTip));
+            _statusModel.Resolve("Document.Guidance");
+            _statusModel.Resolve("Configuration");
+            SetStatus(status, severity, "MappingHealth", status, StatusPersistence.Persistent);
+        }
+
+        private void SetStatus(string text, StatusSeverity severity, string domain, string? toolTip = null,
+            StatusPersistence persistence = StatusPersistence.Transient)
+        {
+            _statusModel.Publish(new StatusEntry(text, severity, persistence, domain, toolTip));
             ProjectStatus();
         }
 
