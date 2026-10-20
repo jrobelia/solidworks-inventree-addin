@@ -581,6 +581,155 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public async Task PushNotes_AfterFailedNamePush_ToolTipRetainsNameError()
+        {
+            await FetchSamplePart();
+            _client.ThrowOnUpdate = new InvalidOperationException("Name write failed");
+            await _vm.PushNameToInvenTreeAsync();
+            _client.ThrowOnUpdate = null;
+
+            await _vm.PushNotesToInvenTreeAsync();
+
+            Assert.That(_vm.StatusToolTip, Does.Contain("Name write failed"));
+        }
+
+        [Test]
+        public async Task UpdateDocument_AfterFailedPush_DifferentDocumentRemovesPreviousDocumentError()
+        {
+            await FetchSamplePart();
+            _client.ThrowOnUpdate = new InvalidOperationException("Name write failed");
+            await _vm.PushNameToInvenTreeAsync();
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+
+            _pair.UpdateDocument();
+
+            Assert.That((_vm.StatusText, _vm.StatusToolTip), Is.EqualTo((string.Empty, (string?)null)));
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public async Task UpdateDocument_SameDocumentRefresh_KeepsActionFeedback(bool hasIpn)
+        {
+            await FetchSamplePart();
+            _propertyService.Seed(DefaultMapping.PkProperty!, SamplePart.Pk.ToString());
+            if (!hasIpn)
+                _propertyService.Seed(DefaultMapping.IpnProperty!, string.Empty);
+            _pair.UpdateDocument();
+            await _vm.PushNameToInvenTreeAsync();
+
+            _pair.UpdateDocument();
+
+            Assert.That(_vm.StatusText, Is.EqualTo("Name pushed to InvenTree."));
+        }
+
+        [TestCase("Client")]
+        [TestCase("Mapping")]
+        [TestCase("Close")]
+        [TestCase("Identity")]
+        public async Task StatusFeedback_InvalidatingEvent_DecaysSuccess(string invalidation)
+        {
+            await FetchSamplePart();
+            await _vm.PushNameToInvenTreeAsync();
+
+            switch (invalidation)
+            {
+                case "Client":
+                    _pair.UpdateClient(new StubInventreeClient());
+                    break;
+                case "Mapping":
+                    _pair.UpdateMapping(new StubPropertyMappingProvider());
+                    break;
+                case "Close":
+                    _propertyService.DocumentTypeToReturn = DocumentType.Unknown;
+                    _pair.CloseDocument();
+                    break;
+                case "Identity":
+                    _propertyService.Seed(DefaultMapping.IpnProperty!, "DIFFERENT-IPN");
+                    _pair.PropertyChanged(DefaultMapping.IpnProperty!, "DIFFERENT-IPN");
+                    break;
+            }
+
+            Assert.That(_vm.StatusText, Does.Not.Contain("pushed"));
+        }
+
+        [Test]
+        public async Task FetchPartAsync_SuccessfulRetry_ResolvesFetchErrorWithoutNewText()
+        {
+            _client.ThrowOnGetPartsByIpn = new InvalidOperationException("Fetch failed");
+            CreateVm();
+            await _vm.FetchPartAsync();
+            var failedStatus = _vm.StatusText;
+            _client.ThrowOnGetPartsByIpn = null;
+            _client.PartToReturn = SamplePart;
+
+            await _vm.FetchPartAsync();
+
+            Assert.That((failedStatus, _vm.StatusText, _vm.StatusSeverity, _vm.StatusToolTip),
+                Is.EqualTo(("Error: Fetch failed", string.Empty, StatusSeverity.None, (string?)null)));
+        }
+
+        [Test]
+        public async Task PropertyChanged_UnrelatedEditAfterFailedFetch_DoesNotResolveFetchError()
+        {
+            _client.ThrowOnGetPartsByIpn = new InvalidOperationException("Fetch failed");
+            CreateVm();
+            await _vm.FetchPartAsync();
+            _propertyService.Seed(DefaultMapping.NameProperty!, "Edited name");
+
+            _pair.PropertyChanged(DefaultMapping.NameProperty!, "Edited name");
+
+            Assert.That(_vm.StatusText, Does.Contain("Fetch failed"));
+        }
+
+        [Test]
+        public async Task UpdateClient_SameClientWithoutRemedy_DoesNotResolvePushError()
+        {
+            await FetchSamplePart();
+            _client.ThrowOnUpdate = new InvalidOperationException("Name write failed");
+            await _vm.PushNameToInvenTreeAsync();
+
+            _pair.UpdateClient(_client);
+
+            Assert.That(_vm.StatusText, Does.Contain("Name write failed"));
+        }
+
+        [Test]
+        public async Task UpdateMapping_UnresolvedPushError_RemainsAfterMappingRefresh()
+        {
+            await FetchSamplePart();
+            _client.ThrowOnUpdate = new InvalidOperationException("Name write failed");
+            await _vm.PushNameToInvenTreeAsync();
+
+            _pair.UpdateMapping(new StubPropertyMappingProvider());
+
+            Assert.That(_vm.StatusText, Does.Contain("Name write failed"));
+        }
+
+        [Test]
+        public async Task PushNameToInvenTreeAsync_SuccessfulRetry_ResolvesNameError()
+        {
+            await FetchSamplePart();
+            _client.ThrowOnUpdate = new InvalidOperationException("Name write failed");
+            await _vm.PushNameToInvenTreeAsync();
+            _client.ThrowOnUpdate = null;
+
+            await _vm.PushNameToInvenTreeAsync();
+
+            Assert.That(_vm.StatusToolTip, Is.Null);
+        }
+
+        [Test]
+        public void UpdateMapping_ProviderRemoved_ResolvesPreviousMappingError()
+        {
+            CreateVm();
+            _pair.UpdateMapping(new StubPropertyMappingProvider { Health = MappingHealth.Invalid });
+
+            _pair.UpdateMapping(null);
+
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.None));
+        }
+
+        [Test]
         public async Task PushDescription_OnHttpError_StatusText_ShowsError()
         {
             _client.PartToReturn = SamplePart;
@@ -757,6 +906,20 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(_vm.StatusText, Does.Contain("Image pushed to InvenTree."));
             Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Success));
+        }
+
+        [Test]
+        public async Task PushImage_UploadRetrySucceedsWithPreviewWarning_ResolvesUploadError()
+        {
+            await FetchSamplePart();
+            using var image = new Bitmap(2, 2);
+            _client.ThrowOnUpload = new InvalidOperationException("Upload failed");
+            await _vm.PushImageAsync(image);
+            _client.ThrowOnUpload = null;
+
+            await _vm.PushImageAsync(image);
+
+            Assert.That(_vm.StatusToolTip, Is.Null);
         }
 
         [Test]
@@ -1115,6 +1278,18 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Error));
             Assert.That(_vm.StatusText, Does.Contain("Invalid").IgnoreCase);
+        }
+
+        [Test]
+        public void UpdateMapping_InvalidMappingBecomesHealthy_ResolvesMappingError()
+        {
+            CreateVm();
+            _pair.UpdateMapping(new StubPropertyMappingProvider { Health = MappingHealth.Invalid });
+
+            _pair.UpdateMapping(new StubPropertyMappingProvider());
+
+            Assert.That((_vm.StatusText, _vm.StatusSeverity),
+                Is.EqualTo((string.Empty, StatusSeverity.None)));
         }
 
         [Test]
