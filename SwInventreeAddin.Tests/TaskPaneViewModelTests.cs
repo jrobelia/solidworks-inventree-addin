@@ -3526,7 +3526,7 @@ namespace SwInventreeAddin.Tests
 
             // Put a real status on the strip first — a Stale completion must
             // never touch a newer operation's status.
-            await vm.FetchPartAsync();   // unlinked document → "Open a part or assembly…"
+            await vm.FetchPartAsync();   // unlinked document — the persistent not-linked entry shows
             var statusBefore = vm.StatusText;
             Assert.That(statusBefore, Is.Not.Empty);
 
@@ -4033,7 +4033,61 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.CreatePartEnabled, Is.True);
             Assert.That(vm.ApplyEnabled, Is.False);
             Assert.That(vm.StatusText,
-                Is.EqualTo("Open a part or assembly in SolidWorks to get started."));
+                Is.EqualTo("This document is not linked to InvenTree. Add an IPN or use Create InvenTree P/N."));
+            Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.None));
+        }
+
+        [Test]
+        public void Unlinked_AssemblyNoIpnNoPk_ProjectsNotLinkedEntry()
+        {
+            // The UNLINKED fact covers Parts and Assemblies alike — an
+            // unlinked Assembly projects the same not-linked entry (#305).
+            _propertyService.DocumentTypeToReturn = DocumentType.Assembly;
+            var vm = CreateVm();
+
+            Assert.That(vm.PropertiesSectionVisible, Is.False);
+            Assert.That(vm.FetchEnabled, Is.False);
+            Assert.That(vm.CreatePartEnabled, Is.True);
+            Assert.That(vm.StatusText,
+                Is.EqualTo("This document is not linked to InvenTree. Add an IPN or use Create InvenTree P/N."));
+            Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.None));
+        }
+
+        [Test]
+        public void Linked_AfterUnlinked_GuidanceEntryDecaysOnStateChange()
+        {
+            var vm = CreateVm();   // UNLINKED — the not-linked entry displays.
+            Assert.That(vm.StatusText,
+                Is.EqualTo("This document is not linked to InvenTree. Add an IPN or use Create InvenTree P/N."));
+
+            // The document becomes linked on a same-document refresh: the
+            // entry decays on the state change itself, with no manual clear.
+            _propertyService.Seed(Mapping.IpnProperty!, "R-10K-0402");
+            _pair.UpdateDocument();
+
+            Assert.That(vm.StatusText, Is.Empty);
+        }
+
+        [Test]
+        public void UpdateClient_Unlinked_ProjectsAndDecaysConfigEntry()
+        {
+            var vm = CreateVm();   // UNLINKED with a configured client.
+
+            _pair.UpdateClient(null);
+
+            Assert.That(vm.StatusText,
+                Is.EqualTo("No server configured — click ⚙ Settings to get started"));
+            Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+            // The higher-severity config entry reigns; the not-linked entry
+            // stays retrievable as a suppressed entry in the tooltip.
+            Assert.That(vm.StatusToolTip,
+                Is.EqualTo("This document is not linked to InvenTree. Add an IPN or use Create InvenTree P/N."));
+
+            _pair.UpdateClient(new StubInventreeClient());
+
+            Assert.That(vm.StatusText,
+                Is.EqualTo("This document is not linked to InvenTree. Add an IPN or use Create InvenTree P/N."));
+            Assert.That(vm.StatusToolTip, Is.Null);
         }
 
         [Test]
@@ -4046,6 +4100,8 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.StatusText,
                 Is.EqualTo("No server configured \u2014 click \u2699 Settings to get started"));
             Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+            Assert.That(vm.StatusToolTip,
+                Is.EqualTo("This document is not linked to InvenTree. Add an IPN or use Create InvenTree P/N."));
         }
 
         [Test]
@@ -4869,6 +4925,59 @@ namespace SwInventreeAddin.Tests
             Assert.That(_vm.StatusText,
                 Is.EqualTo("Drawings are not supported \u2014 open a part or assembly."));
             Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+        }
+
+        [Test]
+        public void ProjectDocumentUpdate_UnlinkedDocument_ProjectsNotLinkedEntry()
+        {
+            UpdateDocument();
+
+            Assert.That(_vm.StatusText,
+                Is.EqualTo("This document is not linked to InvenTree. Add an IPN or use Create InvenTree P/N."));
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.None));
+        }
+
+        [Test]
+        public void ProjectDocumentUpdate_DrawingNoClient_DrawingEntryReignsConfigSuppressed()
+        {
+            _propertyService.DocumentTypeToReturn = DocumentType.Drawing;
+            UpdateClient(null);
+
+            // The Document Type warning outranks the config fact at equal
+            // severity — the suppressed entry stays retrievable in the tooltip.
+            Assert.That(_vm.StatusText,
+                Is.EqualTo("Drawings are not supported — open a part or assembly."));
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+            Assert.That(_vm.StatusToolTip,
+                Is.EqualTo("No server configured — click ⚙ Settings to get started"));
+        }
+
+        [Test]
+        public async Task FetchPartAsync_UnlinkedDocument_EmitsNoTransient()
+        {
+            // UNLINKED — the persistent not-linked entry already covers the
+            // state; a Fetch attempt emits nothing over it.
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.StatusText,
+                Is.EqualTo("This document is not linked to InvenTree. Add an IPN or use Create InvenTree P/N."));
+        }
+
+        [Test]
+        public async Task FetchPartAsync_LinkedNoClient_EmitsNoTransient()
+        {
+            _propertyService.Seed(Mapping.IpnProperty!, "R-10K-0402");
+            UpdateClient(null);
+
+            await _vm.FetchPartAsync();
+
+            // The persistent config entry was already displayed — no
+            // "Fetching…" in-progress phase, no mid-Fetch literal overwrite.
+            Assert.That(_vm.StatusText,
+                Is.EqualTo("No server configured — click ⚙ Settings to get started"));
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+            Assert.That(_vm.StatusToolTip, Is.Null,
+                "a stray transient would push the persistent entry into the tooltip");
         }
 
         [Test]

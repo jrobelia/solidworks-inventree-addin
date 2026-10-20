@@ -475,6 +475,7 @@ namespace SwInventreeAddin.UI
             }
             _projectedGeneration = _coordinator.Generation;
             RefreshMappingResult();
+            ProjectGuidance();
 
             if (_coordinator.Kind == TaskPaneStateKind.Empty)
             {
@@ -489,7 +490,6 @@ namespace SwInventreeAddin.UI
             if (_coordinator.Kind == TaskPaneStateKind.Unsupported)
             {
                 ResetDocumentPanel();
-                SetStatus("Drawings are not supported — open a part or assembly.", StatusSeverity.Warning, "Document.Guidance");
                 RefreshStatus();
                 return;
             }
@@ -498,15 +498,10 @@ namespace SwInventreeAddin.UI
             {
                 ResetDocumentPanel();
                 CreatePartEnabled = CanCreatePart();
-                if (_client == null)
-                    SetStatus("No server configured — click ⚙ Settings to get started", StatusSeverity.Warning, "Configuration");
                 NotifyBomVisibility();
                 RefreshStatus();
                 return;
             }
-
-            _statusModel.Resolve("Document.Guidance");
-            ProjectStatus();
 
             // LINKED or POPULATED: a session that survived document revalidation
             // is projected by the coordinator Changed event; presentation only
@@ -519,8 +514,6 @@ namespace SwInventreeAddin.UI
                 FetchEnabled = ShouldEnableFetch();
                 CreatePartEnabled = false;
                 PropertiesSectionVisible = true;
-                if (_client == null)
-                    SetStatus("No server configured — click ⚙ Settings to get started", StatusSeverity.Warning, "Configuration");
                 NotifyBomVisibility();
                 RefreshStatus();
                 return;
@@ -529,17 +522,8 @@ namespace SwInventreeAddin.UI
             // LINKED-by-IPN (or POPULATED on an IPN-bearing document).
             PartNumber = document.Ipn;
             PropertiesSectionVisible = true;
-            if (_client == null)
-            {
-                FetchEnabled = false;
-                CreatePartEnabled = false;
-                SetStatus("No server configured — click ⚙ Settings to get started", StatusSeverity.Warning, "Configuration");
-            }
-            else
-            {
-                FetchEnabled = ShouldEnableFetch();
-                CreatePartEnabled = CanCreatePart();
-            }
+            FetchEnabled = ShouldEnableFetch();
+            CreatePartEnabled = CanCreatePart();
             NotifyBomVisibility();
             RefreshStatus();
         }
@@ -578,6 +562,7 @@ namespace SwInventreeAddin.UI
         {
             _projectedGeneration = _coordinator.Generation;
             ResetDocumentPanel();
+            ProjectGuidance();
             NotifyBomVisibility();
         }
 
@@ -589,7 +574,6 @@ namespace SwInventreeAddin.UI
         public void UpdateClient(IInventreeClient? client)
         {
             _client = client;
-            _statusModel.Resolve("Configuration");
             InvalidateStatus();
             ProjectDocumentUpdate();
         }
@@ -737,19 +721,16 @@ namespace SwInventreeAddin.UI
 
                 var ipn = PartNumber;
 
+                // Both guards stay silent: the persistent guidance entries
+                // projected from document and config state already display
+                // the reason — a Fetch attempt emits no transient.
                 if (!DocumentHasStampedPk && string.IsNullOrEmpty(ipn))
-                {
-                    SetStatus("Open a part or assembly in SolidWorks to get started.", StatusSeverity.None, "Document.Guidance");
                     return;
-                }
-
-                SetStatus("Fetching from InvenTree…", StatusSeverity.None, "Document.Fetch");
 
                 if (_client == null)
-                {
-                    SetStatus("No server configured — click ⚙ Settings to get started", StatusSeverity.Warning, "Configuration");
                     return;
-                }
+
+                SetStatus("Fetching from InvenTree…", StatusSeverity.None, "Document.Fetch");
 
                 var result = await _coordinator.FetchAsync(ipn).ConfigureAwait(false);
                 await ApplyFetchOutcomeAsync(result).ConfigureAwait(false);
@@ -1185,11 +1166,6 @@ namespace SwInventreeAddin.UI
             FetchEnabled = false;
             CreatePartEnabled = false;
             PropertiesSectionVisible = false;
-
-            if (_client == null)
-                SetStatus("No server configured — click ⚙ Settings to get started", StatusSeverity.Warning, "Configuration");
-            else
-                SetStatus("Open a part or assembly in SolidWorks to get started.", StatusSeverity.None, "Document.Guidance");
         }
 
         // ── Commands ──────────────────────────────────────────────────────────
@@ -1255,6 +1231,45 @@ namespace SwInventreeAddin.UI
                     ProjectStatus();
                     break;
             }
+        }
+
+        /// <summary>
+        /// Re-projects the persistent guidance entries from document and
+        /// config state (ADR-0024): each fact emits only while it needs
+        /// attention, so a healthy state resolves its domain and publishes
+        /// nothing. Called on every document or client state change — the
+        /// entries decay on the same change, with no manual clears. Publish
+        /// order is the tiebreak among equal severities (newest wins): the
+        /// Configuration fact first so a Document Type warning outranks it.
+        /// </summary>
+        private void ProjectGuidance()
+        {
+            _statusModel.Resolve("Configuration");
+            if (_client == null)
+                _statusModel.Publish(new StatusEntry(
+                    "No server configured — click ⚙ Settings to get started",
+                    StatusSeverity.Warning, StatusPersistence.Persistent, "Configuration"));
+
+            _statusModel.Resolve("Document.Guidance");
+            switch (_coordinator.Kind)
+            {
+                case TaskPaneStateKind.Empty:
+                    _statusModel.Publish(new StatusEntry(
+                        "Open a part or assembly in SolidWorks to get started.",
+                        StatusSeverity.None, StatusPersistence.Persistent, "Document.Guidance"));
+                    break;
+                case TaskPaneStateKind.Unsupported:
+                    _statusModel.Publish(new StatusEntry(
+                        "Drawings are not supported — open a part or assembly.",
+                        StatusSeverity.Warning, StatusPersistence.Persistent, "Document.Guidance"));
+                    break;
+                case TaskPaneStateKind.Unlinked:
+                    _statusModel.Publish(new StatusEntry(
+                        "This document is not linked to InvenTree. Add an IPN or use Create InvenTree P/N.",
+                        StatusSeverity.None, StatusPersistence.Persistent, "Document.Guidance"));
+                    break;
+            }
+            ProjectStatus();
         }
 
         private void SetStatus(string text, StatusSeverity severity, string domain, string? toolTip = null)
