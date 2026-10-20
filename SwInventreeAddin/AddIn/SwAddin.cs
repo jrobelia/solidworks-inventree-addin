@@ -458,11 +458,20 @@ namespace SwInventreeAddin.AddIn
 
                 // Apply saves without closing the dialog, so propagate whenever
                 // an apply ran — not only when the dialog returns true.
-                if (!settingsApplied) return;
+                if (settingsApplied)
+                {
+                    var newConfig = _configProvider.GetServerConfig();
+                    _taskPaneControl?.UpdateClient(RebuildClient(newConfig));
+                    _taskPaneControl?.UpdateWaitForServerAssignedIpn(newConfig?.WaitForServerAssignedIpn ?? ServerConfig.DefaultWaitForServerAssignedIpn);
+                }
 
-                var newConfig = _configProvider.GetServerConfig();
-                _taskPaneControl?.UpdateClient(RebuildClient(newConfig));
-                _taskPaneControl?.UpdateWaitForServerAssignedIpn(newConfig?.WaitForServerAssignedIpn ?? ServerConfig.DefaultWaitForServerAssignedIpn);
+                // A Save's outcome reports only now — after the client/mapping
+                // propagation above, whose Configuration-domain resolution and
+                // transient invalidation would erase the entry before the
+                // engineer saw it. A failed Save that kept the dialog open
+                // still forwards here on a later close or cancel.
+                if (form.SaveOutcome is { } saveOutcome)
+                    _taskPaneControl?.NotifySettingsSaveCompleted(saveOutcome.Success, saveOutcome.Diagnostic);
             }
         }
 

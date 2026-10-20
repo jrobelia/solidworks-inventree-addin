@@ -37,6 +37,14 @@ namespace SwInventreeAddin.UI
         internal SettingsViewModel ViewModel => _vm;
 
         /// <summary>
+        /// The outcome of the last Save attempt — null until Save runs. The
+        /// host reads it after the dialog closes to carry the result to the
+        /// Task Pane; a failed Save keeps the dialog open, so the fact may
+        /// still travel on a later close or cancel.
+        /// </summary>
+        internal SettingsSaveOutcome? SaveOutcome { get; private set; }
+
+        /// <summary>
         /// Raised after Apply successfully saves settings, so the caller can update
         /// the live mapping provider without waiting for the dialog to close.
         /// </summary>
@@ -340,7 +348,12 @@ namespace SwInventreeAddin.UI
 
         private async void Save_Click(object sender, RoutedEventArgs e)
         {
-            if (!await _vm.ApplyAsync()) return;
+            // Capture the footer line as the outcome fact before deciding
+            // whether the dialog closes — a failed apply still reports, on a
+            // later close or cancel, through the host's Task Pane forward.
+            bool saved = await _vm.ApplyAsync();
+            SaveOutcome = new SettingsSaveOutcome(saved, _vm.ActionStatusText);
+            if (!saved) return;
             DialogResult = true;
         }
 
