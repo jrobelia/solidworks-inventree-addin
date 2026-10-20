@@ -1348,9 +1348,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task UpdateMapping_NeedsUpgradeAfterFailedPush_SuppressedHealthWarningListedInToolTip()
         {
-            _client.PartToReturn = SamplePart;
-            CreateVm();
-            await _vm.FetchPartAsync();
+            await FetchSamplePart();
             _client.ThrowOnUpdate = new InvalidOperationException("Name write failed");
             await _vm.PushNameToInvenTreeAsync();
 
@@ -1366,9 +1364,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public async Task UpdateMapping_NeedsUpgradeAfterFailedPush_HealthWarningReemergesWhenActionErrorDecays()
         {
-            _client.PartToReturn = SamplePart;
-            CreateVm();
-            await _vm.FetchPartAsync();
+            await FetchSamplePart();
             _client.ThrowOnUpdate = new InvalidOperationException("Name write failed");
             await _vm.PushNameToInvenTreeAsync();
             _pair.UpdateMapping(new StubPropertyMappingProvider
