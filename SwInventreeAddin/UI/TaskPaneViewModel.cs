@@ -664,6 +664,11 @@ namespace SwInventreeAddin.UI
                 CreatePartEnabled = CanCreatePart();
                 PropertiesSectionVisible = true;
 
+                // MarkPopulated is generation-stable, so the watermark never
+                // re-projects this transition — resolve the stale guidance
+                // entry (e.g. an UNLINKED document's not-linked hint) here.
+                ProjectGuidance();
+
                 var ipnNotice = vm.IpnMismatchNotice;
                 SetStatus(
                     ipnNotice ?? "Part created in InvenTree.",
@@ -1254,22 +1259,26 @@ namespace SwInventreeAddin.UI
             switch (_coordinator.Kind)
             {
                 case TaskPaneStateKind.Empty:
-                    _statusModel.Publish(new StatusEntry(
+                    EmitGuidance(
                         "Open a part or assembly in SolidWorks to get started.",
-                        StatusSeverity.None, StatusPersistence.Persistent, "Document.Guidance"));
+                        StatusSeverity.None);
                     break;
                 case TaskPaneStateKind.Unsupported:
-                    _statusModel.Publish(new StatusEntry(
+                    EmitGuidance(
                         "Drawings are not supported — open a part or assembly.",
-                        StatusSeverity.Warning, StatusPersistence.Persistent, "Document.Guidance"));
+                        StatusSeverity.Warning);
                     break;
                 case TaskPaneStateKind.Unlinked:
-                    _statusModel.Publish(new StatusEntry(
+                    EmitGuidance(
                         "This document is not linked to InvenTree. Add an IPN or use Create InvenTree P/N.",
-                        StatusSeverity.None, StatusPersistence.Persistent, "Document.Guidance"));
+                        StatusSeverity.None);
                     break;
             }
             ProjectStatus();
+
+            void EmitGuidance(string text, StatusSeverity severity) =>
+                _statusModel.Publish(new StatusEntry(
+                    text, severity, StatusPersistence.Persistent, "Document.Guidance"));
         }
 
         private void SetStatus(string text, StatusSeverity severity, string domain, string? toolTip = null)
