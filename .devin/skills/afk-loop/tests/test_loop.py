@@ -45,12 +45,13 @@ class LoopTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
         return next((self.root / ".scratch" / "afk-loop").iterdir())
 
-    def approve(self, directory, host=False):
-        smoke = self.run_loop("--smoke", directory.name)
-        self.assertEqual(smoke.returncode, 0, smoke.stdout)
+    def approve(self, directory, host=False, verified=True):
+        if verified:
+            smoke = self.run_loop("--smoke", directory.name)
+            self.assertEqual(smoke.returncode, 0, smoke.stdout)
         approval = directory / "APPROVAL.json"
         data = json.loads(approval.read_text(encoding="utf-8"))
-        data.update(confirmed=True, policy_verified=True)
+        data.update(confirmed=True, policy_verified=verified)
         data["tickets"][0]["seam"] = "Existing Fetch seam, production and Stub adapters; deletion restores orchestration to callers."
         data["tickets"][0]["criteria"] = [{"id": "AC1", "text": "Fetch displays the part.", "kind": "host" if host else "automated"}]
         approval.write_text(json.dumps(data), encoding="utf-8")
@@ -165,6 +166,21 @@ class LoopTests(unittest.TestCase):
         self.assertFalse(approval["confirmed"])
         self.assertTrue(approval["policy_verified"])
         self.assertEqual(self.git("status", "--porcelain"), "")
+
+    def test_run_probes_policy_inline_when_unverified(self):
+        directory = self.prepare()
+        self.approve(directory, verified=False)
+        result = self.run_loop("--run", directory.name)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        approval = json.loads((directory / "APPROVAL.json").read_text())
+        self.assertTrue(approval["policy_verified"])
+        self.assertTrue(json.loads((directory / "POLICY.json").read_text())["passed"])
+        state = self.state(directory)
+        self.assertTrue(state["tickets"]["0"]["sessions"]["policy"])
+        self.assertEqual(state["tickets"]["50"]["status"], "ready-for-qa")
+        dispatched = [row for row in self.calls("devin") if "--prompt-file" in row["args"]]
+        self.assertIn("policy-r1-", dispatched[0]["args"][-1])
+        self.assertTrue(any("implement-r1-" in row["args"][-1] for row in dispatched[1:]))
 
     def test_other_owner_blocks_implementation(self):
         self.env["AFK_TEST_SCENARIO"] = "other-owner"

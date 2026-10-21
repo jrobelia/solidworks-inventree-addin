@@ -40,7 +40,7 @@ Before `--run <run>`, confirm playback and every consequential ruling. Populate 
 
 Kinds are `automated`, `visual`, `host`, and `not-applicable`. Host checks are never certified by this agent. Not-applicable must be a confirmed scope ruling. New choices discovered after launch return blocked.
 
-Set `confirmed` only after human approval. `policy_verified` is earned by the separate user-terminal `--smoke <run>` probe. `allow_claim` and `allow_publish` default false; the corresponding runtime flags are separate authorizations. These flags are not permission to merge, close issues, release claims, delete branches, remove existing worktrees, or upload evidence.
+Set `confirmed` only after human approval. `policy_verified` is earned by the neutral user-terminal policy probe, which `--run` performs first when unverified; `--smoke <run>` runs the same probe standalone. `allow_claim` and `allow_publish` default false; the corresponding runtime flags are separate authorizations. These flags are not permission to merge, close issues, release claims, delete branches, remove existing worktrees, or upload evidence.
 
 Prior work is reported from open PRs, matching branches and merged ancestry. First-version intake stops for maintainer disposition rather than adopting or discarding it. Read ticket comments for referenced canonical specifications and ADRs; unresolved links or contradictions remain blockers. GitHub assignment records ownership but is not an atomic distributed lock. The OS-released repository lock serializes local loop instances across worktrees.
 

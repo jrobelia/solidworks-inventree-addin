@@ -295,19 +295,12 @@ class Loop:
         approval = self.approval
         if approval.get("version") != 1 or approval.get("run") != run or Path(approval["root"]).resolve() != root:
             raise Blocked("Approval does not belong to this run and checkout")
-        if not args.smoke and (approval.get("confirmed") is not True or approval.get("policy_verified") is not True):
-            raise Blocked("Playback, seam, acceptance mapping, and worker policy need confirmation")
+        if not args.smoke and approval.get("confirmed") is not True:
+            raise Blocked("Playback, seam, and acceptance mapping need confirmation")
         if args.publish and approval.get("allow_publish") is not True:
             raise Blocked("Publication needs explicit approval")
         if args.claim and approval.get("allow_claim") is not True:
             raise Blocked("Ticket assignment needs explicit approval")
-        if not args.smoke:
-            policy = load(self.directory / "POLICY.json")
-            events = Path(policy["events"]).resolve()
-            if policy.get("passed") is not True or policy.get("package_hash") != package_hash() or policy.get("base") != approval["base"]:
-                raise Blocked("Actual worker policy probe is missing or stale")
-            if not events.is_relative_to(self.directory) or not events.is_file() or file_hash(events) != policy["events_hash"]:
-                raise Blocked("Worker policy evidence is missing or changed")
         clean(root)
         if git(root, "branch", "--show-current") != approval["base_branch"] or git(root, "rev-parse", "HEAD") != approval["base"]:
             raise Blocked("Canonical base branch or commit changed; prepare a new approved run")
@@ -784,9 +777,21 @@ class Loop:
         self.log(f"Terminal #{number}: ready-for-qa @ {ticket['head']}; run /qa; claim {ticket['claim']}")
         return True
 
+    def verify_policy(self):
+        if self.approval.get("policy_verified") is not True:
+            self.log("Worker policy not yet verified on this machine; running the neutral policy probe first")
+            self.smoke()
+        policy = load(self.directory / "POLICY.json")
+        events = Path(policy["events"]).resolve()
+        if policy.get("passed") is not True or policy.get("package_hash") != package_hash() or policy.get("base") != self.approval["base"]:
+            raise Blocked("Actual worker policy probe is missing or stale")
+        if not events.is_relative_to(self.directory) or not events.is_file() or file_hash(events) != policy["events_hash"]:
+            raise Blocked("Worker policy evidence is missing or changed")
+
     def run(self):
         if os.environ.get("DEVIN_API_KEY"):
             raise Blocked("DEVIN_API_KEY overrides terminal login; authenticate in your own terminal without that override")
+        self.verify_policy()
         self.state["status"] = "running"
         self.checkpoint()
         capture("devin", ["auth", "status"], self.root)

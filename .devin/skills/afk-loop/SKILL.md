@@ -40,25 +40,21 @@ Publication and assignment are separate opt-ins. Keep allow_publish and allow_cl
 
 **Done when:** playback, seams, acceptance mapping and consequential rulings are confirmed and recorded.
 
-## 3. User-terminal policy smoke test
+## 3. Emit the approved launch command
 
-The Windows CLI must demonstrate that it loads and honors the generated worker policy. Emit, do not execute here:
-
-```powershell
-.\.devin\skills\afk-loop\afk-loop.ps1 --smoke <run>
-```
-
-The probe uses a separate worktree and a neutral CLI session. It checks scoped writes, single-command execution, guard denials and exact session attribution without implementing the ticket. Its protected hook evidence earns policy_verified; missing policy evidence blocks execution. Ask the user to share the result. Authentication failures require user action in that terminal, not inspection or copying of credentials.
-
-**Done when:** the actual CLI probe passes on this machine, not merely the stub tests.
-
-## 4. Emit the approved run command
+Emit for the user's own PowerShell terminal; do not launch it from this session:
 
 ```powershell
 .\.devin\skills\afk-loop\afk-loop.ps1 --run <run>
 ```
 
-Only when separately approved, append --claim and/or --publish. The default has no remote writes. A run performs a canonical baseline, then implementation, deterministic checks, two independent review axes, adjudication, bounded repair, evidence verification, and optional publication. The host DLL is not rebuilt or reloaded.
+Only when separately approved, append --claim and/or --publish. The default has no remote writes.
+
+An unverified launch runs the policy probe first: a separate worktree and neutral CLI session checks scoped writes, single-command execution, guard denials and exact session attribution without implementing a ticket, and its protected hook evidence earns policy_verified. Missing policy evidence blocks execution. To prove policy ahead of launch, or to re-prove it after this package changes, emit `.\.devin\skills\afk-loop\afk-loop.ps1 --smoke <run>` instead. Authentication failures require user action in that terminal, not inspection or copying of credentials.
+
+The run then performs a canonical baseline, then implementation, deterministic checks, two independent review axes, adjudication, bounded repair, evidence verification, and optional publication. The host DLL is not rebuilt or reloaded.
+
+Worker stdout streams into the terminal during each dispatch; a one-time CLI greeting is cosmetic. Tell the user to leave the window running and to share the outcome; STATUS.json and PROGRESS.md carry it.
 
 The driver owns commands and state; workers own code and judgment. Workers read existing shared rules but do not call the interactive build/review skills. Architectural or spec ambiguity returns a human handoff. Package implementation approval is not approval to launch a pilot ticket.
 
@@ -69,7 +65,7 @@ The driver owns commands and state; workers own code and judgment. Workers read 
 - STATUS.json holds machine-readable transitions, pinned commits, publication, claims, CI, reports and exact session ids.
 - PROGRESS.md appends timestamps, dispatches, heartbeat/stale signals and terminal handoffs.
 - Each ticket has immutable per-attempt prompt, job, stream, transcript, report and evidence paths.
-- Resume with `afk-loop.ps1 --resume <run>` and the original non-default budgets and effect switches. Drift, missing evidence and unrelated worktree changes block replay.
+- Resume with `afk-loop.ps1 --resume <run>` and the original non-default budgets and effect switches. Drift, missing evidence and unrelated worktree changes block replay; an interrupted policy probe replays as a fresh attempt.
 - A blocked run preserves its branches, worktrees and evidence. Route its named choice to /build-hitl; do not discard or silently restart it.
 - A ready-for-qa result hands off to the existing /qa workflow. Draft promotion, QA labeling and merge remain human steps.
 
