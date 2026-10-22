@@ -4,9 +4,10 @@ namespace SwInventreeAddin.UI
     /// The Settings window's Save outcome as a fact — the apply's success flag
     /// plus the diagnostic the footer reported. The dialog captures it when
     /// Save runs so the host can carry it to the Task Pane after the dialog
-    /// closes; a failed Save keeps the dialog open, so the fact still travels
-    /// on a later close or cancel. <see cref="Diagnostic"/> is the footer's
-    /// already-safe wording — it never contains a credential.
+    /// closes; the host forwards it only when the Save itself closed the
+    /// dialog — a failed Save stays open, so its fact is abandoned on cancel.
+    /// <see cref="Diagnostic"/> is the footer's already-safe wording — it
+    /// never contains a credential.
     /// </summary>
     public class SettingsSaveOutcome
     {

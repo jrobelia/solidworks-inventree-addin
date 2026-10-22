@@ -39,8 +39,9 @@ namespace SwInventreeAddin.UI
         /// <summary>
         /// The outcome of the last Save attempt — null until Save runs. The
         /// host reads it after the dialog closes to carry the result to the
-        /// Task Pane; a failed Save keeps the dialog open, so the fact may
-        /// still travel on a later close or cancel.
+        /// Task Pane, and only when the Save itself closed the dialog; a
+        /// failed Save keeps the dialog open and its fact is abandoned on
+        /// cancel — the footer already reported it live.
         /// </summary>
         internal SettingsSaveOutcome? SaveOutcome { get; private set; }
 

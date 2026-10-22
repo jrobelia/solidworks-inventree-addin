@@ -454,7 +454,7 @@ namespace SwInventreeAddin.AddIn
                     _taskPaneControl?.UpdateMapping(provider);
                 };
 
-                form.ShowDialog();
+                bool? dialogSaved = form.ShowDialog();
 
                 // Apply saves without closing the dialog, so propagate whenever
                 // an apply ran — not only when the dialog returns true.
@@ -468,9 +468,11 @@ namespace SwInventreeAddin.AddIn
                 // A Save's outcome reports only now — after the client/mapping
                 // propagation above, whose Configuration-domain resolution and
                 // transient invalidation would erase the entry before the
-                // engineer saw it. A failed Save that kept the dialog open
-                // still forwards here on a later close or cancel.
-                if (form.SaveOutcome is { } saveOutcome)
+                // engineer saw it — and only when the Save itself closed the
+                // dialog. A failed Save stays open and reports in the footer;
+                // carrying that fact to the strip on a cancel would read as a
+                // live failure over a config nothing changed.
+                if (dialogSaved == true && form.SaveOutcome is { } saveOutcome)
                     _taskPaneControl?.NotifySettingsSaveCompleted(saveOutcome.Success, saveOutcome.Diagnostic);
             }
         }
