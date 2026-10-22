@@ -633,22 +633,20 @@ namespace SwInventreeAddin.UI
         /// The Settings window's Save outcome — routed by the host after the
         /// dialog closes and the client/mapping propagation ran, so a resulting
         /// client update cannot resolve the entry before it shows. The caller
-        /// passes the fact — a clean-success flag and the diagnostic the footer
+        /// passes the fact — the footer's severity and the diagnostic it
         /// reported — and the pane owns the wording: a "Saved …" line gains
-        /// the Settings context the dialog carried itself; a failure line
+        /// the Settings context the dialog carried itself; any other line
         /// lands verbatim.
         /// </summary>
-        internal void NotifySettingsSaveCompleted(bool success, string? diagnostic)
+        internal void NotifySettingsSaveCompleted(StatusSeverity severity, string? diagnostic)
         {
-            SetStatus(SettingsSaveText(success, diagnostic),
-                success ? StatusSeverity.Success : StatusSeverity.Error,
-                "Configuration.Save");
+            SetStatus(SettingsSaveText(diagnostic), severity, "Configuration.Save");
         }
 
-        private static string SettingsSaveText(bool success, string? diagnostic)
+        private static string SettingsSaveText(string? diagnostic)
         {
             if (diagnostic is null || diagnostic.Length == 0)
-                return success ? "Settings saved." : "Settings could not be saved.";
+                return "Settings saved.";
             return diagnostic.StartsWith("Saved", StringComparison.Ordinal)
                 ? "Settings saved" + diagnostic.Substring("Saved".Length)
                 : diagnostic;

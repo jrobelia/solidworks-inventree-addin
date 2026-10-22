@@ -349,11 +349,12 @@ namespace SwInventreeAddin.UI
 
         private async void Save_Click(object sender, RoutedEventArgs e)
         {
-            // Capture the footer line as the outcome fact before deciding
-            // whether the dialog closes — a failed apply still reports, on a
-            // later close or cancel, through the host's Task Pane forward.
+            // Capture the footer's verdict as the outcome fact before deciding
+            // whether the dialog closes — the host forwards it only when the
+            // Save itself closed the dialog, and the strip mirrors the
+            // footer's severity rather than re-grading it.
             bool saved = await _vm.ApplyAsync();
-            SaveOutcome = new SettingsSaveOutcome(saved, _vm.ActionStatusText);
+            SaveOutcome = new SettingsSaveOutcome(_vm.ActionStatusSeverity, _vm.ActionStatusText);
             if (!saved) return;
             DialogResult = true;
         }

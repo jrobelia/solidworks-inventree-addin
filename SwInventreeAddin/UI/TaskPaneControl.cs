@@ -395,13 +395,13 @@ namespace SwInventreeAddin.UI
                 ref _mappingChangedSubscription, _mappingProvider, OnMappingFileChanged);
 
         /// <summary>
-        /// The Settings window's Save completed — success flag plus the
-        /// diagnostic the footer reported. Routed after the dialog closes and
-        /// the client/mapping propagation ran, so the client update's status
+        /// The Settings window's Save completed — the footer's severity and
+        /// diagnostic. Routed after a Save closes the dialog and the
+        /// client/mapping propagation ran, so the client update's status
         /// refresh cannot clear the entry before the engineer sees it.
         /// </summary>
-        public void NotifySettingsSaveCompleted(bool success, string? diagnostic) =>
-            _vm.NotifySettingsSaveCompleted(success, diagnostic);
+        public void NotifySettingsSaveCompleted(StatusSeverity severity, string? diagnostic) =>
+            _vm.NotifySettingsSaveCompleted(severity, diagnostic);
 
         public void UpdateWaitForServerAssignedIpn(bool value)
         {

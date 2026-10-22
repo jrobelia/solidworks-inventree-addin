@@ -473,7 +473,7 @@ namespace SwInventreeAddin.AddIn
                 // carrying that fact to the strip on a cancel would read as a
                 // live failure over a config nothing changed.
                 if (dialogSaved == true && form.SaveOutcome is { } saveOutcome)
-                    _taskPaneControl?.NotifySettingsSaveCompleted(saveOutcome.Success, saveOutcome.Diagnostic);
+                    _taskPaneControl?.NotifySettingsSaveCompleted(saveOutcome.Severity, saveOutcome.Diagnostic);
             }
         }
 

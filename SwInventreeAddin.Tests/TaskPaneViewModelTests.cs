@@ -749,7 +749,7 @@ namespace SwInventreeAddin.Tests
         {
             CreateVm();
 
-            _pair.NotifySettingsSaveCompleted(true, "Saved — connection successful.");
+            _pair.NotifySettingsSaveCompleted(StatusSeverity.Success, "Saved — connection successful.");
 
             Assert.Multiple(() =>
             {
@@ -763,7 +763,7 @@ namespace SwInventreeAddin.Tests
         {
             CreateVm();
 
-            _pair.NotifySettingsSaveCompleted(false, "Failed to apply settings: access is denied.");
+            _pair.NotifySettingsSaveCompleted(StatusSeverity.Error, "Failed to apply settings: access is denied.");
 
             Assert.Multiple(() =>
             {
@@ -777,7 +777,7 @@ namespace SwInventreeAddin.Tests
         {
             CreateVm();
 
-            _pair.NotifySettingsSaveCompleted(false,
+            _pair.NotifySettingsSaveCompleted(StatusSeverity.Error,
                 "Saved — connection successful; the Property Mapping file could not be loaded.");
 
             Assert.Multiple(() =>
@@ -793,13 +793,13 @@ namespace SwInventreeAddin.Tests
         {
             CreateVm();
 
-            _pair.NotifySettingsSaveCompleted(true, "Saved — authentication required (invalid API key).");
+            _pair.NotifySettingsSaveCompleted(StatusSeverity.Warning, "Saved — authentication required (invalid API key).");
 
             Assert.Multiple(() =>
             {
                 Assert.That(_vm.StatusText, Is.EqualTo(
                     "Settings saved — authentication required (invalid API key)."));
-                Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Success));
+                Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
             });
         }
 
@@ -807,7 +807,7 @@ namespace SwInventreeAddin.Tests
         public async Task NotifySettingsSaveCompleted_NextActionResult_ReplacesEntry()
         {
             await FetchSamplePart();
-            _pair.NotifySettingsSaveCompleted(true, "Saved — connection successful.");
+            _pair.NotifySettingsSaveCompleted(StatusSeverity.Success, "Saved — connection successful.");
 
             await _vm.PushNameToInvenTreeAsync();
 
@@ -821,7 +821,7 @@ namespace SwInventreeAddin.Tests
         public async Task NotifySettingsSaveCompleted_InvalidatingEvent_DecaysEntry(string invalidation)
         {
             await FetchSamplePart();
-            _pair.NotifySettingsSaveCompleted(true, "Saved — connection successful.");
+            _pair.NotifySettingsSaveCompleted(StatusSeverity.Success, "Saved — connection successful.");
 
             switch (invalidation)
             {
@@ -848,7 +848,7 @@ namespace SwInventreeAddin.Tests
         public async Task NotifySettingsSaveCompleted_FailedSave_RemainsInToolTipWhileNewResultReigns()
         {
             await FetchSamplePart();
-            _pair.NotifySettingsSaveCompleted(false, "Failed to apply settings: access is denied.");
+            _pair.NotifySettingsSaveCompleted(StatusSeverity.Error, "Failed to apply settings: access is denied.");
 
             await _vm.PushNameToInvenTreeAsync();
 
@@ -863,9 +863,9 @@ namespace SwInventreeAddin.Tests
         public void NotifySettingsSaveCompleted_SuccessAfterFailure_ResolvesRetainedFailure()
         {
             CreateVm();
-            _pair.NotifySettingsSaveCompleted(false, "Failed to apply settings: access is denied.");
+            _pair.NotifySettingsSaveCompleted(StatusSeverity.Error, "Failed to apply settings: access is denied.");
 
-            _pair.NotifySettingsSaveCompleted(true, "Saved — connection successful.");
+            _pair.NotifySettingsSaveCompleted(StatusSeverity.Success, "Saved — connection successful.");
 
             Assert.Multiple(() =>
             {

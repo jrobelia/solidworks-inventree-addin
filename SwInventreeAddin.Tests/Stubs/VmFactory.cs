@@ -119,11 +119,11 @@ namespace SwInventreeAddin.Tests.Stubs
         }
 
         /// <summary>
-        /// Settings Save completed — the outcome fact (clean-success flag plus
-        /// diagnostic) reaches the ViewModel, matching TaskPaneControl's
+        /// Settings Save completed — the outcome fact (the footer's severity
+        /// plus diagnostic) reaches the ViewModel, matching TaskPaneControl's
         /// routing; no coordinator lifecycle member is involved.
         /// </summary>
-        public void NotifySettingsSaveCompleted(bool success, string? diagnostic) =>
-            ViewModel.NotifySettingsSaveCompleted(success, diagnostic);
+        public void NotifySettingsSaveCompleted(StatusSeverity severity, string? diagnostic) =>
+            ViewModel.NotifySettingsSaveCompleted(severity, diagnostic);
     }
 }
