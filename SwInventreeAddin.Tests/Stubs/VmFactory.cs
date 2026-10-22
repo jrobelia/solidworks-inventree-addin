@@ -117,5 +117,13 @@ namespace SwInventreeAddin.Tests.Stubs
             Coordinator.UpdateMapping(provider);
             ViewModel.UpdateMapping(provider);
         }
+
+        /// <summary>
+        /// Settings Save completed — the outcome fact (the footer's severity
+        /// plus diagnostic) reaches the ViewModel, matching TaskPaneControl's
+        /// routing; no coordinator lifecycle member is involved.
+        /// </summary>
+        public void NotifySettingsSaveCompleted(StatusSeverity severity, string? diagnostic) =>
+            ViewModel.NotifySettingsSaveCompleted(severity, diagnostic);
     }
 }

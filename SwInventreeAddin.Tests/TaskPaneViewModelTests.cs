@@ -742,6 +742,140 @@ namespace SwInventreeAddin.Tests
             Assert.That(_vm.StatusText, Does.Contain("Error").IgnoreCase);
         }
 
+        // ── Settings Save outcome ────────────────────────────────────────────
+
+        [Test]
+        public void NotifySettingsSaveCompleted_ConnectedOutcome_ProjectsSettingsSavedEntry()
+        {
+            CreateVm();
+
+            _pair.NotifySettingsSaveCompleted(StatusSeverity.Success, "Saved — connection successful.");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(_vm.StatusText, Is.EqualTo("Settings saved — connection successful."));
+                Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Success));
+            });
+        }
+
+        [Test]
+        public void NotifySettingsSaveCompleted_FailedApply_ProjectsVerbatimError()
+        {
+            CreateVm();
+
+            _pair.NotifySettingsSaveCompleted(StatusSeverity.Error, "Failed to apply settings: access is denied.");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(_vm.StatusText, Is.EqualTo("Failed to apply settings: access is denied."));
+                Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Error));
+            });
+        }
+
+        [Test]
+        public void NotifySettingsSaveCompleted_MappingFailedSave_ProjectsSavedPrefixWithError()
+        {
+            CreateVm();
+
+            _pair.NotifySettingsSaveCompleted(StatusSeverity.Error,
+                "Saved — connection successful; the Property Mapping file could not be loaded.");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(_vm.StatusText, Is.EqualTo(
+                    "Settings saved — connection successful; the Property Mapping file could not be loaded."));
+                Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Error));
+            });
+        }
+
+        [Test]
+        public void NotifySettingsSaveCompleted_AuthenticationRequired_ProjectsDegradedSaveText()
+        {
+            CreateVm();
+
+            _pair.NotifySettingsSaveCompleted(StatusSeverity.Warning, "Saved — authentication required (invalid API key).");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(_vm.StatusText, Is.EqualTo(
+                    "Settings saved — authentication required (invalid API key)."));
+                Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
+            });
+        }
+
+        [Test]
+        public async Task NotifySettingsSaveCompleted_NextActionResult_ReplacesEntry()
+        {
+            await FetchSamplePart();
+            _pair.NotifySettingsSaveCompleted(StatusSeverity.Success, "Saved — connection successful.");
+
+            await _vm.PushNameToInvenTreeAsync();
+
+            Assert.That(_vm.StatusText, Is.EqualTo("Name pushed to InvenTree."));
+        }
+
+        [TestCase("Client")]
+        [TestCase("Mapping")]
+        [TestCase("Close")]
+        [TestCase("Identity")]
+        public async Task NotifySettingsSaveCompleted_InvalidatingEvent_DecaysEntry(string invalidation)
+        {
+            await FetchSamplePart();
+            _pair.NotifySettingsSaveCompleted(StatusSeverity.Success, "Saved — connection successful.");
+
+            switch (invalidation)
+            {
+                case "Client":
+                    _pair.UpdateClient(new StubInventreeClient());
+                    break;
+                case "Mapping":
+                    _pair.UpdateMapping(new StubPropertyMappingProvider());
+                    break;
+                case "Close":
+                    _propertyService.DocumentTypeToReturn = DocumentType.Unknown;
+                    _pair.CloseDocument();
+                    break;
+                case "Identity":
+                    _propertyService.Seed(DefaultMapping.IpnProperty!, "DIFFERENT-IPN");
+                    _pair.PropertyChanged(DefaultMapping.IpnProperty!, "DIFFERENT-IPN");
+                    break;
+            }
+
+            Assert.That(_vm.StatusText, Does.Not.Contain("saved"));
+        }
+
+        [Test]
+        public async Task NotifySettingsSaveCompleted_FailedSave_RemainsInToolTipWhileNewResultReigns()
+        {
+            await FetchSamplePart();
+            _pair.NotifySettingsSaveCompleted(StatusSeverity.Error, "Failed to apply settings: access is denied.");
+
+            await _vm.PushNameToInvenTreeAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(_vm.StatusText, Is.EqualTo("Name pushed to InvenTree."));
+                Assert.That(_vm.StatusToolTip, Does.Contain("Failed to apply settings: access is denied."));
+            });
+        }
+
+        [Test]
+        public void NotifySettingsSaveCompleted_SuccessAfterFailure_ResolvesRetainedFailure()
+        {
+            CreateVm();
+            _pair.NotifySettingsSaveCompleted(StatusSeverity.Error, "Failed to apply settings: access is denied.");
+
+            _pair.NotifySettingsSaveCompleted(StatusSeverity.Success, "Saved — connection successful.");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(_vm.StatusText, Is.EqualTo("Settings saved — connection successful."));
+                Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Success));
+                Assert.That(_vm.StatusToolTip ?? string.Empty,
+                    Does.Not.Contain("Failed to apply settings"));
+            });
+        }
+
         // ── PushRevision ──────────────────────────────────────────────────────
 
         [Test]
