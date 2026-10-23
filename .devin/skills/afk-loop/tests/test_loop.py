@@ -10,6 +10,12 @@ import unittest
 PACKAGE = Path(__file__).resolve().parents[1]
 STUB = Path(__file__).with_name("stub_tools.py")
 
+FAST = os.environ.get("AFK_TEST_FAST") == "1"
+
+
+def slow(case):
+    return unittest.skipIf(FAST, "end-to-end lifecycle skipped; run without AFK_TEST_FAST before committing")(case)
+
 
 class LoopTests(unittest.TestCase):
     def setUp(self):
@@ -45,12 +51,13 @@ class LoopTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
         return next((self.root / ".scratch" / "afk-loop").iterdir())
 
-    def approve(self, directory, host=False):
-        smoke = self.run_loop("--smoke", directory.name)
-        self.assertEqual(smoke.returncode, 0, smoke.stdout)
+    def approve(self, directory, host=False, verified=True):
+        if verified:
+            smoke = self.run_loop("--smoke", directory.name)
+            self.assertEqual(smoke.returncode, 0, smoke.stdout)
         approval = directory / "APPROVAL.json"
         data = json.loads(approval.read_text(encoding="utf-8"))
-        data.update(confirmed=True, policy_verified=True)
+        data.update(confirmed=True, policy_verified=verified)
         data["tickets"][0]["seam"] = "Existing Fetch seam, production and Stub adapters; deletion restores orchestration to callers."
         data["tickets"][0]["criteria"] = [{"id": "AC1", "text": "Fetch displays the part.", "kind": "host" if host else "automated"}]
         approval.write_text(json.dumps(data), encoding="utf-8")
@@ -79,6 +86,7 @@ class LoopTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(self.calls("devin"), [])
 
+    @slow
     def test_clean_run_is_local_and_ready_for_host_qa(self):
         directory = self.prepare()
         self.approve(directory, host=True)
@@ -93,7 +101,11 @@ class LoopTests(unittest.TestCase):
         self.assertFalse(any(row["args"][:2] in (["issue", "edit"], ["pr", "create"])
                              for row in self.calls("gh")))
         self.assertEqual(self.git("status", "--porcelain"), "")
+        progress = (directory / "PROGRESS.md").read_text(encoding="utf-8")
+        self.assertIn("tickets #50", progress)
+        self.assertIn("implement r1 a1 -> clean", progress)
 
+    @slow
     def test_resume_rejects_missing_evidence(self):
         directory = self.prepare()
         self.approve(directory)
@@ -105,6 +117,7 @@ class LoopTests(unittest.TestCase):
         self.assertNotEqual(second.returncode, 0, second.stdout)
         self.assertIn("evidence", second.stdout.lower())
 
+    @slow
     def test_dead_review_session_falls_back_without_spending_retry_budget(self):
         directory = self.prepare()
         self.approve(directory)
@@ -113,6 +126,7 @@ class LoopTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertEqual(self.state(directory)["tickets"]["50"]["status"], "ready-for-qa")
 
+    @slow
     def test_approved_publication_creates_draft_on_milestone_base(self):
         directory = self.prepare()
         self.approve(directory)
@@ -129,6 +143,7 @@ class LoopTests(unittest.TestCase):
         self.assertIn("--draft", create["args"])
         self.assertEqual(create["args"][create["args"].index("--base") + 1], "milestone-3")
 
+    @slow
     def test_push_failure_remains_visible_and_does_not_create_a_pr(self):
         directory = self.prepare()
         self.approve(directory)
@@ -142,6 +157,7 @@ class LoopTests(unittest.TestCase):
         self.assertEqual(self.state(directory)["tickets"]["50"]["publication"], "failed")
         self.assertFalse(any(row["args"][:2] == ["pr", "create"] for row in self.calls("gh")))
 
+    @slow
     def test_empty_crash_resumes_implementation_instead_of_salvaging_a_pass(self):
         directory = self.prepare()
         self.approve(directory)
@@ -154,6 +170,7 @@ class LoopTests(unittest.TestCase):
         approval = json.loads((directory / "APPROVAL.json").read_text())
         self.assertNotEqual(self.state(directory)["tickets"]["50"]["head"], approval["base"])
 
+    @slow
     def test_policy_smoke_is_separate_from_ticket_implementation(self):
         directory = self.prepare()
         result = self.run_loop("--smoke", directory.name)
@@ -166,6 +183,23 @@ class LoopTests(unittest.TestCase):
         self.assertTrue(approval["policy_verified"])
         self.assertEqual(self.git("status", "--porcelain"), "")
 
+    @slow
+    def test_run_probes_policy_inline_when_unverified(self):
+        directory = self.prepare()
+        self.approve(directory, verified=False)
+        result = self.run_loop("--run", directory.name)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        approval = json.loads((directory / "APPROVAL.json").read_text())
+        self.assertTrue(approval["policy_verified"])
+        self.assertTrue(json.loads((directory / "POLICY.json").read_text())["passed"])
+        state = self.state(directory)
+        self.assertTrue(state["tickets"]["0"]["sessions"]["policy"])
+        self.assertEqual(state["tickets"]["50"]["status"], "ready-for-qa")
+        dispatched = [row for row in self.calls("devin") if "--prompt-file" in row["args"]]
+        self.assertIn("policy-r1-", dispatched[0]["args"][-1])
+        self.assertTrue(any("implement-r1-" in row["args"][-1] for row in dispatched[1:]))
+
+    @slow
     def test_other_owner_blocks_implementation(self):
         self.env["AFK_TEST_SCENARIO"] = "other-owner"
         directory = self.prepare()
@@ -174,6 +208,7 @@ class LoopTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn("owner", result.stdout.lower())
 
+    @slow
     def test_malformed_result_records_a_terminal_blocker(self):
         directory = self.prepare()
         self.approve(directory)
@@ -181,6 +216,53 @@ class LoopTests(unittest.TestCase):
         result = self.run_loop("--run", directory.name)
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(self.state(directory)["tickets"]["50"]["status"], "blocked")
+        self.assertIn("result invalid", (directory / "PROGRESS.md").read_text(encoding="utf-8"))
+
+    @slow
+    def test_invalid_result_nudges_its_own_session_before_retrying(self):
+        directory, result = self.case("malformed-once", "--retries", "1")
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(self.state(directory)["tickets"]["50"]["status"], "ready-for-qa")
+        self.assertTrue(any("-r" in row["args"] for row in self.calls("devin")))
+        self.assertIn("result invalid", (directory / "PROGRESS.md").read_text(encoding="utf-8"))
+        jobs = sorted((directory / "50/jobs").glob("implement-*"))
+        self.assertEqual(len(jobs), 2)
+        self.assertTrue(json.loads((jobs[1] / "job.json").read_text())["salvage"])
+
+    @slow
+    def test_rate_limit_waits_and_resumes_without_spending_retries(self):
+        self.env.update(AFK_RATE_LIMIT_MARGIN="0", AFK_RATE_LIMIT_FLOOR="0")
+        directory, result = self.case("rate-limit-once", "--retries", "0")
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(self.state(directory)["tickets"]["50"]["status"], "ready-for-qa")
+        self.assertIn("waiting without spending a retry", (directory / "PROGRESS.md").read_text(encoding="utf-8"))
+
+    @slow
+    def test_rate_limit_window_can_end_the_run_for_a_later_resume(self):
+        self.env.update(AFK_RATE_LIMIT_MARGIN="0", AFK_RATE_LIMIT_FLOOR="0", AFK_RATE_LIMIT_MAX_WAIT="1")
+        directory, result = self.case("rate-limit-always", "--retries", "0")
+        self.assertEqual(result.returncode, 3, result.stdout)
+        self.assertEqual(self.state(directory)["status"], "rate-limited")
+        self.assertEqual(self.state(directory)["tickets"]["50"]["status"], "rate-limited")
+        self.assertIn("--resume", (directory / "PROGRESS.md").read_text(encoding="utf-8"))
+
+    @slow
+    def test_resume_replays_the_recorded_verdict_once(self):
+        directory, first = self.case("clean")
+        self.assertEqual(first.returncode, 0, first.stdout)
+        second = self.run_loop("--resume", directory.name)
+        self.assertEqual(second.returncode, 0, second.stdout)
+        self.assertIn("replaying recorded verdict", second.stdout)
+        self.assertEqual((directory / "PROGRESS.md").read_text(encoding="utf-8").count("Terminal #50: ready-for-qa"), 1)
+
+    @slow
+    def test_worker_config_permits_the_file_search_tool(self):
+        directory, result = self.case("clean")
+        self.assertEqual(result.returncode, 0, result.stdout)
+        configs = list((self.root / ".devin" / "afk-loop").rglob("worker.json"))
+        self.assertTrue(configs)
+        allow = json.loads(configs[0].read_text(encoding="utf-8"))["permissions"]["allow"]
+        self.assertIn("glob", allow)
 
     def case(self, scenario, *args):
         self.env.pop("AFK_TEST_SCENARIO", None)
@@ -201,12 +283,14 @@ class LoopTests(unittest.TestCase):
         (self.root / "unrelated.txt").write_text("preserve", encoding="utf-8")
         result = self.run_loop("--prepare", "--tickets", "50")
         self.assertNotEqual(result.returncode, 0)
+        self.assertIn("unrelated.txt", result.stdout)
         self.assertEqual((self.root / "unrelated.txt").read_text(), "preserve")
 
     def test_duplicate_ticket_arguments_are_rejected(self):
         result = self.run_loop("--prepare", "--tickets", "50", "50")
         self.assertNotEqual(result.returncode, 0)
 
+    @slow
     def test_prior_pr_prevents_new_implementation(self):
         self.env["AFK_TEST_SCENARIO"] = "prior-pr"
         directory = self.prepare()
@@ -215,6 +299,7 @@ class LoopTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("prior work", result.stdout.lower())
 
+    @slow
     def test_spec_drift_prevents_dispatch(self):
         directory = self.prepare()
         self.approve(directory)
@@ -223,12 +308,14 @@ class LoopTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("specification changed", result.stdout.lower())
 
+    @slow
     def test_red_baseline_prevents_implementation(self):
         directory, result = self.case("red-baseline")
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse(self.state(directory)["baseline"]["passed"])
         self.assertFalse(any("implement" in " ".join(row["args"]) for row in self.calls("devin")))
 
+    @slow
     def test_wrong_commit_and_empty_report_are_blockers(self):
         for scenario in ("wrong-head", "empty-report", "readonly-edit"):
             with self.subTest(scenario=scenario):
@@ -237,6 +324,7 @@ class LoopTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(self.state(directory)["tickets"]["50"]["status"], "blocked")
 
+    @slow
     def test_last_review_round_cannot_launch_an_unconfirmable_repair(self):
         directory, result = self.case("persistent-finding", "--rounds", "1")
         self.assertNotEqual(result.returncode, 0)
@@ -244,6 +332,7 @@ class LoopTests(unittest.TestCase):
         jobs = list((directory / "50/jobs").iterdir())
         self.assertFalse(any(path.name.startswith("repair-") for path in jobs))
 
+    @slow
     def test_verification_findings_get_one_fix_and_confirm_cycle(self):
         directory, result = self.case("verify-finding")
         self.assertEqual(result.returncode, 0, result.stdout)
@@ -252,11 +341,13 @@ class LoopTests(unittest.TestCase):
         self.assertEqual(ticket["verification"]["round"], 2)
         self.assertEqual(len(list((directory / "50/jobs").glob("verify-*"))), 2)
 
+    @slow
     def test_zero_verification_budget_blocks_without_repair(self):
         directory, result = self.case("verify-finding", "--verify-rounds", "0")
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse(any(path.name.startswith("repair-") for path in (directory / "50/jobs").iterdir()))
 
+    @slow
     def test_contract_nudge_preserves_stream_and_does_not_repeat_implementation(self):
         directory, result = self.case("missing-once", "--retries", "1")
         self.assertEqual(result.returncode, 0, result.stdout)
@@ -265,6 +356,7 @@ class LoopTests(unittest.TestCase):
         self.assertTrue(all((path / "stream.log").is_file() for path in jobs))
         self.assertTrue(json.loads((jobs[1] / "job.json").read_text())["salvage"])
 
+    @slow
     def test_timeout_is_bounded_and_checkpointed(self):
         directory = self.prepare()
         self.approve(directory)
@@ -274,6 +366,7 @@ class LoopTests(unittest.TestCase):
         self.assertEqual(self.state(directory)["tickets"]["50"]["status"], "blocked")
         self.assertIn("timeout", (directory / "PROGRESS.md").read_text().lower())
 
+    @slow
     def test_utf8_bom_result_is_accepted(self):
         directory, result = self.case("bom")
         self.assertEqual(result.returncode, 0, result.stdout)
@@ -281,11 +374,12 @@ class LoopTests(unittest.TestCase):
 
     def test_remote_flags_need_separate_approval(self):
         directory = self.prepare()
-        self.approve(directory)
+        self.approve(directory, verified=False)
         result = self.run_loop("--run", directory.name, "--publish", "--claim")
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse(any(row["args"][:2] == ["issue", "edit"] for row in self.calls("gh")))
 
+    @slow
     def test_prior_work_appearing_after_preparation_blocks_start(self):
         directory = self.prepare()
         self.approve(directory)
@@ -294,12 +388,14 @@ class LoopTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn("prior work", result.stdout.lower())
 
+    @slow
     def test_post_verify_review_findings_cannot_bypass_the_verify_repair_budget(self):
         directory, result = self.case("post-verify-findings")
         self.assertNotEqual(result.returncode, 0)
         repairs = list((directory / "50/jobs").glob("repair-*"))
         self.assertEqual(len(repairs), 1, result.stdout)
 
+    @slow
     def test_missing_ci_is_pending_not_a_green_publication(self):
         directory = self.prepare()
         self.approve(directory)

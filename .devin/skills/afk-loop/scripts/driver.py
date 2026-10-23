@@ -1,5 +1,5 @@
 import argparse
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 import os
@@ -20,6 +20,18 @@ PACKAGE = Path(__file__).resolve().parents[1]
 
 class Blocked(Exception):
     pass
+
+
+class InvalidResult(Blocked):
+    """result.json exists but fails the contract; the writing session can fix it."""
+
+
+class Paused(Blocked):
+    """Infrastructure stopped the dispatch; --resume continues the run."""
+
+
+class RateLimited(Paused):
+    """Quota window outlasted the wait budget; ends the run for every ticket."""
 
 
 def stamp():
@@ -80,8 +92,55 @@ def git(root, *args):
 
 
 def clean(root):
-    if git(root, "status", "--porcelain"):
-        raise Blocked("Working tree is dirty; preserve existing work and ask the maintainer")
+    dirty = git(root, "status", "--porcelain")
+    if dirty:
+        paths = ", ".join(line[3:] for line in dirty.splitlines()[:5])
+        raise Blocked(f"Working tree {Path(root).resolve()} is dirty ({paths}); preserve existing work and ask the maintainer")
+
+
+def rate_limit_wait(path):
+    text = Path(path).read_text(encoding="utf-8", errors="replace")
+    if "rate limit" not in text.lower() or "reset" not in text.lower():
+        return None
+    waits = [int(match.group(1)) * {"s": 1, "m": 60, "h": 3600}[match.group(2)[0].lower()]
+             for match in re.finditer(r"reset in (\d+) (second|minute|hour|sec|min|hr)s?", text, re.I)]
+    if waits:
+        return waits[-1]
+    marks = list(re.finditer(r"\(at (\d{1,2}):(\d{2}) UTC\)", text))
+    if not marks:
+        return 0
+    now = datetime.now(timezone.utc)
+    target = now.replace(hour=int(marks[-1].group(1)), minute=int(marks[-1].group(2)),
+                         second=0, microsecond=0)
+    if target <= now:
+        target += timedelta(days=1)
+    return int((target - now).total_seconds())
+
+
+def session_age(cwd, sid):
+    if not sid:
+        return None
+    result = capture("devin", ["list", "--format", "json"], cwd, required=False)
+    if result.returncode:
+        return None
+    try:
+        rows = json.loads(result.stdout)
+    except ValueError:
+        return None
+    latest = None
+    for row in rows:
+        if row.get("id") != sid:
+            continue
+        value = row.get("last_activity_at")
+        try:
+            stamp_value = int(value)
+        except (TypeError, ValueError):
+            try:
+                stamp_value = datetime.fromisoformat(str(value).replace("Z", "+00:00")).timestamp()
+            except (TypeError, ValueError):
+                continue
+        latest = stamp_value if latest is None else max(latest, stamp_value)
+    return None if latest is None else max(0, int(time.time() - latest))
 
 
 def issue(root, number):
@@ -224,7 +283,28 @@ def terminate(process):
     process.wait()
 
 
-def stream_command(command, cwd, output, log):
+BANNER = ("Welcome to Devin CLI", "Logged in as", "Organization:", "You're all set. Run")
+
+WORKER_BRIEF = """
+EXECUTION ENVIRONMENT — this session is tool-permissioned and hook-guarded:
+- One command per call; no pipes (|), no chaining (&&, ;), no subshells, no env assignments.
+- Permitted commands: git status/diff/log/show/rev-parse/ls-files, dotnet test, dotnet format, cp.
+  Commit messages: repeat -m flags; never -F or a scratch file.
+- Use the read/write/find_file_by_name tools for files instead of cat/ls/find.
+- Known paths come from job.json (JOB_FILE above); write result.json into job_dir.
+
+RESULT SKELETON — copy the identity fields from THIS job.json verbatim:
+{"version": 1, "ticket": <job.ticket>, "phase": "<job.phase>", "round": <job.round>,
+ "attempt": <job.attempt>, "input_head": "<job.input_head>", "head": "<git rev-parse HEAD>",
+ "status": "clean|findings|blocked", "report": "report.md", "findings": [], "criteria": []}
+- findings entries: {"id": "...", "anchor": "path:line", "correction": "..."}
+- verify only: criteria echoes every job criterion id as
+  {"id": "<AC id>", "status": "automated|visual|host-pending|not-applicable|not-proven",
+   "artifact": "<path relative to ticket_dir>", "reason": "<why, when unexercised>"}
+"""
+
+
+def stream_command(command, cwd, output, log, label="dispatch", echo=True):
     timeout = float(os.environ.get("AFK_TIMEOUT", "7200"))
     tick = float(os.environ.get("AFK_HEARTBEAT", "300"))
     stale = float(os.environ.get("AFK_STALE", "900"))
@@ -245,6 +325,8 @@ def stream_command(command, cwd, output, log):
     reader = threading.Thread(target=read_output, daemon=True)
     reader.start()
     started = last = heartbeat = time.monotonic()
+    session_path = Path(output).with_name("session.json")
+    seen = {"sid": None, "checked": 0.0}
     done = timed_out = False
     try:
         with Path(output).open("x", encoding="utf-8", newline="\n") as stream:
@@ -252,10 +334,18 @@ def stream_command(command, cwd, output, log):
                 now = time.monotonic()
                 if now - started >= timeout and process.poll() is None:
                     timed_out = True
-                    log("Dispatch timeout; terminating only the spawned process tree")
+                    log(label + " dispatch timeout; terminating only the spawned process tree")
                     terminate(process)
                 if now - heartbeat >= tick:
-                    log("STALE" if now - last >= stale else "alive")
+                    idle = int(now - last)
+                    message = (label + (" STALE" if idle >= stale else " alive")
+                               + f" — stream idle {idle // 60}m, dispatch elapsed {int(now - started) // 60}m")
+                    if seen["sid"] is None and now - seen["checked"] >= 30 and session_path.is_file():
+                        seen.update(checked=now, sid=load(session_path).get("session_id"))
+                    age = session_age(cwd, seen["sid"])
+                    if age is not None:
+                        message += f", session active {age // 60}m ago"
+                    log(message)
                     heartbeat = now
                 try:
                     line = lines.get(timeout=min(tick, 0.2))
@@ -267,7 +357,8 @@ def stream_command(command, cwd, output, log):
                     last = time.monotonic()
                     stream.write(line)
                     stream.flush()
-                    print(line, end="", flush=True)
+                    if echo and not any(token in line for token in BANNER):
+                        print(line, end="", flush=True)
         return 124 if timed_out else process.wait()
     finally:
         terminate(process)
@@ -277,10 +368,10 @@ def stream_command(command, cwd, output, log):
 
 def artifact(directory, name):
     if not isinstance(name, str) or not name or Path(name).is_absolute():
-        raise Blocked("Artifact must be a relative path")
+        raise InvalidResult("Artifact must be a relative path")
     path = (directory / name).resolve()
     if not path.is_relative_to(directory.resolve()) or not path.is_file() or not path.stat().st_size:
-        raise Blocked("Missing, empty, or out-of-scope artifact: " + name)
+        raise InvalidResult("Missing, empty, or out-of-scope artifact: " + str(name))
     return path
 
 
@@ -295,20 +386,14 @@ class Loop:
         approval = self.approval
         if approval.get("version") != 1 or approval.get("run") != run or Path(approval["root"]).resolve() != root:
             raise Blocked("Approval does not belong to this run and checkout")
-        if not args.smoke and (approval.get("confirmed") is not True or approval.get("policy_verified") is not True):
-            raise Blocked("Playback, seam, acceptance mapping, and worker policy need confirmation")
+        if not args.smoke and approval.get("confirmed") is not True:
+            raise Blocked("Playback, seam, and acceptance mapping need confirmation")
         if args.publish and approval.get("allow_publish") is not True:
             raise Blocked("Publication needs explicit approval")
         if args.claim and approval.get("allow_claim") is not True:
             raise Blocked("Ticket assignment needs explicit approval")
-        if not args.smoke:
-            policy = load(self.directory / "POLICY.json")
-            events = Path(policy["events"]).resolve()
-            if policy.get("passed") is not True or policy.get("package_hash") != package_hash() or policy.get("base") != approval["base"]:
-                raise Blocked("Actual worker policy probe is missing or stale")
-            if not events.is_relative_to(self.directory) or not events.is_file() or file_hash(events) != policy["events_hash"]:
-                raise Blocked("Worker policy evidence is missing or changed")
-        clean(root)
+        if not args.resume:
+            clean(root)
         if git(root, "branch", "--show-current") != approval["base_branch"] or git(root, "rev-parse", "HEAD") != approval["base"]:
             raise Blocked("Canonical base branch or commit changed; prepare a new approved run")
         if repository(root) != approval["repository"]:
@@ -397,20 +482,22 @@ class Loop:
         save(self.status_path, self.state)
 
     def log(self, message):
-        line = stamp() + " " + message
+        line = "[afk-loop " + datetime.now().astimezone().strftime("%H:%M:%S") + "] " + message
         print(line, flush=True)
         with (self.directory / "PROGRESS.md").open("a", encoding="utf-8", newline="\n") as stream:
             stream.write(line + "\n")
 
-    def check(self, cwd, directory, head):
+    def check(self, cwd, directory, head, label):
         clean(cwd)
         directory.mkdir(parents=True, exist_ok=False)
         commands = [["test", "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj", "--disable-build-servers"],
                     ["format", "Solidworks Inventree Add-In.sln", "--verify-no-changes"]]
         rows = []
         for command in commands:
+            self.log(f"{label} gate: dotnet {' '.join(command)}")
             path = directory / (command[0] + ".log")
-            code = stream_command([*tool("dotnet"), *command], cwd, path, self.log)
+            code = stream_command([*tool("dotnet"), *command], cwd, path, self.log, f"{label} {command[0]}", echo=False)
+            self.log(f"{label} gate: dotnet {command[0]} exit {code}")
             rows.append({"command": ["dotnet", *command], "exit_code": code, "log": str(path), "hash": file_hash(path)})
             if code:
                 break
@@ -452,7 +539,8 @@ class Loop:
         guard_command = "python " + subprocess.list2cmdline([str(PACKAGE / "scripts/guard.py"), str(directory / "job.json")])
         allow = ["Write(" + directory.as_posix() + "/**)", "Exec(git status)", "Exec(git diff)",
                  "Exec(git log)", "Exec(git show)", "Exec(git rev-parse)", "Exec(git ls-files)",
-                 "Exec(dotnet test)", "Exec(dotnet format)", "Exec(cp)", "skill", "todo_write", "get_output"]
+                 "Exec(dotnet test)", "Exec(dotnet format)", "Exec(cp)", "skill", "todo_write", "get_output",
+                 "glob", "find_file_by_name"]
         if writable:
             allow += ["Write(" + worktree.as_posix() + "/**)", "Exec(git add)", "Exec(git commit)"]
         deny = ["run_subagent", "read_subagent", "code_search", "Fetch(*)", "Exec(gh)", "Exec(git push)",
@@ -479,12 +567,12 @@ class Loop:
 
     def validate(self, job, result, ticket):
         if not isinstance(result, dict):
-            raise Blocked("Worker result must be a JSON object")
+            raise InvalidResult("Worker result must be a JSON object")
         for key in ("version", "ticket", "phase", "round", "attempt", "input_head"):
             if type(result.get(key)) is not type(job[key]) or result.get(key) != job[key]:
-                raise Blocked("Worker result has a mismatched " + key)
+                raise InvalidResult("Worker result has a mismatched " + key)
         if result.get("status") not in {"clean", "findings", "blocked"}:
-            raise Blocked("Worker result has an invalid status")
+            raise InvalidResult("Worker result has an invalid status")
         cwd = Path(job["worktree"])
         head = git(cwd, "rev-parse", "HEAD")
         clean(cwd)
@@ -495,37 +583,37 @@ class Loop:
         report = artifact(Path(job["job_dir"]), result.get("report"))
         result["report_path"], result["report_hash"] = str(report), file_hash(report)
         if not isinstance(result.get("findings"), list) or not isinstance(result.get("criteria"), list):
-            raise Blocked("Worker findings and criteria must be arrays")
+            raise InvalidResult("Worker findings and criteria must be arrays")
         if result["status"] == "clean" and result["findings"]:
-            raise Blocked("Clean verdict cannot contain open findings")
+            raise InvalidResult("Clean verdict cannot contain open findings")
         if job["phase"] in {"implement", "repair"} and result["status"] == "findings":
-            raise Blocked("Implementation and repair return clean committed work or a named blocker")
+            raise InvalidResult("Implementation and repair return clean committed work or a named blocker")
         if result["status"] == "findings" and not result["findings"]:
-            raise Blocked("Findings verdict has no work order")
+            raise InvalidResult("Findings verdict has no work order")
         if any(not row.get("id") or not row.get("anchor") or not row.get("correction") for row in result["findings"]):
-            raise Blocked("Findings require ids, anchors, and settled corrections")
+            raise InvalidResult("Findings require ids, anchors, and settled corrections")
         if result["status"] == "blocked":
             raise Blocked(result.get("reason") or "Worker reported an unnamed blocker")
         if job["phase"] == "verify":
             expected = {row["id"]: row for row in job["criteria"]}
             actual = {row.get("id"): row for row in result["criteria"]}
             if set(expected) != set(actual) or len(actual) != len(result["criteria"]):
-                raise Blocked("Verification did not account for every approved acceptance criterion")
+                raise InvalidResult("Verification did not account for every approved acceptance criterion")
             for identity, row in actual.items():
                 kind = expected[identity]["kind"]
                 allowed = {"host": {"host-pending"}, "not-applicable": {"not-applicable"},
                            "automated": {"automated", "not-proven"}, "visual": {"visual", "not-proven"}}[kind]
                 if row.get("status") not in allowed:
-                    raise Blocked("Verification changed an acceptance criterion's evidence requirement")
+                    raise InvalidResult("Verification changed an acceptance criterion's evidence requirement")
                 if row["status"] in {"automated", "visual"}:
                     evidence = artifact(Path(job["ticket_dir"]), row.get("artifact"))
                     row["artifact_path"], row["artifact_hash"] = str(evidence), file_hash(evidence)
                     if kind == "visual" and evidence.suffix.lower() != ".png":
-                        raise Blocked("Visual verification requires a PNG capture")
+                        raise InvalidResult("Visual verification requires a PNG capture")
                 elif not row.get("reason"):
-                    raise Blocked("Unexercised criterion needs a reason and QA handoff")
+                    raise InvalidResult("Unexercised criterion needs a reason and QA handoff")
                 if row["status"] == "not-proven" and result["status"] != "findings":
-                    raise Blocked("Unproven automated evidence cannot earn a clean verdict")
+                    raise InvalidResult("Unproven automated evidence cannot earn a clean verdict")
         return result
 
     def dispatch(self, approved, ticket, phase, round_number):
@@ -539,6 +627,13 @@ class Loop:
         if not isinstance(delays, list) or not delays or any(type(value) not in (int, float) or not math.isfinite(value) or value < 0 for value in delays):
             raise Blocked("Invalid retry delay schedule")
         retry = 0
+        rl_waited = 0
+        nudge = None
+        margin = float(os.environ.get("AFK_RATE_LIMIT_MARGIN", "300"))
+        floor = float(os.environ.get("AFK_RATE_LIMIT_FLOOR", "60"))
+        wait_cap = float(os.environ.get("AFK_RATE_LIMIT_MAX_WAIT", "10800"))
+        if any(not math.isfinite(value) or value < 0 for value in (margin, floor)) or not math.isfinite(wait_cap) or wait_cap <= 0:
+            raise Blocked("Rate-limit margin, floor, and wait cap must be finite non-negative seconds")
         while retry <= self.args.retries:
             sequence = ticket.get("dispatches", 0) + 1
             ticket["dispatches"] = sequence
@@ -559,7 +654,13 @@ class Loop:
             self.checkpoint()
             template = "review" if phase.startswith("review-") else phase
             prompt = "JOB_FILE=" + str(directory / "job.json") + "\n\n" + (PACKAGE / "prompts" / (template + ".md")).read_text(encoding="utf-8")
-            if salvage:
+            prompt += WORKER_BRIEF
+            if nudge is not None:
+                prompt += ("\nNUDGE: this job resumes the session whose previous attempt wrote a result.json that failed "
+                           "validation: " + nudge + ". Copy THIS job.json's identity fields (version, ticket, phase, round, "
+                           "attempt, input_head) verbatim into THIS job's result.json; keep the verdict and evidence the work "
+                           "already supports. Do not redo or revise the phase's work.\n")
+            elif salvage:
                 prompt += "\nSALVAGE: inspect existing work and evidence only. Persist a supported verdict; do not repeat or revise implementation. Insufficient evidence is blocked.\n"
             (directory / "prompt.md").write_text(prompt, encoding="utf-8")
             config = self.config(job, job["writable"])
@@ -570,40 +671,71 @@ class Loop:
                        "--config", str(config), "--export", str(directory / "transcript.json"), "--prompt-file", str(directory / "prompt.md")]
             if resume:
                 command += ["-r", resume]
-            self.log(f"#{approved['number']} {phase} r{round_number} dispatch {sequence}")
-            code = stream_command(command, cwd, directory / "stream.log", self.log)
+            stream_path = directory / "stream.log"
+            self.log(f"#{approved['number']} {phase} r{round_number} dispatch {sequence} — model {model}"
+                     + (f", resume session {resume}" if resume else "")
+                     + f", stream {stream_path.relative_to(self.directory).as_posix()}")
+            code = stream_command(command, cwd, stream_path, self.log,
+                                  f"#{approved['number']} {phase} r{round_number} a{sequence}")
             session = directory / "session.json"
             sid = load(session).get("session_id") if session.exists() else None
             if sid:
                 ticket.setdefault("sessions", {})[phase] = sid
             result_path = directory / "result.json"
             if result_path.exists():
+                nudge = None
                 try:
                     result = self.validate(job, load(result_path), ticket)
-                except (ValueError, KeyError, TypeError, AttributeError, OSError) as error:
+                except InvalidResult as error:
+                    nudge = str(error)
+                except ValueError as error:
+                    nudge = "result.json is not readable JSON: " + str(error)
+                except (KeyError, TypeError, AttributeError, OSError) as error:
                     raise Blocked("Invalid worker result: " + str(error))
-                ticket.pop("active", None)
-                ticket["head"] = result["head"]
-                self.checkpoint()
-                return result
-            if resume and "No session found matching" in (directory / "stream.log").read_text(encoding="utf-8"):
-                self.log("Expired review/verification session; falling back to fresh context without spending a retry")
+                if nudge is None:
+                    ticket.pop("active", None)
+                    ticket["head"] = result["head"]
+                    findings = f" ({len(result['findings'])} findings)" if result["findings"] else ""
+                    self.log(f"#{approved['number']} {phase} r{round_number} a{sequence} -> {result['status']}{findings} @ {result['head'][:12]}")
+                    self.checkpoint()
+                    return result
+                self.log(f"#{approved['number']} {phase} r{round_number} a{sequence} result invalid: {nudge}")
+            if resume and "No session found matching" in stream_path.read_text(encoding="utf-8"):
+                self.log(f"#{approved['number']} {phase} session {resume} is gone; falling back to fresh context without spending a retry")
                 ticket.setdefault("sessions", {}).pop(phase, None)
                 resume = None
+                nudge = None
                 self.checkpoint()
                 continue
+            wait = rate_limit_wait(stream_path)
+            if wait is not None:
+                wait = max(int(floor), wait + int(margin))
+                if rl_waited + wait > wait_cap:
+                    raise RateLimited(f"#{approved['number']} {phase} r{round_number} rate-limit window outlasts the {int(wait_cap)}s wait budget")
+                rl_waited += wait
+                if sid:
+                    resume = sid
+                self.log(f"#{approved['number']} {phase} r{round_number} rate-limited — quota resets in ~{wait}s; waiting without spending a retry")
+                self.checkpoint()
+                time.sleep(wait)
+                continue
             if retry == self.args.retries:
-                raise Blocked("Dispatch exhausted retries without a validated verdict; partial work is retained")
+                raise Paused("Dispatch exhausted retries without a validated verdict; partial work is retained")
             moved = git(cwd, "rev-parse", "HEAD") != head or bool(git(cwd, "status", "--porcelain"))
             salvage = moved or (directory / "report.md").exists()
-            resume = sid if code == 0 and sid else None
-            if resume:
+            if sid and (nudge is not None or code == 0 or phase not in {"implement", "repair"}):
+                resume = sid
+            else:
+                resume = None
+            if resume and (nudge is not None or code == 0):
                 salvage = True
-            self.log(f"Verdictless dispatch exited {code}; {'salvage' if salvage else 'retry'} without deleting partial work")
+            note = "invalid result; nudging its session" if nudge else f"verdictless dispatch exited {code}"
+            action = "resuming " + resume if resume else "fresh dispatch"
+            self.log(f"#{approved['number']} {phase} r{round_number} a{sequence} {note}; {action}, {'salvage' if salvage else 'retry'} without deleting partial work")
             self.checkpoint()
             time.sleep(delays[min(retry, len(delays) - 1)])
             retry += 1
-        raise Blocked("No dispatch verdict")
+        raise Paused("No dispatch verdict")
 
     def smoke(self):
         if os.environ.get("DEVIN_API_KEY"):
@@ -647,7 +779,6 @@ class Loop:
     def publish(self, approved, ticket):
         cwd = Path(ticket["worktree"])
         clean(cwd)
-        clean(self.root)
         if git(self.root, "rev-parse", "HEAD") != self.approval["base"] or digest(specification(self.root, approved["number"])) != approved["snapshot_hash"]:
             raise Blocked("Base or specification changed before publication")
         self.recorded_evidence()
@@ -677,10 +808,11 @@ class Loop:
         path.write_text("\n".join(body), encoding="utf-8")
         ticket["publication"] = "pushing"
         self.checkpoint()
+        self.log(f"#{approved['number']} publish: pushing {ticket['branch']}")
         pushed = capture("git", ["push", "-u", "origin", ticket["branch"]], cwd, required=False)
         if pushed.returncode:
             ticket["publication"] = "failed"
-            raise Blocked("Publication failed: push; local work and evidence are retained")
+            raise Paused("Publication failed: push; local work and evidence are retained")
         ticket["publication"] = "branch-pushed"
         self.checkpoint()
         existing = json.loads(capture("gh", ["pr", "list", "--state", "open", "--head", ticket["branch"],
@@ -697,16 +829,19 @@ class Loop:
             reference = result.stdout.strip()
         if result.returncode:
             ticket["publication"] = "failed"
-            raise Blocked("Publication failed: PR body/create; branch was pushed")
+            raise Paused("Publication failed: PR body/create; branch was pushed")
         ticket["pr"], ticket["publication"], ticket["ci"] = reference, "draft-created", "pending"
         self.checkpoint()
+        self.log(f"#{approved['number']} publish: draft {reference}; watching CI")
         checks = json.loads(capture("gh", ["pr", "checks", reference, "--json", "name,state"], cwd).stdout)
         if not checks:
             raise Blocked("Draft PR exists, but CI checks have not appeared; CI is pending")
         code = stream_command([*tool("gh"), "pr", "checks", reference, "--watch", "--fail-fast"],
-                              cwd, path.with_name("ci-" + uuid.uuid4().hex[:8] + ".log"), self.log)
+                              cwd, path.with_name("ci-" + uuid.uuid4().hex[:8] + ".log"), self.log,
+                              f"#{approved['number']} ci-watch")
         ticket["ci"] = "green" if code == 0 else "pending" if code == 124 else "failed"
         self.checkpoint()
+        self.log(f"#{approved['number']} publish: CI {ticket['ci']}")
         if code:
             raise Blocked("Draft PR exists, but required CI is " + ticket["ci"])
 
@@ -716,6 +851,8 @@ class Loop:
                     "worktree": str(self.root / ".worktrees/afk-loop" / self.state["run"] / ("issue-" + number)),
                     "head": self.approval["base"], "phase": "implement", "round": 1, "verify_round": 1,
                     "verify_repairs": 0, "status": "running", "publication": "not-requested", "claim": self.state.get("claims", {}).get(number, "not-requested")})
+        entered_done = ticket["phase"] == "done"
+        published = False
         self.checkpoint()
         try:
             cwd = self.worktree(approved, ticket)
@@ -732,7 +869,7 @@ class Loop:
                     ticket["phase"] = "checks"
                 elif phase == "checks":
                     name = "gate-" + uuid.uuid4().hex[:8]
-                    ticket["checks"] = self.check(cwd, self.directory / number / "checks" / name, ticket["head"])
+                    ticket["checks"] = self.check(cwd, self.directory / number / "checks" / name, ticket["head"], f"#{number}")
                     ticket["phase"] = "review-spec"
                 elif phase in {"review-spec", "review-standards", "adjudicate"}:
                     result = self.dispatch(approved, ticket, phase, round_number)
@@ -772,25 +909,53 @@ class Loop:
                 self.checkpoint()
             if self.args.publish and ticket.get("ci") != "green":
                 self.publish(approved, ticket)
+                published = True
                 ticket["status"] = "ready-for-qa"
                 self.checkpoint()
+        except RateLimited:
+            ticket["status"] = "rate-limited"
+            ticket["reason"] = "quota window outlasted the wait budget"
+            self.checkpoint()
+            self.log(f"Terminal #{number}: rate-limited; claim {ticket['claim']}; resume after the window")
+            raise
         except Blocked as error:
             ticket["status"], ticket["reason"] = "blocked", str(error)
             self.checkpoint()
-            self.log(f"Terminal #{number}: blocked; claim {ticket['claim']}; {error}; handoff /build-hitl")
+            hint = (f"resume: .\\.devin\\skills\\afk-loop\\afk-loop.ps1 --resume {self.state['run']}"
+                    if isinstance(error, Paused) else "handoff /build-hitl")
+            self.log(f"Terminal #{number}: blocked; claim {ticket['claim']}; {error}; {hint}")
             return False
         ticket["status"], ticket["reason"] = "ready-for-qa", ""
         self.checkpoint()
-        self.log(f"Terminal #{number}: ready-for-qa @ {ticket['head']}; run /qa; claim {ticket['claim']}")
+        if entered_done and not published:
+            self.log(f"#{number} replaying recorded verdict: ready-for-qa @ {ticket['head'][:12]}")
+        else:
+            self.log(f"Terminal #{number}: ready-for-qa @ {ticket['head']}; run /qa; claim {ticket['claim']}")
         return True
+
+    def verify_policy(self):
+        if self.approval.get("policy_verified") is not True:
+            self.log("Worker policy not yet verified on this machine; running the neutral policy probe first")
+            self.smoke()
+        policy = load(self.directory / "POLICY.json")
+        events = Path(policy["events"]).resolve()
+        if policy.get("passed") is not True or policy.get("package_hash") != package_hash() or policy.get("base") != self.approval["base"]:
+            raise Blocked("Actual worker policy probe is missing or stale")
+        if not events.is_relative_to(self.directory) or not events.is_file() or file_hash(events) != policy["events_hash"]:
+            raise Blocked("Worker policy evidence is missing or changed")
 
     def run(self):
         if os.environ.get("DEVIN_API_KEY"):
             raise Blocked("DEVIN_API_KEY overrides terminal login; authenticate in your own terminal without that override")
+        self.verify_policy()
         self.state["status"] = "running"
         self.checkpoint()
         capture("devin", ["auth", "status"], self.root)
         capture("gh", ["auth", "status"], self.root)
+        tickets = ", ".join("#" + str(t["number"]) for t in self.approval["tickets"])
+        self.log(f"run {self.state['run']}: tickets {tickets}; base {self.approval['base_branch']} @ {self.approval['base'][:12]}; "
+                 f"publish={int(self.args.publish)} claim={int(self.args.claim)} rounds={self.args.rounds} "
+                 f"verify_rounds={self.args.verify_rounds} retries={self.args.retries}")
         if self.args.claim:
             for ticket in self.approval["tickets"]:
                 number = str(ticket["number"])
@@ -802,17 +967,31 @@ class Loop:
         self.recorded_evidence()
         baseline = self.state.get("baseline")
         if not baseline:
-            self.state["baseline"] = self.check(self.root, self.directory / ("baseline-" + uuid.uuid4().hex[:8]), self.approval["base"])
+            self.log(f"baseline gate on canonical @ {self.approval['base'][:12]}")
+            self.state["baseline"] = self.check(self.root, self.directory / ("baseline-" + uuid.uuid4().hex[:8]),
+                                                self.approval["base"], "baseline")
             self.checkpoint()
+            self.log(f"baseline {'green' if self.state['baseline']['passed'] else 'red'}")
         if not self.state["baseline"]["passed"]:
             raise Blocked("Red baseline; implementation cannot start")
-        outcomes = [self.ticket(ticket) for ticket in self.approval["tickets"]]
-        clean(self.root)
+        try:
+            outcomes = [self.ticket(ticket) for ticket in self.approval["tickets"]]
+        except RateLimited:
+            self.state["ended"] = stamp()
+            self.state["status"] = "rate-limited"
+            self.checkpoint()
+            self.log(f"run rate-limited — resume after the quota window: .\\.devin\\skills\\afk-loop\\afk-loop.ps1 --resume {self.state['run']}")
+            return 3
+        if git(self.root, "status", "--porcelain"):
+            self.log("note: canonical checkout has uncommitted changes; the run never writes to it")
         if git(self.root, "rev-parse", "HEAD") != self.approval["base"]:
-            raise Blocked("Canonical base moved during the run")
+            self.log("note: canonical HEAD moved during the run; recorded evidence is unaffected")
         self.state["ended"] = stamp()
         self.state["status"] = "ready-for-qa" if all(outcomes) else "blocked"
         self.checkpoint()
+        summary = ", ".join(f"#{ticket['number']} {self.state['tickets'][str(ticket['number'])]['status']}"
+                            for ticket in self.approval["tickets"])
+        self.log(f"run {self.state['status']}: {summary} — {self.directory}")
         return 0 if all(outcomes) else 2
 
 
@@ -860,6 +1039,12 @@ def main():
             loop.checkpoint()
         print("INTERRUPTED: use --resume; partial work is retained", file=sys.stderr)
         return 130
+    except RateLimited as error:
+        print("RATE-LIMITED: " + str(error), file=sys.stderr)
+        if loop:
+            loop.state.update(status="rate-limited", reason=str(error))
+            loop.checkpoint()
+        return 3
     except (Blocked, OSError, ValueError, KeyError, TypeError, AttributeError, subprocess.TimeoutExpired) as error:
         print("BLOCKED: " + str(error), file=sys.stderr)
         if loop:

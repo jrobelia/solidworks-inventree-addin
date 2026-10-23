@@ -613,6 +613,29 @@ namespace SwInventreeAddin.UI
             RefreshCommandStates();
         }
 
+        /// <summary>
+        /// The Settings window's Save outcome — routed by the host after the
+        /// dialog closes and the client/mapping propagation ran, so a resulting
+        /// client update cannot resolve the entry before it shows. The caller
+        /// passes the fact — the footer's severity and the diagnostic it
+        /// reported — and the pane owns the wording: a "Saved …" line gains
+        /// the Settings context the dialog carried itself; any other line
+        /// lands verbatim.
+        /// </summary>
+        internal void NotifySettingsSaveCompleted(StatusSeverity severity, string? diagnostic)
+        {
+            SetStatus(SettingsSaveText(diagnostic), severity, "Configuration.Save");
+        }
+
+        private static string SettingsSaveText(string? diagnostic)
+        {
+            if (diagnostic is null || diagnostic.Length == 0)
+                return "Settings saved.";
+            return diagnostic.StartsWith("Saved", StringComparison.Ordinal)
+                ? "Settings saved" + diagnostic.Substring("Saved".Length)
+                : diagnostic;
+        }
+
         // ── Create Part ───────────────────────────────────────────────────────
 
         /// <summary>
@@ -1224,13 +1247,11 @@ namespace SwInventreeAddin.UI
             switch (_mappingResult!.Health)
             {
                 case MappingHealth.Invalid:
-                    SetStatus(status, StatusSeverity.Error, "MappingHealth", status);
+                    PublishMappingHealth(status, StatusSeverity.Error);
                     break;
                 case MappingHealth.NeedsUpgrade:
-                    SetStatus(status, StatusSeverity.Warning, "MappingHealth", status);
-                    break;
                 case MappingHealth.NewerSchema:
-                    SetStatus(status, StatusSeverity.Warning, "MappingHealth", status);
+                    PublishMappingHealth(status, StatusSeverity.Warning);
                     break;
                 default:
                     ProjectStatus();
@@ -1281,9 +1302,20 @@ namespace SwInventreeAddin.UI
                     text, severity, StatusPersistence.Persistent, "Document.Guidance"));
         }
 
-        private void SetStatus(string text, StatusSeverity severity, string domain, string? toolTip = null)
+        // Guidance hints still publish Transient entries until #285 re-platforms
+        // them; a hint written in the same pass would reign over the persistent
+        // health entry and hide it where the reading already owned the strip.
+        private void PublishMappingHealth(string status, StatusSeverity severity)
         {
-            _statusModel.Publish(new StatusEntry(text, severity, StatusPersistence.Transient, domain, toolTip));
+            _statusModel.Resolve("Document.Guidance");
+            _statusModel.Resolve("Configuration");
+            SetStatus(status, severity, "MappingHealth", status, StatusPersistence.Persistent);
+        }
+
+        private void SetStatus(string text, StatusSeverity severity, string domain, string? toolTip = null,
+            StatusPersistence persistence = StatusPersistence.Transient)
+        {
+            _statusModel.Publish(new StatusEntry(text, severity, persistence, domain, toolTip));
             ProjectStatus();
         }
 

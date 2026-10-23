@@ -56,6 +56,9 @@ if kind == "dotnet":
 if kind == "devin":
     if args[:2] == ["auth", "status"]:
         sys.exit(0)
+    if args[0] == "list":
+        print("[]")
+        sys.exit(0)
     if scenario == "dead-resume" and "-r" in args and not (root / ".scratch/dead-session").exists():
         (root / ".scratch/dead-session").write_text("gone", encoding="utf-8")
         print("No session found matching", file=sys.stderr)
@@ -73,6 +76,14 @@ if kind == "devin":
             payload = {"hook_event_name": "PreToolUse", "tool_name": name, "tool_input": inputs, "session_id": session_id}
             subprocess.run([sys.executable, str(Path(job["package_dir"]) / "scripts/guard.py"), str(directory / "job.json")],
                            input=json.dumps(payload), text=True, stdout=subprocess.DEVNULL, check=False)
+    if scenario == "rate-limit-once" and phase == "implement" and not (root / ".scratch/rate-limited").exists():
+        (root / ".scratch/rate-limited").write_text("limited", encoding="utf-8")
+        print("Error: Agent error: Reached free model rate limit. Upgrade to Max for higher limits, "
+              "or switch to a different model. Your limit will reset in 1 second.", file=sys.stderr)
+        sys.exit(1)
+    if scenario == "rate-limit-always" and phase == "implement":
+        print("Error: Agent error: Reached free model rate limit. Your limit will reset in 1 second.", file=sys.stderr)
+        sys.exit(1)
     (directory / "session.json").write_text(json.dumps({"session_id": session_id}), encoding="utf-8")
     Path(args[args.index("--export") + 1]).write_text(json.dumps({"session_id": session_id}), encoding="utf-8")
     if scenario == "hang" and phase == "implement":
@@ -123,6 +134,9 @@ if kind == "devin":
         sys.exit(0)
     if scenario == "malformed-result":
         (directory / "result.json").write_text("{", encoding="utf-8")
+        sys.exit(0)
+    if scenario == "malformed-once" and phase == "implement" and "-r" not in args:
+        (directory / "result.json").write_text("{}", encoding="utf-8")
         sys.exit(0)
     output = directory / "result.json"
     output.write_text(json.dumps(result), encoding="utf-8-sig" if scenario == "bom" else "utf-8")
