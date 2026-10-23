@@ -2,6 +2,16 @@
 
 A C# WPF add-in for SolidWorks that bridges parts and assemblies to an InvenTree inventory server.
 
+## User Guidelines
+
+### Who is the user?
+
+The user is the engineer and domain expert who is using this add-in. They are not a software developer.
+
+### Reporting
+
+When reporting information to me, be extremely concise and sacrifice grammar for the sake of concision.
+
 ## Quick commands
 
 - Test: `dotnet test "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj" --disable-build-servers` — primary verification loop. Builds the add-in into a throwaway `bin_unit_test` folder, so it can run while SolidWorks is open.

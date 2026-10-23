@@ -1,7 +1,7 @@
 ---
 name: domain-voice
 description: "Run a domain-voice check on every user-facing message before sending it. Use whenever finalizing a reply, plan or proposal, commit message, ADR, doc, status update, or any prose the user will read for the SolidWorks InvenTree add-in, including answers about a change, feature, PR, commit, or design. Writes in the project's GLOSSARY.md language and ASD-STE100 Simplified Technical English."
-triggers: ["user", "model"]
+triggers: ["user"]
 ---
 
 # Domain voice
