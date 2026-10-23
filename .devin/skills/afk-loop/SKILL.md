@@ -14,6 +14,12 @@ One user-facing skill owns the launcher, driver, internal prompts, contracts and
 
 Resolve a finite explicit issue list and confirmed base branch. Read this repo's AGENTS.md, tracker conventions and PR conventions. Default to one branch/PR per independent ticket; open blockers stay blocked. No automatic frontier, wave merge, prior-work adoption or branch cleanup is implemented.
 
+Pre-flight at the canonical checkout before emitting the command — prepare refuses to run against a bad checkout, and a blocked terminal run costs the user a round trip:
+
+- `git status --porcelain` returns empty. A dirty tree blocks prepare; commit or preserve the work first.
+- `git rev-parse --verify <base>^{commit}` resolves.
+- `git branch --show-current` names the base. Execution later requires the canonical checkout on the pinned base, so surface a mismatch now.
+
 Emit this command for the user's own PowerShell terminal at the canonical checkout:
 
 ```powershell
