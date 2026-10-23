@@ -1480,6 +1480,52 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public async Task UpdateMapping_NeedsUpgradeAfterFailedPush_SuppressedHealthWarningListedInToolTip()
+        {
+            await FetchSamplePart();
+            _client.ThrowOnUpdate = new InvalidOperationException("Name write failed");
+            await _vm.PushNameToInvenTreeAsync();
+
+            _pair.UpdateMapping(new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig { SchemaVersion = "2" }
+            });
+
+            Assert.That(_vm.StatusText, Does.Contain("Name write failed"));
+            Assert.That(_vm.StatusToolTip, Does.Contain("out of date"));
+        }
+
+        [Test]
+        public async Task UpdateMapping_NeedsUpgradeAfterFailedPush_HealthWarningReemergesWhenActionErrorDecays()
+        {
+            await FetchSamplePart();
+            _client.ThrowOnUpdate = new InvalidOperationException("Name write failed");
+            await _vm.PushNameToInvenTreeAsync();
+            _pair.UpdateMapping(new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig { SchemaVersion = "2" }
+            });
+            _propertyService.ActiveDocumentTokenToReturn = "doc-2";
+
+            _pair.UpdateDocument();
+
+            AssertMappingHealthWarning("out of date");
+        }
+
+        [Test]
+        public void UpdateMapping_SchemaInvalid_StatusToolTipCarriesMappingDetail()
+        {
+            CreateVm();
+
+            _pair.UpdateMapping(new StubPropertyMappingProvider
+            {
+                Health = MappingHealth.Invalid,
+            });
+
+            Assert.That(_vm.StatusToolTip, Does.Contain(MappingResult.InvalidMappingHelp));
+        }
+
+        [Test]
         public void UpdateMapping_SchemaVersionMatches_ClearsWarning()
         {
             // Start with a mismatch, then update to a matching provider
