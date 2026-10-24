@@ -357,5 +357,21 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(_model.ToolTip, Is.EqualTo("Diff: Obscure fact"));
         }
+
+        [TestCase("Bom.Compare.Diff.", "Diff")]
+        [TestCase("Bom.Compare..", "Compare")]
+        [TestCase(".", ".")]
+        [TestCase("..", "..")]
+        public void Publish_SuppressedEntryWithDegenerateDomain_ToolTipLabelsByLastNonEmptySegment(
+            string domain, string label)
+        {
+            _model.Publish(new StatusEntry("Obscure fact", StatusSeverity.Warning,
+                StatusPersistence.Persistent, domain));
+
+            _model.Publish(new StatusEntry("Working", StatusSeverity.None,
+                StatusPersistence.Transient, "Document.Fetch"));
+
+            Assert.That(_model.ToolTip, Is.EqualTo(label + ": Obscure fact"));
+        }
     }
 }

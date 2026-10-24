@@ -10,7 +10,7 @@ namespace SwInventreeAddin.UI
 
         // Domain labels decided in #344 triage; an unknown domain falls back to
         // its last dotted segment so a future domain never renders raw.
-        private static readonly Dictionary<string, string> DomainLabels = new Dictionary<string, string>
+        private static readonly IReadOnlyDictionary<string, string> DomainLabels = new Dictionary<string, string>
         {
             ["Document.Fetch"] = "Fetch",
             ["Document.Apply.Name"] = "Name Apply",
@@ -61,8 +61,9 @@ namespace SwInventreeAddin.UI
         {
             if (DomainLabels.TryGetValue(domain, out var label))
                 return label;
-            var lastDot = domain.LastIndexOf('.');
-            var segment = lastDot < 0 ? domain : domain.Substring(lastDot + 1);
+            var trimmed = domain.TrimEnd('.');
+            var lastDot = trimmed.LastIndexOf('.');
+            var segment = lastDot < 0 ? trimmed : trimmed.Substring(lastDot + 1);
             return segment.Length == 0 ? domain : segment;
         }
 
