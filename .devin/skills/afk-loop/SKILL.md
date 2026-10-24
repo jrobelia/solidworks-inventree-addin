@@ -30,6 +30,8 @@ Preparation queries the tracker read-only and writes `.scratch/afk-loop/<run>/AP
 
 If GitHub authentication is unavailable, report that specific blocker and ask the user to authenticate GitHub CLI; then retry preparation here. Preserve dirty-tree and base checks. Finish any authorized tracked workflow changes before preparation so the approval pins the final clean base. Do not claim an existing branch, PR or merged implementation is absent merely because one name is missing.
 
+Prior-work findings remain blockers until resolved. A maintainer may explicitly approve an exact, documentation-only ADR commit as a design reference rather than an implementation. Record its full commit id and reason in that ticket's `prior_work_references` list; preserve the raw `prior_work` findings. The driver verifies that the commit only adds or modifies regular `docs/adr/*.md` files. This does not exempt other commits, merge commits, executable Markdown, branches, or PRs. See contracts.md for the entry shape.
+
 **Done when:** preparation succeeded here, the approval file is inspected, and the finite set, base, blockers, prior work, full bodies/comments and referenced decisions are resolved.
 
 ## 2. Confirm the delivery contract
@@ -116,4 +118,6 @@ dotnet test "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj" --disable-bui
 
 The Python harness uses disposable Git repositories, stub external commands, and no credentials. It never runs real workers, pushes, PR creation or tracker edits. Guard and driver tests are not a substitute for the actual user-terminal policy probe or pilot.
 
-The full sweep is the pre-commit gate. During iteration, set `AFK_TEST_FAST=1` to skip the end-to-end lifecycle cases and keep only the gate-blocker and guard tests; unset it for the full sweep before committing package changes.
+Use targeted tests or `AFK_TEST_FAST=1` while iterating; the latter skips slow end-to-end lifecycle cases and retains gate-blocker and guard tests. Instructions-only edits need `git diff --check` and the relevant focused tests, not the full lifecycle suite.
+
+Changes to the runner, guards, launchers, worker prompts, persisted-state formats, model selection, or test harness need one full sweep without `AFK_TEST_FAST` before commit. A Markdown worker prompt is executable behavior for this rule. Do not repeat a completed full sweep solely for subsequent explanatory-text edits.

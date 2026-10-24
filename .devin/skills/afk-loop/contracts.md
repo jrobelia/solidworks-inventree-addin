@@ -2,7 +2,7 @@
 
 ## Module design
 
-The public interface is the Bash/PowerShell entry point: prepare a finite ticket set, smoke-test worker policy, execute an approved run, or resume its checkpoint. Inputs include the confirmed base, ticket snapshots, approved seams and evidence mapping, bounded repair budgets, model overrides, and separately approved remote effects. Outputs are checkpoint JSON, timestamped progress, pinned deterministic logs, phase reports, evidence, and optional draft PR references.
+The public interface is the Bash/PowerShell entry point: prepare a finite ticket set, smoke-test worker policy, execute an approved run, or resume its checkpoint. Inputs include the confirmed base, ticket snapshots, approved seams and evidence mapping, explicit ADR-reference dispositions, bounded repair budgets, model overrides, and separately approved remote effects. Outputs are checkpoint JSON, timestamped progress, pinned deterministic logs, phase reports, evidence, and optional draft PR references.
 
 The worker seam is job.json plus result.json. Production adapters are local CLI, GitHub CLI, Git, and dotnet processes. Regression adapters exercise the same entry point with stub commands and isolated real Git repositories. Deleting the driver restores worktree coordination, retries, evidence validation, and publication state to every agent prompt. Internal Python helpers own those mechanics; the two shell adapters do not duplicate them.
 
@@ -46,7 +46,20 @@ Kinds are `automated`, `visual`, `host`, and `not-applicable`. Host checks are n
 
 Set `confirmed` only after human approval. `policy_verified` is earned by the neutral user-terminal policy probe, which `--run` performs first when unverified; `--smoke <run>` runs the same probe standalone. `allow_claim` and `allow_publish` default false; the corresponding runtime flags are separate authorizations. These flags are not permission to merge, close issues, release claims, delete branches, remove existing worktrees, or upload evidence.
 
-Prior work is reported from open PRs, matching branches and merged ancestry. First-version intake stops for maintainer disposition rather than adopting or discarding it. Read ticket comments for referenced canonical specifications and ADRs; unresolved links or contradictions remain blockers. GitHub assignment records ownership but is not an atomic distributed lock. The OS-released repository lock serializes local loop instances across worktrees.
+Prior work is reported from open PRs, matching branches and merged ancestry. Intake stops for maintainer disposition rather than adopting or discarding implementations. Preserve these raw findings. Only a maintainer-approved design-reference commit can be exempted through that ticket's optional `prior_work_references` list:
+
+```json
+{
+  "commit": "<full Git commit id>",
+  "reason": "Maintainer-approved ADR design reference, not an implementation."
+}
+```
+
+The consumed interface is the full commit id plus a non-empty approval reason, not a subject prefix or a documentation-wide allowlist. The production Git adapter verifies the immutable commit; isolated repository fixtures exercise the same CLI and approval interface. Deleting this validation would force callers to judge file scope, commit identity, and stored/live prior-work findings independently.
+
+Each approved reference must be a distinct, non-merge commit that only adds or modifies regular Markdown files directly under `docs/adr/`. Empty commits, deletions, renames, non-regular files, source code, and executable instruction files cannot be exempted. Both stored and freshly detected history apply the same exact-commit exception. PRs, matching branches, and every other ancestry match still block; no existing implementation is adopted automatically. Launch/resume revalidates the reference commits, and approval-hash checks protect the recorded dispositions once a run starts.
+
+Read ticket comments for referenced canonical specifications and ADRs; unresolved links or contradictions remain blockers. GitHub assignment records ownership but is not an atomic distributed lock. The OS-released repository lock serializes local loop instances across worktrees.
 
 ## Worker job
 

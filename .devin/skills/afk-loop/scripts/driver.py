@@ -210,6 +210,50 @@ def prior_work(root, number, base):
     return {"prs": prs, "branches": branches, "ancestry": ancestry}
 
 
+def approved_reference_commits(root, references):
+    if not isinstance(references, list):
+        raise Blocked("Prior-work references must be a list of approved ADR commits")
+    commits = set()
+    for reference in references:
+        if not isinstance(reference, dict):
+            raise Blocked("Each prior-work reference needs a full commit id and reason")
+        commit, reason = reference.get("commit"), reference.get("reason")
+        if (not isinstance(commit, str) or not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", commit)
+                or not isinstance(reason, str) or not reason.strip() or commit in commits):
+            raise Blocked("Each prior-work reference needs a distinct full commit id and reason")
+        if git(root, "rev-parse", "--verify", commit + "^{commit}") != commit:
+            raise Blocked("Prior-work reference must identify an exact commit")
+        if len(git(root, "rev-list", "--parents", "-n", "1", commit).split()) > 2:
+            raise Blocked("A merge commit cannot be approved as an ADR-only reference")
+        changes = git(root, "diff-tree", "--root", "--no-commit-id", "--name-status",
+                      "--no-renames", "-z", "-r", commit).split("\0")
+        if changes[-1] == "":
+            changes.pop()
+        if not changes or len(changes) % 2:
+            raise Blocked("An ADR-only reference must contain documentation changes")
+        for status, path in zip(changes[::2], changes[1::2]):
+            if status not in {"A", "M"} or not re.fullmatch(r"docs/adr/[^/\r\n\t]+\.md", path):
+                raise Blocked("Prior-work references may only add or modify docs/adr/*.md files")
+            entries = git(root, "ls-tree", "-z", commit, "--", path).split("\0")
+            if (len(entries) != 2 or entries[1] or not entries[0].startswith("100644 blob ")
+                    or entries[0].split("\t", 1)[-1] != path):
+                raise Blocked("An ADR-only reference must contain regular Markdown files")
+        commits.add(commit)
+    return commits
+
+
+def has_prior_implementation(root, prior, references):
+    if not references:
+        return any(prior.values())
+    if any(value for key, value in prior.items() if key != "ancestry"):
+        return True
+    for line in prior.get("ancestry", "").splitlines():
+        commit = git(root, "rev-parse", "--verify", line.split()[0] + "^{commit}")
+        if commit not in references:
+            return True
+    return False
+
+
 def prepare(root, args):
     clean(root)
     branch = args.base or git(root, "branch", "--show-current")
@@ -223,7 +267,7 @@ def prepare(root, args):
         spec = specification(root, number)
         tickets.append({"number": number, "snapshot": spec, "snapshot_hash": digest(spec),
                         "prior_work": prior_work(root, number, base),
-                        "seam": "", "criteria": []})
+                        "prior_work_references": [], "seam": "", "criteria": []})
     approval = {"version": 1, "run": run, "root": str(root), "repository": repository(root),
                 "base_branch": branch, "base": base, "created": stamp(), "confirmed": False,
                 "policy_verified": False, "allow_publish": False, "allow_claim": False, "tickets": tickets}
@@ -416,8 +460,10 @@ class Loop:
                 me = capture("gh", ["api", "user", "--jq", ".login"], root).stdout.strip()
                 if any(owner.get("login") != me for owner in assignees):
                     raise Blocked("Ticket already has another owner; maintainer disposition is required")
-            prior = ticket["prior_work"]
-            if any(prior.values()) or (not args.resume and any(prior_work(root, ticket["number"], approval["base"]).values())):
+            references = approved_reference_commits(root, ticket.get("prior_work_references", []))
+            if (has_prior_implementation(root, ticket["prior_work"], references)
+                    or (not args.resume and has_prior_implementation(
+                        root, prior_work(root, ticket["number"], approval["base"]), references))):
                 raise Blocked("Prior work requires a maintainer disposition before starting a new run")
         self.status_path = self.directory / ("POLICY_STATUS.json" if args.smoke else "STATUS.json")
         path = self.status_path

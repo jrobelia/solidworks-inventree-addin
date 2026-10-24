@@ -42,6 +42,15 @@ class LoopTests(unittest.TestCase):
         return subprocess.check_output([self.env["AFK_REAL_GIT"], *args], cwd=self.root,
                                        env=self.env, stderr=subprocess.STDOUT, text=True).strip()
 
+    def commit_files(self, files, message):
+        for name, content in files.items():
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content, encoding="utf-8")
+            self.git("add", "--", name)
+        self.git("commit", "-m", message)
+        return self.git("rev-parse", "HEAD")
+
     def run_loop(self, *args):
         candidates = [parent / "bin" / "bash.exe" for parent in Path(self.env["AFK_REAL_GIT"]).parents]
         bash = next(path for path in candidates if path.is_file()) if os.name == "nt" else Path(shutil.which("bash"))
@@ -64,6 +73,19 @@ class LoopTests(unittest.TestCase):
         data["tickets"][0]["seam"] = "Existing Fetch seam, production and Stub adapters; deletion restores orchestration to callers."
         data["tickets"][0]["criteria"] = [{"id": "AC1", "text": "Fetch displays the part.", "kind": "host" if host else "automated"}]
         approval.write_text(json.dumps(data), encoding="utf-8")
+
+    def approve_reference(self, directory, commit):
+        approval = directory / "APPROVAL.json"
+        data = json.loads(approval.read_text(encoding="utf-8"))
+        data["tickets"][0]["prior_work_references"] = [
+            {"commit": commit, "reason": "Approved ADR design reference, not an implementation."}]
+        approval.write_text(json.dumps(data), encoding="utf-8")
+
+    def assert_prior_work_blocked(self, directory, message="Prior work"):
+        result = self.run_loop("--run", directory.name)
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertIn(message, result.stdout)
+        self.assertEqual(self.calls("devin"), [])
 
     def state(self, directory):
         return json.loads((directory / "STATUS.json").read_text(encoding="utf-8"))
@@ -366,6 +388,105 @@ class LoopTests(unittest.TestCase):
         result = self.run_loop("--run", directory.name)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("prior work", result.stdout.lower())
+
+    @slow
+    def test_approved_adr_reference_does_not_block_implementation(self):
+        commit = self.commit_files({"docs/adr/0050-fetch.md": "# Fetch design\n"},
+                                   "docs(adr): Fetch design (#50)")
+        directory = self.prepare()
+        self.approve(directory, verified=False)
+        self.approve_reference(directory, commit)
+        result = self.run_loop("--run", directory.name)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(self.state(directory)["tickets"]["50"]["status"], "ready-for-qa")
+        approval = json.loads((directory / "APPROVAL.json").read_text(encoding="utf-8"))
+        self.assertIn("Fetch design (#50)", approval["tickets"][0]["prior_work"]["ancestry"])
+        self.assertEqual(self.git("status", "--porcelain"), "")
+
+    def test_unapproved_adr_reference_still_blocks(self):
+        self.commit_files({"docs/adr/0050-fetch.md": "# Fetch design\n"},
+                          "docs(adr): Fetch design (#50)")
+        directory = self.prepare()
+        self.approve(directory, verified=False)
+        self.assert_prior_work_blocked(directory)
+
+    def test_reference_approval_does_not_cover_other_adr_commits(self):
+        reference = self.commit_files({"docs/adr/0050-fetch.md": "# Fetch design\n"},
+                                      "docs(adr): Fetch design (#50)")
+        self.commit_files({"docs/adr/0051-other.md": "# Other Fetch design\n"},
+                          "docs(adr): other Fetch design (#50)")
+        directory = self.prepare()
+        self.approve(directory, verified=False)
+        self.approve_reference(directory, reference)
+        self.assert_prior_work_blocked(directory)
+
+    def test_mixed_documentation_and_code_commit_cannot_be_exempted(self):
+        commit = self.commit_files({"docs/adr/0050-fetch.md": "# Fetch design\n",
+                                    "feature.cs": "// Implemented Fetch\n"},
+                                   "docs: design and implementation (#50)")
+        directory = self.prepare()
+        self.approve(directory, verified=False)
+        self.approve_reference(directory, commit)
+        self.assert_prior_work_blocked(directory, "may only add or modify docs/adr/*.md")
+
+    def test_worker_prompt_markdown_cannot_be_exempted(self):
+        commit = self.commit_files({".devin/skills/example/SKILL.md": "# Worker instructions\n"},
+                                   "docs: worker instructions (#50)")
+        directory = self.prepare()
+        self.approve(directory, verified=False)
+        self.approve_reference(directory, commit)
+        self.assert_prior_work_blocked(directory, "may only add or modify docs/adr/*.md")
+
+    def test_reference_does_not_hide_an_implementation_in_stored_or_live_history(self):
+        reference = self.commit_files({"docs/adr/0050-fetch.md": "# Fetch design\n"},
+                                      "docs(adr): Fetch design (#50)")
+        self.commit_files({"feature.cs": "// Implemented Fetch\n"}, "feat: implement Fetch (#50)")
+        directory = self.prepare()
+        self.approve(directory, verified=False)
+        self.approve_reference(directory, reference)
+        self.assert_prior_work_blocked(directory)
+        approval = directory / "APPROVAL.json"
+        data = json.loads(approval.read_text(encoding="utf-8"))
+        data["tickets"][0]["prior_work"]["ancestry"] = ""
+        approval.write_text(json.dumps(data), encoding="utf-8")
+        self.assert_prior_work_blocked(directory)
+
+    def test_reference_does_not_hide_new_branches_or_prs(self):
+        reference = self.commit_files({"docs/adr/0050-fetch.md": "# Fetch design\n"},
+                                      "docs(adr): Fetch design (#50)")
+        directory = self.prepare()
+        self.approve(directory, verified=False)
+        self.approve_reference(directory, reference)
+        self.git("branch", "afk/50")
+        self.assert_prior_work_blocked(directory)
+        self.git("branch", "-d", "afk/50")
+        self.env["AFK_TEST_SCENARIO"] = "prior-pr"
+        self.assert_prior_work_blocked(directory)
+
+    def test_reference_requires_a_full_commit_id_and_reason(self):
+        reference = self.commit_files({"docs/adr/0050-fetch.md": "# Fetch design\n"},
+                                      "docs(adr): Fetch design (#50)")
+        directory = self.prepare()
+        self.approve(directory, verified=False)
+        self.approve_reference(directory, reference[:7])
+        self.assert_prior_work_blocked(directory, "full commit id and reason")
+        self.approve_reference(directory, reference)
+        approval = directory / "APPROVAL.json"
+        data = json.loads(approval.read_text(encoding="utf-8"))
+        data["tickets"][0]["prior_work_references"][0]["reason"] = ""
+        approval.write_text(json.dumps(data), encoding="utf-8")
+        self.assert_prior_work_blocked(directory, "full commit id and reason")
+
+    def test_merge_commit_cannot_be_exempted(self):
+        self.git("checkout", "-b", "reference-side")
+        self.commit_files({"docs/adr/0050-fetch.md": "# Fetch design\n"}, "docs: Fetch design")
+        self.git("checkout", "milestone-3")
+        self.commit_files({"docs/adr/0051-other.md": "# Other design\n"}, "docs: other design")
+        self.git("merge", "--no-ff", "reference-side", "-m", "docs: merged design (#50)")
+        directory = self.prepare()
+        self.approve(directory, verified=False)
+        self.approve_reference(directory, self.git("rev-parse", "HEAD"))
+        self.assert_prior_work_blocked(directory, "merge commit cannot be approved")
 
     @slow
     def test_spec_drift_prevents_dispatch(self):
