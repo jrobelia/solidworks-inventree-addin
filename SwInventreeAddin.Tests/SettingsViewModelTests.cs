@@ -2054,7 +2054,7 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
-        public void EditMappings_WhenSharedPathDraftDiffersWithLocalSelected_IsDisabled()
+        public void EditMappings_WhenSharedPathSelectedOverAppliedLocal_IsDisabled()
         {
             var vm = CreateVm();
             Assert.That(vm.EditMappingsEnabled, Is.True);

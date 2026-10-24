@@ -360,7 +360,7 @@ namespace SwInventreeAddin.UI
             private set => Set(ref _mappingStatusSeverity, value);
         }
 
-        /// <summary>Whether the Edit Mappings button may be used — the mapping must be editable.</summary>
+        /// <summary>Whether the Edit Mappings button may be used — the mapping must be editable and the draft must still resolve to the applied source.</summary>
         public bool EditMappingsEnabled
         {
             get => _editMappingsEnabled;
@@ -435,14 +435,10 @@ namespace SwInventreeAddin.UI
         /// </summary>
         public SettingsApplyInput BuildApplyInput()
         {
-            string? sharedPath = _useSharedMapping
-                ? (string.IsNullOrWhiteSpace(_sharedMappingPath) ? null : _sharedMappingPath.Trim())
-                : null;
-
             var input = new SettingsApplyInput
             {
                 Url = _url.Trim(),
-                SharedMappingPath = sharedPath,
+                SharedMappingPath = DraftSharedPath(),
                 BomKeyword = _bomKeyword,
                 ProbeConnection = ConnectionFieldsChanged(),
             };
@@ -837,11 +833,15 @@ namespace SwInventreeAddin.UI
 
         private bool DraftMatchesAppliedSource()
         {
-            string? draft = _useSharedMapping
+            return string.Equals(DraftSharedPath(), _savedConfig?.MappingSourcePath,
+                                 StringComparison.Ordinal);
+        }
+
+        private string? DraftSharedPath()
+        {
+            return _useSharedMapping
                 ? (string.IsNullOrWhiteSpace(_sharedMappingPath) ? null : _sharedMappingPath.Trim())
                 : null;
-            return string.Equals(draft, _savedConfig?.MappingSourcePath,
-                                 StringComparison.Ordinal);
         }
 
         private void SetActionStatus(string text, StatusSeverity severity)
