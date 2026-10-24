@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using SwInventreeAddin.Bom;
 using SwInventreeAddin.Config;
 using SwInventreeAddin.InvenTree;
+using SwInventreeAddin.Logging;
 using SwInventreeAddin.SolidWorks;
 
 namespace SwInventreeAddin.UI
@@ -94,6 +95,7 @@ namespace SwInventreeAddin.UI
         private readonly PropertyMappingConfig _mapping;
         private readonly int _assemblyPk;
         private readonly string _bomKeyword;
+        private readonly IAddinLogger _logger;
 
         /// <summary>
         /// UI-thread synchronisation context captured at construction. Null when
@@ -147,13 +149,15 @@ namespace SwInventreeAddin.UI
             IAssemblyBomService bomService,
             PropertyMappingConfig mapping,
             int assemblyPk,
-            string bomKeyword = "inventree")
+            string bomKeyword = "inventree",
+            IAddinLogger? logger = null)
         {
             _client = client;
             _bomService = bomService;
             _mapping = mapping;
             _assemblyPk = assemblyPk;
             _bomKeyword = bomKeyword;
+            _logger = logger ?? new NullAddinLogger();
             _uiContext = SynchronizationContext.Current;
             _uiThreadId = Environment.CurrentManagedThreadId;
         }
@@ -162,24 +166,36 @@ namespace SwInventreeAddin.UI
 
         public async Task LoadAsync()
         {
-            StatusText = "Loading…";
-            var swLines = _bomService.GetBomLines(_bomKeyword, _mapping);
-            var (itLines, lookup) = await Task.Run(async () =>
+            _logger.LogInformation($"BOM Compare load started (assembly PK {_assemblyPk}).");
+            try
             {
-                var itTask = _client.GetBomAsync(_assemblyPk);
-                var lupTask = BuildIpnLookupAsync(swLines);
-                await Task.WhenAll(itTask, lupTask).ConfigureAwait(false);
-                return (itTask.Result, lupTask.Result);
-            }).ConfigureAwait(false);
+                StatusText = "Loading…";
+                var swLines = _bomService.GetBomLines(_bomKeyword, _mapping);
+                var (itLines, lookup) = await Task.Run(async () =>
+                {
+                    var itTask = _client.GetBomAsync(_assemblyPk);
+                    var lupTask = BuildIpnLookupAsync(swLines);
+                    await Task.WhenAll(itTask, lupTask).ConfigureAwait(false);
+                    return (itTask.Result, lupTask.Result);
+                }).ConfigureAwait(false);
 
-            // Diff is pure logic; the resulting UI-bound update must happen on the UI thread.
-            RunOnUiThread(() =>
+                // Diff is pure logic; the resulting UI-bound update must happen on the UI thread.
+                var loaded = 0;
+                RunOnUiThread(() =>
+                {
+                    var diff = BomDiffEngine.Diff(swLines, itLines, lookup);
+                    RebindLines(diff);
+                    loaded = diff.Count;
+                    StatusText = string.Empty;
+                    if (!string.IsNullOrEmpty(_sortColumn)) ApplySort();
+                });
+                _logger.LogInformation($"BOM Compare load completed: {loaded} lines.");
+            }
+            catch (Exception ex)
             {
-                var diff = BomDiffEngine.Diff(swLines, itLines, lookup);
-                RebindLines(diff);
-                StatusText = string.Empty;
-                if (!string.IsNullOrEmpty(_sortColumn)) ApplySort();
-            });
+                _logger.LogError("BOM Compare load failed.", ex);
+                throw;
+            }
         }
 
         public async Task PushAsync()
@@ -192,12 +208,29 @@ namespace SwInventreeAddin.UI
             int newCount = toProcess.Count(l => l.State == BomDiffState.New);
             int updateCount = toProcess.Count(l => l.State == BomDiffState.Conflict);
 
+            _logger.LogInformation(
+                $"BOM Compare push started ({toProcess.Count} selected: {newCount} new, {updateCount} updates).");
+            try
+            {
+                await PushCoreAsync(toProcess, newCount, updateCount).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("BOM Compare push failed.", ex);
+                throw;
+            }
+        }
+
+        private async Task PushCoreAsync(
+            IReadOnlyList<BomDiffLine> toProcess, int newCount, int updateCount)
+        {
             // Clear any stale result and let the user know the button was pressed.
             StatusText = "Pushing selected lines to InvenTree…";
 
             if (!ConfirmPush(newCount, updateCount))
             {
                 StatusText = string.Empty;
+                _logger.LogInformation("BOM Compare push cancelled by user.");
                 return;
             }
 
@@ -205,6 +238,8 @@ namespace SwInventreeAddin.UI
             var assemblyPart = await Task.Run(() => _client.GetPartByPkAsync(_assemblyPk)).ConfigureAwait(false);
             if (assemblyPart == null || !assemblyPart.Assembly)
             {
+                _logger.LogError(
+                    $"BOM Compare push aborted: InvenTree part {_assemblyPk} is not flagged as Assembly.");
                 RunOnUiThread(() =>
                     StatusText = $"Cannot push — InvenTree part {_assemblyPk} is not flagged as Assembly. Edit it in InvenTree first.");
                 return;
@@ -246,6 +281,7 @@ namespace SwInventreeAddin.UI
                 {
                     failed++;
                     failedIpns.Add($"{line.DisplayIpn} ({ex.Message})");
+                    _logger.LogError($"BOM Compare push failed for {line.DisplayIpn}.", ex);
                 }
             }
 
@@ -294,7 +330,8 @@ namespace SwInventreeAddin.UI
                 if (failed > 0) parts.Add($"{failed} failed ({string.Join(", ", failedIpns)})");
                 StatusText = parts.Count > 0 ? string.Join(", ", parts) : "No changes pushed";
             });
-
+            _logger.LogInformation(
+                $"BOM Compare push completed: {created} created, {updated} updated, {failed} failed.");
         }
 
         public void SortCommand(string columnName)

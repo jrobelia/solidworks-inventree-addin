@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using SwInventreeAddin.Bom;
 using SwInventreeAddin.Config;
 using SwInventreeAddin.InvenTree;
+using SwInventreeAddin.Logging;
 using SwInventreeAddin.SolidWorks;
 
 namespace SwInventreeAddin.UI
@@ -51,6 +52,7 @@ namespace SwInventreeAddin.UI
         private readonly IPartSyncCoordinator _coordinator;
         private readonly IBomReadinessContext _bomReadinessContext;
         private readonly IHostStaDispatcher _dispatcher;
+        private readonly IAddinLogger _logger;
         private IInventreeClient? _client;
         private IPropertyMappingProvider? _mappingProvider;
         private readonly IConfigProvider? _configProvider;
@@ -409,7 +411,7 @@ namespace SwInventreeAddin.UI
         internal BomCompareViewModel? CreateBomCompareViewModel(PropertyMappingConfig mapping, int assemblyPk)
             => (_client == null || _assemblyBomService == null)
                 ? null
-                : new BomCompareViewModel(_client, _assemblyBomService, mapping, assemblyPk, BomKeyword);
+                : new BomCompareViewModel(_client, _assemblyBomService, mapping, assemblyPk, BomKeyword, _logger);
 
         /// <summary>Returns the matched BOM table's feature name; null when no BOM service is wired.</summary>
         internal string? GetBomTableName()
@@ -434,6 +436,7 @@ namespace SwInventreeAddin.UI
         /// <param name="mappingProvider">Current property mapping provider.</param>
         /// <param name="configProvider">Config persistence (BOM keyword), or null.</param>
         /// <param name="createPartValidator">Create Part validation service, or null to hide the button.</param>
+        /// <param name="logger">Diagnostic seam for presentation-boundary failures; defaults to no-op.</param>
         internal TaskPaneViewModel(
             IPartSyncCoordinator coordinator,
             IBomReadinessContext bomReadinessContext,
@@ -441,11 +444,13 @@ namespace SwInventreeAddin.UI
             IInventreeClient? client,
             IPropertyMappingProvider? mappingProvider = null,
             IConfigProvider? configProvider = null,
-            ICreatePartValidationErrorService? createPartValidator = null)
+            ICreatePartValidationErrorService? createPartValidator = null,
+            IAddinLogger? logger = null)
         {
             _coordinator = coordinator ?? throw new ArgumentNullException(nameof(coordinator));
             _bomReadinessContext = bomReadinessContext ?? throw new ArgumentNullException(nameof(bomReadinessContext));
             _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
+            _logger = logger ?? new NullAddinLogger();
             _client = client;
             _mappingProvider = mappingProvider;
             _configProvider = configProvider;
@@ -765,7 +770,7 @@ namespace SwInventreeAddin.UI
             }
             catch (Exception ex)
             {
-                Trace.WriteLine($"[SwInventreeAddin] FetchPartAsync failed: {ex}");
+                _logger.LogError("FetchPartAsync failed at the pane boundary.", ex);
                 RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error, "Document.Fetch"));
             }
         }
@@ -932,7 +937,7 @@ namespace SwInventreeAddin.UI
             }
             catch (Exception ex)
             {
-                Trace.WriteLine($"[SwInventreeAddin] ApplyFieldAsync failed: {ex}");
+                _logger.LogError("ApplyFieldAsync failed at the pane boundary.", ex);
                 RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error, domain));
             }
         }
@@ -999,7 +1004,7 @@ namespace SwInventreeAddin.UI
             }
             catch (Exception ex)
             {
-                Trace.WriteLine($"[SwInventreeAddin] PushFieldAsync failed: {ex}");
+                _logger.LogError("PushFieldAsync failed at the pane boundary.", ex);
                 RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error, domain));
             }
         }
@@ -1069,7 +1074,7 @@ namespace SwInventreeAddin.UI
             }
             catch (Exception ex)
             {
-                Trace.WriteLine($"[SwInventreeAddin] PushImageAsync failed: {ex}");
+                _logger.LogError("PushImageAsync failed at the pane boundary.", ex);
                 RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error, domain));
             }
             finally

@@ -6,6 +6,7 @@ using System.Windows.Forms.Integration;
 using SwInventreeAddin.Bom;
 using SwInventreeAddin.Config;
 using SwInventreeAddin.InvenTree;
+using SwInventreeAddin.Logging;
 using SwInventreeAddin.SolidWorks;
 
 namespace SwInventreeAddin.UI
@@ -25,6 +26,7 @@ namespace SwInventreeAddin.UI
         private readonly IHostStaDispatcher _dispatcher;
         private IInventreeClient? _client;
         private readonly ICreatePartValidationErrorService _createPartValidator;
+        private readonly IAddinLogger _logger;
         private IPropertyMappingProvider? _mappingProvider;
         private MappingChangedSubscription? _mappingChangedSubscription;
 
@@ -38,17 +40,19 @@ namespace SwInventreeAddin.UI
             IViewportCaptureService? viewportService,
             IPropertyMappingProvider? mappingProvider,
             IConfigProvider? configProvider,
-            ICreatePartValidationErrorService createPartValidator)
+            ICreatePartValidationErrorService createPartValidator,
+            IAddinLogger? logger = null)
         {
             _client = client;
             _createPartValidator = createPartValidator;
+            _logger = logger ?? new NullAddinLogger();
             _mappingProvider = mappingProvider;
 
             // The dispatcher captures the host STA SynchronizationContext at
             // construction — the coordinator marshals every async commit and
             // document mutation through it.
             _dispatcher = new SynchronizationContextStaDispatcher();
-            _coordinator = new PartSyncCoordinator(propertyService, _dispatcher, client, mappingProvider);
+            _coordinator = new PartSyncCoordinator(propertyService, _dispatcher, client, mappingProvider, _logger);
             _vm = new TaskPaneViewModel(
                 _coordinator,
                 new CoordinatorBomReadinessContext(_coordinator, _dispatcher),
@@ -56,7 +60,8 @@ namespace SwInventreeAddin.UI
                 client,
                 mappingProvider,
                 configProvider,
-                _createPartValidator);
+                _createPartValidator,
+                _logger);
             _vm.SettingsRequested += (s, e) => SettingsRequested?.Invoke(this, e);
             _vm.CompareBomRequested += OnCompareBomRequested;
 
@@ -178,6 +183,7 @@ namespace SwInventreeAddin.UI
             }
             catch (Exception ex)
             {
+                _logger.LogError("BOM Compare window failed to open.", ex);
                 ShowBomCompareError($"Failed to open BOM comparison:{System.Environment.NewLine}{ex.Message}");
             }
         }

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using SwInventreeAddin.Config;
 using SwInventreeAddin.InvenTree;
+using SwInventreeAddin.Logging;
 using SwInventreeAddin.SolidWorks;
 using SwInventreeAddin.UI;
 
@@ -44,6 +45,7 @@ namespace SwInventreeAddin
     {
         private readonly IDocumentPropertyService _propertyService;
         private readonly IHostStaDispatcher _dispatcher;
+        private readonly IAddinLogger _logger;
         private IInventreeClient? _client;
         private IPropertyMappingProvider? _mappingProvider;
 
@@ -75,10 +77,12 @@ namespace SwInventreeAddin
             IDocumentPropertyService propertyService,
             IHostStaDispatcher dispatcher,
             IInventreeClient? client = null,
-            IPropertyMappingProvider? mappingProvider = null)
+            IPropertyMappingProvider? mappingProvider = null,
+            IAddinLogger? logger = null)
         {
             _propertyService = propertyService ?? throw new ArgumentNullException(nameof(propertyService));
             _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
+            _logger = logger ?? new NullAddinLogger();
             _client = client;
             _mappingProvider = mappingProvider;
         }
@@ -285,10 +289,39 @@ namespace SwInventreeAddin
             _state.ClearPopulated();
         }
 
+        // ── Diagnostic logging (ADR-0020) ────────────────────────────────────
+        // One diagnostic event per operation boundary: start, typed outcome,
+        // exceptions. The wrappers below are the only logging surface — the
+        // *Core bodies keep their existing return points untouched.
+
+        /// <summary>Logs the typed outcome; Failed produces an error entry with its diagnostic.</summary>
+        private PartSyncResult LogOutcome(string operation, PartSyncResult result)
+        {
+            if (result.Outcome == PartSyncOutcome.Failed)
+                _logger.LogError($"Part Sync {operation} failed: {result.Diagnostic ?? "(no diagnostic)"}");
+            else
+                _logger.LogInformation($"Part Sync {operation} outcome: {result.Outcome}.");
+            return result;
+        }
+
         // ── Fetch ────────────────────────────────────────────────────────────
 
         /// <inheritdoc/>
         public async Task<PartSyncResult> FetchAsync(string ipn)
+        {
+            _logger.LogInformation($"Part Sync Fetch started (IPN '{ipn}').");
+            try
+            {
+                return LogOutcome("Fetch", await FetchCoreAsync(ipn).ConfigureAwait(false));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Part Sync Fetch threw an unhandled exception.", ex);
+                throw;
+            }
+        }
+
+        private async Task<PartSyncResult> FetchCoreAsync(string ipn)
         {
             if (_disposed)
                 return InvalidOp("The coordinator is disposed.");
@@ -517,6 +550,20 @@ namespace SwInventreeAddin
         /// <inheritdoc/>
         public PartSyncResult CompleteCreatePart(PartSyncOperationToken token, InventreePart part)
         {
+            _logger.LogInformation($"Part Sync Create completion started (PK {part?.Pk ?? 0}).");
+            try
+            {
+                return LogOutcome("Create completion", CompleteCreatePartCore(token, part!));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Part Sync Create completion threw an unhandled exception.", ex);
+                throw;
+            }
+        }
+
+        private PartSyncResult CompleteCreatePartCore(PartSyncOperationToken token, InventreePart part)
+        {
             if (token == null) throw new ArgumentNullException(nameof(token));
             if (part == null) throw new ArgumentNullException(nameof(part));
             if (_disposed)
@@ -589,6 +636,20 @@ namespace SwInventreeAddin
         /// <inheritdoc/>
         public PartSyncResult Apply(ApplyField field)
         {
+            _logger.LogInformation($"Part Sync Apply started (field {field}).");
+            try
+            {
+                return LogOutcome("Apply", ApplyCore(field));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Part Sync Apply (field {field}) threw an unhandled exception.", ex);
+                throw;
+            }
+        }
+
+        private PartSyncResult ApplyCore(ApplyField field)
+        {
             if (_disposed)
                 return InvalidOp("The coordinator is disposed.");
             if (_session == null)
@@ -638,6 +699,20 @@ namespace SwInventreeAddin
         /// <inheritdoc/>
         public async Task<PartSyncResult> PushAsync(PushField field)
         {
+            _logger.LogInformation($"Part Sync Push started (field {field}).");
+            try
+            {
+                return LogOutcome("Push", await PushCoreAsync(field).ConfigureAwait(false));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Part Sync Push (field {field}) threw an unhandled exception.", ex);
+                throw;
+            }
+        }
+
+        private async Task<PartSyncResult> PushCoreAsync(PushField field)
+        {
             if (_disposed)
                 return InvalidOp("The coordinator is disposed.");
             if (_session == null || _client == null)
@@ -683,6 +758,20 @@ namespace SwInventreeAddin
 
         /// <inheritdoc/>
         public async Task<PartSyncResult> PushImageAsync(Image image, Rectangle cropRect)
+        {
+            _logger.LogInformation("Part Sync Push image started.");
+            try
+            {
+                return LogOutcome("Push image", await PushImageCoreAsync(image, cropRect).ConfigureAwait(false));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Part Sync Push image threw an unhandled exception.", ex);
+                throw;
+            }
+        }
+
+        private async Task<PartSyncResult> PushImageCoreAsync(Image image, Rectangle cropRect)
         {
             if (image == null) throw new ArgumentNullException(nameof(image));
             if (_disposed)
@@ -756,6 +845,22 @@ namespace SwInventreeAddin
         /// <inheritdoc/>
         public async Task<PartSyncResult> ResumeConfirmationAsync(
             PartSyncConfirmationHandle handle, bool approved, int? selectedCandidatePk = null)
+        {
+            _logger.LogInformation($"Part Sync confirmation resume started (handle {handle?.Id ?? 0}, approved {approved}).");
+            try
+            {
+                return LogOutcome("Confirmation resume",
+                    await ResumeConfirmationCoreAsync(handle!, approved, selectedCandidatePk).ConfigureAwait(false));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Part Sync confirmation resume threw an unhandled exception.", ex);
+                throw;
+            }
+        }
+
+        private async Task<PartSyncResult> ResumeConfirmationCoreAsync(
+            PartSyncConfirmationHandle handle, bool approved, int? selectedCandidatePk)
         {
             if (handle == null) throw new ArgumentNullException(nameof(handle));
 

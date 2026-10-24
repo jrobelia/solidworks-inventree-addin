@@ -9,6 +9,7 @@ using SolidWorks.Interop.swpublished;
 using SwInventreeAddin;
 using SwInventreeAddin.Config;
 using SwInventreeAddin.InvenTree;
+using SwInventreeAddin.Logging;
 using SwInventreeAddin.SolidWorks;
 using SwInventreeAddin.UI;
 
@@ -107,6 +108,7 @@ namespace SwInventreeAddin.AddIn
         private int _addinCookie;
         private EncryptedConfigProvider? _configProvider;
         private IPropertyMappingProvider? _mappingProvider;
+        private FileAddinLogger? _logger;
 
         public bool ConnectToSW(object thisSW, int cookie)
         {
@@ -133,6 +135,12 @@ namespace SwInventreeAddin.AddIn
                 _configProvider = configProvider;
                 var config = configProvider.GetServerConfig();
 
+                // One logger for the add-in's lifetime (ADR-0020); the saved
+                // API key is registered for redaction before anything is logged.
+                _logger = new FileAddinLogger();
+                _logger.RegisterSecret(config?.ApiKey);
+                _logger.LogInformation("SwAddin connected to SolidWorks.");
+
                 IInventreeClient? inventreeClient = RebuildClient(config);
 
                 var propertyService = new SwDocumentPropertyService(_swApp);
@@ -142,10 +150,11 @@ namespace SwInventreeAddin.AddIn
 
                 var createPartValidator = new InventreeClientCreatePartValidationErrorService();
                 _taskPaneControl = new TaskPaneControl(
-                    inventreeClient, propertyService, viewportService, _mappingProvider, _configProvider, createPartValidator);
+                    inventreeClient, propertyService, viewportService, _mappingProvider, _configProvider, createPartValidator,
+                    _logger);
                 _taskPaneControl.SettingsRequested += OnSettingsRequested;
 
-                _taskPaneControl.UpdateBomState(new SwAssemblyBomService(_swApp));
+                _taskPaneControl.UpdateBomState(new SwAssemblyBomService(_swApp, _logger));
                 _taskPaneControl.UpdateWaitForServerAssignedIpn(config?.WaitForServerAssignedIpn ?? ServerConfig.DefaultWaitForServerAssignedIpn);
 
                 // Refresh the PartNo field whenever the user opens or switches documents.
@@ -167,6 +176,9 @@ namespace SwInventreeAddin.AddIn
             }
             catch (Exception ex)
             {
+                _logger?.LogError("ConnectToSW failed.", ex);
+                _logger?.Dispose();
+                _logger = null;
                 MessageDialog.ShowOK(
                     SolidWorksWindowHandle.Get(),
                     $"InvenTree add-in failed to load:{System.Environment.NewLine}{ex.Message}",
@@ -177,6 +189,25 @@ namespace SwInventreeAddin.AddIn
         }
 
         public bool DisconnectFromSW()
+        {
+            _logger?.LogInformation("SwAddin disconnecting from SolidWorks.");
+            try
+            {
+                DisconnectCore();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError("DisconnectFromSW failed.", ex);
+            }
+            finally
+            {
+                _logger?.Dispose();
+                _logger = null;
+            }
+            return true;
+        }
+
+        private void DisconnectCore()
         {
             if (_swEvents != null)
             {
@@ -209,8 +240,6 @@ namespace SwInventreeAddin.AddIn
                 Marshal.ReleaseComObject(_swApp);
                 _swApp = null;
             }
-
-            return true;
         }
 
         // ── SolidWorks event callbacks ───────────────────────────────────────
@@ -229,7 +258,7 @@ namespace SwInventreeAddin.AddIn
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] OnActiveDocChange failed: {ex.Message}");
+                _logger?.LogError("OnActiveDocChange failed.", ex);
                 return 0;
             }
         }
@@ -245,7 +274,7 @@ namespace SwInventreeAddin.AddIn
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] OnDocumentLoad failed: {ex.Message}");
+                _logger?.LogError("OnDocumentLoad failed.", ex);
                 return 0;
             }
         }
@@ -268,7 +297,7 @@ namespace SwInventreeAddin.AddIn
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] OnIdle failed: {ex.Message}");
+                _logger?.LogError("OnIdle failed.", ex);
                 return 0;
             }
         }
@@ -303,8 +332,7 @@ namespace SwInventreeAddin.AddIn
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Trace.WriteLine(
-                    $"[SwInventreeAddin] SubscribeToDocumentEvents failed: {ex.Message}");
+                _logger?.LogError("SubscribeToDocumentEvents failed.", ex);
             }
         }
 
@@ -343,7 +371,7 @@ namespace SwInventreeAddin.AddIn
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] OnDocCustomPropertyAdd failed: {ex.Message}");
+                _logger?.LogError("OnDocCustomPropertyAdd failed.", ex);
                 return 0;
             }
         }
@@ -357,7 +385,7 @@ namespace SwInventreeAddin.AddIn
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] OnDocCustomPropertyChange failed: {ex.Message}");
+                _logger?.LogError("OnDocCustomPropertyChange failed.", ex);
                 return 0;
             }
         }
@@ -371,7 +399,7 @@ namespace SwInventreeAddin.AddIn
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] OnDocCustomPropertyDelete failed: {ex.Message}");
+                _logger?.LogError("OnDocCustomPropertyDelete failed.", ex);
                 return 0;
             }
         }
@@ -388,7 +416,7 @@ namespace SwInventreeAddin.AddIn
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] OnDocFileSaveAs failed: {ex.Message}");
+                _logger?.LogError("OnDocFileSaveAs failed.", ex);
                 return 0;
             }
         }
@@ -408,7 +436,7 @@ namespace SwInventreeAddin.AddIn
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] OnAssemblyDocSavePost failed: {ex.Message}");
+                _logger?.LogError("OnAssemblyDocSavePost failed.", ex);
                 return 0;
             }
         }
@@ -422,7 +450,7 @@ namespace SwInventreeAddin.AddIn
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] OnDocRenamed failed: {ex.Message}");
+                _logger?.LogError("OnDocRenamed failed.", ex);
                 return 0;
             }
         }
@@ -431,7 +459,7 @@ namespace SwInventreeAddin.AddIn
         {
             if (_configProvider == null || _mappingProvider == null)
             {
-                System.Diagnostics.Trace.WriteLine("[SwInventreeAddin] OnSettingsRequested: provider not initialised — settings dialog suppressed.");
+                _logger?.LogError("OnSettingsRequested: provider not initialised — settings dialog suppressed.");
                 return;
             }
 
@@ -461,6 +489,7 @@ namespace SwInventreeAddin.AddIn
                 if (settingsApplied)
                 {
                     var newConfig = _configProvider.GetServerConfig();
+                    _logger?.RegisterSecret(newConfig?.ApiKey);
                     _taskPaneControl?.UpdateClient(RebuildClient(newConfig));
                     _taskPaneControl?.UpdateWaitForServerAssignedIpn(newConfig?.WaitForServerAssignedIpn ?? ServerConfig.DefaultWaitForServerAssignedIpn);
                 }

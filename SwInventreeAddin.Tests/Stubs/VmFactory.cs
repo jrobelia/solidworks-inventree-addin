@@ -1,5 +1,6 @@
 using SwInventreeAddin.Config;
 using SwInventreeAddin.InvenTree;
+using SwInventreeAddin.Logging;
 using SwInventreeAddin.SolidWorks;
 using SwInventreeAddin.UI;
 
@@ -19,12 +20,14 @@ namespace SwInventreeAddin.Tests.Stubs
             IDocumentPropertyService propertyService,
             IInventreeClient? client = null,
             IPropertyMappingProvider? mappingProvider = null,
-            IHostStaDispatcher? dispatcher = null) =>
+            IHostStaDispatcher? dispatcher = null,
+            IAddinLogger? logger = null) =>
             new PartSyncCoordinator(
                 propertyService,
                 dispatcher ?? new SynchronizationContextStaDispatcher(),
                 client,
-                mappingProvider);
+                mappingProvider,
+                logger);
 
         /// <summary>
         /// Builds the wired pair and runs the host's initial evaluation —
@@ -38,13 +41,14 @@ namespace SwInventreeAddin.Tests.Stubs
             IPropertyMappingProvider? mappingProvider = null,
             IConfigProvider? configProvider = null,
             ICreatePartValidationErrorService? createPartValidator = null,
-            IHostStaDispatcher? dispatcher = null)
+            IHostStaDispatcher? dispatcher = null,
+            IAddinLogger? logger = null)
         {
             // Mirror production wiring: the dispatcher captures the ambient
             // SynchronizationContext so off-thread commits marshal through
             // Send; with no ambient context it runs inline, like the stub.
             var d = dispatcher ?? new SynchronizationContextStaDispatcher();
-            var coordinator = Coordinator(propertyService, client, mappingProvider, d);
+            var coordinator = Coordinator(propertyService, client, mappingProvider, d, logger);
             var vm = new TaskPaneViewModel(
                 coordinator,
                 new Bom.CoordinatorBomReadinessContext(coordinator, d),
@@ -52,7 +56,8 @@ namespace SwInventreeAddin.Tests.Stubs
                 client,
                 mappingProvider,
                 configProvider,
-                createPartValidator);
+                createPartValidator,
+                logger);
             var pair = new TaskPanePair(coordinator, vm);
             pair.UpdateDocument();
             return pair;

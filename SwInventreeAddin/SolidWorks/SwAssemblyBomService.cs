@@ -4,14 +4,20 @@ using System.Linq;
 using SolidWorks.Interop.sldworks;
 using SwInventreeAddin.Bom;
 using SwInventreeAddin.Config;
+using SwInventreeAddin.Logging;
 
 namespace SwInventreeAddin.SolidWorks
 {
     public class SwAssemblyBomService : IAssemblyBomService
     {
         private readonly ISldWorks _swApp;
+        private readonly IAddinLogger _logger;
 
-        public SwAssemblyBomService(ISldWorks swApp) { _swApp = swApp; }
+        public SwAssemblyBomService(ISldWorks swApp, IAddinLogger? logger = null)
+        {
+            _swApp = swApp;
+            _logger = logger ?? new NullAddinLogger();
+        }
 
         public bool HasBomTable(string keyword) =>
             FindBomTableAnnotation(keyword) != null;
@@ -69,7 +75,7 @@ namespace SwInventreeAddin.SolidWorks
                         }
                     }
                 }
-                catch (Exception ex) { System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] GetBomLines: COM error reading SubPartPk — {ex.Message}"); }
+                catch (Exception ex) { _logger.LogError("GetBomLines: COM error reading SubPartPk.", ex); }
 
                 lines.Add(line);
             }

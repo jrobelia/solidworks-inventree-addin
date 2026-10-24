@@ -547,5 +547,85 @@ namespace SwInventreeAddin.Tests
                     .Or.EqualTo(BomDiffState.IpnNotFound)
                     .Or.EqualTo(BomDiffState.Ambiguous));
         }
+
+        // ── Diagnostic logging (ADR-0020) ────────────────────────────────────
+
+        private BomCompareViewModel CreateVmWithLogger(StubAddinLogger logger, int assemblyPk = 42) =>
+            new BomCompareViewModel(_client, _bomService, _mapping, assemblyPk, "inventree", logger);
+
+        [Test]
+        public async Task LoadAsync_LogsStartAndCompletion()
+        {
+            _bomService.LinesToReturn.Add(new SwBomLine { Ipn = "A", SubPartPk = 10, Quantity = 1 });
+            _client.BomLinesToReturn = new List<InventreeBomLine>
+                { new InventreeBomLine { Pk = 1, SubPartPk = 10, Quantity = 1 } };
+            var logger = new StubAddinLogger();
+            var vm = CreateVmWithLogger(logger);
+
+            await vm.LoadAsync();
+
+            Assert.That(
+                logger.Entries.Any(e => e.Level == "Information"
+                    && e.Message.Contains("BOM Compare") && e.Message.Contains("load")),
+                Is.True, "the load start entry is recorded");
+            Assert.That(
+                logger.Entries.Any(e => e.Level == "Information"
+                    && e.Message.Contains("BOM Compare") && e.Message.Contains("completed")),
+                Is.True, "the load outcome entry is recorded");
+        }
+
+        [Test]
+        public void LoadAsync_GetBomThrows_LogsErrorAndRethrows()
+        {
+            _client.ThrowOnGetBom = true;
+            var logger = new StubAddinLogger();
+            var vm = CreateVmWithLogger(logger);
+
+            Assert.ThrowsAsync<System.Net.Http.HttpRequestException>(() => vm.LoadAsync());
+            Assert.That(
+                logger.Entries.Any(e => e.Level == "Error"
+                    && e.Message.Contains("BOM Compare") && e.Exception != null),
+                Is.True, "the load failure produces an error entry with the exception");
+        }
+
+        [Test]
+        public async Task PushAsync_Succeeds_LogsStartAndOutcome()
+        {
+            _bomService.LinesToReturn.Add(new SwBomLine { Ipn = "A", SubPartPk = 10, Quantity = 1 });
+            _client.BomLinesToReturn = new List<InventreeBomLine>();
+            var logger = new StubAddinLogger();
+            var vm = CreateVmWithLogger(logger);
+            await vm.LoadAsync();
+            vm.Lines[0].IsChecked = true;
+
+            await vm.PushAsync();
+
+            Assert.That(
+                logger.Entries.Any(e => e.Level == "Information"
+                    && e.Message.Contains("BOM Compare") && e.Message.Contains("push")),
+                Is.True, "the push start entry is recorded");
+            Assert.That(
+                logger.Entries.Any(e => e.Level == "Information"
+                    && e.Message.Contains("1") && e.Message.Contains("created")),
+                Is.True, "the push outcome entry records the counts");
+        }
+
+        [Test]
+        public async Task PushAsync_LineFails_LogsErrorEntry()
+        {
+            _bomService.LinesToReturn.Add(new SwBomLine { Ipn = "A", SubPartPk = 10, Quantity = 1 });
+            _client.BomLinesToReturn = new List<InventreeBomLine>();
+            _client.ThrowOnCreateBom = true;
+            var logger = new StubAddinLogger();
+            var vm = CreateVmWithLogger(logger);
+            await vm.LoadAsync();
+            vm.Lines[0].IsChecked = true;
+
+            await vm.PushAsync();
+
+            Assert.That(
+                logger.Entries.Any(e => e.Level == "Error" && e.Message.Contains("A")),
+                Is.True, "a failed BOM line produces an error entry naming it");
+        }
     }
 }
