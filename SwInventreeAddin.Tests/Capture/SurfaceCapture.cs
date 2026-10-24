@@ -62,6 +62,8 @@ namespace SwInventreeAddin.Tests.Capture
             }),
             new Entry("TaskPaneView", "suppressed-error", () => CreateTaskPaneWindow(false)),
             new Entry("TaskPaneView", "mapping-error", () => CreateTaskPaneWindow(true)),
+            new Entry("TaskPaneView", "connection-failed",
+                () => CreateTaskPaneWindowWithConnectionFailure()),
         };
 
         public static string PngPathFor(string surface, string state)
@@ -123,6 +125,29 @@ namespace SwInventreeAddin.Tests.Capture
                 pair.ViewModel.PushNotesToInvenTreeAsync().GetAwaiter().GetResult();
             }
 
+            return WrapTaskPaneView(pair);
+        }
+
+        private static Window CreateTaskPaneWindowWithConnectionFailure()
+        {
+            var pair = VmFactory.Create(
+                new StubInventreeClient(),
+                new StubDocumentPropertyService(),
+                dispatcher: new StubHostStaDispatcher());
+            pair.ViewModel.ProjectConnectionState(ServerConnectionStatus.From(
+                new ServerConfig
+                {
+                    Url = "https://inventree.example.com",
+                    ApiKey = "saved-key",
+                },
+                new ConnectionProbeResult(
+                    ConnectionProbeStatus.Unreachable,
+                    "Could not reach the InvenTree server.")));
+            return WrapTaskPaneView(pair);
+        }
+
+        private static Window WrapTaskPaneView(TaskPanePair pair)
+        {
             var window = new Window
             {
                 Content = new TaskPaneView { DataContext = pair.ViewModel, Background = SystemColors.ControlBrush },

@@ -403,6 +403,16 @@ namespace SwInventreeAddin.UI
         public void NotifySettingsSaveCompleted(StatusSeverity severity, string? diagnostic) =>
             _vm.NotifySettingsSaveCompleted(severity, diagnostic);
 
+        /// <summary>
+        /// A new connection state for the strip's connection entry — the
+        /// Settings dialog's state stream, its closing read, or the startup
+        /// probe's verdict (#241). Routed through the dispatcher: the probe
+        /// reports from a worker thread while Settings callers already on
+        /// the host thread run inline.
+        /// </summary>
+        public void ProjectConnectionState(ServerConnectionStatus status) =>
+            _dispatcher.Run(() => _vm.ProjectConnectionState(status));
+
         public void UpdateWaitForServerAssignedIpn(bool value)
         {
             _vm.WaitForServerAssignedIpn = value;

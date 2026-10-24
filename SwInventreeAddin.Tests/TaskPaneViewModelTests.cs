@@ -876,6 +876,255 @@ namespace SwInventreeAddin.Tests
             });
         }
 
+        // ── Connection verdict projection (#241) ──────────────────────────────
+
+        private static ServerConfig SavedConnectionConfig(string? apiKey = "saved-key") =>
+            new ServerConfig { Url = "https://inventree.example.com", ApiKey = apiKey ?? string.Empty };
+
+        private static ServerConnectionStatus ConnectionVerdict(
+            ConnectionProbeStatus probeStatus, string message = "probe detail",
+            ServerConfig? config = null, bool probeInFlight = false) =>
+            ServerConnectionStatus.From(
+                config ?? SavedConnectionConfig(),
+                new ConnectionProbeResult(probeStatus, message),
+                probeInFlight);
+
+        [Test]
+        public void ProjectConnectionState_FailedVerdict_ProjectsPersistentErrorEntry()
+        {
+            CreateVm();
+            var status = ConnectionVerdict(
+                ConnectionProbeStatus.Unreachable, "Could not reach the InvenTree server.");
+
+            _pair.ProjectConnectionState(status);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(_vm.StatusText, Is.EqualTo(status.Title));
+                Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Error));
+                Assert.That(_vm.StatusToolTip, Does.Contain("Could not reach the InvenTree server."));
+            });
+        }
+
+        [Test]
+        public void ProjectConnectionState_CredentialRejected_ProjectsAuthenticationRequired()
+        {
+            CreateVm();
+            var status = ConnectionVerdict(
+                ConnectionProbeStatus.CredentialRejected,
+                "The server rejected the API key (401 Unauthorized).");
+
+            _pair.ProjectConnectionState(status);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(_vm.StatusText, Is.EqualTo(status.Title));
+                Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Error));
+                Assert.That(_vm.StatusToolTip, Does.Contain("The server rejected the API key"));
+            });
+        }
+
+        [Test]
+        public void ProjectConnectionState_SavedUrlWithoutKey_ProjectsAuthenticationRequired()
+        {
+            CreateVm();
+            var status = ServerConnectionStatus.From(SavedConnectionConfig(apiKey: null));
+
+            _pair.ProjectConnectionState(status);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(_vm.StatusText, Is.EqualTo(status.Title));
+                Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Error));
+            });
+        }
+
+        [Test]
+        public void ProjectConnectionState_ServerError_ProjectsConnectionFailed()
+        {
+            CreateVm();
+            var status = ConnectionVerdict(
+                ConnectionProbeStatus.ServerError, "Server responded: 500 Internal Server Error");
+
+            _pair.ProjectConnectionState(status);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(_vm.StatusText, Is.EqualTo(status.Title));
+                Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Error));
+            });
+        }
+
+        [Test]
+        public void ProjectConnectionState_ConnectedVerdict_RemovesStandingEntry()
+        {
+            CreateVm();
+            _pair.ProjectConnectionState(
+                ConnectionVerdict(ConnectionProbeStatus.Unreachable, "still down"));
+
+            _pair.ProjectConnectionState(
+                ConnectionVerdict(ConnectionProbeStatus.Connected, "Connection successful."));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(_vm.StatusText, Does.Not.Contain("Connection failed"));
+                Assert.That(_vm.StatusSeverity, Is.Not.EqualTo(StatusSeverity.Error));
+            });
+        }
+
+        [Test]
+        public void ProjectConnectionState_Unconfigured_RemovesStandingEntry()
+        {
+            CreateVm();
+            _pair.ProjectConnectionState(
+                ConnectionVerdict(ConnectionProbeStatus.Unreachable, "still down"));
+
+            _pair.ProjectConnectionState(ServerConnectionStatus.From(null));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(_vm.StatusText, Does.Not.Contain("Connection failed"));
+                Assert.That(_vm.StatusSeverity, Is.Not.EqualTo(StatusSeverity.Error));
+            });
+        }
+
+        [Test]
+        public void ProjectConnectionState_Unconfigured_LeavesGuidanceAndAddsNoEntry()
+        {
+            CreateVm();
+            var guidance = _vm.StatusText;
+
+            _pair.ProjectConnectionState(ServerConnectionStatus.From(null));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(_vm.StatusText, Is.EqualTo(guidance));
+                Assert.That(_vm.StatusSeverity, Is.Not.EqualTo(StatusSeverity.Error));
+            });
+        }
+
+        [TestCase("NeverProbed")]
+        [TestCase("Skipped")]
+        [TestCase("Testing")]
+        public void ProjectConnectionState_NonVerdictState_KeepsStandingEntry(string state)
+        {
+            CreateVm();
+            _pair.ProjectConnectionState(
+                ConnectionVerdict(ConnectionProbeStatus.Unreachable, "still down"));
+
+            _pair.ProjectConnectionState(NonVerdictState(state));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(_vm.StatusText, Is.EqualTo("Connection failed"));
+                Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Error));
+            });
+        }
+
+        [TestCase("NeverProbed")]
+        [TestCase("Skipped")]
+        [TestCase("Testing")]
+        public void ProjectConnectionState_NonVerdictState_AddsNoEntry(string state)
+        {
+            CreateVm();
+            var before = (_vm.StatusText, _vm.StatusToolTip, _vm.StatusSeverity);
+
+            _pair.ProjectConnectionState(NonVerdictState(state));
+
+            Assert.That((_vm.StatusText, _vm.StatusToolTip, _vm.StatusSeverity),
+                Is.EqualTo(before));
+        }
+
+        [Test]
+        public void ProjectConnectionState_DocumentReprojection_KeepsEntry()
+        {
+            CreateVm();
+            _pair.ProjectConnectionState(
+                ConnectionVerdict(ConnectionProbeStatus.Unreachable, "still down"));
+
+            _pair.UpdateDocument();
+            _pair.CloseDocument();
+
+            Assert.That(_vm.StatusText, Is.EqualTo("Connection failed"));
+        }
+
+        [Test]
+        public void ProjectConnectionState_GuidanceReprojection_KeepsEntry()
+        {
+            CreateVm();
+            _pair.ProjectConnectionState(
+                ConnectionVerdict(ConnectionProbeStatus.Unreachable, "still down"));
+
+            // The Settings-apply path: client swap re-projects guidance and
+            // resolves the whole Configuration domain — the connection entry
+            // must survive it (#241).
+            _pair.UpdateClient(new StubInventreeClient());
+
+            Assert.That(_vm.StatusText, Is.EqualTo("Connection failed"));
+        }
+
+        [Test]
+        public void ProjectConnectionState_TransientReignEnds_EntryReemerges()
+        {
+            CreateVm();
+            _pair.ProjectConnectionState(
+                ConnectionVerdict(ConnectionProbeStatus.Unreachable, "still down"));
+            _pair.NotifySettingsSaveCompleted(StatusSeverity.Success, "Saved — connection successful.");
+            Assert.That(_vm.StatusText, Is.EqualTo("Settings saved — connection successful."));
+
+            _pair.UpdateClient(new StubInventreeClient());
+
+            Assert.That(_vm.StatusText, Is.EqualTo("Connection failed"));
+        }
+
+        [Test]
+        public void ProjectConnectionState_FailureVerdict_ReplacesStandingEntry()
+        {
+            CreateVm();
+            _pair.ProjectConnectionState(
+                ServerConnectionStatus.From(SavedConnectionConfig(apiKey: null)));
+
+            var status = ConnectionVerdict(ConnectionProbeStatus.Unreachable, "now unreachable");
+            _pair.ProjectConnectionState(status);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(_vm.StatusText, Is.EqualTo(status.Title));
+                Assert.That(_vm.StatusToolTip, Does.Contain("now unreachable"));
+            });
+        }
+
+        [Test]
+        public void ProjectConnectionState_EntryStrings_NeverContainApiKey()
+        {
+            CreateVm();
+            var status = ConnectionVerdict(
+                ConnectionProbeStatus.ServerError, "Server responded: 500 Internal Server Error",
+                config: SavedConnectionConfig(apiKey: "super-secret-key"));
+
+            _pair.ProjectConnectionState(status);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(_vm.StatusText, Does.Not.Contain("super-secret-key"));
+                Assert.That(_vm.StatusToolTip ?? string.Empty,
+                    Does.Not.Contain("super-secret-key"));
+            });
+        }
+
+        private static ServerConnectionStatus NonVerdictState(string state)
+        {
+            switch (state)
+            {
+                case "NeverProbed":
+                    return ServerConnectionStatus.From(SavedConnectionConfig());
+                case "Skipped":
+                    return ConnectionVerdict(ConnectionProbeStatus.NotProbed, "Settings saved — the connection was not probed.");
+                default: // "Testing"
+                    return ServerConnectionStatus.From(SavedConnectionConfig(), probeInFlight: true);
+            }
+        }
+
         // ── PushRevision ──────────────────────────────────────────────────────
 
         [Test]
