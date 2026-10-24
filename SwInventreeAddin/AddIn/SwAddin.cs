@@ -552,12 +552,28 @@ namespace SwInventreeAddin.AddIn
                 }
                 catch (Exception ex)
                 {
-                    verdict = new ConnectionProbeResult(
-                        ConnectionProbeStatus.Unreachable, ex.Message);
+                    verdict = ConnectionProbeResult.UnreachableFromException(ex);
                 }
 
-                _taskPaneControl?.ProjectConnectionState(
-                    ServerConnectionStatus.From(config, verdict));
+                // A Settings save inside the probe window already forwarded the
+                // newer state — a stale verdict must not overwrite it and sit on
+                // the strip as a retained Error for the rest of the session (the
+                // open-probe superseded rule in SettingsViewModel).
+                var saved = configProvider.GetServerConfig();
+                if (!string.Equals(saved?.Url, input.Url, StringComparison.Ordinal) ||
+                    !string.Equals(saved?.ApiKey, input.RawApiKey, StringComparison.Ordinal))
+                    return;
+
+                try
+                {
+                    _taskPaneControl?.ProjectConnectionState(
+                        ServerConnectionStatus.From(config, verdict));
+                }
+                catch (Exception)
+                {
+                    // The pane's dispatcher is gone (host teardown) — nothing
+                    // left to report to.
+                }
             });
         }
     }

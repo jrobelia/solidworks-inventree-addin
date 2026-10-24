@@ -933,7 +933,7 @@ namespace SwInventreeAddin.UI
                 // The probe could not run to a verdict (e.g. an unparsable
                 // saved URL) — surface it like any other failure instead of
                 // leaving the card on Testing forever.
-                result = new ConnectionProbeResult(ConnectionProbeStatus.Unreachable, ex.Message);
+                result = ConnectionProbeResult.UnreachableFromException(ex);
             }
 
             try

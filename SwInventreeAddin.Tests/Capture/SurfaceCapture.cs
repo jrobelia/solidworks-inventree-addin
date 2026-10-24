@@ -134,7 +134,7 @@ namespace SwInventreeAddin.Tests.Capture
                 new StubInventreeClient(),
                 new StubDocumentPropertyService(),
                 dispatcher: new StubHostStaDispatcher());
-            pair.ViewModel.ProjectConnectionState(ServerConnectionStatus.From(
+            pair.ProjectConnectionState(ServerConnectionStatus.From(
                 new ServerConfig
                 {
                     Url = "https://inventree.example.com",
