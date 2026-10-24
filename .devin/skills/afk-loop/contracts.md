@@ -2,9 +2,11 @@
 
 ## Module design
 
-The public interface is the Bash/PowerShell entry point: prepare a finite ticket set, smoke-test worker policy, execute an approved run, or resume its checkpoint. Inputs include the confirmed base, ticket snapshots, approved seams and evidence mapping, bounded repair budgets, and separately approved remote effects. Outputs are checkpoint JSON, timestamped progress, pinned deterministic logs, phase reports, evidence, and optional draft PR references.
+The public interface is the Bash/PowerShell entry point: prepare a finite ticket set, smoke-test worker policy, execute an approved run, or resume its checkpoint. Inputs include the confirmed base, ticket snapshots, approved seams and evidence mapping, bounded repair budgets, model overrides, and separately approved remote effects. Outputs are checkpoint JSON, timestamped progress, pinned deterministic logs, phase reports, evidence, and optional draft PR references.
 
 The worker seam is job.json plus result.json. Production adapters are local CLI, GitHub CLI, Git, and dotnet processes. Regression adapters exercise the same entry point with stub commands and isolated real Git repositories. Deleting the driver restores worktree coordination, retries, evidence validation, and publication state to every agent prompt. Internal Python helpers own those mechanics; the two shell adapters do not duplicate them.
+
+Model selection extends the existing launcher environment; its defaults and override precedence are documented in SKILL.md under Model selection. The production Devin CLI and regression stub consume the same explicit `--model` argument. Worker job/result formats and custom agent profiles are unchanged.
 
 ## Source and dependency disposition
 

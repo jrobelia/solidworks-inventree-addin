@@ -664,9 +664,18 @@ class Loop:
                 prompt += "\nSALVAGE: inspect existing work and evidence only. Persist a supported verdict; do not repeat or revise implementation. Insufficient evidence is blocked.\n"
             (directory / "prompt.md").write_text(prompt, encoding="utf-8")
             config = self.config(job, job["writable"])
-            model = os.environ.get("MODEL_REVIEW" if phase.startswith("review-") or phase == "adjudicate" else "MODEL_IMPL", "swe-2-max")
-            if phase == "repair" and ticket["round"] >= self.args.rounds - 1:
-                model = os.environ.get("MODEL_REPAIR_FINAL", "swe-2-max")
+            model_settings, default_model = {
+                "policy": (("MODEL_POLICY", "MODEL_IMPL"), "swe-2-medium"),
+                "implement": (("MODEL_IMPL",), "swe-2-high"),
+                "repair": (("MODEL_IMPL",), "swe-2-high"),
+                "review-spec": (("MODEL_REVIEW_SPEC", "MODEL_REVIEW"), "swe-2-max"),
+                "review-standards": (("MODEL_REVIEW_STANDARDS", "MODEL_REVIEW"), "swe-2-high"),
+                "adjudicate": (("MODEL_ADJUDICATE", "MODEL_REVIEW"), "swe-2-high"),
+                "verify": (("MODEL_VERIFY", "MODEL_IMPL"), "swe-2-high"),
+            }[phase]
+            if phase == "repair" and (ticket.get("repair_source") == "verify" or ticket["round"] >= self.args.rounds - 1):
+                model_settings, default_model = ("MODEL_REPAIR_FINAL",), "swe-2-max"
+            model = next((os.environ[name] for name in model_settings if os.environ.get(name)), default_model)
             command = [*tool("devin"), "-p", "--model", model, "--permission-mode", "auto", "--respect-workspace-trust", "false",
                        "--config", str(config), "--export", str(directory / "transcript.json"), "--prompt-file", str(directory / "prompt.md")]
             if resume:

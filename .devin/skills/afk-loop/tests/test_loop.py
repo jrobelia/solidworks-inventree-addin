@@ -27,6 +27,9 @@ class LoopTests(unittest.TestCase):
                         AFK_TEST_ROOT=str(self.root), AFK_REAL_GIT=shutil.which("git"),
                         AFK_TIMEOUT="5", AFK_HEARTBEAT="0.1", AFK_STALE="0.2", AFK_RETRY_DELAYS="[0]")
         self.env.pop("DEVIN_API_KEY", None)
+        for name in list(self.env):
+            if name.startswith("MODEL_"):
+                self.env.pop(name)
         for name in ("git", "gh", "dotnet", "devin"):
             self.env["AFK_" + name.upper()] = json.dumps([sys.executable, str(STUB), name])
         self.git("init", "--initial-branch=milestone-3")
@@ -68,6 +71,16 @@ class LoopTests(unittest.TestCase):
     def calls(self, tool=None):
         lines = (self.root / ".scratch" / "commands.jsonl").read_text(encoding="utf-8").splitlines()
         return [row for row in map(json.loads, lines) if tool is None or row["tool"] == tool]
+
+    def worker_models(self):
+        models = []
+        for call in self.calls("devin"):
+            args = call["args"]
+            if "--prompt-file" in args:
+                job = Path(args[args.index("--prompt-file") + 1]).with_name("job.json")
+                phase = json.loads(job.read_text(encoding="utf-8"))["phase"]
+                models.append((phase, args[args.index("--model") + 1]))
+        return models
 
     def test_prepare_pins_base_and_causes_no_remote_writes(self):
         directory = self.prepare()
@@ -198,6 +211,59 @@ class LoopTests(unittest.TestCase):
         dispatched = [row for row in self.calls("devin") if "--prompt-file" in row["args"]]
         self.assertIn("policy-r1-", dispatched[0]["args"][-1])
         self.assertTrue(any("implement-r1-" in row["args"][-1] for row in dispatched[1:]))
+        self.assertEqual(self.worker_models(), [
+            ("policy", "swe-2-medium"),
+            ("implement", "swe-2-high"),
+            ("review-spec", "swe-2-max"),
+            ("review-standards", "swe-2-high"),
+            ("adjudicate", "swe-2-high"),
+            ("verify", "swe-2-high"),
+        ])
+
+    @slow
+    def test_group_model_overrides_remain_supported(self):
+        self.env.update(MODEL_IMPL="custom-impl", MODEL_REVIEW="custom-review",
+                        MODEL_POLICY="", MODEL_REVIEW_SPEC="", MODEL_REVIEW_STANDARDS="",
+                        MODEL_ADJUDICATE="", MODEL_VERIFY="")
+        directory, result = self.case("review-finding")
+        self.assertEqual(result.returncode, 0, result.stdout)
+        expected = {"policy": "custom-impl", "implement": "custom-impl", "repair": "custom-impl",
+                    "verify": "custom-impl", "review-spec": "custom-review",
+                    "review-standards": "custom-review", "adjudicate": "custom-review"}
+        for phase, model in self.worker_models():
+            with self.subTest(phase=phase):
+                self.assertEqual(model, expected[phase])
+        self.assertEqual([model for phase, model in self.worker_models() if phase == "repair"], ["custom-impl"])
+
+    @slow
+    def test_specific_model_overrides_win_over_groups(self):
+        self.env.update(MODEL_IMPL="custom-impl", MODEL_REVIEW="custom-review",
+                        MODEL_POLICY="custom-policy", MODEL_REVIEW_SPEC="custom-spec",
+                        MODEL_REVIEW_STANDARDS="custom-standards", MODEL_ADJUDICATE="custom-adjudicate",
+                        MODEL_VERIFY="custom-verify", MODEL_REPAIR_FINAL="custom-final")
+        directory, result = self.case("verify-finding")
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(self.worker_models(), [
+            ("policy", "custom-policy"),
+            ("implement", "custom-impl"),
+            ("review-spec", "custom-spec"),
+            ("review-standards", "custom-standards"),
+            ("adjudicate", "custom-adjudicate"),
+            ("verify", "custom-verify"),
+            ("repair", "custom-final"),
+            ("review-spec", "custom-spec"),
+            ("review-standards", "custom-standards"),
+            ("adjudicate", "custom-adjudicate"),
+            ("verify", "custom-verify"),
+        ])
+
+    @slow
+    def test_last_regular_repair_uses_max(self):
+        directory, result = self.case("persistent-finding")
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertIn("budget", self.state(directory)["tickets"]["50"]["reason"])
+        self.assertEqual([model for phase, model in self.worker_models() if phase == "repair"],
+                         ["swe-2-high", "swe-2-max"])
 
     @slow
     def test_other_owner_blocks_implementation(self):
@@ -228,6 +294,8 @@ class LoopTests(unittest.TestCase):
         jobs = sorted((directory / "50/jobs").glob("implement-*"))
         self.assertEqual(len(jobs), 2)
         self.assertTrue(json.loads((jobs[1] / "job.json").read_text())["salvage"])
+        self.assertEqual([model for phase, model in self.worker_models() if phase == "implement"],
+                         ["swe-2-high", "swe-2-high"])
 
     @slow
     def test_rate_limit_waits_and_resumes_without_spending_retries(self):
@@ -340,6 +408,7 @@ class LoopTests(unittest.TestCase):
         self.assertEqual(ticket["verify_repairs"], 1)
         self.assertEqual(ticket["verification"]["round"], 2)
         self.assertEqual(len(list((directory / "50/jobs").glob("verify-*"))), 2)
+        self.assertEqual([model for phase, model in self.worker_models() if phase == "repair"], ["swe-2-max"])
 
     @slow
     def test_zero_verification_budget_blocks_without_repair(self):

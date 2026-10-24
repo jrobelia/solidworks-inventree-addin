@@ -85,12 +85,31 @@ DEVIN_API_KEY can override terminal login; if the CLI reports that conflict, the
 - --rounds N: full review rounds, default 3.
 - --verify-rounds N: post-verification repair-confirm cycles, default 1; zero blocks on findings.
 - --retries N: extra verdictless infrastructure attempts, default 3.
-- MODEL_IMPL, MODEL_REVIEW, MODEL_REPAIR_FINAL: CLI model overrides; defaults are swe-2-max, not a pricing promise.
+- Model defaults and environment overrides: see Model selection below.
 - AFK_TIMEOUT, AFK_HEARTBEAT, AFK_STALE: positive seconds; defaults 7200, 300, 900.
 - AFK_RETRY_DELAYS: non-empty JSON array of non-negative seconds; default [45,120,300].
 - AFK_RATE_LIMIT_MARGIN, AFK_RATE_LIMIT_FLOOR, AFK_RATE_LIMIT_MAX_WAIT: non-negative seconds added past the advertised reset, a minimum wait, and the accumulated-wait cap before the run exits rate-limited; defaults 300, 60, 10800.
 - DEVIN: explicit CLI executable; AFK_PYTHON: Bash entry-point interpreter override.
 - AFK_GIT, AFK_GH, AFK_DOTNET, AFK_DEVIN: JSON command arrays for regression adapters. Never silently substitute these in a real launch.
+
+## Model selection
+
+The driver passes an explicit `--model` on every worker dispatch, including resumed sessions. Defaults reserve Max for Spec review and escalated repairs; these are reasoning-level choices, not a pricing or quota promise.
+
+| Worker phase | Default model | Override |
+| --- | --- | --- |
+| Policy probe | `swe-2-medium` | `MODEL_POLICY`, then `MODEL_IMPL` |
+| Implementation | `swe-2-high` | `MODEL_IMPL` |
+| Spec review | `swe-2-max` | `MODEL_REVIEW_SPEC`, then `MODEL_REVIEW` |
+| Standards review | `swe-2-high` | `MODEL_REVIEW_STANDARDS`, then `MODEL_REVIEW` |
+| Adjudication | `swe-2-high` | `MODEL_ADJUDICATE`, then `MODEL_REVIEW` |
+| Regular repair | `swe-2-high` | `MODEL_IMPL` |
+| Last allowed regular repair, or any post-verification repair | `swe-2-max` | `MODEL_REPAIR_FINAL` |
+| Evidence verification | `swe-2-high` | `MODEL_VERIFY`, then `MODEL_IMPL` |
+
+The first non-empty override in a row wins. Existing `MODEL_IMPL` and `MODEL_REVIEW` group overrides remain supported; a phase-specific override takes precedence. Recovery retries and result corrections retain the phase's model selection. Review findings alone do not escalate the reviewer models.
+
+Tests, formatting, and PR-body generation run as scripts without a model session. Workers do not dispatch custom reviewer profiles or nested agents.
 
 ## Package verification
 
