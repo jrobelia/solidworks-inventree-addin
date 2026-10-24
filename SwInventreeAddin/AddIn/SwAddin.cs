@@ -559,20 +559,21 @@ namespace SwInventreeAddin.AddIn
                 // newer state — a stale verdict must not overwrite it and sit on
                 // the strip as a retained Error for the rest of the session (the
                 // open-probe superseded rule in SettingsViewModel).
-                var saved = configProvider.GetServerConfig();
-                if (!string.Equals(saved?.Url, input.Url, StringComparison.Ordinal) ||
-                    !string.Equals(saved?.ApiKey, input.RawApiKey, StringComparison.Ordinal))
-                    return;
-
                 try
                 {
+                    var saved = configProvider.GetServerConfig();
+                    if (!string.Equals(saved?.Url, input.Url, StringComparison.Ordinal) ||
+                        !string.Equals(saved?.ApiKey, input.RawApiKey, StringComparison.Ordinal))
+                        return;
+
                     _taskPaneControl?.ProjectConnectionState(
                         ServerConnectionStatus.From(config, verdict));
                 }
                 catch (Exception)
                 {
-                    // The pane's dispatcher is gone (host teardown) — nothing
-                    // left to report to.
+                    // The freshness re-read failed (unproven — don't publish)
+                    // or the pane's dispatcher is gone (host teardown) —
+                    // nothing left to report to.
                 }
             });
         }
