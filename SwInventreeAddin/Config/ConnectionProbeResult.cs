@@ -1,3 +1,5 @@
+using System;
+
 namespace SwInventreeAddin.Config
 {
     /// <summary>
@@ -14,6 +16,14 @@ namespace SwInventreeAddin.Config
             Status = status;
             Message = message ?? string.Empty;
         }
+
+        /// <summary>
+        /// The verdict for a probe that threw before it could run to an outcome —
+        /// an unparsable URL, a credential the token service cannot resolve — shared
+        /// by every probe caller so they cannot drift on the failure mapping (#234).
+        /// </summary>
+        public static ConnectionProbeResult UnreachableFromException(Exception ex) =>
+            new ConnectionProbeResult(ConnectionProbeStatus.Unreachable, ex.Message);
 
         /// <summary>How the probe ended.</summary>
         public ConnectionProbeStatus Status { get; }

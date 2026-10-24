@@ -125,5 +125,14 @@ namespace SwInventreeAddin.Tests.Stubs
         /// </summary>
         public void NotifySettingsSaveCompleted(StatusSeverity severity, string? diagnostic) =>
             ViewModel.NotifySettingsSaveCompleted(severity, diagnostic);
+
+        /// <summary>
+        /// A new connection state reaches the pane — the Settings dialog's
+        /// state stream, its closing read, or the startup probe's verdict —
+        /// matching TaskPaneControl's routing; no coordinator lifecycle
+        /// member is involved.
+        /// </summary>
+        public void ProjectConnectionState(ServerConnectionStatus status) =>
+            ViewModel.ProjectConnectionState(status);
     }
 }

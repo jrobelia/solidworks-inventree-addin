@@ -636,6 +636,39 @@ namespace SwInventreeAddin.UI
                 : diagnostic;
         }
 
+        /// <summary>
+        /// The connection-domain projection (#241): the host forwards the
+        /// latest <see cref="ServerConnectionStatus"/> — the Settings dialog's
+        /// state stream, its closing read, or the startup probe — and the pane
+        /// maps it onto the strip. A failure verdict publishes a Persistent
+        /// Error-tier entry carrying the Settings card's title and the probe
+        /// diagnostic; a Connected verdict or an unconfigured config resolves
+        /// the domain; every other state carries no verdict and leaves a
+        /// standing entry untouched. The domain sits beside Configuration so
+        /// the guidance re-projections that resolve whole domains cannot
+        /// sweep it — the verdict survives until a newer one arrives.
+        /// </summary>
+        internal void ProjectConnectionState(ServerConnectionStatus status)
+        {
+            if (!status.IsSaved || status.Indicator == ServerConnectionIndicator.Connected)
+            {
+                _statusModel.Resolve("Connection");
+            }
+            else if (status.Indicator == ServerConnectionIndicator.Failed
+                || status.Indicator == ServerConnectionIndicator.AuthenticationRequired)
+            {
+                // An incomplete config has no probe diagnostic — the title
+                // already names the missing credential.
+                SetStatus(status.Title, StatusSeverity.Error, "Connection",
+                    status.IsComplete ? status.ConnectionLine : null,
+                    StatusPersistence.Persistent);
+                return;
+            }
+
+            // NotTested and Testing carry no verdict: a standing entry stays.
+            ProjectStatus();
+        }
+
         // ── Create Part ───────────────────────────────────────────────────────
 
         /// <summary>

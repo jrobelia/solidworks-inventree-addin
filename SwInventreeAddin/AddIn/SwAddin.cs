@@ -3,6 +3,8 @@ using System.IO;
 using System.Net;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Win32;
 using SolidWorks.Interop.sldworks;
 using SolidWorks.Interop.swpublished;
@@ -147,6 +149,15 @@ namespace SwInventreeAddin.AddIn
 
                 _taskPaneControl.UpdateBomState(new SwAssemblyBomService(_swApp));
                 _taskPaneControl.UpdateWaitForServerAssignedIpn(config?.WaitForServerAssignedIpn ?? ServerConfig.DefaultWaitForServerAssignedIpn);
+
+                // #241: the config-derived connection state lands now — a
+                // saved URL with no key is already Authentication required.
+                // A complete saved config gets one bounded startup probe on a
+                // worker thread; ConnectToSW and the SolidWorks load never wait.
+                var startupConnectionState = ServerConnectionStatus.From(config);
+                _taskPaneControl.ProjectConnectionState(startupConnectionState);
+                if (startupConnectionState.IsComplete)
+                    StartStartupProbe(config!, configProvider);
 
                 // Refresh the PartNo field whenever the user opens or switches documents.
                 // OnIdleNotify detects when the last document is closed (ActiveDoc becomes null).
@@ -454,6 +465,12 @@ namespace SwInventreeAddin.AddIn
                     _taskPaneControl?.UpdateMapping(provider);
                 };
 
+                // #241: the dialog's connection state streams to the strip
+                // live — a Testing state leaves a standing entry untouched,
+                // a verdict publishes or removes it.
+                form.ConnectionStateChanged += (_, status) =>
+                    _taskPaneControl?.ProjectConnectionState(status);
+
                 bool? dialogSaved = form.ShowDialog();
 
                 // Apply saves without closing the dialog, so propagate whenever
@@ -464,6 +481,13 @@ namespace SwInventreeAddin.AddIn
                     _taskPaneControl?.UpdateClient(RebuildClient(newConfig));
                     _taskPaneControl?.UpdateWaitForServerAssignedIpn(newConfig?.WaitForServerAssignedIpn ?? ServerConfig.DefaultWaitForServerAssignedIpn);
                 }
+
+                // The event fires only on change — an already-failed state
+                // opened-and-closed never re-emitted — so the closing read
+                // forwards the final state after the client/mapping
+                // propagation (#241).
+                if (_taskPaneControl != null)
+                    _taskPaneControl.ProjectConnectionState(form.ViewModel.ConnectionState);
 
                 // A Save's outcome reports only now — after the client/mapping
                 // propagation above, whose Configuration-domain resolution and
@@ -494,6 +518,64 @@ namespace SwInventreeAddin.AddIn
                 BaseAddress = new System.Uri(config.Url),
             };
             return new InventreeHttpClient(_httpClient, config.ApiKey);
+        }
+
+        // One bounded probe per session (#241) — the same ~4s machinery the
+        // Settings window reuses, never a second probe implementation. A
+        // thrown probe (an unparsable saved URL, a credential the token
+        // service cannot resolve) lands as an Unreachable verdict like the
+        // open-probe rule (#234), so the strip can never stay silent on a
+        // config the card would report as failed. The verdict feeds the same
+        // projection the Settings probes use; there is no repeat or
+        // document-activation probing.
+        private void StartStartupProbe(ServerConfig config, IConfigProvider configProvider)
+        {
+            var input = new SettingsApplyInput
+            {
+                Url = config.Url,
+                RawApiKey = config.ApiKey,
+            };
+
+            _ = Task.Run(async () =>
+            {
+                ConnectionProbeResult verdict;
+                try
+                {
+                    using (var probeClient = new System.Net.Http.HttpClient())
+                    {
+                        var service = new SettingsApplyService(
+                            configProvider, new InventreeTokenService(probeClient));
+                        verdict = await service.TestConnectionAsync(
+                            input, probeClient, CancellationToken.None)
+                            .ConfigureAwait(false);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    verdict = ConnectionProbeResult.UnreachableFromException(ex);
+                }
+
+                // A Settings save inside the probe window already forwarded the
+                // newer state — a stale verdict must not overwrite it and sit on
+                // the strip as a retained Error for the rest of the session (the
+                // open-probe superseded rule in SettingsViewModel).
+                try
+                {
+                    var saved = configProvider.GetServerConfig();
+                    if (!string.Equals(saved?.Url, input.Url, StringComparison.Ordinal) ||
+                        !string.Equals(saved?.ApiKey, input.RawApiKey, StringComparison.Ordinal))
+                        return;
+
+                    _taskPaneControl?.ProjectConnectionState(
+                        ServerConnectionStatus.From(config, verdict));
+                }
+                catch (Exception)
+                {
+                    // The freshness re-read failed (unproven — don't publish)
+                    // or the pane's dispatcher is gone (host teardown) —
+                    // nothing left to report to.
+                }
+            });
         }
     }
 }
