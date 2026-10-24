@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -58,6 +59,22 @@ namespace SwInventreeAddin.Tests.Capture
                 var window = CreateSettingsWindow(SavedConfig());
                 var button = (ButtonBase)LogicalTreeHelper.FindLogicalNode(window, "ChangeCredentialButton")!;
                 button.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+                return window;
+            }),
+            // #342: a shared file is applied, a different one is browsed into
+            // the path field but never applied — Edit Mappings is disabled.
+            new Entry("SettingsWindow", "shared-draft-unapplied", () =>
+            {
+                var config = SavedConfig();
+                config.Config!.MappingSourcePath = "\\\\share\\map-a.json";
+                var sharedProvider = new StubPropertyMappingProvider
+                {
+                    SourceFilePath = "\\\\share\\map-a.json",
+                    SourceFileExists = true,
+                };
+                var window = CreateSettingsWindow(config, sharedProvider);
+                ((TextBox)LogicalTreeHelper.FindLogicalNode(window, "SharedPathBox")!).Text =
+                    "\\\\share\\map-b.json";
                 return window;
             }),
             new Entry("TaskPaneView", "suppressed-error", () => CreateTaskPaneWindow(false)),
@@ -143,9 +160,10 @@ namespace SwInventreeAddin.Tests.Capture
         private static StubConfigProvider SavedConfig()
             => new StubConfigProvider("https://inventree.example.com", "saved-key");
 
-        private static SettingsWindow CreateSettingsWindow(IConfigProvider configProvider)
+        private static SettingsWindow CreateSettingsWindow(
+            IConfigProvider configProvider, IPropertyMappingProvider? mappingProvider = null)
         {
-            var mappingProvider = new StubPropertyMappingProvider();
+            mappingProvider ??= new StubPropertyMappingProvider();
             return new SettingsWindow(
                 configProvider,
                 mappingProvider,
