@@ -244,7 +244,7 @@ namespace SwInventreeAddin.AddIn
 
         // ── SolidWorks event callbacks ───────────────────────────────────────
         // A throw inside any COM event callback propagates into the SolidWorks
-        // host and is silently swallowed — every callback catches, traces, and
+        // host and is silently swallowed — every callback catches, logs, and
         // returns 0. One identical pattern for all of them.
 
         private int OnActiveDocChange()
@@ -457,52 +457,64 @@ namespace SwInventreeAddin.AddIn
 
         private void OnSettingsRequested(object sender, EventArgs e)
         {
-            if (_configProvider == null || _mappingProvider == null)
+            try
             {
-                _logger?.LogError("OnSettingsRequested: provider not initialised — settings dialog suppressed.");
-                return;
-            }
-
-            using (var settingsHttpClient = new System.Net.Http.HttpClient())
-            {
-                var tokenService = new InventreeTokenService(settingsHttpClient);
-                var settingsService = new SettingsApplyService(_configProvider, tokenService);
-                var mappingFactory = new PropertyMappingProviderFactory();
-                var form = new SettingsWindow(
-                    _configProvider,
-                    _mappingProvider,
-                    new AssemblyVersionInfo(),
-                    settingsService,
-                    mappingFactory);
-                var settingsApplied = false;
-                form.MappingApplied += (_, provider) =>
+                if (_configProvider == null || _mappingProvider == null)
                 {
-                    settingsApplied = true;
-                    _mappingProvider = provider;
-                    _taskPaneControl?.UpdateMapping(provider);
-                };
-
-                bool? dialogSaved = form.ShowDialog();
-
-                // Apply saves without closing the dialog, so propagate whenever
-                // an apply ran — not only when the dialog returns true.
-                if (settingsApplied)
-                {
-                    var newConfig = _configProvider.GetServerConfig();
-                    _logger?.RegisterSecret(newConfig?.ApiKey);
-                    _taskPaneControl?.UpdateClient(RebuildClient(newConfig));
-                    _taskPaneControl?.UpdateWaitForServerAssignedIpn(newConfig?.WaitForServerAssignedIpn ?? ServerConfig.DefaultWaitForServerAssignedIpn);
+                    _logger?.LogError("OnSettingsRequested: provider not initialised — settings dialog suppressed.");
+                    return;
                 }
 
-                // A Save's outcome reports only now — after the client/mapping
-                // propagation above, whose Configuration-domain resolution and
-                // transient invalidation would erase the entry before the
-                // engineer saw it — and only when the Save itself closed the
-                // dialog. A failed Save stays open and reports in the footer;
-                // carrying that fact to the strip on a cancel would read as a
-                // live failure over a config nothing changed.
-                if (dialogSaved == true && form.SaveOutcome is { } saveOutcome)
-                    _taskPaneControl?.NotifySettingsSaveCompleted(saveOutcome.Severity, saveOutcome.Diagnostic);
+                using (var settingsHttpClient = new System.Net.Http.HttpClient())
+                {
+                    var tokenService = new InventreeTokenService(settingsHttpClient);
+                    var settingsService = new SettingsApplyService(_configProvider, tokenService);
+                    var mappingFactory = new PropertyMappingProviderFactory();
+                    var form = new SettingsWindow(
+                        _configProvider,
+                        _mappingProvider,
+                        new AssemblyVersionInfo(),
+                        settingsService,
+                        mappingFactory);
+                    var settingsApplied = false;
+                    form.MappingApplied += (_, provider) =>
+                    {
+                        settingsApplied = true;
+                        _mappingProvider = provider;
+                        _taskPaneControl?.UpdateMapping(provider);
+                    };
+
+                    bool? dialogSaved = form.ShowDialog();
+
+                    // Apply saves without closing the dialog, so propagate whenever
+                    // an apply ran — not only when the dialog returns true.
+                    if (settingsApplied)
+                    {
+                        var newConfig = _configProvider.GetServerConfig();
+                        _logger?.RegisterSecret(newConfig?.ApiKey);
+                        _taskPaneControl?.UpdateClient(RebuildClient(newConfig));
+                        _taskPaneControl?.UpdateWaitForServerAssignedIpn(newConfig?.WaitForServerAssignedIpn ?? ServerConfig.DefaultWaitForServerAssignedIpn);
+                    }
+
+                    // A Save's outcome reports only now — after the client/mapping
+                    // propagation above, whose Configuration-domain resolution and
+                    // transient invalidation would erase the entry before the
+                    // engineer saw it — and only when the Save itself closed the
+                    // dialog. A failed Save stays open and reports in the footer;
+                    // carrying that fact to the strip on a cancel would read as a
+                    // live failure over a config nothing changed.
+                    if (dialogSaved == true && form.SaveOutcome is { } saveOutcome)
+                        _taskPaneControl?.NotifySettingsSaveCompleted(saveOutcome.Severity, saveOutcome.Diagnostic);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError("OnSettingsRequested failed.", ex);
+                MessageDialog.ShowOK(
+                    SolidWorksWindowHandle.Get(),
+                    $"The Settings window failed:{System.Environment.NewLine}{ex.Message}",
+                    "InvenTree Settings",
+                    System.Windows.Forms.MessageBoxIcon.Error);
             }
         }
 

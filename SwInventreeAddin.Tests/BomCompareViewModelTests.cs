@@ -606,7 +606,7 @@ namespace SwInventreeAddin.Tests
                 Is.True, "the push start entry is recorded");
             Assert.That(
                 logger.Entries.Any(e => e.Level == "Information"
-                    && e.Message.Contains("1") && e.Message.Contains("created")),
+                    && e.Message.Contains("1 created")),
                 Is.True, "the push outcome entry records the counts");
         }
 

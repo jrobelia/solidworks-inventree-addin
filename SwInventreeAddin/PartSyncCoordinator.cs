@@ -304,21 +304,45 @@ namespace SwInventreeAddin
             return result;
         }
 
-        // ── Fetch ────────────────────────────────────────────────────────────
-
-        /// <inheritdoc/>
-        public async Task<PartSyncResult> FetchAsync(string ipn)
+        /// <summary>
+        /// The shared boundary tail for the sync wrappers: the typed outcome is
+        /// logged on every return and an escaping exception is logged before it
+        /// rethrows. The bespoke start entry stays in each wrapper.
+        /// </summary>
+        private PartSyncResult LogBoundary(string operation, Func<PartSyncResult> body)
         {
-            _logger.LogInformation($"Part Sync Fetch started (IPN '{ipn}').");
             try
             {
-                return LogOutcome("Fetch", await FetchCoreAsync(ipn).ConfigureAwait(false));
+                return LogOutcome(operation, body());
             }
             catch (Exception ex)
             {
-                _logger.LogError("Part Sync Fetch threw an unhandled exception.", ex);
+                _logger.LogError($"Part Sync {operation} threw an unhandled exception.", ex);
                 throw;
             }
+        }
+
+        /// <summary>The <see cref="LogBoundary"/> tail for the async wrappers.</summary>
+        private async Task<PartSyncResult> LogBoundaryAsync(string operation, Func<Task<PartSyncResult>> body)
+        {
+            try
+            {
+                return LogOutcome(operation, await body().ConfigureAwait(false));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Part Sync {operation} threw an unhandled exception.", ex);
+                throw;
+            }
+        }
+
+        // ── Fetch ────────────────────────────────────────────────────────────
+
+        /// <inheritdoc/>
+        public Task<PartSyncResult> FetchAsync(string ipn)
+        {
+            _logger.LogInformation($"Part Sync Fetch started (IPN '{ipn}').");
+            return LogBoundaryAsync("Fetch", () => FetchCoreAsync(ipn));
         }
 
         private async Task<PartSyncResult> FetchCoreAsync(string ipn)
@@ -550,16 +574,10 @@ namespace SwInventreeAddin
         /// <inheritdoc/>
         public PartSyncResult CompleteCreatePart(PartSyncOperationToken token, InventreePart part)
         {
-            _logger.LogInformation($"Part Sync Create completion started (PK {part?.Pk ?? 0}).");
-            try
-            {
-                return LogOutcome("Create completion", CompleteCreatePartCore(token, part!));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError("Part Sync Create completion threw an unhandled exception.", ex);
-                throw;
-            }
+            _logger.LogInformation(part == null
+                ? "Part Sync Create completion started (no part)."
+                : $"Part Sync Create completion started (PK {part.Pk}).");
+            return LogBoundary("Create completion", () => CompleteCreatePartCore(token, part!));
         }
 
         private PartSyncResult CompleteCreatePartCore(PartSyncOperationToken token, InventreePart part)
@@ -637,15 +655,7 @@ namespace SwInventreeAddin
         public PartSyncResult Apply(ApplyField field)
         {
             _logger.LogInformation($"Part Sync Apply started (field {field}).");
-            try
-            {
-                return LogOutcome("Apply", ApplyCore(field));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Part Sync Apply (field {field}) threw an unhandled exception.", ex);
-                throw;
-            }
+            return LogBoundary("Apply", () => ApplyCore(field));
         }
 
         private PartSyncResult ApplyCore(ApplyField field)
@@ -697,18 +707,10 @@ namespace SwInventreeAddin
         // ── Push ─────────────────────────────────────────────────────────────
 
         /// <inheritdoc/>
-        public async Task<PartSyncResult> PushAsync(PushField field)
+        public Task<PartSyncResult> PushAsync(PushField field)
         {
             _logger.LogInformation($"Part Sync Push started (field {field}).");
-            try
-            {
-                return LogOutcome("Push", await PushCoreAsync(field).ConfigureAwait(false));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Part Sync Push (field {field}) threw an unhandled exception.", ex);
-                throw;
-            }
+            return LogBoundaryAsync("Push", () => PushCoreAsync(field));
         }
 
         private async Task<PartSyncResult> PushCoreAsync(PushField field)
@@ -757,18 +759,10 @@ namespace SwInventreeAddin
         }
 
         /// <inheritdoc/>
-        public async Task<PartSyncResult> PushImageAsync(Image image, Rectangle cropRect)
+        public Task<PartSyncResult> PushImageAsync(Image image, Rectangle cropRect)
         {
             _logger.LogInformation("Part Sync Push image started.");
-            try
-            {
-                return LogOutcome("Push image", await PushImageCoreAsync(image, cropRect).ConfigureAwait(false));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError("Part Sync Push image threw an unhandled exception.", ex);
-                throw;
-            }
+            return LogBoundaryAsync("Push image", () => PushImageCoreAsync(image, cropRect));
         }
 
         private async Task<PartSyncResult> PushImageCoreAsync(Image image, Rectangle cropRect)
@@ -843,20 +837,14 @@ namespace SwInventreeAddin
         // ── Confirmation resume ──────────────────────────────────────────────
 
         /// <inheritdoc/>
-        public async Task<PartSyncResult> ResumeConfirmationAsync(
+        public Task<PartSyncResult> ResumeConfirmationAsync(
             PartSyncConfirmationHandle handle, bool approved, int? selectedCandidatePk = null)
         {
-            _logger.LogInformation($"Part Sync confirmation resume started (handle {handle?.Id ?? 0}, approved {approved}).");
-            try
-            {
-                return LogOutcome("Confirmation resume",
-                    await ResumeConfirmationCoreAsync(handle!, approved, selectedCandidatePk).ConfigureAwait(false));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError("Part Sync confirmation resume threw an unhandled exception.", ex);
-                throw;
-            }
+            _logger.LogInformation(handle == null
+                ? $"Part Sync confirmation resume started (no handle, approved {approved})."
+                : $"Part Sync confirmation resume started (handle {handle.Id}, approved {approved}).");
+            return LogBoundaryAsync("Confirmation resume",
+                () => ResumeConfirmationCoreAsync(handle!, approved, selectedCandidatePk));
         }
 
         private async Task<PartSyncResult> ResumeConfirmationCoreAsync(

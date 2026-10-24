@@ -2212,5 +2212,34 @@ namespace SwInventreeAddin.Tests
                     && e.Message.Contains(nameof(PartSyncOutcome.Success))),
                 Is.True, "the Apply outcome entry records the typed outcome");
         }
+
+        [Test]
+        public void CompleteCreatePart_NullPart_StartEntryDoesNotRenderPkSentinel()
+        {
+            var logger = new StubAddinLogger();
+            _coordinator = new PartSyncCoordinator(_propertyService, _dispatcher, _client, logger: logger);
+            var token = _coordinator.BeginCreatePart();
+
+            Assert.Throws<ArgumentNullException>(
+                () => _coordinator.CompleteCreatePart(token, null!));
+
+            Assert.That(
+                logger.Entries.Any(e => e.Message.Contains("PK 0")),
+                Is.False, "InvenTree Part PK 0 is the 'no stamp' sentinel — a null part must not render as one");
+        }
+
+        [Test]
+        public void ResumeConfirmationAsync_NullHandle_StartEntryDoesNotRenderHandleSentinel()
+        {
+            var logger = new StubAddinLogger();
+            _coordinator = new PartSyncCoordinator(_propertyService, _dispatcher, _client, logger: logger);
+
+            Assert.ThrowsAsync<ArgumentNullException>(
+                () => _coordinator.ResumeConfirmationAsync(null!, approved: true));
+
+            Assert.That(
+                logger.Entries.Any(e => e.Message.Contains("handle 0")),
+                Is.False, "a null handle must not render as a real handle id");
+        }
     }
 }

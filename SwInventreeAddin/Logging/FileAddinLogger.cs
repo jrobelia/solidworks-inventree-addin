@@ -50,9 +50,6 @@ namespace SwInventreeAddin.Logging
                     RegisterSecret(secret);
         }
 
-        /// <summary>The full path of the active log file.</summary>
-        public string LogPath => _logPath;
-
         /// <summary>
         /// Registers a string that must never be written — every occurrence,
         /// anywhere in an entry, is replaced with <c>***</c>. Null or empty
@@ -128,7 +125,7 @@ namespace SwInventreeAddin.Logging
                 ? _logPath
                 : Path.Combine(
                     Path.GetDirectoryName(_logPath)!,
-                    $"inventree-addin.{index}.log");
+                    $"{Path.GetFileNameWithoutExtension(LogFileName)}.{index}.log");
 
         private string Redact(string text)
         {

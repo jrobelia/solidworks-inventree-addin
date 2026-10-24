@@ -155,36 +155,44 @@ namespace SwInventreeAddin.UI
 
         private async void OnCompareBomRequested(object? sender, EventArgs e)
         {
-            if (_client == null) return;
-
-            var preFlightCheck = _vm.CreateBomCompareReadinessCheck();
-            if (preFlightCheck == null) return;
-
-            var mappingResult = _mappingProvider?.GetMappingResult()
-                ?? new MappingResult(MappingHealth.Healthy, PropertyMappingConfig.WithDefaults());
-            if (!mappingResult.CanUseForPartSync)
-                return;
-
-            // The dispatch owns the outcome→action mapping; this handler only
-            // executes the mechanical steps it returns.
-            if (!await DispatchBomCompareReadinessAsync(preFlightCheck, mappingResult.Config).ConfigureAwait(true))
-                return;
-
-            int pk = _vm.CurrentInvenTreePk;
-            var bomVm = _vm.CreateBomCompareViewModel(mappingResult.Config, pk);
-            if (bomVm == null) return;
-
-            var tableName = _vm.GetBomTableName() ?? string.Empty;
-            var window = new BomCompareWindow(bomVm, _vm.PartNumber, _vm.NamePreview,
-                                               tableName);
             try
             {
-                window.ShowDialog();
+                if (_client == null) return;
+
+                var preFlightCheck = _vm.CreateBomCompareReadinessCheck();
+                if (preFlightCheck == null) return;
+
+                var mappingResult = _mappingProvider?.GetMappingResult()
+                    ?? new MappingResult(MappingHealth.Healthy, PropertyMappingConfig.WithDefaults());
+                if (!mappingResult.CanUseForPartSync)
+                    return;
+
+                // The dispatch owns the outcome→action mapping; this handler only
+                // executes the mechanical steps it returns.
+                if (!await DispatchBomCompareReadinessAsync(preFlightCheck, mappingResult.Config).ConfigureAwait(true))
+                    return;
+
+                int pk = _vm.CurrentInvenTreePk;
+                var bomVm = _vm.CreateBomCompareViewModel(mappingResult.Config, pk);
+                if (bomVm == null) return;
+
+                var tableName = _vm.GetBomTableName() ?? string.Empty;
+                var window = new BomCompareWindow(bomVm, _vm.PartNumber, _vm.NamePreview,
+                                                   tableName);
+                try
+                {
+                    window.ShowDialog();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("BOM Compare window failed to open.", ex);
+                    ShowBomCompareError($"Failed to open BOM comparison:{System.Environment.NewLine}{ex.Message}");
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError("BOM Compare window failed to open.", ex);
-                ShowBomCompareError($"Failed to open BOM comparison:{System.Environment.NewLine}{ex.Message}");
+                _logger.LogError("BOM Compare request failed.", ex);
+                ShowBomCompareError($"BOM Compare failed:{System.Environment.NewLine}{ex.Message}");
             }
         }
 
@@ -225,6 +233,7 @@ namespace SwInventreeAddin.UI
                     case BomCompareActionKind.Unrecognized:
                         // Fail fast through the existing error dialog — never
                         // proceed and never re-loop on an unknown outcome.
+                        _logger.LogError(action.Message!);
                         ShowBomCompareError(action.Message!);
                         return false;
 
@@ -243,7 +252,9 @@ namespace SwInventreeAddin.UI
 
                     default:
                         // An action kind the executor does not know must never proceed.
-                        ShowBomCompareError($"Unrecognized BOM Compare action: {action.Kind}");
+                        var unrecognized = $"Unrecognized BOM Compare action: {action.Kind}";
+                        _logger.LogError(unrecognized);
+                        ShowBomCompareError(unrecognized);
                         return false;
                 }
             }
@@ -318,7 +329,7 @@ namespace SwInventreeAddin.UI
         /// The check itself never fetches — snapshot capture can still throw
         /// crossing the STA dispatcher.
         /// </summary>
-        private static async Task<BomCompareReadiness?> RunReadinessCheckAsync(
+        private async Task<BomCompareReadiness?> RunReadinessCheckAsync(
             BomCompareReadinessCheck preFlightCheck)
         {
             try
@@ -327,6 +338,7 @@ namespace SwInventreeAddin.UI
             }
             catch (Exception ex)
             {
+                _logger.LogError("BOM Compare readiness check failed.", ex);
                 ShowBomCompareError($"Could not evaluate BOM Compare readiness:{System.Environment.NewLine}{ex.Message}");
                 return null;
             }
