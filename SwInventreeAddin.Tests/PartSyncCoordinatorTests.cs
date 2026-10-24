@@ -2113,5 +2113,133 @@ namespace SwInventreeAddin.Tests
             Assert.That(_coordinator.FetchedPart, Is.Null);
             Assert.That(changed, Is.EqualTo(1));
         }
+
+        // ── Diagnostic logging (ADR-0020) ────────────────────────────────────
+        // One diagnostic event per operation boundary: start, typed outcome,
+        // exceptions. The ViewModel adds no per-field logging — a failure that
+        // escapes the coordinator boundary is its presentation failure.
+
+        [Test]
+        public async Task FetchAsync_Success_LogsStartAndOutcome()
+        {
+            var logger = new StubAddinLogger();
+            _coordinator = new PartSyncCoordinator(_propertyService, _dispatcher, _client, logger: logger);
+            _client.PartToReturn = SamplePart;
+            SeedIpnDocument();
+            _coordinator.UpdateDocument();
+
+            var result = await _coordinator.FetchAsync("R-10K-0402");
+
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Success));
+            Assert.That(
+                logger.Entries.Any(e => e.Level == "Information" && e.Message.Contains("Fetch")
+                    && e.Message.Contains("R-10K-0402")),
+                Is.True, "the Fetch start entry names the operation and the IPN");
+            Assert.That(
+                logger.Entries.Any(e => e.Level == "Information" && e.Message.Contains("Fetch")
+                    && e.Message.Contains(nameof(PartSyncOutcome.Success))),
+                Is.True, "the Fetch outcome entry records the typed outcome");
+        }
+
+        [Test]
+        public async Task FetchAsync_ClientThrows_LogsErrorOutcome()
+        {
+            var logger = new StubAddinLogger();
+            _coordinator = new PartSyncCoordinator(_propertyService, _dispatcher, _client, logger: logger);
+            _client.ThrowOnGetPartsByIpn = new System.Net.Http.HttpRequestException("Stub: fetch failed");
+            SeedIpnDocument();
+            _coordinator.UpdateDocument();
+
+            var result = await _coordinator.FetchAsync("R-10K-0402");
+
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Failed));
+            Assert.That(
+                logger.Entries.Any(e => e.Level == "Error" && e.Message.Contains("Fetch")),
+                Is.True, "a Failed outcome produces an error entry");
+        }
+
+        [Test]
+        public async Task FetchAsync_CaptureThrows_LogsErrorAndRethrows()
+        {
+            var logger = new StubAddinLogger();
+            _coordinator = new PartSyncCoordinator(_propertyService, _dispatcher, _client, logger: logger);
+            SeedIpnDocument();
+            _coordinator.UpdateDocument();
+            _propertyService.ThrowOnGetCustomProperty = new InvalidOperationException("COM dead");
+
+            Assert.ThrowsAsync<InvalidOperationException>(
+                () => _coordinator.FetchAsync("R-10K-0402"));
+
+            Assert.That(
+                logger.Entries.Any(e => e.Level == "Error" && e.Exception is InvalidOperationException),
+                Is.True, "an exception escaping the operation boundary is logged with its detail");
+        }
+
+        [Test]
+        public async Task PushAsync_UpdateThrows_LogsErrorOutcome()
+        {
+            var logger = new StubAddinLogger();
+            _coordinator = new PartSyncCoordinator(_propertyService, _dispatcher, _client, logger: logger);
+            _client.PartToReturn = SamplePart;
+            await InstallSessionViaFetch();
+            _client.ThrowOnUpdate = new System.Net.Http.HttpRequestException("Stub: push failed");
+
+            var result = await _coordinator.PushAsync(PushField.Name);
+
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Failed));
+            Assert.That(
+                logger.Entries.Any(e => e.Level == "Information" && e.Message.Contains("Push")),
+                Is.True, "the Push start entry is recorded");
+            Assert.That(
+                logger.Entries.Any(e => e.Level == "Error" && e.Message.Contains("Push")),
+                Is.True, "the Push failure produces an error entry");
+        }
+
+        [Test]
+        public void Apply_Success_LogsOutcome()
+        {
+            var logger = new StubAddinLogger();
+            _coordinator = new PartSyncCoordinator(_propertyService, _dispatcher, _client, logger: logger);
+            _client.PartToReturn = SamplePart;
+            _propertyService.Seed(Mapping.NameProperty!, "old");
+            InstallSessionViaFetch().GetAwaiter().GetResult();
+
+            var result = _coordinator.Apply(ApplyField.Name);
+
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Success));
+            Assert.That(
+                logger.Entries.Any(e => e.Level == "Information" && e.Message.Contains("Apply")
+                    && e.Message.Contains(nameof(PartSyncOutcome.Success))),
+                Is.True, "the Apply outcome entry records the typed outcome");
+        }
+
+        [Test]
+        public void CompleteCreatePart_NullPart_StartEntryDoesNotRenderPkSentinel()
+        {
+            var logger = new StubAddinLogger();
+            _coordinator = new PartSyncCoordinator(_propertyService, _dispatcher, _client, logger: logger);
+            var token = _coordinator.BeginCreatePart();
+
+            Assert.Throws<ArgumentNullException>(
+                () => _coordinator.CompleteCreatePart(token, null!));
+
+            Assert.That(
+                logger.Entries.Any(e => e.Message.Contains("PK 0")),
+                Is.False, "InvenTree Part PK 0 is the 'no stamp' sentinel — a null part must not render as one");
+        }
+
+        [Test]
+        public void ResumeConfirmationAsync_NullHandle_StartEntryDoesNotRenderHandleSentinel()
+        {
+            var logger = new StubAddinLogger();
+            _coordinator = new PartSyncCoordinator(_propertyService, _dispatcher, _client, logger: logger);
+
+            Assert.ThrowsAsync<ArgumentNullException>(
+                () => _coordinator.ResumeConfirmationAsync(null!, approved: true));
+
+            Assert.That(
+                logger.Entries.Any(e => e.Message.Contains("handle 0")),
+                Is.False, "a null handle must not render as a real handle id");
+        }
     }
 }

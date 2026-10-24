@@ -11,6 +11,7 @@ using SolidWorks.Interop.swpublished;
 using SwInventreeAddin;
 using SwInventreeAddin.Config;
 using SwInventreeAddin.InvenTree;
+using SwInventreeAddin.Logging;
 using SwInventreeAddin.SolidWorks;
 using SwInventreeAddin.UI;
 
@@ -109,6 +110,7 @@ namespace SwInventreeAddin.AddIn
         private int _addinCookie;
         private EncryptedConfigProvider? _configProvider;
         private IPropertyMappingProvider? _mappingProvider;
+        private FileAddinLogger? _logger;
 
         public bool ConnectToSW(object thisSW, int cookie)
         {
@@ -135,6 +137,12 @@ namespace SwInventreeAddin.AddIn
                 _configProvider = configProvider;
                 var config = configProvider.GetServerConfig();
 
+                // One logger for the add-in's lifetime (ADR-0020); the saved
+                // API key is registered for redaction before anything is logged.
+                _logger = new FileAddinLogger();
+                _logger.RegisterSecret(config?.ApiKey);
+                _logger.LogInformation("SwAddin connected to SolidWorks.");
+
                 IInventreeClient? inventreeClient = RebuildClient(config);
 
                 var propertyService = new SwDocumentPropertyService(_swApp);
@@ -144,10 +152,11 @@ namespace SwInventreeAddin.AddIn
 
                 var createPartValidator = new InventreeClientCreatePartValidationErrorService();
                 _taskPaneControl = new TaskPaneControl(
-                    inventreeClient, propertyService, viewportService, _mappingProvider, _configProvider, createPartValidator);
+                    inventreeClient, propertyService, viewportService, _mappingProvider, _configProvider, createPartValidator,
+                    _logger);
                 _taskPaneControl.SettingsRequested += OnSettingsRequested;
 
-                _taskPaneControl.UpdateBomState(new SwAssemblyBomService(_swApp));
+                _taskPaneControl.UpdateBomState(new SwAssemblyBomService(_swApp, _logger));
                 _taskPaneControl.UpdateWaitForServerAssignedIpn(config?.WaitForServerAssignedIpn ?? ServerConfig.DefaultWaitForServerAssignedIpn);
 
                 // #241: the config-derived connection state lands now — a
@@ -178,6 +187,9 @@ namespace SwInventreeAddin.AddIn
             }
             catch (Exception ex)
             {
+                _logger?.LogError("ConnectToSW failed.", ex);
+                _logger?.Dispose();
+                _logger = null;
                 MessageDialog.ShowOK(
                     SolidWorksWindowHandle.Get(),
                     $"InvenTree add-in failed to load:{System.Environment.NewLine}{ex.Message}",
@@ -188,6 +200,25 @@ namespace SwInventreeAddin.AddIn
         }
 
         public bool DisconnectFromSW()
+        {
+            _logger?.LogInformation("SwAddin disconnecting from SolidWorks.");
+            try
+            {
+                DisconnectCore();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError("DisconnectFromSW failed.", ex);
+            }
+            finally
+            {
+                _logger?.Dispose();
+                _logger = null;
+            }
+            return true;
+        }
+
+        private void DisconnectCore()
         {
             if (_swEvents != null)
             {
@@ -220,13 +251,11 @@ namespace SwInventreeAddin.AddIn
                 Marshal.ReleaseComObject(_swApp);
                 _swApp = null;
             }
-
-            return true;
         }
 
         // ── SolidWorks event callbacks ───────────────────────────────────────
         // A throw inside any COM event callback propagates into the SolidWorks
-        // host and is silently swallowed — every callback catches, traces, and
+        // host and is silently swallowed — every callback catches, logs, and
         // returns 0. One identical pattern for all of them.
 
         private int OnActiveDocChange()
@@ -240,7 +269,7 @@ namespace SwInventreeAddin.AddIn
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] OnActiveDocChange failed: {ex.Message}");
+                _logger?.LogError("OnActiveDocChange failed.", ex);
                 return 0;
             }
         }
@@ -256,7 +285,7 @@ namespace SwInventreeAddin.AddIn
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] OnDocumentLoad failed: {ex.Message}");
+                _logger?.LogError("OnDocumentLoad failed.", ex);
                 return 0;
             }
         }
@@ -279,7 +308,7 @@ namespace SwInventreeAddin.AddIn
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] OnIdle failed: {ex.Message}");
+                _logger?.LogError("OnIdle failed.", ex);
                 return 0;
             }
         }
@@ -314,8 +343,7 @@ namespace SwInventreeAddin.AddIn
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Trace.WriteLine(
-                    $"[SwInventreeAddin] SubscribeToDocumentEvents failed: {ex.Message}");
+                _logger?.LogError("SubscribeToDocumentEvents failed.", ex);
             }
         }
 
@@ -354,7 +382,7 @@ namespace SwInventreeAddin.AddIn
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] OnDocCustomPropertyAdd failed: {ex.Message}");
+                _logger?.LogError("OnDocCustomPropertyAdd failed.", ex);
                 return 0;
             }
         }
@@ -368,7 +396,7 @@ namespace SwInventreeAddin.AddIn
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] OnDocCustomPropertyChange failed: {ex.Message}");
+                _logger?.LogError("OnDocCustomPropertyChange failed.", ex);
                 return 0;
             }
         }
@@ -382,7 +410,7 @@ namespace SwInventreeAddin.AddIn
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] OnDocCustomPropertyDelete failed: {ex.Message}");
+                _logger?.LogError("OnDocCustomPropertyDelete failed.", ex);
                 return 0;
             }
         }
@@ -399,7 +427,7 @@ namespace SwInventreeAddin.AddIn
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] OnDocFileSaveAs failed: {ex.Message}");
+                _logger?.LogError("OnDocFileSaveAs failed.", ex);
                 return 0;
             }
         }
@@ -419,7 +447,7 @@ namespace SwInventreeAddin.AddIn
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] OnAssemblyDocSavePost failed: {ex.Message}");
+                _logger?.LogError("OnAssemblyDocSavePost failed.", ex);
                 return 0;
             }
         }
@@ -433,71 +461,84 @@ namespace SwInventreeAddin.AddIn
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Trace.WriteLine($"[SwInventreeAddin] OnDocRenamed failed: {ex.Message}");
+                _logger?.LogError("OnDocRenamed failed.", ex);
                 return 0;
             }
         }
 
         private void OnSettingsRequested(object sender, EventArgs e)
         {
-            if (_configProvider == null || _mappingProvider == null)
+            try
             {
-                System.Diagnostics.Trace.WriteLine("[SwInventreeAddin] OnSettingsRequested: provider not initialised — settings dialog suppressed.");
-                return;
-            }
-
-            using (var settingsHttpClient = new System.Net.Http.HttpClient())
-            {
-                var tokenService = new InventreeTokenService(settingsHttpClient);
-                var settingsService = new SettingsApplyService(_configProvider, tokenService);
-                var mappingFactory = new PropertyMappingProviderFactory();
-                var form = new SettingsWindow(
-                    _configProvider,
-                    _mappingProvider,
-                    new AssemblyVersionInfo(),
-                    settingsService,
-                    mappingFactory);
-                var settingsApplied = false;
-                form.MappingApplied += (_, provider) =>
+                if (_configProvider == null || _mappingProvider == null)
                 {
-                    settingsApplied = true;
-                    _mappingProvider = provider;
-                    _taskPaneControl?.UpdateMapping(provider);
-                };
-
-                // #241: the dialog's connection state streams to the strip
-                // live — a Testing state leaves a standing entry untouched,
-                // a verdict publishes or removes it.
-                form.ConnectionStateChanged += (_, status) =>
-                    _taskPaneControl?.ProjectConnectionState(status);
-
-                bool? dialogSaved = form.ShowDialog();
-
-                // Apply saves without closing the dialog, so propagate whenever
-                // an apply ran — not only when the dialog returns true.
-                if (settingsApplied)
-                {
-                    var newConfig = _configProvider.GetServerConfig();
-                    _taskPaneControl?.UpdateClient(RebuildClient(newConfig));
-                    _taskPaneControl?.UpdateWaitForServerAssignedIpn(newConfig?.WaitForServerAssignedIpn ?? ServerConfig.DefaultWaitForServerAssignedIpn);
+                    _logger?.LogError("OnSettingsRequested: provider not initialised — settings dialog suppressed.");
+                    return;
                 }
 
-                // The event fires only on change — an already-failed state
-                // opened-and-closed never re-emitted — so the closing read
-                // forwards the final state after the client/mapping
-                // propagation (#241).
-                if (_taskPaneControl != null)
-                    _taskPaneControl.ProjectConnectionState(form.ViewModel.ConnectionState);
+                using (var settingsHttpClient = new System.Net.Http.HttpClient())
+                {
+                    var tokenService = new InventreeTokenService(settingsHttpClient);
+                    var settingsService = new SettingsApplyService(_configProvider, tokenService);
+                    var mappingFactory = new PropertyMappingProviderFactory();
+                    var form = new SettingsWindow(
+                        _configProvider,
+                        _mappingProvider,
+                        new AssemblyVersionInfo(),
+                        settingsService,
+                        mappingFactory);
+                    var settingsApplied = false;
+                    form.MappingApplied += (_, provider) =>
+                    {
+                        settingsApplied = true;
+                        _mappingProvider = provider;
+                        _taskPaneControl?.UpdateMapping(provider);
+                    };
 
-                // A Save's outcome reports only now — after the client/mapping
-                // propagation above, whose Configuration-domain resolution and
-                // transient invalidation would erase the entry before the
-                // engineer saw it — and only when the Save itself closed the
-                // dialog. A failed Save stays open and reports in the footer;
-                // carrying that fact to the strip on a cancel would read as a
-                // live failure over a config nothing changed.
-                if (dialogSaved == true && form.SaveOutcome is { } saveOutcome)
-                    _taskPaneControl?.NotifySettingsSaveCompleted(saveOutcome.Severity, saveOutcome.Diagnostic);
+                    // #241: the dialog's connection state streams to the strip
+                    // live — a Testing state leaves a standing entry untouched,
+                    // a verdict publishes or removes it.
+                    form.ConnectionStateChanged += (_, status) =>
+                        _taskPaneControl?.ProjectConnectionState(status);
+
+                    bool? dialogSaved = form.ShowDialog();
+
+                    // Apply saves without closing the dialog, so propagate whenever
+                    // an apply ran — not only when the dialog returns true.
+                    if (settingsApplied)
+                    {
+                        var newConfig = _configProvider.GetServerConfig();
+                        _logger?.RegisterSecret(newConfig?.ApiKey);
+                        _taskPaneControl?.UpdateClient(RebuildClient(newConfig));
+                        _taskPaneControl?.UpdateWaitForServerAssignedIpn(newConfig?.WaitForServerAssignedIpn ?? ServerConfig.DefaultWaitForServerAssignedIpn);
+                    }
+
+                    // The event fires only on change — an already-failed state
+                    // opened-and-closed never re-emitted — so the closing read
+                    // forwards the final state after the client/mapping
+                    // propagation (#241).
+                    if (_taskPaneControl != null)
+                        _taskPaneControl.ProjectConnectionState(form.ViewModel.ConnectionState);
+
+                    // A Save's outcome reports only now — after the client/mapping
+                    // propagation above, whose Configuration-domain resolution and
+                    // transient invalidation would erase the entry before the
+                    // engineer saw it — and only when the Save itself closed the
+                    // dialog. A failed Save stays open and reports in the footer;
+                    // carrying that fact to the strip on a cancel would read as a
+                    // live failure over a config nothing changed.
+                    if (dialogSaved == true && form.SaveOutcome is { } saveOutcome)
+                        _taskPaneControl?.NotifySettingsSaveCompleted(saveOutcome.Severity, saveOutcome.Diagnostic);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError("OnSettingsRequested failed.", ex);
+                MessageDialog.ShowOK(
+                    SolidWorksWindowHandle.Get(),
+                    $"The Settings window failed:{System.Environment.NewLine}{ex.Message}",
+                    "InvenTree Settings",
+                    System.Windows.Forms.MessageBoxIcon.Error);
             }
         }
 

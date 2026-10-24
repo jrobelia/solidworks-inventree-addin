@@ -5747,6 +5747,56 @@ namespace SwInventreeAddin.Tests
             Assert.That(_vm.PartNumber, Is.EqualTo("USER-TYPED"));
         }
 
+        // ── Diagnostic logging (ADR-0020) ────────────────────────────────────
+        // The pane logs only presentation-boundary failures that escape the
+        // coordinator without an outcome — operation start/outcome/exception
+        // logging lives at the coordinator boundary, never per-field here.
+
+        [Test]
+        public async Task FetchPartAsync_OperationThrows_LogsPresentationFailure()
+        {
+            var logger = new StubAddinLogger();
+            _propertyService.Seed(Mapping.IpnProperty!, "R-10K-0402");
+            _pair = VmFactory.Create(_client, _propertyService, _mappingProvider,
+                dispatcher: _dispatcher, logger: logger);
+            _vm = _pair.ViewModel;
+            _propertyService.ThrowOnGetCustomProperty = new InvalidOperationException("COM dead");
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Error));
+            Assert.That(
+                logger.Entries.Any(e => e.Level == "Error"
+                    && e.Message.Contains("FetchPartAsync") && e.Exception != null),
+                Is.True, "the escaped boundary failure is logged through the seam");
+        }
+
+        [Test]
+        public async Task PushNameToInvenTree_Success_AddsNoViewModelLogEntry()
+        {
+            var logger = new StubAddinLogger();
+            _propertyService.Seed(Mapping.IpnProperty!, "R-10K-0402");
+            _propertyService.Seed(Mapping.NameProperty!, "New Name");
+            _pair = VmFactory.Create(_client, _propertyService, _mappingProvider,
+                dispatcher: _dispatcher, logger: logger);
+            _vm = _pair.ViewModel;
+            _client.PartToReturn = FetchedPart;
+            await _vm.FetchPartAsync();
+            logger.Entries.Clear();
+
+            await _vm.PushNameToInvenTreeAsync();
+
+            Assert.That(
+                logger.Entries.Any(e => e.Level == "Information" && e.Message.Contains("Push")),
+                Is.True, "the coordinator's boundary entries are recorded");
+            Assert.That(
+                logger.Entries.All(e => e.Level == "Information"),
+                Is.True, "a clean push produces no error entries");
+            Assert.That(
+                logger.Entries.Any(e => e.Message.Contains("PushFieldAsync")),
+                Is.False, "no per-field ViewModel logging duplicates the coordinator's boundary entries");
+        }
+
         // ── Binding-name compatibility with the XAML ──────────────────────────
 
         [Test]

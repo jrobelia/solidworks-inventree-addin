@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using SwInventreeAddin.Config;
 using SwInventreeAddin.InvenTree;
+using SwInventreeAddin.Logging;
 using SwInventreeAddin.SolidWorks;
 using SwInventreeAddin.UI;
 
@@ -44,6 +45,7 @@ namespace SwInventreeAddin
     {
         private readonly IDocumentPropertyService _propertyService;
         private readonly IHostStaDispatcher _dispatcher;
+        private readonly IAddinLogger _logger;
         private IInventreeClient? _client;
         private IPropertyMappingProvider? _mappingProvider;
 
@@ -75,10 +77,12 @@ namespace SwInventreeAddin
             IDocumentPropertyService propertyService,
             IHostStaDispatcher dispatcher,
             IInventreeClient? client = null,
-            IPropertyMappingProvider? mappingProvider = null)
+            IPropertyMappingProvider? mappingProvider = null,
+            IAddinLogger? logger = null)
         {
             _propertyService = propertyService ?? throw new ArgumentNullException(nameof(propertyService));
             _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
+            _logger = logger ?? new NullAddinLogger();
             _client = client;
             _mappingProvider = mappingProvider;
         }
@@ -285,10 +289,63 @@ namespace SwInventreeAddin
             _state.ClearPopulated();
         }
 
+        // ── Diagnostic logging (ADR-0020) ────────────────────────────────────
+        // One diagnostic event per operation boundary: start, typed outcome,
+        // exceptions. The wrappers below are the only logging surface — the
+        // *Core bodies keep their existing return points untouched.
+
+        /// <summary>Logs the typed outcome; Failed produces an error entry with its diagnostic.</summary>
+        private PartSyncResult LogOutcome(string operation, PartSyncResult result)
+        {
+            if (result.Outcome == PartSyncOutcome.Failed)
+                _logger.LogError($"Part Sync {operation} failed: {result.Diagnostic ?? "(no diagnostic)"}");
+            else
+                _logger.LogInformation($"Part Sync {operation} outcome: {result.Outcome}.");
+            return result;
+        }
+
+        /// <summary>
+        /// The shared boundary tail for the sync wrappers: the typed outcome is
+        /// logged on every return and an escaping exception is logged before it
+        /// rethrows. The bespoke start entry stays in each wrapper.
+        /// </summary>
+        private PartSyncResult LogBoundary(string operation, Func<PartSyncResult> body)
+        {
+            try
+            {
+                return LogOutcome(operation, body());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Part Sync {operation} threw an unhandled exception.", ex);
+                throw;
+            }
+        }
+
+        /// <summary>The <see cref="LogBoundary"/> tail for the async wrappers.</summary>
+        private async Task<PartSyncResult> LogBoundaryAsync(string operation, Func<Task<PartSyncResult>> body)
+        {
+            try
+            {
+                return LogOutcome(operation, await body().ConfigureAwait(false));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Part Sync {operation} threw an unhandled exception.", ex);
+                throw;
+            }
+        }
+
         // ── Fetch ────────────────────────────────────────────────────────────
 
         /// <inheritdoc/>
-        public async Task<PartSyncResult> FetchAsync(string ipn)
+        public Task<PartSyncResult> FetchAsync(string ipn)
+        {
+            _logger.LogInformation($"Part Sync Fetch started (IPN '{ipn}').");
+            return LogBoundaryAsync("Fetch", () => FetchCoreAsync(ipn));
+        }
+
+        private async Task<PartSyncResult> FetchCoreAsync(string ipn)
         {
             if (_disposed)
                 return InvalidOp("The coordinator is disposed.");
@@ -517,6 +574,14 @@ namespace SwInventreeAddin
         /// <inheritdoc/>
         public PartSyncResult CompleteCreatePart(PartSyncOperationToken token, InventreePart part)
         {
+            _logger.LogInformation(part == null
+                ? "Part Sync Create completion started (no part)."
+                : $"Part Sync Create completion started (PK {part.Pk}).");
+            return LogBoundary("Create completion", () => CompleteCreatePartCore(token, part!));
+        }
+
+        private PartSyncResult CompleteCreatePartCore(PartSyncOperationToken token, InventreePart part)
+        {
             if (token == null) throw new ArgumentNullException(nameof(token));
             if (part == null) throw new ArgumentNullException(nameof(part));
             if (_disposed)
@@ -589,6 +654,12 @@ namespace SwInventreeAddin
         /// <inheritdoc/>
         public PartSyncResult Apply(ApplyField field)
         {
+            _logger.LogInformation($"Part Sync Apply started (field {field}).");
+            return LogBoundary("Apply", () => ApplyCore(field));
+        }
+
+        private PartSyncResult ApplyCore(ApplyField field)
+        {
             if (_disposed)
                 return InvalidOp("The coordinator is disposed.");
             if (_session == null)
@@ -636,7 +707,13 @@ namespace SwInventreeAddin
         // ── Push ─────────────────────────────────────────────────────────────
 
         /// <inheritdoc/>
-        public async Task<PartSyncResult> PushAsync(PushField field)
+        public Task<PartSyncResult> PushAsync(PushField field)
+        {
+            _logger.LogInformation($"Part Sync Push started (field {field}).");
+            return LogBoundaryAsync("Push", () => PushCoreAsync(field));
+        }
+
+        private async Task<PartSyncResult> PushCoreAsync(PushField field)
         {
             if (_disposed)
                 return InvalidOp("The coordinator is disposed.");
@@ -682,7 +759,13 @@ namespace SwInventreeAddin
         }
 
         /// <inheritdoc/>
-        public async Task<PartSyncResult> PushImageAsync(Image image, Rectangle cropRect)
+        public Task<PartSyncResult> PushImageAsync(Image image, Rectangle cropRect)
+        {
+            _logger.LogInformation("Part Sync Push image started.");
+            return LogBoundaryAsync("Push image", () => PushImageCoreAsync(image, cropRect));
+        }
+
+        private async Task<PartSyncResult> PushImageCoreAsync(Image image, Rectangle cropRect)
         {
             if (image == null) throw new ArgumentNullException(nameof(image));
             if (_disposed)
@@ -754,8 +837,18 @@ namespace SwInventreeAddin
         // ── Confirmation resume ──────────────────────────────────────────────
 
         /// <inheritdoc/>
-        public async Task<PartSyncResult> ResumeConfirmationAsync(
+        public Task<PartSyncResult> ResumeConfirmationAsync(
             PartSyncConfirmationHandle handle, bool approved, int? selectedCandidatePk = null)
+        {
+            _logger.LogInformation(handle == null
+                ? $"Part Sync confirmation resume started (no handle, approved {approved})."
+                : $"Part Sync confirmation resume started (handle {handle.Id}, approved {approved}).");
+            return LogBoundaryAsync("Confirmation resume",
+                () => ResumeConfirmationCoreAsync(handle!, approved, selectedCandidatePk));
+        }
+
+        private async Task<PartSyncResult> ResumeConfirmationCoreAsync(
+            PartSyncConfirmationHandle handle, bool approved, int? selectedCandidatePk)
         {
             if (handle == null) throw new ArgumentNullException(nameof(handle));
 
