@@ -8,14 +8,17 @@ namespace SwInventreeAddin.Tests.Capture
     public class SurfaceCaptureCatalogTests
     {
         [Test]
-        public void Catalog_ThreeSettingsWindowStates_AreRegistered()
+        public void Catalog_FourSettingsWindowStates_AreRegistered()
         {
             var states = SurfaceCapture.Catalog
                 .Where(e => e.Surface == "SettingsWindow")
                 .Select(e => e.State)
                 .ToList();
 
-            Assert.That(states, Is.EquivalentTo(new[] { "fresh", "configured", "change-credential" }));
+            Assert.That(states, Is.EquivalentTo(new[]
+            {
+                "fresh", "configured", "change-credential", "shared-draft-unapplied",
+            }));
         }
 
         [Test]

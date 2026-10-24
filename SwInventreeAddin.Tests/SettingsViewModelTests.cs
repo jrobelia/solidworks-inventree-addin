@@ -1996,6 +1996,171 @@ namespace SwInventreeAddin.Tests
                 "nothing mapping-related outlives the dialog");
         }
 
+        // ── Edit Mappings draft gating (#342) ────────────────────────────
+        // The editor targets the applied provider, so the button is honest
+        // only while the draft selection still resolves to the same Property
+        // Mapping. A differing draft — another shared file, or a Local/Shared
+        // switch — disables editing until Apply; restoring the applied
+        // selection re-enables it only when the provider is editable.
+
+        [Test]
+        public void EditMappings_WhenSharedPathDraftDiffersFromApplied_IsDisabled()
+        {
+            var provider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            provider.Config!.MappingSourcePath = "\\\\share\\map-a.json";
+            var vm = CreateVm(provider, mappingProvider: new StubPropertyMappingProvider
+            {
+                SourceFilePath = "\\\\share\\map-a.json",
+                SourceFileExists = true,
+                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion },
+            });
+            Assert.That(vm.EditMappingsEnabled, Is.True, "the applied file is editable");
+
+            vm.SharedMappingPath = "\\\\share\\map-b.json";
+
+            Assert.That(vm.EditMappingsEnabled, Is.False,
+                "the editor would open map-a while the path field shows map-b");
+        }
+
+        [Test]
+        public void EditMappings_WhenSharedSelectedWithBlankPath_StaysEnabledOnAppliedLocal()
+        {
+            var vm = CreateVm();
+            Assert.That(vm.EditMappingsEnabled, Is.True);
+
+            vm.UseSharedMapping = true;
+
+            Assert.That(vm.EditMappingsEnabled, Is.True,
+                "a blank shared path resolves to the local file — the same source Apply would persist");
+        }
+
+        [Test]
+        public void EditMappings_WhenLocalSelectedOverAppliedShared_IsDisabled()
+        {
+            var provider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            provider.Config!.MappingSourcePath = "\\\\share\\map.json";
+            var vm = CreateVm(provider, mappingProvider: new StubPropertyMappingProvider
+            {
+                SourceFilePath = "\\\\share\\map.json",
+                SourceFileExists = true,
+                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion },
+            });
+            Assert.That(vm.EditMappingsEnabled, Is.True);
+
+            vm.UseSharedMapping = false;
+
+            Assert.That(vm.EditMappingsEnabled, Is.False,
+                "the draft resolves to the local file while the applied provider holds the shared one");
+        }
+
+        [Test]
+        public void EditMappings_WhenSharedPathDraftDiffersWithLocalSelected_IsDisabled()
+        {
+            var vm = CreateVm();
+            Assert.That(vm.EditMappingsEnabled, Is.True);
+
+            vm.UseSharedMapping = true;
+            vm.SharedMappingPath = "\\\\share\\map.json";
+
+            Assert.That(vm.EditMappingsEnabled, Is.False,
+                "the unapplied shared file is not what the editor would open");
+        }
+
+        [Test]
+        public void EditMappings_WhenDraftRestoredToApplied_IsReenabled()
+        {
+            var provider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            provider.Config!.MappingSourcePath = "\\\\share\\map.json";
+            var vm = CreateVm(provider, mappingProvider: new StubPropertyMappingProvider
+            {
+                SourceFilePath = "\\\\share\\map.json",
+                SourceFileExists = true,
+                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion },
+            });
+
+            vm.UseSharedMapping = false;
+            Assert.That(vm.EditMappingsEnabled, Is.False);
+
+            vm.UseSharedMapping = true;   // the path draft survives the radio round-trip
+
+            Assert.That(vm.EditMappingsEnabled, Is.True,
+                "the draft again resolves to the applied file, which is editable");
+        }
+
+        [Test]
+        public void EditMappings_WhenProviderNotEditable_RestoredDraftStaysDisabled()
+        {
+            var provider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            provider.Config!.MappingSourcePath = "\\\\share\\map.json";
+            var vm = CreateVm(provider, mappingProvider: new StubPropertyMappingProvider
+            {
+                SourceFilePath = "\\\\share\\map.json",
+                SourceFileExists = true,
+                Config = new PropertyMappingConfig { SchemaVersion = "4" },   // NewerSchema
+            });
+            Assert.That(vm.EditMappingsEnabled, Is.False, "NewerSchema is not editable");
+
+            vm.UseSharedMapping = false;
+            vm.UseSharedMapping = true;
+
+            Assert.That(vm.EditMappingsEnabled, Is.False,
+                "a matching draft cannot re-enable editing the provider refuses");
+        }
+
+        [Test]
+        public async Task EditMappings_AfterSharedApply_ReflectsTheAppliedSource()
+        {
+            var sharedProvider = new StubPropertyMappingProvider
+            {
+                SourceFilePath = "\\\\share\\map.json",
+                SourceFileExists = true,
+                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion },
+            };
+            var provider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var vm = CreateVm(provider, new StubSettingsApplyService(provider),
+                mappingProviderFactory: new StubMappingProviderFactory { Factory = _ => sharedProvider });
+            vm.UseSharedMapping = true;
+            vm.SharedMappingPath = "\\\\share\\map.json";
+            Assert.That(vm.EditMappingsEnabled, Is.False, "the draft differs until it is applied");
+
+            Assert.That(await vm.ApplyAsync(), Is.True);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.EditMappingsEnabled, Is.True);
+                Assert.That(vm.EditMappingsLabel, Is.EqualTo("Edit Shared Mappings"));
+                Assert.That(vm.MappingProvider, Is.SameAs(sharedProvider),
+                    "the editor target is the rebuilt provider for the applied file");
+            });
+        }
+
+        [Test]
+        public void EditMappings_WhenSharedFileSelected_DoesNotApplyOrRebuild()
+        {
+            int factoryCalls = 0;
+            var applied = new StubPropertyMappingProvider
+            {
+                Config = new PropertyMappingConfig { SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion },
+            };
+            var provider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var vm = CreateVm(provider, mappingProvider: applied,
+                mappingProviderFactory: new StubMappingProviderFactory
+                {
+                    Factory = _ => { factoryCalls++; return applied; },
+                });
+
+            vm.UseSharedMapping = true;
+            vm.SharedMappingPath = "\\\\share\\map.json";   // the Browse result lands here
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.MappingProvider, Is.SameAs(applied),
+                    "the editor target stays the applied provider until Apply");
+                Assert.That(factoryCalls, Is.EqualTo(0), "selecting a file never rebuilds the provider");
+                Assert.That(provider.LastSavedConfig, Is.Null, "selecting a file persists nothing");
+            });
+        }
+
         // ── ConnectionState exposure (#241 reach path) ───────────────────
         // The same ServerConnectionStatus the card projects, reachable by a
         // Task Pane consumer — neither #241 consumption option is committed.

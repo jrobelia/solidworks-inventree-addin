@@ -124,6 +124,7 @@ namespace SwInventreeAddin.UI
         // Property Mapping section projection.
         private string _mappingStatusText = string.Empty;
         private StatusSeverity _mappingStatusSeverity = StatusSeverity.None;
+        private bool _mappingEditable;
         private bool _editMappingsEnabled;
         private string _editMappingsLabel = "Edit Mappings";
 
@@ -780,7 +781,8 @@ namespace SwInventreeAddin.UI
             {
                 var result = _mappingProvider.GetMappingResult();
 
-                EditMappingsEnabled = result.CanEdit;
+                _mappingEditable = result.CanEdit;
+                UpdateEditMappingsGate();
                 EditMappingsLabel =
                     result.Source == MappingSource.Local
                         ? "Edit Local Mappings"
@@ -814,10 +816,32 @@ namespace SwInventreeAddin.UI
             var result = new MappingResult(MappingHealth.Invalid,
                                            PropertyMappingConfig.WithDefaults(),
                                            detail);
-            EditMappingsEnabled = false;
+            _mappingEditable = false;
+            UpdateEditMappingsGate();
             MappingStatusText = result.FullStatusMessage;
             MappingStatusSeverity = StatusSeverity.Error;
             return false;
+        }
+
+        // The editor targets the applied provider, so the button is honest
+        // only while the draft still resolves to the same Property Mapping
+        // the provider holds (#342). The effective draft source is the radio
+        // and path crossed exactly as Apply persists them: Local or a blank
+        // shared path resolve to null — the local file — and a non-blank
+        // shared path is its trimmed text. The applied source is the saved
+        // MappingSourcePath; Ordinal matches the snapshot's comparison.
+        private void UpdateEditMappingsGate()
+        {
+            EditMappingsEnabled = _mappingEditable && DraftMatchesAppliedSource();
+        }
+
+        private bool DraftMatchesAppliedSource()
+        {
+            string? draft = _useSharedMapping
+                ? (string.IsNullOrWhiteSpace(_sharedMappingPath) ? null : _sharedMappingPath.Trim())
+                : null;
+            return string.Equals(draft, _savedConfig?.MappingSourcePath,
+                                 StringComparison.Ordinal);
         }
 
         private void SetActionStatus(string text, StatusSeverity severity)
@@ -1019,14 +1043,17 @@ namespace SwInventreeAddin.UI
                 bomKeyword: _bomKeyword.Trim(),
                 useLocalMapping: !_useSharedMapping);
 
-        // Every draft change can flip dirty gating, the Cancel/Close label, and
-        // the Test button's effective-URL enablement.
+        // Every draft change can flip dirty gating, the Cancel/Close label,
+        // the Test button's effective-URL enablement, and the Edit Mappings
+        // gate — a draft that stops resolving to the applied Property
+        // Mapping disables it.
         private void OnDraftsChanged()
         {
             Raise(nameof(IsDirty));
             Raise(nameof(CancelLabel));
             Raise(nameof(EffectiveUrl));
             Raise(nameof(TestConnectionEnabled));
+            UpdateEditMappingsGate();
         }
 
         // Every card-affecting change raises the card and all three form
