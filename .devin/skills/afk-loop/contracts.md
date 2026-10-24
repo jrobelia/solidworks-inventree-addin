@@ -30,6 +30,8 @@ Shared skill dependencies are `tdd`, `codebase-design`, and `domain-voice`, each
 
 `--prepare --tickets N ... --base <branch>` performs read-only tracker queries and writes `.scratch/afk-loop/<run>/APPROVAL.json`. It does not assign tickets, create worktrees, run workers, or publish. Native blockers and body-level `Blocked by` references both apply. Parent and closed-blocker bodies and comments are included. The actual canonical checkout must match the pinned base when execution begins.
 
+The agent runs preparation in the current session and reads its approval file directly. Only worker launch, policy probes, and worker resumes require the user's authenticated terminal. A GitHub authentication blocker does not move preparation into that terminal; resolve GitHub authentication, then retry preparation in-session.
+
 Before `--run <run>`, confirm playback and every consequential ruling. Populate each ticket's seam declaration (consumed interface, production/test adapters, deletion-test result) and the complete acceptance mapping:
 
 ```json

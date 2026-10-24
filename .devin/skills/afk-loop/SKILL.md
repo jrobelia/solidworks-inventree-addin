@@ -1,6 +1,6 @@
 ---
 name: afk-loop
-description: "Prepare and launch the local SolidWorks add-in AFK ticket loop: full CLI sessions, pinned automated checks, independent reviews, resumable evidence, and a human SolidWorks QA handoff. Emit commands for the user's terminal; do not start real workers from this agent session."
+description: "Prepare the local SolidWorks add-in AFK ticket loop in this agent session, then emit the approved worker launch command for the user's terminal. Full CLI workers perform checks and independent reviews with resumable evidence and a human SolidWorks QA handoff; do not start workers from this session."
 disable-model-invocation: true
 triggers: ["user"]
 argument-hint: "<issue numbers> | --resume <run>"
@@ -14,27 +14,23 @@ One user-facing skill owns the launcher, driver, internal prompts, contracts and
 
 Resolve a finite explicit issue list and confirmed base branch. Read this repo's AGENTS.md, tracker conventions and PR conventions. Default to one branch/PR per independent ticket; open blockers stay blocked. No automatic frontier, wave merge, prior-work adoption or branch cleanup is implemented.
 
-Pre-flight at the canonical checkout before emitting the command — prepare refuses to run against a bad checkout, and a blocked terminal run costs the user a round trip:
+Pre-flight at the canonical checkout before preparation:
 
 - `git status --porcelain` returns empty. A dirty tree blocks prepare; commit or preserve the work first.
 - `git rev-parse --verify <base>^{commit}` resolves.
 - `git branch --show-current` names the base. Execution later requires the canonical checkout on the pinned base, so surface a mismatch now.
 
-Emit this command for the user's own PowerShell terminal at the canonical checkout:
-
-```powershell
-.\.devin\skills\afk-loop\afk-loop.ps1 --prepare --tickets <N> [<M>] --base milestone-3
-```
-
-Git Bash equivalent:
+Run preparation yourself in this agent session, with the tool's working directory set to the canonical checkout:
 
 ```bash
-bash .devin/skills/afk-loop/afk-loop.sh --prepare --tickets <N> --base milestone-3
+bash .devin/skills/afk-loop/afk-loop.sh --prepare --tickets <N> [<M>] --base milestone-3
 ```
 
-Preparation queries the tracker read-only and writes `.scratch/afk-loop/<run>/APPROVAL.json`. It pins the actual base and complete issue/parent/blocker snapshots. Ask the user to share the run id; inspect its approval file and prior-work findings. Do not claim an existing branch, PR or merged implementation is absent merely because one name is missing.
+Preparation queries the tracker read-only and writes `.scratch/afk-loop/<run>/APPROVAL.json`. It pins the actual base and complete issue/parent/blocker snapshots. This mode does not launch Devin workers or require Devin terminal authentication. Read the returned run id and approval file directly; inspect every snapshot and prior-work finding. Keep the user here for playback and approval rather than asking them to run preparation or copy a run id.
 
-**Done when:** the finite set, base, blockers, prior work, full bodies/comments and referenced decisions are resolved.
+If GitHub authentication is unavailable, report that specific blocker and ask the user to authenticate GitHub CLI; then retry preparation here. Preserve dirty-tree and base checks. Finish any authorized tracked workflow changes before preparation so the approval pins the final clean base. Do not claim an existing branch, PR or merged implementation is absent merely because one name is missing.
+
+**Done when:** preparation succeeded here, the approval file is inspected, and the finite set, base, blockers, prior work, full bodies/comments and referenced decisions are resolved.
 
 ## 2. Confirm the delivery contract
 
