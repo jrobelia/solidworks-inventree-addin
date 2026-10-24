@@ -87,8 +87,8 @@ namespace SwInventreeAddin.Tests
             _model.Publish(new StatusEntry("Fetching from InvenTree", StatusSeverity.None,
                 StatusPersistence.Transient, "Fetch"));
 
-            Assert.That(_model.ToolTip, Is.EqualTo("Connection failed" + System.Environment.NewLine
-                + "Review Property Mapping"));
+            Assert.That(_model.ToolTip, Is.EqualTo("Connection: Connection failed" + System.Environment.NewLine
+                + "Property Mapping: Review Property Mapping"));
         }
 
         [TestCase(StatusSeverity.None)]
@@ -177,7 +177,7 @@ namespace SwInventreeAddin.Tests
                 StatusPersistence.Persistent, "MappingHealth", "Expanded mapping explanation"));
 
             Assert.That(_model.ToolTip, Is.EqualTo("Expanded mapping explanation"
-                + System.Environment.NewLine + "Connection needs attention"));
+                + System.Environment.NewLine + "Connection: Connection needs attention"));
         }
 
         [Test]
@@ -192,7 +192,8 @@ namespace SwInventreeAddin.Tests
 
             _model.InvalidateTransients();
 
-            Assert.That((suppressed, _model.Current), Is.EqualTo((persistent.Text, persistent)));
+            Assert.That((suppressed, _model.Current),
+                Is.EqualTo(("Property Mapping: " + persistent.Text, persistent)));
         }
 
         [TestCase(StatusPersistence.Transient)]
@@ -232,7 +233,7 @@ namespace SwInventreeAddin.Tests
 
             _model.Publish(new StatusEntry("Retry feedback", severity, StatusPersistence.Transient, "Fetch"));
 
-            Assert.That(_model.ToolTip, Is.EqualTo("Fetch failed"));
+            Assert.That(_model.ToolTip, Is.EqualTo("Fetch: Fetch failed"));
         }
 
         [TestCase("Documentary")]
@@ -285,6 +286,76 @@ namespace SwInventreeAddin.Tests
             _model.Resolve("Fetch");
 
             Assert.That(_model.Current, Is.SameAs(persistent));
+        }
+
+        [Test]
+        public void Publish_TwoSuppressedPushFailures_ToolTipLabelsEachByAction()
+        {
+            const string transport = "Error: An error occurred while sending the request.";
+            _model.Publish(new StatusEntry(transport, StatusSeverity.Error,
+                StatusPersistence.Transient, "Document.Push.Name"));
+            _model.Publish(new StatusEntry(transport, StatusSeverity.Error,
+                StatusPersistence.Transient, "Document.Push.Notes"));
+
+            _model.Publish(new StatusEntry("Fetching from InvenTree", StatusSeverity.None,
+                StatusPersistence.Transient, "Document.Fetch"));
+
+            Assert.That(_model.ToolTip, Is.EqualTo("Notes Push: " + transport
+                + System.Environment.NewLine + "Name Push: " + transport));
+        }
+
+        [TestCase("Document.Fetch", "Fetch")]
+        [TestCase("Document.Apply.Name", "Name Apply")]
+        [TestCase("Document.Apply.Notes", "Notes Apply")]
+        [TestCase("Document.Apply.Description", "Description Apply")]
+        [TestCase("Document.Apply.Pk", "PK Apply")]
+        [TestCase("Document.Push.Name", "Name Push")]
+        [TestCase("Document.Push.Notes", "Notes Push")]
+        [TestCase("Document.Push.Description", "Description Push")]
+        [TestCase("Document.Push.Revision", "Revision Push")]
+        [TestCase("Document.PushImage", "Image Push")]
+        [TestCase("Document.CreatePart", "Create Part")]
+        [TestCase("Configuration.Save", "Settings Save")]
+        [TestCase("MappingHealth", "Property Mapping")]
+        [TestCase("Configuration", "Settings")]
+        [TestCase("Document.Guidance", "Document")]
+        public void Publish_SuppressedEntryWithKnownDomain_ToolTipUsesVocabularyLabel(
+            string domain, string label)
+        {
+            _model.Publish(new StatusEntry("Needs attention", StatusSeverity.Warning,
+                StatusPersistence.Persistent, domain));
+
+            _model.Publish(new StatusEntry("Working", StatusSeverity.None,
+                StatusPersistence.Transient, "Probe"));
+
+            Assert.That(_model.ToolTip, Is.EqualTo(label + ": Needs attention"));
+        }
+
+        [TestCase(StatusSeverity.None)]
+        [TestCase(StatusSeverity.Success)]
+        [TestCase(StatusSeverity.Warning)]
+        [TestCase(StatusSeverity.Error)]
+        public void Publish_SuppressedEntryAtAnySeverity_ToolTipCarriesLabel(StatusSeverity severity)
+        {
+            _model.Publish(new StatusEntry("Fact text", severity,
+                StatusPersistence.Persistent, "Document.PushImage"));
+
+            _model.Publish(new StatusEntry("Working", StatusSeverity.None,
+                StatusPersistence.Transient, "Document.Fetch"));
+
+            Assert.That(_model.ToolTip, Is.EqualTo("Image Push: Fact text"));
+        }
+
+        [Test]
+        public void Publish_SuppressedEntryWithUnknownDomain_ToolTipLabelsByLastSegment()
+        {
+            _model.Publish(new StatusEntry("Obscure fact", StatusSeverity.Warning,
+                StatusPersistence.Persistent, "Bom.Compare.Diff"));
+
+            _model.Publish(new StatusEntry("Working", StatusSeverity.None,
+                StatusPersistence.Transient, "Document.Fetch"));
+
+            Assert.That(_model.ToolTip, Is.EqualTo("Diff: Obscure fact"));
         }
     }
 }

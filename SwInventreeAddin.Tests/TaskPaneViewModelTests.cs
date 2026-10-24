@@ -4296,7 +4296,7 @@ namespace SwInventreeAddin.Tests
             // The higher-severity config entry reigns; the not-linked entry
             // stays retrievable as a suppressed entry in the tooltip.
             Assert.That(vm.StatusToolTip,
-                Is.EqualTo("This document is not linked to InvenTree. Add an IPN or use Create InvenTree P/N."));
+                Is.EqualTo("Document: This document is not linked to InvenTree. Add an IPN or use Create InvenTree P/N."));
 
             _pair.UpdateClient(new StubInventreeClient());
 
@@ -4316,7 +4316,7 @@ namespace SwInventreeAddin.Tests
                 Is.EqualTo("No server configured \u2014 click \u2699 Settings to get started"));
             Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
             Assert.That(vm.StatusToolTip,
-                Is.EqualTo("This document is not linked to InvenTree. Add an IPN or use Create InvenTree P/N."));
+                Is.EqualTo("Document: This document is not linked to InvenTree. Add an IPN or use Create InvenTree P/N."));
         }
 
         [Test]
@@ -5164,7 +5164,7 @@ namespace SwInventreeAddin.Tests
                 Is.EqualTo("Drawings are not supported \u2014 open a part or assembly."));
             Assert.That(_vm.StatusSeverity, Is.EqualTo(StatusSeverity.Warning));
             Assert.That(_vm.StatusToolTip,
-                Is.EqualTo("No server configured \u2014 click \u2699 Settings to get started"));
+                Is.EqualTo("Settings: No server configured \u2014 click \u2699 Settings to get started"));
         }
 
         [Test]

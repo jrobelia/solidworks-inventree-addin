@@ -8,6 +8,27 @@ namespace SwInventreeAddin.UI
         private readonly List<StatusEntry> _entries = new List<StatusEntry>();
         private StatusEntry? _reigningTransient;
 
+        // Domain labels decided in #344 triage; an unknown domain falls back to
+        // its last dotted segment so a future domain never renders raw.
+        private static readonly Dictionary<string, string> DomainLabels = new Dictionary<string, string>
+        {
+            ["Document.Fetch"] = "Fetch",
+            ["Document.Apply.Name"] = "Name Apply",
+            ["Document.Apply.Notes"] = "Notes Apply",
+            ["Document.Apply.Description"] = "Description Apply",
+            ["Document.Apply.Pk"] = "PK Apply",
+            ["Document.Push.Name"] = "Name Push",
+            ["Document.Push.Notes"] = "Notes Push",
+            ["Document.Push.Description"] = "Description Push",
+            ["Document.Push.Revision"] = "Revision Push",
+            ["Document.PushImage"] = "Image Push",
+            ["Document.CreatePart"] = "Create Part",
+            ["Configuration.Save"] = "Settings Save",
+            ["MappingHealth"] = "Property Mapping",
+            ["Configuration"] = "Settings",
+            ["Document.Guidance"] = "Document",
+        };
+
         public StatusEntry? Current => _reigningTransient
             ?? _entries.OrderByDescending(entry => entry.Severity).FirstOrDefault();
 
@@ -20,7 +41,8 @@ namespace SwInventreeAddin.UI
                 if (!string.IsNullOrEmpty(current?.Detail))
                     lines.Add(current!.Detail!);
                 lines.AddRange(_entries.Where(entry => entry != current)
-                    .OrderByDescending(entry => entry.Severity).Select(entry => entry.Text));
+                    .OrderByDescending(entry => entry.Severity)
+                    .Select(entry => LabelFor(entry.Domain) + ": " + entry.Text));
                 return lines.Count == 0 ? null : string.Join(System.Environment.NewLine, lines);
             }
         }
@@ -34,6 +56,15 @@ namespace SwInventreeAddin.UI
 
         private static bool BelongsToDomain(StatusEntry entry, string domain) =>
             entry.Domain == domain || entry.Domain.StartsWith(domain + ".", System.StringComparison.Ordinal);
+
+        private static string LabelFor(string domain)
+        {
+            if (DomainLabels.TryGetValue(domain, out var label))
+                return label;
+            var lastDot = domain.LastIndexOf('.');
+            var segment = lastDot < 0 ? domain : domain.Substring(lastDot + 1);
+            return segment.Length == 0 ? domain : segment;
+        }
 
         public void InvalidateTransients()
         {
