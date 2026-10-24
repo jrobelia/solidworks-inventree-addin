@@ -70,6 +70,7 @@ The driver owns commands and state; workers own code and judgment. Workers read 
 - PROGRESS.md appends timestamps, dispatches, verdicts, gate/publication framing, heartbeat/stale signals and terminal handoffs.
 - Each ticket has immutable per-attempt prompt, job, stream, transcript, report and evidence paths.
 - Resume with `afk-loop.ps1 --resume <run>` and the original non-default budgets and effect switches. Drift, missing evidence and unrelated worktree changes block replay; an interrupted policy probe replays as a fresh attempt.
+- Approval hashing excludes only the machine-owned `policy_verified` flag; actual policy evidence is still required. Successful permission verification is not a new human approval. Do not ask the user to edit that flag or checkpoint hashes to resume.
 - A rate-limited exit (ticket and run status `rate-limited`, exit code 3) is an infrastructure pause, not a verdict: the advertised quota window outlasted the wait cap. Resume after the window; partial work and session ids are retained.
 - A blocked run preserves its branches, worktrees and evidence. Route its named choice to /build-hitl; do not discard or silently restart it. Infrastructure pauses — rate limits, exhausted retries, a failed push — name a `--resume` in PROGRESS.md instead of the /build-hitl handoff.
 - A ready-for-qa result hands off to the existing /qa workflow. Draft promotion, QA labeling and merge remain human steps.

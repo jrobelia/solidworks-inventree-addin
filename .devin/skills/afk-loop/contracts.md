@@ -46,6 +46,8 @@ Kinds are `automated`, `visual`, `host`, and `not-applicable`. Host checks are n
 
 Set `confirmed` only after human approval. `policy_verified` is earned by the neutral user-terminal policy probe, which `--run` performs first when unverified; `--smoke <run>` runs the same probe standalone. `allow_claim` and `allow_publish` default false; the corresponding runtime flags are separate authorizations. These flags are not permission to merge, close issues, release claims, delete branches, remove existing worktrees, or upload evidence.
 
+The checkpoint's `approval_hash` covers the approved inputs, excluding only the machine-owned `policy_verified` field. A successful policy probe must not invalidate a later resume. Base, snapshots, seams, acceptance criteria, reference dispositions, and remote-effect approvals remain covered. `POLICY.json` and its protected hook evidence are validated separately; setting the flag alone never proves permission safety. The existing CLI and stub adapters exercise this same approval/checkpoint interface.
+
 Prior work is reported from open PRs, matching branches and merged ancestry. Intake stops for maintainer disposition rather than adopting or discarding implementations. Preserve these raw findings. Only a maintainer-approved design-reference commit can be exempted through that ticket's optional `prior_work_references` list:
 
 ```json
@@ -128,7 +130,7 @@ A missing verdict is not a pass, even with exit code zero. Retry a verdictless e
 
 Run exit states: `0` ready-for-qa, `2` blocked (ticket verdicts, spec or evidence failures, exhausted retries), `3` rate-limited (an infrastructure pause that `--resume` continues), `130` interrupted. A completed ticket's recorded verdict is replayed once per resume rather than re-derived or re-printed as new.
 
-Resume keeps the original base, approval, package fingerprint and budgets. Re-fetch bodies/comments and reject spec drift, a changed base, an unrelated moved worktree, missing or changed logs/reports/artifacts, and corrupt checkpoints. A moved or dirty in-flight implementation remains preserved; never discard it automatically. Recorded evidence is not replayed after the code it certifies changes. A fresh run requires a clean canonical checkout because the baseline gate runs there; resume and publication do not — publication confirms only the pinned base commit and unchanged specification, and unrelated canonical changes never block it.
+Resume keeps the original base, approved delivery contract, package fingerprint and budgets. Machine policy-status transitions do not change the delivery-contract hash. Re-fetch bodies/comments and reject spec drift, a changed base, an unrelated moved worktree, missing or changed logs/reports/artifacts, and corrupt checkpoints. A moved or dirty in-flight implementation remains preserved; never discard it automatically. Recorded evidence is not replayed after the code it certifies changes. A fresh run requires a clean canonical checkout because the baseline gate runs there; resume and publication do not — publication confirms only the pinned base commit and unchanged specification, and unrelated canonical changes never block it.
 
 Default review budget is three review rounds, allowing at most two regular repairs with confirming review. Default post-verification budget is one repair-confirm cycle. Infrastructure retries are separate. Budgets are bounded and configurable; an exhausted ladder produces a human handoff.
 
