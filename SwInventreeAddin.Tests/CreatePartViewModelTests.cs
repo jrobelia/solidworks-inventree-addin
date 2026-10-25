@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -276,6 +277,30 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(vm.StatusText, Does.Contain("Part with this IPN already exists."));
             Assert.That(vm.IsBusy, Is.False);
+        }
+
+        [Test]
+        public async Task CreateAsync_TransportError_ExtractedTextFeedsIpnErrorAndStatus()
+        {
+            // #354: the extracted text feeds both ExtractIpnError and the
+            // Error: fallback — a transport failure must fall through to
+            // Error: <socket cause>, not the envelope's generic message.
+            _client.ThrowOnCreateException = new HttpRequestException(
+                "An error occurred while sending the request.",
+                new WebException("The remote name could not be resolved"));
+
+            var vm = CreateVm();
+            vm.SelectedCategory = MakeNode(pk: 7);
+            await vm.CreateAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.StatusText,
+                    Is.EqualTo("Error: The remote name could not be resolved"));
+                Assert.That(_validationService.LastExtractIpnErrorMessage,
+                    Is.EqualTo("The remote name could not be resolved"),
+                    "ExtractIpnError receives the same extracted text as the fallback");
+            });
         }
 
         [Test]

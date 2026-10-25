@@ -1,5 +1,4 @@
 using System;
-using SwInventreeAddin.UI;
 
 namespace SwInventreeAddin.Config
 {

@@ -4,7 +4,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
 
-namespace SwInventreeAddin.UI
+namespace SwInventreeAddin
 {
     /// <summary>
     /// Exception → user-facing failure text, shared by every surface that
