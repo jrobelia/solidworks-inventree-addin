@@ -595,7 +595,7 @@ namespace SwInventreeAddin.UI
             catch (SettingsApplyException ex)
             {
                 if (probing) EndUserProbe(null);
-                RunOnUiThread(() => SetActionStatus(ex.Message, StatusSeverity.Error));
+                RunOnUiThread(() => SetActionStatus(ExceptionText.ForUser(ex), StatusSeverity.Error));
                 return false;
             }
             catch (Exception ex)
@@ -605,7 +605,7 @@ namespace SwInventreeAddin.UI
                 // is what keeps the window's async-void forwards safe.
                 if (probing) EndUserProbe(null);
                 RunOnUiThread(() => SetActionStatus(
-                    $"Failed to apply settings: {ex.Message}", StatusSeverity.Error));
+                    $"Failed to apply settings: {ExceptionText.ForUser(ex)}", StatusSeverity.Error));
                 return false;
             }
 
@@ -642,7 +642,7 @@ namespace SwInventreeAddin.UI
                 // Mapping detail stays in the Property Mapping section's own
                 // status bar; the provider in place keeps its subscription.
                 RunOnUiThread(() => ShowInvalidMappingStatus(
-                    $"Failed to load the Property Mapping file: {ex.Message}"));
+                    $"Failed to load the Property Mapping file: {ExceptionText.ForUser(ex)}"));
                 mappingOk = false;
             }
 
@@ -663,7 +663,7 @@ namespace SwInventreeAddin.UI
             catch (Exception ex)
             {
                 RunOnUiThread(() => SetActionStatus(
-                    $"Failed to apply settings: {ex.Message}", StatusSeverity.Error));
+                    $"Failed to apply settings: {ExceptionText.ForUser(ex)}", StatusSeverity.Error));
                 return false;
             }
         }
@@ -705,13 +705,13 @@ namespace SwInventreeAddin.UI
             catch (InvalidOperationException ex)
             {
                 EndUserProbe(null);
-                RunOnUiThread(() => SetConnectionStatus(ex.Message, StatusSeverity.Error));
+                RunOnUiThread(() => SetConnectionStatus(ExceptionText.ForUser(ex), StatusSeverity.Error));
             }
             catch (Exception ex)
             {
                 EndUserProbe(null);
                 RunOnUiThread(() => SetConnectionStatus(
-                    $"Connection failed: {ex.Message}", StatusSeverity.Error));
+                    $"Connection failed: {ExceptionText.ForUser(ex)}", StatusSeverity.Error));
             }
         }
 
@@ -730,7 +730,7 @@ namespace SwInventreeAddin.UI
             }
             catch (Exception ex)
             {
-                RunOnUiThread(() => SetConnectionStatus(ex.Message, StatusSeverity.Error));
+                RunOnUiThread(() => SetConnectionStatus(ExceptionText.ForUser(ex), StatusSeverity.Error));
                 return;
             }
 
@@ -796,12 +796,12 @@ namespace SwInventreeAddin.UI
             }
             catch (InvalidOperationException ex)
             {
-                return ShowInvalidMappingStatus(ex.Message);
+                return ShowInvalidMappingStatus(ExceptionText.ForUser(ex));
             }
             catch (Exception ex)
             {
                 return ShowInvalidMappingStatus(
-                    $"Failed to load the Property Mapping file: {ex.Message}");
+                    $"Failed to load the Property Mapping file: {ExceptionText.ForUser(ex)}");
             }
         }
 

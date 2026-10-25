@@ -4376,6 +4376,7 @@ namespace SwInventreeAddin.Tests
 {
     using System.Collections.Generic;
     using System.Linq;
+    using System.Net;
     using System.Net.Http;
     using System.Threading;
     using System.Threading.Tasks;
@@ -5016,6 +5017,27 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.StatusText, Is.EqualTo("Error: connection refused"));
             Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.Error));
             Assert.That(vm.ApplyEnabled, Is.False);
+        }
+
+        [Test]
+        public async Task Fetch_FaultedTransportError_StatusNamesTheInnerCause()
+        {
+            // #354: the strip must name the transport cause, not the generic
+            // envelope text — "the remote name could not be resolved" points
+            // at a wrong URL where the envelope's own message does not.
+            _client.DeferGetPartsByIpn = true;
+            var vm = CreateLinkedByIpnVm();
+
+            var fetch = vm.FetchPartAsync();
+            _client.PendingGetPartsByIpnCalls.Single()
+                .Fault(new HttpRequestException(
+                    "An error occurred while sending the request.",
+                    new WebException("The remote name could not be resolved")));
+            await fetch;
+
+            Assert.That(vm.StatusText,
+                Is.EqualTo("Error: The remote name could not be resolved"));
+            Assert.That(vm.StatusSeverity, Is.EqualTo(StatusSeverity.Error));
         }
 
         // Duplicate-IPN resolution by Revision — an IPN is not unique.

@@ -294,7 +294,7 @@ namespace SwInventreeAddin.UI
             }
             catch (Exception ex)
             {
-                RunOnUiThread(() => SetStatus($"Error loading categories: {ex.Message}", StatusSeverity.Error));
+                RunOnUiThread(() => SetStatus($"Error loading categories: {ExceptionText.ForUser(ex)}", StatusSeverity.Error));
             }
             finally
             {
@@ -334,7 +334,7 @@ namespace SwInventreeAddin.UI
                 {
                     node.ResetChildren(Array.Empty<CategoryNode?>());
                     node.IsLoading = false;
-                    SetStatus($"Error loading children: {ex.Message}", StatusSeverity.Error);
+                    SetStatus($"Error loading children: {ExceptionText.ForUser(ex)}", StatusSeverity.Error);
                 });
             }
         }
@@ -438,7 +438,8 @@ namespace SwInventreeAddin.UI
             {
                 RunOnUiThread(() =>
                 {
-                    var ipnError = _validationService.ExtractIpnError(ex.Message);
+                    var errorText = ExceptionText.ForUser(ex);
+                    var ipnError = _validationService.ExtractIpnError(errorText);
                     if (!string.IsNullOrEmpty(ipnError))
                     {
                         IpnErrorText = ipnError!;
@@ -446,7 +447,7 @@ namespace SwInventreeAddin.UI
                     }
                     else
                     {
-                        SetStatus($"Error: {ex.Message}", StatusSeverity.Error);
+                        SetStatus($"Error: {errorText}", StatusSeverity.Error);
                     }
                     IsBusy = false;
                 });

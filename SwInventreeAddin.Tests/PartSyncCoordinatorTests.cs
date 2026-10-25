@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -325,6 +326,25 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Failed));
             Assert.That(result.Diagnostic, Does.Contain("boom"));
+        }
+
+        [Test]
+        public async Task FetchAsync_Ipn_TransportError_SurfacesInnermostCause()
+        {
+            // #354: the transport envelope's generic text must not reach the
+            // strip — the socket-level cause one layer down is what tells
+            // server-down apart from wrong-URL.
+            _client.ThrowOnGetPartsByIpn = new HttpRequestException(
+                "An error occurred while sending the request.",
+                new WebException("The remote name could not be resolved"));
+            SeedIpnDocument();
+            _coordinator.UpdateDocument();
+
+            var result = await _coordinator.FetchAsync("R-10K-0402");
+
+            Assert.That(result.Outcome, Is.EqualTo(PartSyncOutcome.Failed));
+            Assert.That(result.Diagnostic,
+                Is.EqualTo("The remote name could not be resolved"));
         }
 
         [Test]

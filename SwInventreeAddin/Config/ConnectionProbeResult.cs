@@ -1,4 +1,5 @@
 using System;
+using SwInventreeAddin.UI;
 
 namespace SwInventreeAddin.Config
 {
@@ -23,7 +24,7 @@ namespace SwInventreeAddin.Config
         /// by every probe caller so they cannot drift on the failure mapping (#234).
         /// </summary>
         public static ConnectionProbeResult UnreachableFromException(Exception ex) =>
-            new ConnectionProbeResult(ConnectionProbeStatus.Unreachable, ex.Message);
+            new ConnectionProbeResult(ConnectionProbeStatus.Unreachable, ExceptionText.ForUser(ex));
 
         /// <summary>How the probe ended.</summary>
         public ConnectionProbeStatus Status { get; }

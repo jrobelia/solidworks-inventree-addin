@@ -804,7 +804,7 @@ namespace SwInventreeAddin.UI
             catch (Exception ex)
             {
                 _logger.LogError("FetchPartAsync failed at the pane boundary.", ex);
-                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error, "Document.Fetch"));
+                RunOnUiThread(() => SetStatus($"Error: {ExceptionText.ForUser(ex)}", StatusSeverity.Error, "Document.Fetch"));
             }
         }
 
@@ -971,7 +971,7 @@ namespace SwInventreeAddin.UI
             catch (Exception ex)
             {
                 _logger.LogError("ApplyFieldAsync failed at the pane boundary.", ex);
-                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error, domain));
+                RunOnUiThread(() => SetStatus($"Error: {ExceptionText.ForUser(ex)}", StatusSeverity.Error, domain));
             }
         }
 
@@ -1038,7 +1038,7 @@ namespace SwInventreeAddin.UI
             catch (Exception ex)
             {
                 _logger.LogError("PushFieldAsync failed at the pane boundary.", ex);
-                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error, domain));
+                RunOnUiThread(() => SetStatus($"Error: {ExceptionText.ForUser(ex)}", StatusSeverity.Error, domain));
             }
         }
 
@@ -1108,7 +1108,7 @@ namespace SwInventreeAddin.UI
             catch (Exception ex)
             {
                 _logger.LogError("PushImageAsync failed at the pane boundary.", ex);
-                RunOnUiThread(() => SetStatus($"Error: {ex.Message}", StatusSeverity.Error, domain));
+                RunOnUiThread(() => SetStatus($"Error: {ExceptionText.ForUser(ex)}", StatusSeverity.Error, domain));
             }
             finally
             {
