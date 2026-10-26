@@ -59,6 +59,11 @@ def digest(data):
     return hashlib.sha256(json.dumps(data, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
 
 
+def approval_contract_hash(approval):
+    """Hash approved inputs; the machine-owned policy proof is validated separately."""
+    return digest({key: value for key, value in approval.items() if key != "policy_verified"})
+
+
 def tool(name):
     override = os.environ.get("AFK_" + name.upper())
     if override:
@@ -471,14 +476,16 @@ class Loop:
             raise Blocked("Policy changes cannot modify an already-started approval; prepare a new run")
         if args.smoke:
             self.state = load(path) if path.exists() else {"version": 1, "run": run, "tickets": {}}
-            self.state.update(approval_hash=digest(approval), package_hash=package_hash(), budgets=self.budgets())
+            self.state.update(approval_hash=approval_contract_hash(approval), package_hash=package_hash(), budgets=self.budgets())
             self.checkpoint()
         elif path.exists():
             if not args.resume:
                 raise Blocked("Run already started; use --resume")
             self.state = load(path)
-            if self.state["approval_hash"] != digest(approval) or self.state["package_hash"] != package_hash():
-                raise Blocked("Approval or AFK package changed; recorded verdicts cannot be replayed")
+            if self.state["approval_hash"] != approval_contract_hash(approval):
+                raise Blocked("Approved delivery contract changed; recorded verdicts cannot be replayed")
+            if self.state["package_hash"] != package_hash():
+                raise Blocked("AFK package changed; recorded verdicts cannot be replayed")
             if self.state["budgets"] != self.budgets():
                 raise Blocked("Resume must preserve the original repair and retry budgets")
             if self.state.get("effects") != {"publish": args.publish, "claim": args.claim}:
@@ -486,7 +493,7 @@ class Loop:
         else:
             if args.resume:
                 raise Blocked("No checkpoint exists to resume")
-            self.state = {"version": 1, "run": run, "approval_hash": digest(approval),
+            self.state = {"version": 1, "run": run, "approval_hash": approval_contract_hash(approval),
                           "package_hash": package_hash(), "budgets": self.budgets(),
                           "started": stamp(), "tickets": {}, "effects": {"publish": args.publish, "claim": args.claim}}
             self.checkpoint()

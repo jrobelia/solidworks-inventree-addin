@@ -280,7 +280,7 @@ namespace SwInventreeAddin.UI
                 catch (Exception ex)
                 {
                     failed++;
-                    failedIpns.Add($"{line.DisplayIpn} ({ex.Message})");
+                    failedIpns.Add($"{line.DisplayIpn} ({ExceptionText.ForUser(ex)})");
                     _logger.LogError($"BOM Compare push failed for {line.DisplayIpn}.", ex);
                 }
             }

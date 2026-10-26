@@ -46,7 +46,7 @@ namespace SwInventreeAddin.UI
             {
                 MessageDialog.ShowOK(
                     WindowHandle,
-                    $"Failed to load BOM data:{System.Environment.NewLine}{ex.Message}",
+                    $"Failed to load BOM data:{System.Environment.NewLine}{ExceptionText.ForUser(ex)}",
                     "BOM Load Error",
                     System.Windows.Forms.MessageBoxIcon.Error);
             }
@@ -86,7 +86,7 @@ namespace SwInventreeAddin.UI
             {
                 MessageDialog.ShowOK(
                     WindowHandle,
-                    $"Failed to push BOM:{System.Environment.NewLine}{ex.Message}",
+                    $"Failed to push BOM:{System.Environment.NewLine}{ExceptionText.ForUser(ex)}",
                     "BOM Push Error",
                     System.Windows.Forms.MessageBoxIcon.Error);
             }

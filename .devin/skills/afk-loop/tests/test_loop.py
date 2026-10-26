@@ -81,6 +81,16 @@ class LoopTests(unittest.TestCase):
             {"commit": commit, "reason": "Approved ADR design reference, not an implementation."}]
         approval.write_text(json.dumps(data), encoding="utf-8")
 
+    def auth_paused_run(self):
+        directory = self.prepare()
+        self.approve(directory, verified=False)
+        self.env["DEVIN_API_KEY"] = "test-only-override"
+        blocked = self.run_loop("--run", directory.name, "--retries", "0")
+        self.assertEqual(blocked.returncode, 2, blocked.stdout)
+        self.assertIn("DEVIN_API_KEY", blocked.stdout)
+        self.env.pop("DEVIN_API_KEY")
+        return directory
+
     def assert_prior_work_blocked(self, directory, message="Prior work"):
         result = self.run_loop("--run", directory.name)
         self.assertEqual(result.returncode, 2, result.stdout)
@@ -241,6 +251,74 @@ class LoopTests(unittest.TestCase):
             ("adjudicate", "swe-2-high"),
             ("verify", "swe-2-high"),
         ])
+
+    @slow
+    def test_inline_policy_check_survives_auth_pause_and_quota_resume(self):
+        directory = self.prepare()
+        self.approve(directory, verified=False)
+        self.env["DEVIN_API_KEY"] = "test-only-override"
+        blocked = self.run_loop("--run", directory.name, "--retries", "0")
+        self.assertEqual(blocked.returncode, 2, blocked.stdout)
+        self.assertIn("DEVIN_API_KEY", blocked.stdout)
+        self.assertEqual(self.calls("devin"), [])
+        self.env.pop("DEVIN_API_KEY")
+        self.env.update(AFK_TEST_SCENARIO="rate-limit-always", AFK_RATE_LIMIT_MARGIN="0",
+                        AFK_RATE_LIMIT_FLOOR="0", AFK_RATE_LIMIT_MAX_WAIT="1")
+        limited = self.run_loop("--resume", directory.name, "--retries", "0")
+        self.assertEqual(limited.returncode, 3, limited.stdout)
+        self.assertTrue(json.loads((directory / "POLICY.json").read_text())["passed"])
+        self.env["AFK_TEST_SCENARIO"] = "clean"
+        resumed = self.run_loop("--resume", directory.name, "--retries", "0")
+        self.assertEqual(resumed.returncode, 0, resumed.stdout)
+        self.assertEqual(self.state(directory)["tickets"]["50"]["status"], "ready-for-qa")
+        self.assertEqual(sum(phase == "policy" for phase, _ in self.worker_models()), 1)
+
+    def test_resume_still_rejects_human_contract_changes(self):
+        directory = self.auth_paused_run()
+        approval = directory / "APPROVAL.json"
+        original = approval.read_text(encoding="utf-8")
+        for field in ("criteria", "seam", "snapshot", "allow_publish"):
+            with self.subTest(field=field):
+                data = json.loads(original)
+                data["policy_verified"] = True
+                ticket = data["tickets"][0]
+                if field == "criteria":
+                    ticket["criteria"][0]["text"] = "A different requirement."
+                elif field == "seam":
+                    ticket["seam"] = "A different public interface."
+                elif field == "snapshot":
+                    ticket["snapshot"]["ticket"]["body"] = "A different supplied specification."
+                else:
+                    data["allow_publish"] = True
+                approval.write_text(json.dumps(data), encoding="utf-8")
+                result = self.run_loop("--resume", directory.name, "--retries", "0")
+                self.assertEqual(result.returncode, 2, result.stdout)
+                self.assertIn("Approved delivery contract changed", result.stdout)
+                self.assertEqual(self.calls("devin"), [])
+
+    def test_resume_still_rejects_package_changes(self):
+        directory = self.auth_paused_run()
+        path = directory / "STATUS.json"
+        state = self.state(directory)
+        state["package_hash"] = "0" * 64
+        path.write_text(json.dumps(state), encoding="utf-8")
+        result = self.run_loop("--resume", directory.name, "--retries", "0")
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertIn("AFK package changed", result.stdout)
+        self.assertEqual(self.calls("devin"), [])
+
+    def test_policy_flag_without_proof_cannot_launch_implementation(self):
+        directory = self.prepare()
+        self.approve(directory, verified=False)
+        path = directory / "APPROVAL.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        data["policy_verified"] = True
+        path.write_text(json.dumps(data), encoding="utf-8")
+        result = self.run_loop("--run", directory.name)
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertIn("POLICY.json", result.stdout)
+        self.assertEqual(self.state(directory)["tickets"], {})
+        self.assertEqual(self.calls("devin"), [])
 
     @slow
     def test_group_model_overrides_remain_supported(self):

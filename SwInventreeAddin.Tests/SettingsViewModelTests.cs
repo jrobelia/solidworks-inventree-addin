@@ -1588,6 +1588,30 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public async Task TestConnectionAsync_WhenServiceThrowsTransportError_ReportsInnerCause()
+        {
+            // #354: the envelope's generic text gives no hint; the socket-level
+            // cause one layer down distinguishes server-down from wrong-URL.
+            var applyService = new StubSettingsApplyService
+            {
+                ExceptionToThrowOnTestConnection = new HttpRequestException(
+                    "An error occurred while sending the request.",
+                    new System.Net.WebException("The remote name could not be resolved")),
+            };
+            var vm = CreateVm(applyService: applyService);
+            await vm.OpenProbeTask!;
+
+            await vm.TestConnectionAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.ConnectionStatusText,
+                    Is.EqualTo("Connection failed: The remote name could not be resolved"));
+                Assert.That(vm.ConnectionStatusSeverity, Is.EqualTo(StatusSeverity.Error));
+            });
+        }
+
+        [Test]
         public async Task TestConnectionAsync_SupersedesTheOpenProbe()
         {
             var pending = new TaskCompletionSource<ConnectionProbeResult>();

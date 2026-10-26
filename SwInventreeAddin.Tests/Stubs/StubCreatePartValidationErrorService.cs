@@ -10,7 +10,13 @@ namespace SwInventreeAddin.Tests.Stubs
         /// <summary>Value to return from <see cref="ExtractIpnError"/>.</summary>
         public string? ExtractedError { get; set; }
 
+        /// <summary>The <c>exceptionMessage</c> argument of the last <see cref="ExtractIpnError"/> call.</summary>
+        public string? LastExtractIpnErrorMessage { get; private set; }
+
         public string? ExtractIpnError(string exceptionMessage)
-            => ExtractedError;
+        {
+            LastExtractIpnErrorMessage = exceptionMessage;
+            return ExtractedError;
+        }
     }
 }

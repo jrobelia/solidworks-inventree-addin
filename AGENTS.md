@@ -18,7 +18,11 @@ When reporting information to me, be extremely concise and sacrifice grammar for
 - Build: `dotnet build "SwInventreeAddin/SwInventreeAddin.csproj" --disable-build-servers` — produces the SolidWorks-facing `bin\Debug\net48` output. Manual step only: SolidWorks locks `bin\Debug\net48\SwInventreeAddin.dll` while running, so agents verify with the test command and never run this one.
 - Full solution build: `dotnet build "Solidworks Inventree Add-In.sln" --disable-build-servers` — builds the solution and the test project; same SolidWorks-closed constraint as Build, so it is not an agent verification command.
 - Package manager: NuGet (restored automatically by `dotnet build`).
-- AFK loop regression tests: `python -m unittest discover -s ".devin/skills/afk-loop/tests" -p "test_*.py" -v` — isolated fixtures and stub external commands; no credentials or real agent sessions. Use targeted tests or `AFK_TEST_FAST=1` while iterating. Instructions-only edits need diff checks and relevant focused tests. Runner, guard, launcher, worker-prompt, persisted-state, model-selection, or test-harness changes need one full run without `AFK_TEST_FAST` before commit; do not repeat it solely for later explanatory-text edits.
+- AFK loop regression tests: `python -m unittest discover -s ".devin/skills/afk-loop/tests" -p "test_*.py" -v` — isolated fixtures and stub external commands; no credentials or real agent sessions. Use targeted tests or `AFK_TEST_FAST=1` while iterating, then match the commit gate to what changed:
+  - Instructions-only edits (SKILL.md, contracts.md prose): diff checks plus relevant focused tests.
+  - `guard.py` or guard-policy changes: `python -m unittest discover -s ".devin/skills/afk-loop/tests" -p "test_guard.py" -v`.
+  - `driver.py`, launchers (`afk-loop.sh`/`.ps1`), worker prompts (`prompts/`), persisted state, model selection, or the test harness (`stub_tools.py`, `test_*.py`): one full run without `AFK_TEST_FAST` before commit — checkpoint/resume integrity is cross-cutting, so scoping below the suite is unsafe there. Do not repeat it solely for later explanatory-text edits.
+  - Merges: if the incoming branch already has a passing full-suite run and no runner-side commits (`driver.py`, `guard.py`, launchers, prompts, state, harness) landed on the base since its merge-base, that run stands — verify the merge with a targeted pass, not a full re-run.
 
 ## Skill layout
 

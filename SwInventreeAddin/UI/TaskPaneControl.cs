@@ -186,13 +186,13 @@ namespace SwInventreeAddin.UI
                 catch (Exception ex)
                 {
                     _logger.LogError("BOM Compare window failed to open.", ex);
-                    ShowBomCompareError($"Failed to open BOM comparison:{System.Environment.NewLine}{ex.Message}");
+                    ShowBomCompareError($"Failed to open BOM comparison:{System.Environment.NewLine}{ExceptionText.ForUser(ex)}");
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError("BOM Compare request failed.", ex);
-                ShowBomCompareError($"BOM Compare failed:{System.Environment.NewLine}{ex.Message}");
+                ShowBomCompareError($"BOM Compare failed:{System.Environment.NewLine}{ExceptionText.ForUser(ex)}");
             }
         }
 
@@ -316,7 +316,7 @@ namespace SwInventreeAddin.UI
                 }
                 catch (Exception ex)
                 {
-                    return BomCompareAction.RevisionPushFailed(ex.Message);
+                    return BomCompareAction.RevisionPushFailed(ExceptionText.ForUser(ex));
                 }
             }
 
@@ -339,7 +339,7 @@ namespace SwInventreeAddin.UI
             catch (Exception ex)
             {
                 _logger.LogError("BOM Compare readiness check failed.", ex);
-                ShowBomCompareError($"Could not evaluate BOM Compare readiness:{System.Environment.NewLine}{ex.Message}");
+                ShowBomCompareError($"Could not evaluate BOM Compare readiness:{System.Environment.NewLine}{ExceptionText.ForUser(ex)}");
                 return null;
             }
         }

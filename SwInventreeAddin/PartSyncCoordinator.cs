@@ -421,7 +421,7 @@ namespace SwInventreeAddin
                 return Stale();
 
             if (error != null)
-                return Failed(error.Message);
+                return Failed(ExceptionText.ForUser(error));
             if (part == null)
                 return new PartSyncResult(PartSyncOutcome.PartNotFound) { PartPk = stampedPk };
 
@@ -501,7 +501,7 @@ namespace SwInventreeAddin
                 return Stale();
 
             if (error != null)
-                return Failed(error.Message);
+                return Failed(ExceptionText.ForUser(error));
             if (parts == null || parts.Count == 0)
                 return new PartSyncResult(PartSyncOutcome.PartNotFound) { Ipn = ipn };
 
@@ -751,7 +751,7 @@ namespace SwInventreeAddin
                 if (!IsSessionCommitCurrent(token, session))
                     return Stale();
                 if (error != null)
-                    return Failed(error.Message);
+                    return Failed(ExceptionText.ForUser(error));
                 session.CommitPushedValue(field, value);
                 RaiseChanged();
                 return new PartSyncResult(PartSyncOutcome.Success);
@@ -789,7 +789,7 @@ namespace SwInventreeAddin
 
             byte[] pngData;
             try { pngData = ImagePipeline.Process(image, cropRect); }
-            catch (Exception ex) { return Failed(ex.Message); }
+            catch (Exception ex) { return Failed(ExceptionText.ForUser(ex)); }
 
             Exception? error = null;
             try { await _client.UploadPartImageAsync(partPk, pngData).ConfigureAwait(false); }
@@ -822,7 +822,7 @@ namespace SwInventreeAddin
                 if (!IsSessionCommitCurrent(token, session))
                     return Stale();
                 if (error != null)
-                    return Failed(error.Message);
+                    return Failed(ExceptionText.ForUser(error));
                 if (warning != null)
                     return new PartSyncResult(PartSyncOutcome.SucceededWithWarning)
                     {
