@@ -56,9 +56,14 @@ namespace SwInventreeAddin.SolidWorks
                     Note = (colNote >= 0 ? table.Text2[row, colNote, false] ?? "" : "").Trim(),
                 };
 
-                if (colQty >= 0 &&
-                    decimal.TryParse((table.Text2[row, colQty, false] ?? "").Trim(), out var qty))
-                    line.Quantity = qty;
+                if (colQty >= 0)
+                {
+                    var qtyText = (table.Text2[row, colQty, false] ?? "").Trim();
+                    if (decimal.TryParse(qtyText, out var qty))
+                        line.Quantity = qty;
+                    else
+                        line.UnparsedQuantity = qtyText;   // malformed/blank — diff must flag Ambiguous, never push 0
+                }
 
                 try
                 {

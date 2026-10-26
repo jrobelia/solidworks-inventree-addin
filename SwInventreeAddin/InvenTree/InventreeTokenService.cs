@@ -5,6 +5,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using SwInventreeAddin.Config;
 
 namespace SwInventreeAddin.InvenTree
 {
@@ -26,7 +27,7 @@ namespace SwInventreeAddin.InvenTree
         {
             // Defence-in-depth: reject http:// even if the caller forgot to validate.
             // Basic Auth credentials would otherwise travel in cleartext.
-            if (!url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            if (!ServerConfig.HasHttpsScheme(url))
                 throw new InvalidOperationException(
                     "Server URL must begin with https:// — a plain http:// connection is not secure.");
 

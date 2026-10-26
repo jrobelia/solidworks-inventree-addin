@@ -54,6 +54,8 @@ Emit for the user's own PowerShell terminal; do not launch it from this session:
 
 Only when separately approved, append --claim and/or --publish. The default has no remote writes.
 
+The session environment approximates the user's terminal but cannot see profile- or session-scoped variables, so always lead the launch block with `Remove-Item Env:DEVIN_API_KEY -ErrorAction SilentlyContinue` — a no-op when the variable is absent, and the authentication guard then passes on the first attempt. Never print or collect the variable's value.
+
 An unverified launch runs the policy probe first: a separate worktree and neutral CLI session checks scoped writes, single-command execution, guard denials and exact session attribution without implementing a ticket, and its protected hook evidence earns policy_verified. Missing policy evidence blocks execution. To prove policy ahead of launch, or to re-prove it after this package changes, emit `.\.devin\skills\afk-loop\afk-loop.ps1 --smoke <run>` instead. Authentication failures require user action in that terminal, not inspection or copying of credentials.
 
 The run then performs a canonical baseline, then implementation, deterministic checks, two independent review axes, adjudication, bounded repair, evidence verification, and optional publication. The host DLL is not rebuilt or reloaded.

@@ -23,7 +23,7 @@
 [Setup]
 ; The add-in's CLSID doubles as the AppId — a stable identity that lets Inno
 ; recognise previous installs and upgrade them in place.
-AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}}
+AppId={{7C3E9A2F-4B61-4D8F-A2E5-1F6C9B3D8E47}}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher={#AppName}
