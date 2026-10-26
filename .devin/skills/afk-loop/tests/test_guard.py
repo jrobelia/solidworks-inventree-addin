@@ -72,6 +72,21 @@ class GuardTests(unittest.TestCase):
             with self.subTest(command=command):
                 self.assertEqual(self.invoke("exec", {"command": command})["decision"], "block")
 
+    def test_secret_files_are_not_readable(self):
+        cases = (("read", {"file_path": str(self.worktree / ".env")}),
+                 ("read", {"file_path": str(self.root / ".env.production")}),
+                 ("read", {"file_path": str(self.worktree / "inventree_servers.json")}),
+                 ("notebook_read", {"notebook_path": str(self.worktree / ".env")}),
+                 ("grep", {"path": str(self.worktree / ".env"), "pattern": "key"}))
+        for name, inputs in cases:
+            with self.subTest(name=name, inputs=inputs):
+                self.assertEqual(self.invoke(name, inputs)["decision"], "block")
+
+    def test_reads_of_source_and_agent_docs_still_allowed(self):
+        self.assertEqual(self.invoke("read", {"file_path": str(self.worktree / "feature.cs")})["decision"], "approve")
+        self.assertEqual(self.invoke("read", {"file_path": str(self.root / ".devin" / "skills" / "afk-loop" / "contracts.md")})["decision"], "approve")
+        self.assertEqual(self.invoke("grep", {"path": str(self.worktree), "pattern": "x"})["decision"], "approve")
+
 
 if __name__ == "__main__":
     unittest.main()

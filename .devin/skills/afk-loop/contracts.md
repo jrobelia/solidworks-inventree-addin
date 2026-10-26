@@ -67,7 +67,11 @@ Read ticket comments for referenced canonical specifications and ADRs; unresolve
 
 The driver creates an immutable job.json per dispatch. The first prompt line identifies its absolute path. Read the contract using the job's `contracts` path, not the current working directory.
 
-Job fields include version, ticket, phase, round, attempt, input_head, base, worktree, job_dir, ticket_dir, package_dir, contracts, approved criteria and seam, full specification snapshot, current findings, deterministic checks, axis reports, previous verification, and writable/salvage flags.
+Job fields include version, ticket, phase, round, attempt, input_head, base, worktree, job_dir, ticket_dir, spec_file, package_dir, contracts, approved criteria and seam, full specification snapshot, current findings, deterministic checks, axis reports, previous verification, and writable/salvage flags.
+
+The `spec_file` path names a markdown rendering of the full snapshot — ticket title, body, comments, then each context issue — with real newlines. Workers read it for the complete specification; `job.json` embeds the same snapshot as single-line JSON strings that the read tool truncates beyond its line limit.
+
+Worker writes are path-scoped: `.git`, `.devin`, `.agents`, `.env*`, and `inventree_servers.json` are denied, and secret files (`.env*`, `inventree_servers.json`) are not readable either. A settled correction that lands on a protected path cannot be executed by any worker phase — the adjudicator records it as a maintainer handoff, outside the repair work order.
 
 Every command runs from worktree. Implementation and repair may edit approved source and write this job's artifacts. Review, adjudication and verification write this job's reports/evidence only. The policy probe is separate from ticket implementation. Every prompt carries an execution-environment briefing — one command per call, no pipes or chaining, the permitted command set, repeated `-m` commit flags — and the result.json skeleton, so workers do not rediscover guard boundaries or invent result shapes.
 

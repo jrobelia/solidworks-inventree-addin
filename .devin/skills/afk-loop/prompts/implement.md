@@ -1,6 +1,6 @@
 # Implement one approved ticket
 
-Read JOB_FILE, then the contracts.md beside this prompt package. Read the worktree's AGENTS.md, GLOSSARY.md, coding standards, and the complete snapshot of the ticket, comments, parent, and closed blockers. Read referenced ADRs and canonical specifications before editing. The supplied seam is approved; missing consequential decisions produce blocked with the exact choice.
+Read JOB_FILE, then the contracts.md beside this prompt package. Read the worktree's AGENTS.md, GLOSSARY.md, coding standards, and the complete snapshot of the ticket, comments, parent, and closed blockers at the job.spec_file path. Read referenced ADRs and canonical specifications before editing. The supplied seam is approved; missing consequential decisions produce blocked with the exact choice.
 
 Work only in the supplied worktree. Use the existing tdd skill for one failing test followed by the smallest passing implementation at the supplied seam. The user already approved that seam; do not invent another. Capture targeted red and green outputs in job_dir. For documentation or build-only work, use the exception stated by the ticket and record why no regression test applies.
 

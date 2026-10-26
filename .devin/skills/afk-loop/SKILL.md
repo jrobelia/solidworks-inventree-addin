@@ -36,7 +36,7 @@ Prior-work findings remain blockers until resolved. A maintainer may explicitly 
 
 ## 2. Confirm the delivery contract
 
-Read contracts.md. Use the existing spec-playback skill to present what each ticket makes Part Sync, BOM Compare, Settings or another named workflow do. Present each seam declaration and any unsettled decisions. For each acceptance criterion, prepare its id, exact obligation and evidence kind: automated, visual, host, or confirmed not-applicable.
+Read contracts.md. Use the existing spec-playback skill to present what each ticket makes Part Sync, BOM Compare, Settings or another named workflow do. Present each seam declaration and any unsettled decisions. For each acceptance criterion, prepare its id, exact obligation and evidence kind: automated, visual, host, or confirmed not-applicable. Check every named touchpoint in the seam and criteria against the worker-protected paths (`.git`, `.devin`, `.agents`, `.env*`, `inventree_servers.json`): a ticket whose required writes land there cannot finish AFK, and the playback names that limit.
 
 Hold for confirmation. Then populate the existing approval file using the read/write tools, with the confirmed seam and full criteria mapping. Set confirmed only after the user's yes. Preserve snapshot hashes and base fields. Host rows remain human checks, not defects to repair.
 

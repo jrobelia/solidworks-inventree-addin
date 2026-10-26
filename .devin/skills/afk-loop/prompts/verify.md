@@ -1,6 +1,6 @@
 # Verify evidence without controlling SolidWorks
 
-Read JOB_FILE and contracts.md. Work read-only at input_head. Read the supplied specification, every approved criterion, implementation and repair recipes under ticket_dir, current reviews, and the driver's pinned test and format logs. You may write evidence and reports inside job_dir only.
+Read JOB_FILE and contracts.md. Work read-only at input_head. Read the supplied specification at job.spec_file, every approved criterion, implementation and repair recipes under ticket_dir, current reviews, and the driver's pinned test and format logs. You may write evidence and reports inside job_dir only.
 
 For an automated criterion, inspect its discriminating test and captured result. Run a targeted test when the current logs do not establish the claim. Capture a concise text artifact with the actual observed result and its command. A screenshot is not proof of document events, Apply, Push, registration, or host behavior.
 
