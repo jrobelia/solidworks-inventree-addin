@@ -33,6 +33,7 @@ dotnet test "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj" --disable-bui
 3. Implement minimal stubs of `IInventreeClient` and `IDocumentPropertyService` (and `IPropertyMappingProvider` / `IViewportCaptureService` if needed). Return empty lists/safe defaults so the viewmodel can initialize.
 4. In `Program.Main`, mark the thread `[STAThread]`, create the WPF `Application` or use `Window.ShowDialog()`, construct the viewmodel with the desired constructor arguments, call the window's `Initialise` method (for `CreatePartWindow`), and show it.
 5. Use the desktop automation tooling to click, type, hover, and capture screenshots.
+- A harness that must touch `internal` constructors or members names its assembly `SwInventreeAddin.Tests` — the only `InternalsVisibleTo` target, declared in `SwInventreeAddin/AssemblyInfo.cs` — or the member must be made `public` instead. Set `<AssemblyName>SwInventreeAddin.Tests</AssemblyName>` in the harness `.csproj`.
 
 ### Minimal stub example
 
