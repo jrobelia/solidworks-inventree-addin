@@ -39,6 +39,7 @@ Each finding gets a disposition at the batch gate — record the disposition and
 - The same exists-and-is-non-empty invariant applies to writes the orchestrator performs: `test -s` a body file before `gh --body-file` consumes it — an empty file silently overwrites a live PR body — and read back persisted artifacts (seam notes, `gh pr view --json body`) after writing.
 - Profiles: `build-implementer` (`swe-2-high`, rounds 1–3), `build-implementer-max` (`swe-2-max`, rounds 4–5), `build-designer` (`swe-2-high`, read-only), `review-spec` (`swe-2-max`).
 - Subagents get five tools — `read`, `edit`, `exec`, `grep`, `glob` (exposed as `find_file_by_name`) — and `edit` cannot create files. New files go through `exec` heredoc or `git apply`; `IMPLEMENTER_TASK.md` `## Tool reality` carries this for the implementer. `skill` and `ask_user_question` are unreachable inside a subagent — every context pointer is a file to read, and a question is a `BLOCKED`.
+- `.scratch/` is gitignored: repo-root `grep`/`glob` searches prune it even though the files exist on disk. Hand agents explicit `.scratch/...` paths in task bodies, and treat any agent claim that a run artifact is missing as unverified until a direct `read` on the path fails.
 
 ### Mode and grants
 
