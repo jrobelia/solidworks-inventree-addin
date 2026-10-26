@@ -1,4 +1,6 @@
-﻿namespace SwInventreeAddin.Config
+﻿using System;
+
+namespace SwInventreeAddin.Config
 {
     public class ServerConfig
     {
@@ -38,5 +40,21 @@
         /// build a client against.
         /// </summary>
         public bool IsConfigured => !string.IsNullOrWhiteSpace(Url);
+
+        /// <summary>
+        /// The https-scheme half of <see cref="IsAcceptedServerUrl"/>, kept
+        /// separate so call sites that report the scheme failure with their
+        /// own message can test it alone.
+        /// </summary>
+        internal static bool HasHttpsScheme(string url) =>
+            url.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// The single server-URL acceptance rule — https scheme plus an
+        /// absolute, parseable URI — shared by save-time validation and the
+        /// load-time stored-URL re-check so the two cannot drift apart.
+        /// </summary>
+        internal static bool IsAcceptedServerUrl(string url) =>
+            HasHttpsScheme(url) && Uri.TryCreate(url, UriKind.Absolute, out _);
     }
 }

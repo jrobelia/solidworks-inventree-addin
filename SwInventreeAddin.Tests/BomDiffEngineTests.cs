@@ -139,6 +139,32 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public void Diff_UnparsedQuantityCell_IsAmbiguous()
+        {
+            var sw = SwLine("ABC", pk: 10);
+            sw.UnparsedQuantity = "two";   // cell text that failed decimal parse
+            var result = BomDiffEngine.Diff(
+                new[] { sw },
+                new[] { ItLine(10, qty: 1) },
+                NoLookups);
+            Assert.That(result[0].State, Is.EqualTo(BomDiffState.Ambiguous));
+        }
+
+        [Test]
+        public void Diff_UnparsedQuantityCell_WouldOtherwiseMatch_StillAmbiguous()
+        {
+            // The silent-0 bug: a parse failure left Quantity = 0, which could
+            // read as Match and be pushed. The flag must win over field equality.
+            var sw = SwLine("ABC", qty: 0, pk: 10);
+            sw.UnparsedQuantity = "N/A";
+            var result = BomDiffEngine.Diff(
+                new[] { sw },
+                new[] { ItLine(10, qty: 0) },
+                NoLookups);
+            Assert.That(result[0].State, Is.EqualTo(BomDiffState.Ambiguous));
+        }
+
+        [Test]
         public void Diff_IpnResolvesToMatch_UsesLookupPk()
         {
             var result = BomDiffEngine.Diff(

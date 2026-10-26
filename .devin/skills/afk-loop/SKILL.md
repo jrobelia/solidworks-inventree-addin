@@ -115,12 +115,13 @@ Tests, formatting, and PR-body generation run as scripts without a model session
 ## Package verification
 
 ```powershell
-python -m unittest discover -s ".devin/skills/afk-loop/tests" -p "test_*.py" -v
+python -m pytest ".devin/skills/afk-loop/tests" -n 8 --reruns 1 -q   # ~7 min; needs pip install -r tests/requirements.txt
+python -m unittest discover -s ".devin/skills/afk-loop/tests" -p "test_*.py" -v   # sequential fallback, ~26 min
 dotnet test "SwInventreeAddin.Tests/SwInventreeAddin.Tests.csproj" --disable-build-servers
 ```
 
-The Python harness uses disposable Git repositories, stub external commands, and no credentials. It never runs real workers, pushes, PR creation or tracker edits. Guard and driver tests are not a substitute for the actual user-terminal policy probe or pilot.
+The Python harness uses disposable Git repositories, stub external commands, and no credentials. It never runs real workers, pushes, PR creation or tracker edits. Guard and driver tests are not a substitute for the actual user-terminal policy probe or pilot. Do not run the suite while an AFK loop or a manual checkout may move the canonical HEAD — it reads and hashes package files mid-run.
 
-Use targeted tests or `AFK_TEST_FAST=1` while iterating; the latter skips slow end-to-end lifecycle cases and retains gate-blocker and guard tests. Instructions-only edits need `git diff --check` and the relevant focused tests, not the full lifecycle suite.
+Use targeted tests (`-k <name>`) or `AFK_TEST_FAST=1` while iterating; the latter skips slow end-to-end lifecycle cases and retains gate-blocker and guard tests. Instructions-only edits need `git diff --check` and the relevant focused tests, not the full lifecycle suite.
 
 Changes to the runner, guards, launchers, worker prompts, persisted-state formats, model selection, or test harness need one full sweep without `AFK_TEST_FAST` before commit. A Markdown worker prompt is executable behavior for this rule. Do not repeat a completed full sweep solely for subsequent explanatory-text edits.

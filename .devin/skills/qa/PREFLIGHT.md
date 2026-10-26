@@ -52,7 +52,7 @@ If the git tag is missing (e.g., a shallow clone or no tags), both sides resolve
 Before starting GUI testing, confirm that SolidWorks will load the dev build and not an installed release copy:
 
 ```powershell
-reg query "HKLM\SOFTWARE\Classes\CLSID\{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}\InprocServer32" /s
+reg query "HKLM\SOFTWARE\Classes\CLSID\{7C3E9A2F-4B61-4D8F-A2E5-1F6C9B3D8E47}\InprocServer32" /s
 ```
 
 Check the `CodeBase` value. It must point to the repo's `SwInventreeAddin\bin\Debug\net48\SwInventreeAddin.dll`. If it points to `C:\Program Files\SwInventreeAddin\SwInventreeAddin.DLL`, re-registration was skipped or failed.

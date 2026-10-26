@@ -12,6 +12,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Restore (locked)
+        run: dotnet restore "Solidworks Inventree Add-In.sln" --locked-mode
+
       - name: Format verify
         run: dotnet format "Solidworks Inventree Add-In.sln" --verify-no-changes
 

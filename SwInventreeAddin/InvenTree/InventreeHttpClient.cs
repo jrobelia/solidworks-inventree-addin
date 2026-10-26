@@ -11,6 +11,13 @@ namespace SwInventreeAddin.InvenTree
 {
     public class InventreeHttpClient : IInventreeClient
     {
+        /// <summary>
+        /// Upper bound on a single response body, applied to every endpoint the
+        /// client serves — JSON payloads and image downloads alike. A hostile or
+        /// broken server cannot exhaust memory with an unbounded body.
+        /// </summary>
+        internal const long MaxResponseContentBytes = 16L * 1024 * 1024;
+
         private readonly HttpClient _httpClient;
 
         public InventreeHttpClient(HttpClient httpClient, string apiKey)
@@ -19,6 +26,9 @@ namespace SwInventreeAddin.InvenTree
             // Set the auth header once — the API key never changes during the session.
             _httpClient.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Token", apiKey);
+            // SendAsync buffers the whole response body before returning, so this
+            // bound applies to every endpoint — JSON payloads and image bytes alike.
+            _httpClient.MaxResponseContentBufferSize = MaxResponseContentBytes;
         }
 
         public async Task<InventreePart?> GetPartByIpnAsync(string ipn)
@@ -389,7 +399,18 @@ namespace SwInventreeAddin.InvenTree
                 return null;
 
             using var request = new HttpRequestMessage(HttpMethod.Get, resolved);
-            var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
+
+            HttpResponseMessage response;
+            try
+            {
+                response = await _httpClient.SendAsync(request).ConfigureAwait(false);
+            }
+            catch (HttpRequestException)
+            {
+                // Body over MaxResponseContentBytes or transport failure —
+                // treat as "no image" so the caller shows the placeholder.
+                return null;
+            }
 
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
                 return null;

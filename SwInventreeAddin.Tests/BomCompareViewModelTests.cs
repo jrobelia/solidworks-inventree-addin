@@ -182,6 +182,30 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public async Task LoadAsync_UnparsedQuantityRow_IsAmbiguousAndNotCheckable()
+        {
+            _bomService.LinesToReturn.Add(new SwBomLine
+            {
+                Ipn = "A",
+                SubPartPk = 10,
+                UnparsedQuantity = "cut to length"
+            });
+            _client.BomLinesToReturn = new List<InventreeBomLine>
+            {
+                new InventreeBomLine { Pk = 1, SubPartPk = 10, Quantity = 0 }
+            };
+
+            var vm = CreateVm();
+            await vm.LoadAsync();
+
+            Assert.That(vm.Lines[0].State, Is.EqualTo(BomDiffState.Ambiguous));
+            Assert.That(vm.Lines[0].CanCheck, Is.False,
+                "an unreadable quantity must never reach a push");
+            Assert.That(vm.Lines[0].SwQty, Is.EqualTo("cut to length"),
+                "the grid shows the actual cell text, not a silent 0");
+        }
+
+        [Test]
         public async Task StateLabel_InventreeOnly_IsInvOnly()
         {
             _bomService.LinesToReturn = new List<SwBomLine>();
@@ -208,6 +232,7 @@ namespace SwInventreeAddin.Tests
 
             var vm = CreateVm();
             await vm.LoadAsync();
+            vm.ConfirmPush = (_, __) => true;
             vm.Lines[0].IsChecked = true;
             vm.Lines[1].IsChecked = false;
             await vm.PushAsync();
@@ -224,6 +249,7 @@ namespace SwInventreeAddin.Tests
 
             var vm = CreateVm();
             await vm.LoadAsync();
+            vm.ConfirmPush = (_, __) => true;
             vm.Lines[0].IsChecked = true;
             await vm.PushAsync();
 
@@ -243,6 +269,7 @@ namespace SwInventreeAddin.Tests
 
             var vm = CreateVm();
             await vm.LoadAsync();
+            vm.ConfirmPush = (_, __) => true;
             vm.Lines[0].IsChecked = true;
             await vm.PushAsync();
 
@@ -261,6 +288,7 @@ namespace SwInventreeAddin.Tests
 
             var vm = CreateVm();
             await vm.LoadAsync();
+            vm.ConfirmPush = (_, __) => true;
             vm.Lines[0].IsChecked = true;
             await vm.PushAsync();
 
@@ -280,6 +308,7 @@ namespace SwInventreeAddin.Tests
 
             var vm = CreateVm();
             await vm.LoadAsync();
+            vm.ConfirmPush = (_, __) => true;
             foreach (var line in vm.Lines) line.IsChecked = true;
             await vm.PushAsync();
 
@@ -294,6 +323,7 @@ namespace SwInventreeAddin.Tests
 
             var vm = CreateVm();
             await vm.LoadAsync();
+            vm.ConfirmPush = (_, __) => true;
             vm.Lines[0].IsChecked = true;
             await vm.PushAsync();
 
@@ -379,6 +409,7 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.Lines[0].State, Is.EqualTo(BomDiffState.Conflict));
             Assert.That(vm.Lines[0].CanCheck, Is.True, "Conflict row is selectable before push");
 
+            vm.ConfirmPush = (_, __) => true;
             vm.Lines[0].IsChecked = true;
             await vm.PushAsync();
 
@@ -400,6 +431,7 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.Lines[0].State, Is.EqualTo(BomDiffState.New));
             Assert.That(vm.Lines[0].CanCheck, Is.True);
 
+            vm.ConfirmPush = (_, __) => true;
             vm.Lines[0].IsChecked = true;
             await vm.PushAsync();
 
@@ -426,6 +458,7 @@ namespace SwInventreeAddin.Tests
 
             var vm = CreateVm();
             await vm.LoadAsync();
+            vm.ConfirmPush = (_, __) => true;
             vm.Lines[0].IsChecked = true;   // Conflict
             vm.Lines[1].IsChecked = false;  // New
             await vm.PushAsync();
@@ -464,6 +497,7 @@ namespace SwInventreeAddin.Tests
                 };
                 var line = new BomDiffLineViewModel(diffLine) { IsChecked = true };
                 vm.Lines.Add(line);
+                vm.ConfirmPush = (_, __) => true;
 
                 await vm.PushAsync();
 
@@ -482,9 +516,26 @@ namespace SwInventreeAddin.Tests
             _client.BomLinesToReturn = new List<InventreeBomLine>();
 
             var vm = CreateVm();
+            vm.ConfirmPush = (_, __) => true;
             await vm.PushAsync();
 
             Assert.That(vm.StatusText, Is.EqualTo("No changes pushed"));
+        }
+
+        [Test]
+        public async Task PushAsync_NoConfirmWired_DeniesByDefault()
+        {
+            // The default confirmation must deny: an unwired ViewModel (a host
+            // that never attached the dialog delegate) can never push.
+            _bomService.LinesToReturn.Add(new SwBomLine { Ipn = "A", SubPartPk = 10, Quantity = 1 });
+            _client.BomLinesToReturn = new List<InventreeBomLine>();
+
+            var vm = CreateVm();
+            await vm.LoadAsync();
+            vm.Lines[0].IsChecked = true;
+            await vm.PushAsync();
+
+            Assert.That(_client.CreatedBomLines.Count, Is.EqualTo(0));
         }
 
         // ── Sort ──────────────────────────────────────────────────────────────
@@ -596,6 +647,7 @@ namespace SwInventreeAddin.Tests
             var logger = new StubAddinLogger();
             var vm = CreateVmWithLogger(logger);
             await vm.LoadAsync();
+            vm.ConfirmPush = (_, __) => true;
             vm.Lines[0].IsChecked = true;
 
             await vm.PushAsync();
@@ -619,6 +671,7 @@ namespace SwInventreeAddin.Tests
             var logger = new StubAddinLogger();
             var vm = CreateVmWithLogger(logger);
             await vm.LoadAsync();
+            vm.ConfirmPush = (_, __) => true;
             vm.Lines[0].IsChecked = true;
 
             await vm.PushAsync();

@@ -181,6 +181,39 @@ namespace SwInventreeAddin.Tests
             Assert.That(url, Is.Not.Null);
             Assert.That(url!.AbsoluteUri, Is.EqualTo("http://inventree.example.com/path%20with%20space/part/42/"));
         }
+
+        // --- response size cap ---
+
+        [Test]
+        public void GetPartByIpnAsync_ResponseExceedsCap_ThrowsHttpRequestException()
+        {
+            var oversized = new string('x', checked((int)InventreeHttpClient.MaxResponseContentBytes) + 1);
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, oversized);
+
+            Assert.ThrowsAsync<HttpRequestException>(() =>
+                CreateClient(handler).GetPartByIpnAsync("R-10K-0402"));
+        }
+
+        [Test]
+        public async Task DownloadImageAsync_ResponseExceedsCap_ReturnsNull()
+        {
+            var oversized = new string('x', checked((int)InventreeHttpClient.MaxResponseContentBytes) + 1);
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, oversized);
+
+            var bytes = await CreateClient(handler).DownloadImageAsync("/media/big.png");
+
+            Assert.That(bytes, Is.Null);
+        }
+
+        [Test]
+        public async Task DownloadImageAsync_ResponseWithinCap_ReturnsBytes()
+        {
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "png-bytes");
+
+            var bytes = await CreateClient(handler).DownloadImageAsync("/media/small.png");
+
+            Assert.That(bytes, Is.Not.Null);
+        }
     }
 
     // ---------------------------------------------------------------------------
