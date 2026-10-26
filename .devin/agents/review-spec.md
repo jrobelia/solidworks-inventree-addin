@@ -51,4 +51,4 @@ With no `REPORT_PATH`: a single `## Spec` block that lists every finding, or `GR
 
 With `REPORT_PATH`: write that same block to the path, then return only the digest — one line per finding (`[SEVERITY] file:line — <finding>; spec: "<quote>"`), the claims-verified line, and the verdict line. The digest is the adjudication input; coverage narrative stays in the file. Under 300 words.
 
-For an `AUDIT_ARTIFACTS:` verification the `## Spec` block carries one `verified` | `failed` line per coverage item the `SPEC:` enumerates and one per claimed finding's anchor, each with its evidence — then the verdict line and the `REPORT_PATH`/digest contract above apply unchanged.
+For an `AUDIT_ARTIFACTS:` verification the `## Spec` block carries one `verified` | `failed` line per coverage item the `SPEC:` enumerates and one per claimed finding's anchor, each with its evidence — then the verdict line and the `REPORT_PATH`/digest contract above apply unchanged, with the returned digest carrying those same `verified`/`failed` lines rather than severity-tagged findings.
