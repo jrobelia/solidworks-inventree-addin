@@ -24,45 +24,38 @@ namespace SwInventreeAddin.Config
         }
 
         /// <inheritdoc/>
-        /// <returns>Null if the settings file does not exist.</returns>
+        /// <returns>
+        /// Null if the settings file does not exist or cannot be read, decrypted,
+        /// or deserialised — a corrupt or non-portable file means "not configured",
+        /// never an exception that blocks add-in load.
+        /// </returns>
         public ServerConfig? GetServerConfig()
         {
-            if (!File.Exists(_filePath))
-                return null;
-
-            byte[] cipherBytes;
             try
             {
-                cipherBytes = File.ReadAllBytes(_filePath);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException(
-                    $"Could not read settings file at {_filePath}: {ex.Message}", ex);
-            }
+                if (!File.Exists(_filePath))
+                    return null;
 
-            byte[] plainBytes;
-            try
-            {
-                plainBytes = ProtectedData.Unprotect(cipherBytes, null, DataProtectionScope.CurrentUser);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException(
-                    "Settings file is corrupt or was created by a different user account.", ex);
-            }
-
-            try
-            {
+                var cipherBytes = File.ReadAllBytes(_filePath);
+                var plainBytes = ProtectedData.Unprotect(
+                    cipherBytes, null, DataProtectionScope.CurrentUser);
                 var json = Encoding.UTF8.GetString(plainBytes);
                 var config = JsonSerializer.Deserialize<ServerConfig>(json);
                 MigrateLegacyWaitForServerAssignedIpn(config, json);
+
+                // Defence in depth: the save/apply path only writes https URLs,
+                // but a stored value is untrusted after load — a non-https or
+                // unparseable URL must not reach client construction.
+                if (config != null && !string.IsNullOrEmpty(config.Url) &&
+                    !(config.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) &&
+                      Uri.TryCreate(config.Url, UriKind.Absolute, out _)))
+                    config.Url = string.Empty;
+
                 return config;
             }
-            catch (Exception ex)
+            catch
             {
-                throw new InvalidOperationException(
-                    "Settings file could not be deserialised after decryption.", ex);
+                return null;
             }
         }
 

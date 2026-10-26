@@ -330,6 +330,7 @@ namespace SwInventreeAddin.Tests
             CreateVm();
             await _vm.FetchPartAsync();
 
+            _vm.ConfirmMissingProperties = _ => true;
             _vm.ApplyNameToDocument();
 
             Assert.That(_propertyService.GetCustomProperty("Description"),
@@ -343,6 +344,7 @@ namespace SwInventreeAddin.Tests
             CreateVm();
             await _vm.FetchPartAsync();
 
+            _vm.ConfirmMissingProperties = _ => true;
             _vm.ApplyNotesToDocument();
 
             Assert.That(_propertyService.GetCustomProperty("Notes"),
@@ -358,6 +360,7 @@ namespace SwInventreeAddin.Tests
             CreateVm();
             await _vm.FetchPartAsync();
 
+            _vm.ConfirmMissingProperties = _ => true;
             _vm.ApplyDescriptionToDocument();
 
             Assert.That(_propertyService.GetCustomProperty("Description Long"),
@@ -371,6 +374,7 @@ namespace SwInventreeAddin.Tests
             CreateVm();
             await _vm.FetchPartAsync();
 
+            _vm.ConfirmMissingProperties = _ => true;
             _vm.ApplyDescriptionToDocument();
 
             Assert.That(_vm.CurrentDescription, Is.EqualTo("10k ohm 1% 0402"));
@@ -385,6 +389,7 @@ namespace SwInventreeAddin.Tests
             CreateVm();
             await _vm.FetchPartAsync();
 
+            _vm.ConfirmMissingProperties = _ => true;
             _vm.ApplyPkToDocument();
 
             Assert.That(_propertyService.GetCustomProperty("InvenTree PK"),
@@ -398,6 +403,7 @@ namespace SwInventreeAddin.Tests
             CreateVm();
             await _vm.FetchPartAsync();
 
+            _vm.ConfirmMissingProperties = _ => true;
             _vm.ApplyPkToDocument();
 
             Assert.That(_vm.CurrentPk, Is.EqualTo("42"));
@@ -412,6 +418,7 @@ namespace SwInventreeAddin.Tests
             CreateVm();
             await _vm.FetchPartAsync();
 
+            _vm.ConfirmMissingProperties = _ => true;
             _vm.ApplyNameToDocument();
             Assert.That(_vm.StatusText, Does.Contain("applied"));
 
@@ -2160,6 +2167,23 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public async Task ApplyNameToDocument_WhenPropertyMissingAndNoDelegateWired_DoesNotWrite()
+        {
+            // Default-deny: with no confirmation delegate attached, a missing
+            // mapped property must never be created implicitly.
+            _propertyService.Seed("PartNo", "R-10K-0402");
+            _client.PartToReturn = SamplePart;
+            _pair = VmFactory.Create(_client, _propertyService, createPartValidator: _createPartValidator);
+            _vm = _pair.ViewModel;
+            await _vm.FetchPartAsync();
+
+            await _vm.ApplyNameToDocument();
+
+            Assert.That(_propertyService.WrittenNames,
+                Does.Not.Contain("Description"));
+        }
+
+        [Test]
         public async Task ApplyNameToDocument_WhenPropertyMissingAndUserConfirms_Writes()
         {
             _propertyService.Seed("PartNo", "R-10K-0402");
@@ -2249,6 +2273,25 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public async Task FetchPartAsync_DuplicateIpn_OneRevMatch_NoDelegateWired_DoesNotApply()
+        {
+            // Default-deny: a host that never attached the confirmation
+            // delegate must not load the matched part.
+            var matched = new InventreePart { Pk = 11, Ipn = "PART-001", Revision = "B", Name = "Panel" };
+            _client.PartsByIpnToReturn = new System.Collections.Generic.List<InventreePart>
+            {
+                new InventreePart { Pk = 10, Ipn = "PART-001", Revision = "A" },
+                matched,
+            };
+            _propertyService.Seed("Revision", "B");
+            CreateVm("PART-001");
+
+            await _vm.FetchPartAsync();
+
+            Assert.That(_vm.CurrentInvenTreePk, Is.EqualTo(0));
+        }
+
+        [Test]
         public async Task FetchPartAsync_DuplicateIpn_OneRevMatch_ThumbnailUrl_DownloadsAndSetsThumbnail()
         {
             var matched = new InventreePart
@@ -2267,6 +2310,7 @@ namespace SwInventreeAddin.Tests
             _client.ThumbnailBytesToReturn = new byte[] { 1, 2, 3 };
             _propertyService.Seed("Revision", "B");
             CreateVm("PART-001");
+            _vm.ConfirmDuplicateIpn = (_, __) => true;
 
             await _vm.FetchPartAsync();
 
@@ -2291,6 +2335,7 @@ namespace SwInventreeAddin.Tests
             };
             _propertyService.Seed("Revision", "B");
             CreateVm("PART-001");
+            _vm.ConfirmDuplicateIpn = (_, __) => true;
 
             await _vm.FetchPartAsync();
 
@@ -2317,6 +2362,7 @@ namespace SwInventreeAddin.Tests
             _client.ThrowOnDownload = new System.Net.Http.HttpRequestException("network error");
             _propertyService.Seed("Revision", "B");
             CreateVm("PART-001");
+            _vm.ConfirmDuplicateIpn = (_, __) => true;
 
             Assert.DoesNotThrowAsync(async () => await _vm.FetchPartAsync());
             Assert.That(_vm.ThumbnailBytes, Is.Null);
@@ -3632,6 +3678,21 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public async Task FetchPartAsync_LinkMismatch_NoDelegateWired_StaysLinked()
+        {
+            // Default-deny: with no confirmation delegate attached the
+            // PK-addressed part must not be loaded over the mismatch.
+            _client.PartByPkToReturn = new InventreePart
+            { Pk = 42, Ipn = "RENAMED-001", Revision = "B" };
+            var vm = CreateVm();
+
+            await vm.FetchPartAsync();
+
+            Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(0));
+            Assert.That(vm.ApplyEnabled, Is.False);
+        }
+
+        [Test]
         public async Task FetchPartAsync_LinkMismatch_UserCancels_DoesNotWriteIpnToDocument()
         {
             // Doc IPN blank → IPN can't be verified; the Revision mismatch still prompts,
@@ -4362,6 +4423,7 @@ namespace SwInventreeAddin.Tests
                 new InventreePart { Pk = 99, Ipn = "RENAMED-999", Revision = "C", Name = "Renamed part" };
 
             var vm = CreateVm();
+            vm.ConfirmLinkMismatch = (_, __, ___) => true;   // host approves — the characterization is the follow path
             await vm.FetchPartAsync();
 
             Assert.That(vm.CurrentInvenTreePk, Is.EqualTo(99));
@@ -4858,6 +4920,7 @@ namespace SwInventreeAddin.Tests
             _propertyService.ReturnStaleReads = true;
             _propertyService.StaleValue = "PRE-WRITE";
 
+            vm.ConfirmMissingProperties = _ => true;
             vm.ApplyNameToDocument();
             Assert.That(vm.CurrentName, Is.EqualTo("Resistor 10k"));
 
@@ -4876,6 +4939,7 @@ namespace SwInventreeAddin.Tests
             var vm = CreateLinkedByIpnVm();
             await vm.FetchPartAsync();
 
+            vm.ConfirmMissingProperties = _ => true;
             vm.ApplyNameToDocument();
             Assert.That(vm.CurrentName, Is.EqualTo("Resistor 10k"));
 
@@ -4897,6 +4961,7 @@ namespace SwInventreeAddin.Tests
             var vm = CreateLinkedByIpnVm();
             await vm.FetchPartAsync();
 
+            vm.ConfirmMissingProperties = _ => true;
             vm.ApplyNameToDocument();   // the echo of this write never arrives
             Assert.That(vm.CurrentName, Is.EqualTo("Resistor 10k"));
 
@@ -5107,6 +5172,7 @@ namespace SwInventreeAddin.Tests
             var vm = CreateLinkedByIpnVm();
             await vm.FetchPartAsync();
 
+            vm.ConfirmMissingProperties = _ => true;
             vm.ApplyNameToDocument();
 
             Assert.That(_propertyService.WriteLog, Has.Count.EqualTo(1));

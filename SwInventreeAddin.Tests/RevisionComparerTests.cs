@@ -158,6 +158,25 @@ namespace SwInventreeAddin.Tests
             return RevisionComparer.Compare(sw, it);
         }
 
+        // ── Digit-group overflow → Ambiguous ─────────────────────────────────
+
+        [Test]
+        public void AlphaNumeric_DigitGroupOverflowsInt_IsAmbiguous()
+        {
+            // "A9999999999" exceeds Int32 — an OverflowException here once broke
+            // the document's Fetch permanently; the comparer must degrade to
+            // Ambiguous instead of throwing.
+            Assert.That(RevisionComparer.Compare("A9999999999", "A1"),
+                Is.EqualTo(RevisionOrder.Ambiguous));
+        }
+
+        [Test]
+        public void AlphaNumeric_DigitGroupOverflowsInt_OnItSide_IsAmbiguous()
+        {
+            Assert.That(RevisionComparer.Compare("A1", "A9999999999"),
+                Is.EqualTo(RevisionOrder.Ambiguous));
+        }
+
         // ── Cross-scheme → Ambiguous ──────────────────────────────────────────
 
         [Test]

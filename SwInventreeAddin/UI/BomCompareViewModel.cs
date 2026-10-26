@@ -48,7 +48,10 @@ namespace SwInventreeAddin.UI
         };
 
         public string DisplayIpn => DiffLine.DisplayIpn;
-        public string SwQty => DiffLine.SwLine != null ? DiffLine.SwLine.Quantity.ToString("G29") : string.Empty;
+        // An unparseable quantity cell shows its raw text — a silent 0 would lie.
+        public string SwQty => DiffLine.SwLine != null
+            ? (DiffLine.SwLine.UnparsedQuantity ?? DiffLine.SwLine.Quantity.ToString("G29"))
+            : string.Empty;
         public string SwReference => DiffLine.SwLine?.Reference ?? string.Empty;
         public string SwNote => DiffLine.SwLine?.Note ?? string.Empty;
         public string ItQty => DiffLine.ItLine != null ? DiffLine.ItLine.Quantity.ToString("G29") : string.Empty;
@@ -138,9 +141,9 @@ namespace SwInventreeAddin.UI
         /// <summary>
         /// Inject to override confirmation logic in tests.
         /// Args: (newCount, updateCount). Return false to cancel.
-        /// Default returns true (no dialog).
+        /// Default denies — a host that never wires the dialog must not push.
         /// </summary>
-        public Func<int, int, bool> ConfirmPush { get; set; } = (_, __) => true;
+        public Func<int, int, bool> ConfirmPush { get; set; } = (_, __) => false;
 
         // ── Constructors ─────────────────────────────────────────────────────
 

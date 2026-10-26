@@ -57,6 +57,25 @@ namespace SwInventreeAddin.Bom
                     continue;
                 }
 
+                // A quantity cell that failed to parse must never reach a push —
+                // not as Match, not as Conflict, and not as New. Consume any
+                // matching InvenTree line so the row shows both sides.
+                if (sw.UnparsedQuantity != null)
+                {
+                    itByPk.TryGetValue(key, out var itAmbiguous);
+                    if (itAmbiguous != null) itByPk.Remove(key);
+                    result.Add(new BomDiffLine
+                    {
+                        State = BomDiffState.Ambiguous,
+                        SwLine = sw,
+                        ItLine = itAmbiguous,
+                        SubPartPk = key,
+                        DisplayIpn = itAmbiguous != null && !string.IsNullOrEmpty(itAmbiguous.SubPartIpn)
+                            ? itAmbiguous.SubPartIpn : sw.Ipn,
+                    });
+                    continue;
+                }
+
                 if (itByPk.TryGetValue(key, out var itLine))
                 {
                     itByPk.Remove(key);

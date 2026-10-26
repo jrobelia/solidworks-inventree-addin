@@ -55,12 +55,73 @@ namespace SwInventreeAddin.Tests
         // ── File-backed specifics ─────────────────────────────────────────
 
         [Test]
-        public void GetServerConfig_WhenFileIsCorrupt_ThrowsInvalidOperationException()
+        public void GetServerConfig_WhenFileIsCorrupt_ReturnsNull()
         {
+            // A corrupt or non-portable settings.dat must read as "not
+            // configured" — never block add-in load with a thrown decrypt error.
             File.WriteAllBytes(_tempFilePath, new byte[] { 0xFF, 0xFE, 0x00, 0x01 });
 
-            Assert.That(() => _provider.GetServerConfig(),
-                Throws.TypeOf<InvalidOperationException>());
+            Assert.That(_provider.GetServerConfig(), Is.Null);
+        }
+
+        [Test]
+        public void GetServerConfig_WhenPayloadDecryptsButIsNotJson_ReturnsNull()
+        {
+            var cipher = System.Security.Cryptography.ProtectedData.Protect(
+                System.Text.Encoding.UTF8.GetBytes("this is not json"),
+                null, System.Security.Cryptography.DataProtectionScope.CurrentUser);
+            File.WriteAllBytes(_tempFilePath, cipher);
+
+            Assert.That(_provider.GetServerConfig(), Is.Null);
+        }
+
+        [Test]
+        public void GetServerConfig_StoredUrlNotHttps_ReadsAsUnconfigured()
+        {
+            // Defence in depth: the save path already refuses non-https URLs;
+            // a stored value that fails the same check must not reach client
+            // construction after a reload.
+            _provider.SaveServerConfig(new ServerConfig
+            {
+                Url = "http://inventree.example.com",
+                ApiKey = "key",
+            });
+
+            var result = _provider.GetServerConfig();
+
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result!.IsConfigured, Is.False);
+        }
+
+        [Test]
+        public void GetServerConfig_StoredUrlNotParseable_ReadsAsUnconfigured()
+        {
+            _provider.SaveServerConfig(new ServerConfig
+            {
+                Url = "not a url",
+                ApiKey = "key",
+            });
+
+            var result = _provider.GetServerConfig();
+
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result!.IsConfigured, Is.False);
+        }
+
+        [Test]
+        public void GetServerConfig_StoredUrlHttps_RoundTrips()
+        {
+            _provider.SaveServerConfig(new ServerConfig
+            {
+                Url = "https://inventree.example.com",
+                ApiKey = "key",
+            });
+
+            var result = _provider.GetServerConfig();
+
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result!.Url, Is.EqualTo("https://inventree.example.com"));
+            Assert.That(result.IsConfigured, Is.True);
         }
 
         [Test]
