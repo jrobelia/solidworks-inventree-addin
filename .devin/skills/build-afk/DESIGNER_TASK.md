@@ -4,6 +4,8 @@ Dispatch one per ticket during the up-front design pass (cap 5 concurrent). Fill
 
 `{{blocker_context}}` carries the outcomes of the tickets this one was blocked on plus any spec rulings confirmed at the batch gate that govern this ticket — write rulings as settled spec (a parent↔child contradiction or precedence call the maintainer already ruled), not as open questions. Write `None.` when empty.
 
+`{{unit_type}}` is `code` or `audit` — the unit type the batch gate confirmed per `REFERENCE.md` `## Audit units`; `code` when the gate predates the field. It selects exactly one of the two `## Return` contracts below.
+
 ```
 run_subagent(
   profile: "build-designer",
@@ -36,7 +38,9 @@ Skills cannot be invoked from inside a subagent — these are files to read, and
 
 ## Return
 
-Only the declaration — the orchestrator persists it verbatim to `seams/{{ticket}}.md`:
+Only the declaration — the orchestrator persists it verbatim to `seams/{{ticket}}.md`. `{{unit_type}}` selects exactly one contract — emit one, never both:
+
+`code` (the default) — a `## Module Design` seam declaration:
 
 ```
 ## Module Design
@@ -49,6 +53,18 @@ Only the declaration — the orchestrator persists it verbatim to `seams/{{ticke
 
 ### Candidates (only when architectural with two equally-good seams)
 <each candidate under the same declaration fields>
+```
+
+`audit` — an `## Audit Coverage` declaration instead, per `REFERENCE.md` `## Audit units`:
+
+```
+## Audit Coverage
+- Coverage items: <every surface the audit must examine — an item the artifacts leave unaddressed fails verification>
+- Evidence rule: <every finding must cite a resolvable anchor — file:line or doc section; a finding without one is invalid>
+- Deliverable artifacts: <the report path(s) the audit writes under the run's `reports/`>
+- Tracker side-effects: <the exact `gh issue comment` / `gh issue create` effects the findings may trigger — orchestrator-owned, never run by the audit agent; `none` when empty>
+- Watch items: <constraints the verification pass checks against the artifacts — the orchestrator copies them verbatim into the verifier's SPEC block; "none" when empty>
+- Flag: routine | architectural — <one-line reason>
 ```
 
 Self-check before returning: every test your Test adapter declaration names must have the stub capability it needs declared in the same field — "needs no change" beside a test that requires a new stub surface is a contradiction, not a shortcut. Every declared member names its consuming call site — a member reachable only from tests, or only from a sibling member that already does the work, is speculative: fold it in. A prescribed test input gets traced through the guard clauses to the pinned branch — an input a guard turns away produces a vacuous or failing test mid-TDD; when no public-surface input reaches the branch, pin the constraint in the declaration instead of prescribing one. An ordering watch item names the discriminating negative per bound — the fixture where violating just that bound flips the outcome, so a swapped order fails exactly one test; a fixture that can't fire any bound's violation leaves the order untested. The declaration enumerates what the spec pins rather than naming the class of thing — "revise the roadmap" lists each affected row by ID, "amend the ADR" names its number, and a rule ported verbatim from existing behaviour names the characterized tests that constrain it; a ported rule whose edge cases live only in tests is half-pinned. A rename declares "replaces X". Pin instance-vs-static or mark it open. Keep the declaration to multiple shorter lines — a single line past ~2,000 chars defeats read/grep for the read-only agents that consume it.
