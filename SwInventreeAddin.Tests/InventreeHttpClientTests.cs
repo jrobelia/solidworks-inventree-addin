@@ -181,6 +181,39 @@ namespace SwInventreeAddin.Tests
             Assert.That(url, Is.Not.Null);
             Assert.That(url!.AbsoluteUri, Is.EqualTo("http://inventree.example.com/path%20with%20space/part/42/"));
         }
+
+        // --- response size cap ---
+
+        [Test]
+        public void GetPartByIpnAsync_ResponseExceedsCap_ThrowsHttpRequestException()
+        {
+            var oversized = new string('x', checked((int)InventreeHttpClient.MaxResponseContentBytes) + 1);
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, oversized);
+
+            Assert.ThrowsAsync<HttpRequestException>(() =>
+                CreateClient(handler).GetPartByIpnAsync("R-10K-0402"));
+        }
+
+        [Test]
+        public async Task DownloadImageAsync_ResponseExceedsCap_ReturnsNull()
+        {
+            var oversized = new string('x', checked((int)InventreeHttpClient.MaxResponseContentBytes) + 1);
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, oversized);
+
+            var bytes = await CreateClient(handler).DownloadImageAsync("/media/big.png");
+
+            Assert.That(bytes, Is.Null);
+        }
+
+        [Test]
+        public async Task DownloadImageAsync_ResponseWithinCap_ReturnsBytes()
+        {
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "png-bytes");
+
+            var bytes = await CreateClient(handler).DownloadImageAsync("/media/small.png");
+
+            Assert.That(bytes, Is.Not.Null);
+        }
     }
 
     // ---------------------------------------------------------------------------
@@ -276,6 +309,94 @@ namespace SwInventreeAddin.Tests
             Assert.That(part.Salable, Is.False);
             Assert.That(part.Trackable, Is.False);
             Assert.That(part.Testable, Is.False);
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Issue #348: DownloadImageAsync must never send the API token to a host
+    // outside the configured origin
+    // ---------------------------------------------------------------------------
+    [TestFixture]
+    public class InventreeHttpClientDownloadImageTests
+    {
+        private const string BaseUrl = "https://inventree.example.com";
+        private const string ApiKey = "test-api-key";
+
+        private static InventreeHttpClient CreateClient(StubHttpMessageHandler handler)
+        {
+            var http = new HttpClient(handler) { BaseAddress = new Uri(BaseUrl) };
+            return new InventreeHttpClient(http, ApiKey);
+        }
+
+        [Test]
+        public async Task DownloadImageAsync_RelativeUrl_DownloadsFromConfiguredServer()
+        {
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "png-bytes");
+            var bytes = await CreateClient(handler).DownloadImageAsync("/media/thumbnails/widget.png");
+
+            Assert.That(bytes, Is.Not.Null);
+            Assert.That(handler.LastRequest.RequestUri!.AbsoluteUri,
+                Is.EqualTo(BaseUrl + "/media/thumbnails/widget.png"));
+        }
+
+        [Test]
+        public async Task DownloadImageAsync_SameOriginAbsoluteUrl_Downloads()
+        {
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "png-bytes");
+            var bytes = await CreateClient(handler).DownloadImageAsync(BaseUrl + "/media/thumbnails/widget.png");
+
+            Assert.That(bytes, Is.Not.Null);
+            Assert.That(handler.LastRequest, Is.Not.Null);
+        }
+
+        [Test]
+        public async Task DownloadImageAsync_AbsoluteForeignHost_ReturnsNullWithoutRequest()
+        {
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "png-bytes");
+            var bytes = await CreateClient(handler).DownloadImageAsync("https://attacker.example.net/x.png");
+
+            Assert.That(bytes, Is.Null);
+            Assert.That(handler.LastRequest, Is.Null, "No request may be sent to a foreign host");
+        }
+
+        [Test]
+        public async Task DownloadImageAsync_ForeignHost_NeverReceivesAuthorizationHeader()
+        {
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "png-bytes");
+            await CreateClient(handler).DownloadImageAsync("https://attacker.example.net/x.png");
+
+            Assert.That(handler.LastRequest?.Headers.Authorization, Is.Null,
+                "The API token must never reach a non-configured host");
+        }
+
+        [Test]
+        public async Task DownloadImageAsync_DifferentPort_ReturnsNullWithoutRequest()
+        {
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "png-bytes");
+            var bytes = await CreateClient(handler).DownloadImageAsync("https://inventree.example.com:8443/x.png");
+
+            Assert.That(bytes, Is.Null);
+            Assert.That(handler.LastRequest, Is.Null, "No request may be sent to a different port");
+        }
+
+        [Test]
+        public async Task DownloadImageAsync_AbsoluteHttpUrl_ReturnsNullWithoutRequest()
+        {
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "png-bytes");
+            var bytes = await CreateClient(handler).DownloadImageAsync("http://inventree.example.com/x.png");
+
+            Assert.That(bytes, Is.Null);
+            Assert.That(handler.LastRequest, Is.Null, "The token must not travel over plain HTTP");
+        }
+
+        [Test]
+        public async Task DownloadImageAsync_ProtocolRelativeForeignHost_ReturnsNullWithoutRequest()
+        {
+            var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "png-bytes");
+            var bytes = await CreateClient(handler).DownloadImageAsync("//attacker.example.net/x.png");
+
+            Assert.That(bytes, Is.Null);
+            Assert.That(handler.LastRequest, Is.Null, "A protocol-relative URL still names a foreign host");
         }
     }
 

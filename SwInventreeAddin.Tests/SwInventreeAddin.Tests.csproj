@@ -8,6 +8,8 @@
     <IsPackable>false</IsPackable>
     <Nullable>enable</Nullable>
     <LangVersion>8.0</LangVersion>
+    <!-- Transitive NuGet deps are content-hash locked; CI restores in locked mode. -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="NUnit" Version="3.14.0" />

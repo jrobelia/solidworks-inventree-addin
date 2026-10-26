@@ -67,25 +67,26 @@ namespace SwInventreeAddin.UI
         /// <summary>
         /// Called before any write to SW when one or more mapped property names don't already
         /// exist in the document. Return true to proceed (property will be created), false to
-        /// abort. Default always proceeds.
+        /// abort. Default denies — a host that never wires the dialog must not proceed.
         /// </summary>
-        public Func<IReadOnlyList<string>, bool> ConfirmMissingProperties { get; set; } = _ => true;
+        public Func<IReadOnlyList<string>, bool> ConfirmMissingProperties { get; set; } = _ => false;
 
         /// <summary>
         /// Called when an IPN resolves to multiple parts and exactly one revision matches SW.
         /// Receives (allCandidates, matchedCandidate) as immutable projections.
-        /// Return true to load the matched part, false to cancel. Default always proceeds.
+        /// Return true to load the matched part, false to cancel.
+        /// Default denies — a host that never wires the dialog must not proceed.
         /// </summary>
-        public Func<IReadOnlyList<PartSnapshot>, PartSnapshot, bool> ConfirmDuplicateIpn { get; set; } = (_, __) => true;
+        public Func<IReadOnlyList<PartSnapshot>, PartSnapshot, bool> ConfirmDuplicateIpn { get; set; } = (_, __) => false;
 
         /// <summary>
         /// Called on the PK fetch path when the fetched part's IPN or Revision disagrees
         /// with the document's stamped values — a Link Mismatch. Receives
         /// (documentIpn, documentRevision, fetchedPart). Return true to load the
         /// PK-addressed part, false to leave the document LINKED with no session.
-        /// Default always proceeds.
+        /// Default denies — a host that never wires the dialog must not proceed.
         /// </summary>
-        public Func<string, string, PartSnapshot, bool> ConfirmLinkMismatch { get; set; } = (_, __, ___) => true;
+        public Func<string, string, PartSnapshot, bool> ConfirmLinkMismatch { get; set; } = (_, __, ___) => false;
 
         /// <summary>
         /// Called when the InvenTree thumbnail is clicked and a part URL is available.

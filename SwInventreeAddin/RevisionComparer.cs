@@ -122,8 +122,11 @@ namespace SwInventreeAddin
             if (!m.Success) return false;
             letters = m.Groups[1].Value.ToUpperInvariant();
             var numStr = m.Groups[2].Value;
-            number = numStr.Length == 0 ? 0 : int.Parse(numStr);
-            return true;
+            // int.Parse would throw OverflowException on a digit group past
+            // Int32 ("A9999999999") — TryParse fails the scheme instead, so
+            // the compare degrades to Ambiguous rather than breaking the fetch.
+            if (numStr.Length == 0) return true;
+            return int.TryParse(numStr, out number);
         }
 
         /// <summary>

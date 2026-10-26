@@ -232,7 +232,7 @@ namespace SwInventreeAddin.Config
             if (string.IsNullOrWhiteSpace(url))
                 throw new InvalidOperationException("Server URL is required.");
 
-            if (!url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            if (!ServerConfig.HasHttpsScheme(url))
                 throw new InvalidOperationException(
                     "Server URL must begin with https:// — a plain http:// connection is not secure.");
 

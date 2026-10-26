@@ -11,6 +11,13 @@ namespace SwInventreeAddin.InvenTree
 {
     public class InventreeHttpClient : IInventreeClient
     {
+        /// <summary>
+        /// Upper bound on a single response body, applied to every endpoint the
+        /// client serves — JSON payloads and image downloads alike. A hostile or
+        /// broken server cannot exhaust memory with an unbounded body.
+        /// </summary>
+        internal const long MaxResponseContentBytes = 16L * 1024 * 1024;
+
         private readonly HttpClient _httpClient;
 
         public InventreeHttpClient(HttpClient httpClient, string apiKey)
@@ -19,6 +26,9 @@ namespace SwInventreeAddin.InvenTree
             // Set the auth header once — the API key never changes during the session.
             _httpClient.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Token", apiKey);
+            // SendAsync buffers the whole response body before returning, so this
+            // bound applies to every endpoint — JSON payloads and image bytes alike.
+            _httpClient.MaxResponseContentBufferSize = MaxResponseContentBytes;
         }
 
         public async Task<InventreePart?> GetPartByIpnAsync(string ipn)
@@ -377,14 +387,30 @@ namespace SwInventreeAddin.InvenTree
             if (string.IsNullOrWhiteSpace(url))
                 return null;
 
-            // Reject absolute non-HTTPS URLs — the auth token must not travel over plain HTTP.
-            // Relative URLs (e.g. /media/thumbnails/widget.png) are safe because BaseAddress is HTTPS.
-            if (Uri.TryCreate(url, UriKind.Absolute, out var parsed) &&
-                !string.Equals(parsed.Scheme, "https", StringComparison.OrdinalIgnoreCase))
+            // Every request on this client carries the API token, and the
+            // thumbnail URL is server-supplied — confine media fetches to the
+            // configured origin so the token can never reach a foreign host.
+            var baseAddress = _httpClient.BaseAddress;
+            if (baseAddress == null ||
+                !Uri.TryCreate(baseAddress, url, out var resolved) ||
+                !string.Equals(resolved.Scheme, baseAddress.Scheme, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(resolved.Host, baseAddress.Host, StringComparison.OrdinalIgnoreCase) ||
+                resolved.Port != baseAddress.Port)
                 return null;
 
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
+            using var request = new HttpRequestMessage(HttpMethod.Get, resolved);
+
+            HttpResponseMessage response;
+            try
+            {
+                response = await _httpClient.SendAsync(request).ConfigureAwait(false);
+            }
+            catch (HttpRequestException)
+            {
+                // Body over MaxResponseContentBytes or transport failure —
+                // treat as "no image" so the caller shows the placeholder.
+                return null;
+            }
 
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
                 return null;

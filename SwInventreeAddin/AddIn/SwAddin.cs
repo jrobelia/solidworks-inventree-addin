@@ -26,7 +26,7 @@ namespace SwInventreeAddin.AddIn
     /// entries that make this add-in visible in the SolidWorks Add-ins dialog.
     /// </summary>
     [ComVisible(true)]
-    [Guid("A1B2C3D4-E5F6-7890-ABCD-EF1234567890")]
+    [Guid("7C3E9A2F-4B61-4D8F-A2E5-1F6C9B3D8E47")]
     public class SwAddin : ISwAddin
     {
         /// <summary>
@@ -58,7 +58,7 @@ namespace SwInventreeAddin.AddIn
             };
         }
 
-        private const string AddinGuid = "A1B2C3D4-E5F6-7890-ABCD-EF1234567890";
+        private const string AddinGuid = "7C3E9A2F-4B61-4D8F-A2E5-1F6C9B3D8E47";
         private const string AddinTitle = "InvenTree";
         private const string AddinDescription = "Imports part data from InvenTree into SolidWorks custom properties";
 
