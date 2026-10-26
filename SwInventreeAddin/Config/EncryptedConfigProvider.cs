@@ -47,8 +47,7 @@ namespace SwInventreeAddin.Config
                 // but a stored value is untrusted after load — a non-https or
                 // unparseable URL must not reach client construction.
                 if (config != null && !string.IsNullOrEmpty(config.Url) &&
-                    !(config.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) &&
-                      Uri.TryCreate(config.Url, UriKind.Absolute, out _)))
+                    !ServerConfig.IsAcceptedServerUrl(config.Url))
                     config.Url = string.Empty;
 
                 return config;
