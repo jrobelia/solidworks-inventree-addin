@@ -25,6 +25,11 @@ if ($iscc) {
     Write-Host "Building Setup.exe with Inno Setup..." -ForegroundColor Cyan
     & $iscc "/DAppVersion=$versionNumber" "$PSScriptRoot\Setup.iss"
     if ($LASTEXITCODE -ne 0) { Write-Host "ISCC failed." -ForegroundColor Red; exit 1 }
+
+    # sha256sum format — the release workflow uploads this beside the exe so
+    # downloads verify with `Get-FileHash`, `certutil`, or `sha256sum -c`.
+    $hash = (Get-FileHash $exePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    [IO.File]::WriteAllText("$exePath.sha256", "$hash  $(Split-Path $exePath -Leaf)`n")
 } else {
     Write-Host "WARNING: ISCC.exe not found — Setup.exe skipped." -ForegroundColor Yellow
     Write-Host "  Install Inno Setup 6 or set `$env:INNO_SETUP to ISCC.exe's path."
@@ -33,3 +38,4 @@ if ($iscc) {
 Write-Host ""
 Write-Host "Done! Version $version" -ForegroundColor Green
 if (Test-Path $exePath) { Write-Host "  $exePath" }
+if (Test-Path "$exePath.sha256") { Write-Host "  $exePath.sha256" }
