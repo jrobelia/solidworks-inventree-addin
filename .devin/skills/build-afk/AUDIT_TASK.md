@@ -1,8 +1,8 @@
 # /build-afk audit task template
 
-Dispatch one per audit-unit ticket — a ticket whose deliverable is analysis (documents), not a code diff. Fill every `{{slot}}`; the `build-implementer` profile body carries the dispatch contract — this template carries the audit unit's specifics. There is no worktree, branch, or commit: the agent writes declared artifacts to `reports/` on the main checkout.
+Dispatch one per audit-unit ticket — a ticket whose deliverable is analysis (documents), not a code diff. Fill every `{{slot}}`; the `build-implementer` profile body carries the dispatch contract — this template carries the audit unit's specifics. There is no worktree, branch, or commit: the agent writes declared artifacts to `reports/` on the main checkout. This task supersedes the profile's code-unit contract where they conflict: its worktree/commit discipline and red-first TDD loop do not apply — the audit unit works on the main checkout, produces the declared report artifacts, makes no commit, and returns the status-JSON variant below.
 
-`{{ticket_body_and_comments}}` carries the full issue body and all comments — paste them, not a fetch the grants may not permit. `{{extra_context}}` carries spec rulings confirmed at the batch gate that govern this ticket — write rulings as settled spec, not as open questions. Write `None.` when empty. `{{reports_dir}}` is the run's `.scratch/build-afk/<run>/reports/` as an absolute path; `{{report_path}}` is where your own report lands inside it.
+`{{ticket_body_and_comments}}` carries the full issue body and all comments — paste them, not a fetch the grants may not permit. `{{extra_context}}` carries the outcomes of the tickets this one was blocked on plus any spec rulings confirmed at the batch gate that govern this ticket — write rulings as settled spec, not as open questions. Write `None.` when empty. `{{reports_dir}}` is the run's `.scratch/build-afk/<run>/reports/` as an absolute path; `{{report_path}}` is where your own report lands inside it.
 
 ```
 run_subagent(

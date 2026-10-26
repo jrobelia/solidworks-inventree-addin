@@ -17,7 +17,7 @@ The caller will pass you a `REVIEW_BASE`, a `SPEC:` block, and any of the option
 
 - `REVIEW_BASE` — base commit for the review.
 - `REVIEW_HEAD` (optional) — the end of the diff range; `HEAD` when absent. A caller that backgrounds you pins it so the range can't move under a later merge or a changed checkout.
-- `AUDIT_ARTIFACTS:` (audit verification — supplied in place of `REVIEW_BASE`/`REVIEW_HEAD`) — the run-relative paths of the artifacts an audit unit produced. There is no diff: skip `## Fetch the review material` entirely (no commit list, no `dotnet format`), read the named artifact files directly, check each coverage item the `SPEC:` enumerates against them, and resolve every cited finding's anchor to a real file:line or doc section — an anchor that does not resolve is `failed`.
+- `AUDIT_ARTIFACTS:` (audit verification — supplied in place of `REVIEW_BASE`/`REVIEW_HEAD`) — the run-relative paths of the artifacts an audit unit produced. There is no diff: skip `## Fetch the review material` entirely (no commit list, no `dotnet format`), read the named artifact files directly, check each coverage item the `SPEC:` enumerates against them, and resolve every claimed finding's anchor to a real file:line or doc section — an anchor that does not resolve is `failed`.
 - `SPEC:` — full body of the originating issue / PRD / spec, including any comments rendered as part of the spec.
 - `IMPLEMENTER CLAIMS:` (optional) — the implementer's self-report: test summary, review summary, concerns, reason.
 - `SUITE_RESULT` (optional) — a verified test-suite result the caller supplies (e.g. the orchestrator's post-merge run). Cite it for claims verification instead of re-running; re-run the suite yourself only when a claim looks suspect or the diff touched shared test infra. When absent, an independent re-run is your call — note which you did.
@@ -51,4 +51,4 @@ With no `REPORT_PATH`: a single `## Spec` block that lists every finding, or `GR
 
 With `REPORT_PATH`: write that same block to the path, then return only the digest — one line per finding (`[SEVERITY] file:line — <finding>; spec: "<quote>"`), the claims-verified line, and the verdict line. The digest is the adjudication input; coverage narrative stays in the file. Under 300 words.
 
-For an `AUDIT_ARTIFACTS:` verification the `## Spec` block carries one `verified` | `failed` line per coverage item the `SPEC:` enumerates and one per finding anchor a requested side-effect cites, each with its evidence — then the verdict line and the `REPORT_PATH`/digest contract above apply unchanged.
+For an `AUDIT_ARTIFACTS:` verification the `## Spec` block carries one `verified` | `failed` line per coverage item the `SPEC:` enumerates and one per claimed finding's anchor, each with its evidence — then the verdict line and the `REPORT_PATH`/digest contract above apply unchanged.
