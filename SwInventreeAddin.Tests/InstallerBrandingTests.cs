@@ -75,7 +75,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void LegacyUninstallKeyCleanup_TargetsTechnicalName()
         {
-            var iss = ResolveDefines(ReadRepoFile("Installer", "Setup.iss"));
+            var iss = ResolveDefines(ReadIss());
 
             Assert.That(iss, Does.Contain(@"Uninstall\" + TechnicalName));
         }
@@ -83,7 +83,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void SetupScript_ComRegistration_UsesRegAsm()
         {
-            var iss = ReadRepoFile("Installer", "Setup.iss");
+            var iss = ReadIss();
 
             Assert.That(iss, Does.Contain("RegAsm.exe"));
             Assert.That(iss, Does.Contain("'/codebase /s'"));
@@ -92,7 +92,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void SetupScript_ComUnregistration_UsesRegAsm()
         {
-            var iss = ReadRepoFile("Installer", "Setup.iss");
+            var iss = ReadIss();
 
             Assert.That(iss, Does.Contain("'/u /s'"));
         }
@@ -100,7 +100,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void SetupScript_WizardArtworkAndNotices_AreUnchanged()
         {
-            var iss = ReadRepoFile("Installer", "Setup.iss");
+            var iss = ReadIss();
 
             Assert.That(iss, Does.Contain("SetupIconFile=sw-inventree-logo.ico"));
             Assert.That(iss, Does.Contain("WizardImageFile=wizard-image-164x314.bmp,wizard-image-328x628.bmp"));
@@ -113,7 +113,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void PostInstallNotes_TaskPaneAndAddIns_UseShortProductName()
         {
-            var notes = ReadRepoFile("Installer", "POST-INSTALL.txt");
+            var notes = ReadNotes();
 
             Assert.That(notes, Does.Contain("\"InvenTree Link\""));
         }
@@ -121,7 +121,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void PostInstallNotes_WindowsAppsEntry_UsesFullProductName()
         {
-            var notes = ReadRepoFile("Installer", "POST-INSTALL.txt");
+            var notes = ReadNotes();
 
             Assert.That(notes, Does.Contain("\"InvenTree Link for SOLIDWORKS\""));
         }
@@ -129,7 +129,7 @@ namespace SwInventreeAddin.Tests
         [Test]
         public void PostInstallNotes_Anywhere_DropsTechnicalIdentifier()
         {
-            var notes = ReadRepoFile("Installer", "POST-INSTALL.txt");
+            var notes = ReadNotes();
 
             Assert.That(notes, Does.Not.Contain(TechnicalName));
         }
@@ -177,7 +177,7 @@ namespace SwInventreeAddin.Tests
         // AppVersion comes from the iscc command line so the caller supplies it.
         private static string SetupValue(string directive, string appVersion)
         {
-            var iss = ReadRepoFile("Installer", "Setup.iss");
+            var iss = ReadIss();
             var line = iss.Split('\n')
                 .Select(l => l.Trim())
                 .First(l => l.StartsWith(directive + "=", StringComparison.Ordinal));
@@ -201,6 +201,10 @@ namespace SwInventreeAddin.Tests
         {
             return File.ReadAllText(Path.Combine(RepoRoot(), Path.Combine(parts)));
         }
+
+        private static string ReadIss() => ReadRepoFile("Installer", "Setup.iss");
+
+        private static string ReadNotes() => ReadRepoFile("Installer", "POST-INSTALL.txt");
 
         private static string RepoRoot()
         {

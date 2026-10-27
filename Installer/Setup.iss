@@ -58,8 +58,9 @@ UninstallDisplayName={#AppName}
 
 [Registry]
 ; Zip installs wrote a hand-made Add/Remove Programs key whose UninstallString
-; pointed at a bat copied into {app}. Left alone, upgraders see two same-named
-; entries and running the old one unregisters the new install's DLLs.
+; pointed at a bat copied into {app}. Left alone, upgraders see the stale
+; SwInventreeAddin entry beside the new one, and running the old one
+; unregisters the new install's DLLs.
 Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{#InstallName}"; Flags: deletekey
 
 [InstallDelete]
