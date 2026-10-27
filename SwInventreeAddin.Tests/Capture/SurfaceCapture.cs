@@ -97,8 +97,13 @@ namespace SwInventreeAddin.Tests.Capture
                     "The InvenTree revision will be updated to \"B\".")),
             new Entry("BomCompareWindow", "loaded", CreateBomCompareWindow),
             new Entry("CreatePartWindow", "categories-loaded", CreateCreatePartWindow),
-            new Entry("ImageCropWindow", "default",
-                () => new ImageCropWindow(new System.Drawing.Bitmap(480, 360))),
+            new Entry("ImageCropWindow", "default", () =>
+            {
+                var bitmap = new System.Drawing.Bitmap(480, 360);
+                var window = new ImageCropWindow(bitmap);
+                window.Closed += (_, __) => bitmap.Dispose();
+                return window;
+            }),
             new Entry("MessageDialog", "question-yesno",
                 () => new MessageDialog(
                     new MessageDialogViewModel(
