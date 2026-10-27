@@ -5,6 +5,10 @@
     <UseWpf>true</UseWpf>
     <RootNamespace>SwInventreeAddin</RootNamespace>
     <AssemblyName>SwInventreeAddin</AssemblyName>
+    <AssemblyTitle>InvenTree Link for SOLIDWORKS</AssemblyTitle>
+    <Product>InvenTree Link for SOLIDWORKS</Product>
+    <Description>Exchange part and assembly data between SOLIDWORKS and InvenTree.</Description>
+    <Company>Jon Robelia</Company>
     <Nullable>enable</Nullable>
     <LangVersion>8.0</LangVersion>
     <!-- Transitive NuGet deps are content-hash locked; CI restores in locked mode. -->
