@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -738,7 +739,42 @@ namespace SwInventreeAddin.Tests
         }
 
 
+        // ── Section titles (#327) ────────────────────────────────────────────
+        // The three section headers carry the canonical CONTEXT.md names; the
+        // audit's mixed-casing shipped strings must be gone.
+
+        [Test]
+        public void SectionTitles_UseTheCanonicalNames()
+        {
+            var window = CreateWindow();
+
+            var texts = AllTextBlockTexts(window).ToList();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(texts, Does.Contain("Server Connection"));
+                Assert.That(texts, Does.Contain("Property Mappings"));
+                Assert.That(texts, Does.Contain("BOM Keyword"));
+                Assert.That(texts, Does.Not.Contain("Inventree Server Connection"));
+                Assert.That(texts, Does.Not.Contain("Inventree to Solidworks Mappings"));
+                Assert.That(texts, Does.Not.Contain("SolidWorks BOM Table Name Keyword"));
+            });
+        }
+
         // ── Helpers ──────────────────────────────────────────────────────────
+
+        private static IEnumerable<string> AllTextBlockTexts(DependencyObject root)
+        {
+            foreach (var child in LogicalTreeHelper.GetChildren(root))
+            {
+                var node = child as DependencyObject;
+                if (node == null) continue;
+                if (node is TextBlock textBlock)
+                    yield return textBlock.Text;
+                foreach (var text in AllTextBlockTexts(node))
+                    yield return text;
+            }
+        }
 
         private SettingsWindow CreateWindow(
             IPropertyMappingProvider? mappingProvider = null,
