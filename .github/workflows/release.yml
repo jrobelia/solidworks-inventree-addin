@@ -38,6 +38,6 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            Installer/SwInventreeAddin-*-Setup.exe
-            Installer/SwInventreeAddin-*-Setup.exe.sha256
+            Installer/InvenTree-Link-*-Setup.exe
+            Installer/InvenTree-Link-*-Setup.exe.sha256
           fail_on_unmatched_files: true
