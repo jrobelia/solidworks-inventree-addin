@@ -21,12 +21,13 @@ Tokens are defined in `SwInventreeAddin/UI/DesignTokens.xaml` — this doc says 
 
 - `FontBody` is Segoe UI; `FontSizeBody` is 12; `FontSizeHeading` is 13.
 - Primary text uses `BrushForeground`; help text uses `BrushSubtle` in a wrapped `TextBlock` directly under the field it explains.
+- Section titles use `SectionTitleStyle` (SemiBold body text); each section's one-line intro and per-field help text use `SectionIntroStyle` (11px `BrushSubtle`, wrapped).
 - Field labels use `FieldLabelStyle`; comparison-grid column headers use `ColumnHeaderStyle`.
 
 ## Sections and containers
 
 - **Task Pane section header** — a grey band (`BrushSectionHeader`, `Padding="6,4"`) with a 3px `BrushAccentBlue` stripe down its left edge and a SemiBold `FontSizeHeading` title.
-- **Settings section header** — a plain SemiBold `BrushForeground` line; sections are separated by `Separator` + `BrushBorder` (`Margin="0,14,0,0"`).
+- **Settings section header** — a `SectionTitleStyle` line (plain SemiBold `BrushForeground`) followed by a one-line `SectionIntroStyle` intro; sections are separated by `Separator` + `BrushBorder` (`Margin="0,14,0,0"`).
 - **Card** — a `Border` with `BrushBorder` 1px, `Padding="10,8"`, `Margin="0,8,0,0"`, headed by a SemiBold label, on the white canvas color — the *summary* surface for a saved-state digest like the Server Connection status card. A card that carries an action row takes the white interactive surface (design v2): buttons stay standard chrome, the surface lightens — contrast comes from light card vs grey buttons, never a one-off button fill.
 - **Bordered group** — same chrome (`BrushBorder` 1px, `Padding="10,8"`, `Margin="0,8,0,0"`, SemiBold label) but `Background="White"` — the canvas color. Use it to fence one logical *choice or edit region* (the credential group — username+password OR API key). White keeps it distinct from a grey summary card when the two stack, and matches the field-fill convention: interactive surfaces are white, chrome is grey.
 

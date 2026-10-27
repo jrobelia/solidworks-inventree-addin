@@ -30,8 +30,11 @@
             <!-- ── Server Connection section ──────────────────────────────── -->
 
             <TextBlock Text="InvenTree Server Connection"
-                       FontWeight="SemiBold"
-                       Foreground="{StaticResource BrushForeground}" />
+                       Style="{StaticResource SectionTitleStyle}" />
+
+            <TextBlock Text="InvenTree server address and credentials."
+                       Style="{StaticResource SectionIntroStyle}"
+                       Margin="0,4,0,0" />
 
             <!-- Status card: fixed three-line layout once anything is saved.
                  Only the dot, title, and line values change between states —
@@ -175,9 +178,7 @@
                                 <PasswordBox x:Name="PasswordBox" Height="28"
                                              Style="{StaticResource SWPasswordBoxStyle}" />
                                 <TextBlock Margin="0,4,0,0"
-                                           FontSize="{StaticResource FontSizeBody}"
-                                           Foreground="{StaticResource BrushSubtle}"
-                                           TextWrapping="Wrap"
+                                           Style="{StaticResource SectionIntroStyle}"
                                            Text="Used once to request an API token &#x2014; the password itself is not saved." />
 
                                 <!-- "or" divider -->
@@ -221,9 +222,7 @@
                                                Visibility="Collapsed" />
                                 </Grid>
                                 <TextBlock Margin="0,4,0,0"
-                                           FontSize="{StaticResource FontSizeBody}"
-                                           Foreground="{StaticResource BrushSubtle}"
-                                           TextWrapping="Wrap"
+                                           Style="{StaticResource SectionIntroStyle}"
                                            Text="If both are filled, the API key is used." />
                             </StackPanel>
                         </Border>
@@ -268,14 +267,12 @@
             <!-- ── Property Mappings section ──────────────────────────────── -->
 
             <TextBlock Text="Property &amp; Table Mappings"
-                       FontWeight="SemiBold"
-                       Foreground="{StaticResource BrushForeground}"
+                       Style="{StaticResource SectionTitleStyle}"
                        Margin="0,12,0,0" />
 
             <TextBlock Text="Map InvenTree Part fields to SolidWorks custom property names and InvenTree line-item fields with assembly BOM table headers. A shared team file can be used to keep everyone in sync."
-                       Style="{StaticResource FieldLabelStyle}"
-                       Margin="0,8,0,4"
-                       TextWrapping="Wrap" />
+                       Style="{StaticResource SectionIntroStyle}"
+                       Margin="0,8,0,4" />
 
             <!-- Local radio + label -->
             <StackPanel Orientation="Horizontal" Margin="0,12,0,4" VerticalAlignment="Center">
@@ -372,14 +369,12 @@
             <!-- ── BOM sync section ─────────────────────────────────────────- -->
 
             <TextBlock Text="Keyword in the SOLIDWORKS BOM Table Name"
-                       FontWeight="SemiBold"
-                       Foreground="{StaticResource BrushForeground}"
+                       Style="{StaticResource SectionTitleStyle}"
                        Margin="0,12,0,0" />
 
             <TextBlock Text="Name fragment the add-in BOM Compare function uses to find the SolidWorks BOM table for InvenTree sync."
-                       Style="{StaticResource FieldLabelStyle}"
-                       FontSize="11" Opacity="0.6" Margin="0,0,0,6"
-                       TextWrapping="Wrap" />
+                       Style="{StaticResource SectionIntroStyle}"
+                       Margin="0,0,0,6" />
             <TextBox x:Name="BomKeywordBox" Style="{StaticResource SWFieldStyle}" />
 
             <!-- Footer: dialog-level action status bar + Apply / Save / Cancel.
