@@ -21,6 +21,26 @@ namespace SwInventreeAddin.Tests.Capture
             }));
         }
 
+        // #334: the audit needs rendered evidence for every shipped surface
+        // outside SettingsWindow — one catalog entry per surface at minimum.
+        [Test]
+        public void Catalog_AuditSurfaces_AreRegistered()
+        {
+            var surfaces = SurfaceCapture.Catalog.Select(e => e.Surface).Distinct().ToList();
+
+            Assert.That(surfaces, Is.SupersetOf(new[]
+            {
+                "TaskPaneView",
+                "PropertyMappingEditorWindow",
+                "PushRevisionConfirmDialog",
+                "BomCompareWindow",
+                "CreatePartWindow",
+                "ImageCropWindow",
+                "MessageDialog",
+                "BomTableMissingDialog",
+            }));
+        }
+
         [Test]
         public void Catalog_SurfaceStatePairs_AreUnique()
         {
