@@ -775,19 +775,150 @@ namespace SwInventreeAddin.Tests
             });
         }
 
+        // ── Field, label & spacing polish (#329) ─────────────────────────────
+
+        // SameAs, not EqualTo: a FontFamily literal would equal the token by
+        // value but be a different instance — only a resource reference
+        // carries the dictionary's own object. (The root element must use
+        // DynamicResource: StaticResource cannot see Window.Resources.)
+        [Test]
+        public void Window_ChromeFonts_ComeFromDesignTokens()
+        {
+            var window = CreateWindow();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(window.FontFamily,
+                            Is.SameAs(window.TryFindResource("FontBody")));
+                Assert.That(window.FontSize,
+                            Is.EqualTo((double)window.TryFindResource("FontSizeBody")!));
+            });
+        }
+
+        // The read-only path display is a value field: the documented
+        // ValueFieldStyle carries read-only, the echo tooltip, and the
+        // surface fill — a local grey Background would outrank the style.
+        [Test]
+        public void LocalPathBox_WearsTheReadOnlyValueFieldStyle()
+        {
+            var window = CreateWindow();
+
+            var style = window.TryFindResource("ValueFieldStyle") as Style;
+            Assert.That(style, Is.Not.Null,
+                        "DesignTokens.xaml must define ValueFieldStyle");
+
+            var box = GetTextBox(window, "LocalPathBox");
+            Assert.Multiple(() =>
+            {
+                Assert.That(box.Style, Is.SameAs(style));
+                Assert.That(box.IsReadOnly, Is.True);
+                Assert.That(box.ReadLocalValue(Control.BackgroundProperty),
+                            Is.EqualTo(DependencyProperty.UnsetValue),
+                            "a local fill outranks the style's own surface treatment");
+            });
+        }
+
+        // Each label lives inside its radio's Content so clicking the text
+        // toggles the radio; siblings wear the same foreground brush.
+        [Test]
+        public void MappingRadios_CarryMatchingLabelsAsContent()
+        {
+            var window = CreateWindow();
+
+            var foreground = GetBrush(window, "BrushForeground");
+            var localLabel = GetRadioContentLabel(window, "LocalRadio");
+            var sharedLabel = GetRadioContentLabel(window, "SharedRadio");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(localLabel.Text, Is.EqualTo("Local mapping file"));
+                Assert.That(sharedLabel.Text, Is.EqualTo("Shared mapping file (optional)"));
+                Assert.That(localLabel.Foreground, Is.SameAs(foreground));
+                Assert.That(sharedLabel.Foreground, Is.SameAs(foreground));
+            });
+        }
+
+        [Test]
+        public void BomKeywordField_HasAFieldLabelAndStandardHeight()
+        {
+            var window = CreateWindow();
+
+            var label = AllTextBlocks(window).FirstOrDefault(
+                t => t.Text == "Keyword" &&
+                     ReferenceEquals(t.Style, window.TryFindResource("FieldLabelStyle")));
+            Assert.That(label, Is.Not.Null,
+                        "the BOM keyword field carries a FieldLabelStyle label like every other field");
+            Assert.That(GetTextBox(window, "BomKeywordBox").Height, Is.EqualTo(28));
+        }
+
+        [Test]
+        public void ApiKeyDotsPlaceholder_DotsAreLargerAndMoreNumerous()
+        {
+            var window = CreateWindow(
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            var dots = GetElement(window, "ApiKeyDotsPlaceholder") as TextBlock;
+            Assert.That(dots, Is.Not.Null);
+
+            double bodySize = (double)window.TryFindResource("FontSizeBody")!;
+            Assert.Multiple(() =>
+            {
+                Assert.That(dots!.FontSize, Is.GreaterThan(bodySize),
+                            "saved-key dots read larger than body text (QA on #263)");
+                Assert.That(dots.Text.Length, Is.GreaterThanOrEqualTo(24),
+                            "the dot run must reach across the field, not stop at twelve");
+            });
+        }
+
+        [Test]
+        public void CardToolbar_RemoveApiKeyButton_WearsTheCardToolbarDangerStyle()
+        {
+            var window = CreateWindow(
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+
+            var style = window.TryFindResource("CardToolbarDangerButtonStyle") as Style;
+            Assert.That(style, Is.Not.Null,
+                        "DesignTokens.xaml must define CardToolbarDangerButtonStyle");
+
+            var button = GetButton(window, "RemoveApiKeyButton");
+            Assert.Multiple(() =>
+            {
+                Assert.That(button.Style, Is.SameAs(style),
+                            "the destructive action takes the card-toolbar danger style");
+                Assert.That(button.ReadLocalValue(FrameworkElement.HeightProperty),
+                            Is.EqualTo(DependencyProperty.UnsetValue),
+                            "the 24px card-toolbar chrome lives in the style, not locals");
+                Assert.That(button.ReadLocalValue(FrameworkElement.MarginProperty),
+                            Is.EqualTo(DependencyProperty.UnsetValue));
+            });
+        }
+
         // ── Helpers ──────────────────────────────────────────────────────────
 
-        private static IEnumerable<string> AllTextBlockTexts(DependencyObject root)
+        private static IEnumerable<string> AllTextBlockTexts(DependencyObject root) =>
+            AllTextBlocks(root).Select(t => t.Text);
+
+        private static IEnumerable<TextBlock> AllTextBlocks(DependencyObject root)
         {
             foreach (var child in LogicalTreeHelper.GetChildren(root))
             {
                 var node = child as DependencyObject;
                 if (node == null) continue;
                 if (node is TextBlock textBlock)
-                    yield return textBlock.Text;
-                foreach (var text in AllTextBlockTexts(node))
-                    yield return text;
+                    yield return textBlock;
+                foreach (var descendant in AllTextBlocks(node))
+                    yield return descendant;
             }
+        }
+
+        private static TextBlock GetRadioContentLabel(Window window, string radioName)
+        {
+            var radio = LogicalTreeHelper.FindLogicalNode(window, radioName) as RadioButton;
+            Assert.That(radio, Is.Not.Null, $"Could not find RadioButton named '{radioName}'.");
+            var label = radio!.Content as TextBlock;
+            Assert.That(label, Is.Not.Null,
+                        $"{radioName} must carry its label as Content so clicking the text toggles it");
+            return label!;
         }
 
         private SettingsWindow CreateWindow(

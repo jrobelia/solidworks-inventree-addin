@@ -9,9 +9,12 @@
     ResizeMode="NoResize"
     WindowStartupLocation="Manual"
     ShowInTaskbar="False"
-    FontFamily="Segoe UI"
-    FontSize="12">
+    FontFamily="{DynamicResource FontBody}"
+    FontSize="{DynamicResource FontSizeBody}">
 
+    <!-- DynamicResource on the font attributes: Window.Resources is parsed
+         after the root element's attributes, so a StaticResource lookup here
+         cannot see DesignTokens. -->
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -37,7 +40,7 @@
                  Only the dot, title, and line values change between states —
                  never the structure. The API key is never shown here (ADR-0022). -->
             <Border x:Name="ConnectionCard"
-                    Margin="0,8,0,0"
+                    Margin="{StaticResource SectionSpacing}"
                     Padding="10,8"
                     Background="White"
                     BorderBrush="{StaticResource BrushBorder}"
@@ -56,7 +59,7 @@
                                    Foreground="{StaticResource BrushForeground}" />
                     </StackPanel>
 
-                    <Grid Margin="0,8,0,0">
+                    <Grid Margin="{StaticResource SectionSpacing}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="80" />
                             <ColumnDefinition Width="*" />
@@ -124,8 +127,7 @@
                             </Button>
                             <Button x:Name="RemoveApiKeyButton"
                                     Grid.Column="4"
-                                    Style="{StaticResource DangerButtonStyle}"
-                                    Height="24" Margin="0"
+                                    Style="{StaticResource CardToolbarDangerButtonStyle}"
                                     Click="RemoveApiKey_Click">
                                 <TextBlock Text="Remove API key" VerticalAlignment="Center" />
                             </Button>
@@ -140,7 +142,7 @@
             <ScrollViewer x:Name="CredentialFormScroll"
                           Visibility="Collapsed"
                           MaxHeight="340"
-                          Margin="0,10,0,0"
+                          Margin="{StaticResource SectionSpacing}"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Margin="0,0,4,0">
@@ -157,7 +159,7 @@
                              Canvas white, not the card grey: grey marks the
                              summary card above; this box is the edit surface. -->
                         <Border x:Name="CredentialGroup"
-                                Margin="0,8,0,0"
+                                Margin="{StaticResource SectionSpacing}"
                                 Padding="10,8"
                                 Background="White"
                                 BorderBrush="{StaticResource BrushBorder}"
@@ -168,13 +170,13 @@
                                            FontWeight="SemiBold"
                                            Foreground="{StaticResource BrushForeground}" />
 
-                                <TextBlock Text="Username" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
+                                <TextBlock Text="Username" Style="{StaticResource FieldLabelStyle}" />
                                 <TextBox x:Name="UsernameBox" Style="{StaticResource SWFieldStyle}" Height="28" />
 
-                                <TextBlock Text="Password" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
+                                <TextBlock Text="Password" Style="{StaticResource FieldLabelStyle}" />
                                 <PasswordBox x:Name="PasswordBox" Height="28"
                                              Style="{StaticResource SWPasswordBoxStyle}" />
-                                <TextBlock Margin="0,4,0,0"
+                                <TextBlock Margin="{StaticResource RowSpacing}"
                                            FontSize="{StaticResource FontSizeBody}"
                                            Foreground="{StaticResource BrushSubtle}"
                                            TextWrapping="Wrap"
@@ -197,7 +199,7 @@
                                                Background="{StaticResource BrushBorder}" />
                                 </Grid>
 
-                                <TextBlock Text="API Key" Style="{StaticResource FieldLabelStyle}" Margin="0,8,0,4" />
+                                <TextBlock Text="API Key" Style="{StaticResource FieldLabelStyle}" />
                                 <Grid>
                                     <PasswordBox x:Name="ApiKeyBox" Height="28"
                                                  Style="{StaticResource SWPasswordBoxStyle}" />
@@ -206,7 +208,8 @@
                                          when no key is saved. Both ignore hit-testing so
                                          the PasswordBox stays editable underneath. -->
                                     <TextBlock x:Name="ApiKeyDotsPlaceholder"
-                                               Text="&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;"
+                                               Text="&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;&#x25CF;"
+                                               FontSize="{StaticResource FontSizeHeading}"
                                                Margin="8,0,0,0"
                                                VerticalAlignment="Center"
                                                Foreground="{StaticResource BrushSubtle}"
@@ -220,7 +223,7 @@
                                                IsHitTestVisible="False"
                                                Visibility="Collapsed" />
                                 </Grid>
-                                <TextBlock Margin="0,4,0,0"
+                                <TextBlock Margin="{StaticResource RowSpacing}"
                                            FontSize="{StaticResource FontSizeBody}"
                                            Foreground="{StaticResource BrushSubtle}"
                                            TextWrapping="Wrap"
@@ -237,7 +240,7 @@
                  key); Apply/Save outcomes report on the footer action bar, and
                  the card above holds the persistent state. Test connection is
                  connection-scoped — it never saves. -->
-            <Grid x:Name="ConnectionActionRow" Margin="0,10,0,0">
+            <Grid x:Name="ConnectionActionRow" Margin="0,16,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="8" />
@@ -263,7 +266,7 @@
             </Grid>
 
             <!-- ── Separator ────────────────────────────────────────────────── -->
-            <Separator Background="{StaticResource BrushBorder}" Margin="0,14,0,0" />
+            <Separator Background="{StaticResource BrushBorder}" Margin="0,16,0,0" />
 
             <!-- ── Property Mappings section ──────────────────────────────── -->
 
@@ -274,22 +277,22 @@
 
             <TextBlock Text="Map InvenTree Part fields to SolidWorks custom property names and InvenTree line-item fields with assembly BOM table headers. A shared team file can be used to keep everyone in sync."
                        Style="{StaticResource FieldLabelStyle}"
-                       Margin="0,8,0,4"
+                       Margin="{StaticResource SectionSpacing}"
                        TextWrapping="Wrap" />
 
-            <!-- Local radio + label -->
-            <StackPanel Orientation="Horizontal" Margin="0,12,0,4" VerticalAlignment="Center">
-                <RadioButton x:Name="LocalRadio"
-                             GroupName="MappingSource"
-                             IsChecked="True"
-                             VerticalAlignment="Center"
-                             Margin="0,0,6,0"
-                             Checked="LocalRadio_Checked" />
-                <TextBlock x:Name="LocalRadioLabel"
-                           Text="Local mapping file"
+            <!-- Labels sit in each radio's Content so clicking the text
+                 toggles the radio; both wear the same foreground. -->
+            <RadioButton x:Name="LocalRadio"
+                         GroupName="MappingSource"
+                         IsChecked="True"
+                         VerticalAlignment="Center"
+                         Margin="0,12,0,4"
+                         Checked="LocalRadio_Checked">
+                <TextBlock Text="Local mapping file"
+                           Margin="6,0,0,0"
                            VerticalAlignment="Center"
                            Foreground="{StaticResource BrushForeground}" />
-            </StackPanel>
+            </RadioButton>
 
             <!-- Local file path (read-only) -->
             <Grid>
@@ -298,23 +301,20 @@
                 </Grid.ColumnDefinitions>
                 <TextBox x:Name="LocalPathBox"
                          Grid.Column="0"
-                         Style="{StaticResource SWFieldStyle}"
-                         Background="{StaticResource BrushSectionHeader}"
-                         IsReadOnly="True"
+                         Style="{StaticResource ValueFieldStyle}"
                          Height="28" />
             </Grid>
 
-            <!-- Shared radio + label -->
-            <StackPanel Orientation="Horizontal" Margin="0,12,0,4" VerticalAlignment="Center">
-                <RadioButton x:Name="SharedRadio"
-                             GroupName="MappingSource"
-                             VerticalAlignment="Center"
-                             Margin="0,0,6,0"
-                             Checked="SharedRadio_Checked" />
+            <RadioButton x:Name="SharedRadio"
+                         GroupName="MappingSource"
+                         VerticalAlignment="Center"
+                         Margin="0,12,0,4"
+                         Checked="SharedRadio_Checked">
                 <TextBlock Text="Shared mapping file (optional)"
+                           Margin="6,0,0,0"
                            VerticalAlignment="Center"
-                           Foreground="{StaticResource BrushSubtle}" />
-            </StackPanel>
+                           Foreground="{StaticResource BrushForeground}" />
+            </RadioButton>
 
             <!-- Shared file path + Browse button -->
             <Grid>
@@ -367,7 +367,7 @@
             </Grid>
 
             <!-- ── Separator ────────────────────────────────────────────────── -->
-            <Separator Background="{StaticResource BrushBorder}" Margin="0,14,0,0" />
+            <Separator Background="{StaticResource BrushBorder}" Margin="0,16,0,0" />
 
             <!-- ── BOM sync section ─────────────────────────────────────────- -->
 
@@ -378,15 +378,16 @@
 
             <TextBlock Text="Name fragment the add-in BOM Compare function uses to find the SolidWorks BOM table for InvenTree sync."
                        Style="{StaticResource FieldLabelStyle}"
-                       FontSize="11" Opacity="0.6" Margin="0,0,0,6"
+                       FontSize="11" Opacity="0.6" Margin="{StaticResource SectionSpacing}"
                        TextWrapping="Wrap" />
-            <TextBox x:Name="BomKeywordBox" Style="{StaticResource SWFieldStyle}" />
+            <TextBlock Text="Keyword" Style="{StaticResource FieldLabelStyle}" />
+            <TextBox x:Name="BomKeywordBox" Style="{StaticResource SWFieldStyle}" Height="28" />
 
             <!-- Footer: dialog-level action status bar + Apply / Save / Cancel.
                  The action bar reports what Apply/Save did; connection-scoped
                  outcomes (Test connection, Remove API key) live up in the Server
                  Connection section's own status bar. -->
-            <Grid x:Name="DialogActionRow" Margin="0,16,0,0">
+            <Grid x:Name="DialogActionRow" Margin="0,20,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="8" />
