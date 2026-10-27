@@ -55,6 +55,16 @@ namespace SwInventreeAddin.Tests
                 File.Delete(_localMappingPath);
         }
 
+        // ── Window chrome ────────────────────────────────────────────────────
+
+        [Test]
+        public void Title_ShowsTheBrandedNameAndInstalledVersion()
+        {
+            var window = CreateWindow(versionInfo: new StubVersionInfo { Version = "9.9.9-test" });
+
+            Assert.That(window.Title, Is.EqualTo("InvenTree Link Settings - v9.9.9-test"));
+        }
+
         // ── Mapping section rendering ────────────────────────────────────────
         // The health→severity/label/enabled projection lives in the VM tests;
         // what remains here proves the status bar's chrome forwards the pair.
@@ -744,7 +754,8 @@ namespace SwInventreeAddin.Tests
             IPropertyMappingProvider? mappingProvider = null,
             ISettingsApplyService? applyService = null,
             IMappingProviderFactory? mappingProviderFactory = null,
-            IConfigProvider? configProvider = null)
+            IConfigProvider? configProvider = null,
+            IVersionInfo? versionInfo = null)
         {
             mappingProvider ??= new StubPropertyMappingProvider();
             applyService ??= new StubSettingsApplyService();
@@ -753,8 +764,7 @@ namespace SwInventreeAddin.Tests
                 Factory = _ => mappingProvider,
             };
             configProvider ??= new StubConfigProvider("https://example.com", "stub-key");
-
-            var versionInfo = new StubVersionInfo();
+            versionInfo ??= new StubVersionInfo();
 
             return new SettingsWindow(
                 configProvider,

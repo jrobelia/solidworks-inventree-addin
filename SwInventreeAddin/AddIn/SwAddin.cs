@@ -59,8 +59,8 @@ namespace SwInventreeAddin.AddIn
         }
 
         private const string AddinGuid = "7C3E9A2F-4B61-4D8F-A2E5-1F6C9B3D8E47";
-        private const string AddinTitle = "InvenTree";
-        private const string AddinDescription = "Imports part data from InvenTree into SolidWorks custom properties";
+        private const string AddinTitle = "InvenTree Link";
+        private const string AddinDescription = "Exchange part and assembly data between SOLIDWORKS and InvenTree.";
 
         /// <summary>
         /// Called automatically by RegAsm /codebase — writes the registry keys
@@ -192,8 +192,8 @@ namespace SwInventreeAddin.AddIn
                 _logger = null;
                 MessageDialog.ShowOK(
                     SolidWorksWindowHandle.Get(),
-                    $"InvenTree add-in failed to load:{System.Environment.NewLine}{ex.Message}",
-                    "InvenTree Add-In Error",
+                    $"InvenTree Link failed to load:{System.Environment.NewLine}{ex.Message}",
+                    "InvenTree Link Error",
                     System.Windows.Forms.MessageBoxIcon.Error);
                 return false;
             }
@@ -537,7 +537,7 @@ namespace SwInventreeAddin.AddIn
                 MessageDialog.ShowOK(
                     SolidWorksWindowHandle.Get(),
                     $"The Settings window failed:{System.Environment.NewLine}{ex.Message}",
-                    "InvenTree Settings",
+                    "InvenTree Link Settings",
                     System.Windows.Forms.MessageBoxIcon.Error);
             }
         }
