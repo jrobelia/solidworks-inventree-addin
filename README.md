@@ -1,8 +1,12 @@
-# SolidWorks InvenTree Add-In
+# InvenTree Link for SOLIDWORKS
+
+Exchange part and assembly data between SOLIDWORKS and InvenTree.
 
 > **Use at your own risk.** This add-in is personal/work-adjacent software. It writes data to both SolidWorks documents and your InvenTree server. Test against a non-production InvenTree instance before using it on real data. No warranty is provided — see [LICENSE](LICENSE).
 
 A SolidWorks task-pane add-in that bridges SolidWorks parts and assemblies with an [InvenTree](https://inventree.org) inventory server. Stay in SolidWorks — the add-in handles creating parts, syncing properties, and comparing BOMs.
+
+> **Technical name:** `SwInventreeAddin` is the original working name. It remains in some filenames, paths, and diagnostic output, and refers to the same product.
 
 ## What It Does
 
@@ -23,14 +27,14 @@ A SolidWorks task-pane add-in that bridges SolidWorks parts and assemblies with 
 
 ## Installation
 
-1. Download the latest `SwInventreeAddin-*-Setup.exe` from Releases.
+1. Download the latest `InvenTree-Link-<version>-Setup.exe` from Releases.
 2. Run it — the wizard installs to Program Files and registers the add-in with SolidWorks (admin rights required). If SmartScreen warns, click **More info → Run anyway** — the installer is not signed yet.
-3. Start SolidWorks. The InvenTree panel appears in the right-hand task pane.
+3. Start SolidWorks. The **InvenTree Link** tab appears in the right-hand Task Pane. If it does not appear, enable **InvenTree Link** under Tools → Add-Ins.
 4. Click the gear icon → enter your server URL and InvenTree username + password → Save. The password is used once to request an API token and is not saved itself; an API key works as an alternative.
 
 **Updating:** Download and run the new Setup.exe — it upgrades in place. Settings are preserved.
 
-**Uninstalling:** Windows Settings → Apps → SwInventreeAddin → Uninstall.
+**Uninstalling:** Windows Settings → Apps → **InvenTree Link for SOLIDWORKS** → Uninstall.
 
 ## Configuration
 

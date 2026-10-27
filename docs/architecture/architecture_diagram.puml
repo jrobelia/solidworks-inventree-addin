@@ -3,11 +3,11 @@
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
 
 LAYOUT_WITH_LEGEND()
-title Component diagram for the SolidWorks InvenTree Add-In (post-ADR-0025)
+title Component diagram for InvenTree Link for SOLIDWORKS (post-ADR-0025)
 
 Person(engineer, "Design Engineer", "Uses SolidWorks and wants to keep part data in sync with InvenTree.")
 
-Container_Boundary(addin, "SolidWorks InvenTree Add-In (C# .NET 4.8 COM Add-in)") {
+Container_Boundary(addin, "InvenTree Link for SOLIDWORKS (C# .NET 4.8 COM Add-in)") {
     Component(swAddin, "SwAddin", "C# / .NET Framework 4.8", "COM entry point and lifecycle. Handles RegAsm registration, guarded SolidWorks event subscriptions, TLS setup, and assembly resolution.")
     Component(taskPaneControl, "TaskPaneControl", "WinForms / ElementHost", "Composition root and host adapter: builds the coordinator, STA dispatcher, readiness context, and ViewModel; routes SolidWorks host callbacks into the coordinator and hands results to the ViewModel's projection entries.")
     Component(taskPaneView, "TaskPaneView", "WPF / XAML", "MVVM view bound to TaskPaneViewModel; displays part comparison, status, thumbnail link, and BOM actions.")
