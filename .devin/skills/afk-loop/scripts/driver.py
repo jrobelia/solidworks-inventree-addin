@@ -195,6 +195,24 @@ def specification(root, number):
     return {"ticket": ticket, "context": context, "parents": sorted(parents), "blockers": sorted(blockers)}
 
 
+def spec_lines(data):
+    parts = ["# #" + str(data.get("number")) + " " + data.get("title", ""), "", data.get("body") or ""]
+    for comment in data.get("comments", []):
+        author = (comment.get("author") or {}).get("login", "")
+        parts += ["", "---", "", "Comment by " + author + ":", "", comment.get("body") or ""]
+    return parts
+
+
+def render_spec(snapshot):
+    ticket = snapshot.get("ticket") or {}
+    parts = spec_lines(ticket) if ticket else ["# No ticket specification", ""]
+    for context in snapshot.get("context", []):
+        block = spec_lines(context)
+        block[0] = "# Context — #" + str(context.get("number")) + " " + context.get("title", "")
+        parts += [""] + block
+    return "\n".join(parts) + "\n"
+
+
 def repository(root):
     data = json.loads(capture("gh", ["repo", "view", "--json", "nameWithOwner"], root).stdout)
     name = data.get("nameWithOwner", "")
@@ -338,9 +356,14 @@ WORKER_BRIEF = """
 EXECUTION ENVIRONMENT — this session is tool-permissioned and hook-guarded:
 - One command per call; no pipes (|), no chaining (&&, ;), no subshells, no env assignments.
 - Permitted commands: git status/diff/log/show/rev-parse/ls-files, dotnet test, dotnet format, cp.
-  Commit messages: repeat -m flags; never -F or a scratch file.
+  Commit style: `type(scope): summary`; repeat -m flags for a body; never -F or a scratch file.
+- Writes under .git/, .devin/, .agents/, or a file named .env*/inventree_servers.json are always denied;
+  a settled correction that lands on a protected path is a named blocker, not a work order.
+- Secret files (.env*, inventree_servers.json) are not readable; do not try.
 - Use the read/write/find_file_by_name tools for files instead of cat/ls/find.
 - Known paths come from job.json (JOB_FILE above); write result.json into job_dir.
+- Read the full ticket spec at the job.spec_file path — a real-newline markdown rendering of the
+  snapshot; long job.json string fields truncate under the read tool.
 
 RESULT SKELETON — copy the identity fields from THIS job.json verbatim:
 {"version": 1, "ticket": <job.ticket>, "phase": "<job.phase>", "round": <job.round>,
@@ -692,10 +715,13 @@ class Loop:
             ticket["dispatches"] = sequence
             directory = self.directory / str(approved["number"]) / "jobs" / f"{phase}-r{round_number}-a{sequence}"
             directory.mkdir(parents=True, exist_ok=False)
+            spec_path = directory.parent.parent / "spec.md"
+            spec_path.write_text(render_spec(approved["snapshot"]), encoding="utf-8")
             head = git(cwd, "rev-parse", "HEAD")
             job = {"version": 1, "ticket": approved["number"], "phase": phase, "round": round_number,
                    "attempt": sequence, "input_head": head, "base": self.approval["base"], "worktree": str(cwd),
                    "job_dir": str(directory), "ticket_dir": str(directory.parent.parent),
+                   "spec_file": str(spec_path),
                    "package_dir": str(PACKAGE), "contracts": str(PACKAGE / "contracts.md"),
                    "criteria": approved["criteria"], "seam": approved["seam"], "snapshot": approved["snapshot"],
                    "findings": ticket.get("findings", []), "checks": ticket.get("checks"),

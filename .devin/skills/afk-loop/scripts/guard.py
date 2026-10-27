@@ -11,9 +11,14 @@ def within(path, root):
     return path.resolve().is_relative_to(root.resolve())
 
 
+def secret(path):
+    name = path.name.lower()
+    return name.startswith(".env") or name == "inventree_servers.json"
+
+
 def restricted(path):
     parts = {part.lower() for part in path.parts}
-    return bool(parts.intersection({".git", ".devin", ".agents"})) or path.name.lower().startswith(".env") or path.name.lower() == "inventree_servers.json"
+    return bool(parts.intersection({".git", ".devin", ".agents"})) or secret(path)
 
 
 def decision(job, event):
@@ -88,7 +93,10 @@ def decision(job, event):
         if inputs.get("skill") in {"tdd", "codebase-design", "domain-voice"}:
             return {"decision": "approve"}
         raise ValueError("Use the supplied phase prompt, not another orchestration skill")
-    if name in {"read", "grep", "find_file_by_name", "get_output", "todo_write"}:
+    if name in {"read", "notebook_read", "grep", "find_file_by_name", "get_output", "todo_write"}:
+        raw = inputs.get("file_path") or inputs.get("notebook_path") or inputs.get("path")
+        if raw and secret(Path(raw)):
+            raise ValueError("Secret-bearing paths are not readable")
         return {"decision": "approve"}
     raise ValueError("External actions, nested agents, and desktop control are unavailable to workers")
 

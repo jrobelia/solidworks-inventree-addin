@@ -1,6 +1,6 @@
 # Independent read-only review
 
-Read JOB_FILE and contracts.md. The phase chooses exactly one axis: review-spec or review-standards. Read the complete supplied ticket and context snapshot, approved seam, implementer reports under ticket_dir, deterministic check logs, and previous findings. Pin base and input_head; review the entire committed base...input_head range on every round.
+Read JOB_FILE and contracts.md. The phase chooses exactly one axis: review-spec or review-standards. Read the complete supplied ticket and context snapshot at the job.spec_file path, the approved seam, implementer reports under ticket_dir, deterministic check logs, and previous findings. Pin base and input_head; review the entire committed base...input_head range on every round.
 
 For review-spec, use the checklist under "Your task" in .devin/agents/review-spec.md. Check every criterion, shared invariant, conditional rule, seam obligation, and implementation claim. Quote the governing spec and anchor every finding in the diff.
 

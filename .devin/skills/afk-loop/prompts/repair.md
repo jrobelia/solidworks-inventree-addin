@@ -1,6 +1,6 @@
 # Repair a settled work order in fresh context
 
-Read JOB_FILE and contracts.md, all current findings and prior reports under ticket_dir, the supplied specification and approved seam, and the driver's test logs. This is a fresh session; files are the handoff, not the prior agent's unrecorded reasoning.
+Read JOB_FILE and contracts.md, all current findings and prior reports under ticket_dir, the supplied specification at job.spec_file and the approved seam, and the driver's test logs. This is a fresh session; files are the handoff, not the prior agent's unrecorded reasoning.
 
 Fix only the supplied open findings. Use the existing tdd skill where a failing test can pin a correction. Work inside the approved seam. A correction that forces a new consequential decision, public interface, or unrelated change produces blocked with the exact choice.
 

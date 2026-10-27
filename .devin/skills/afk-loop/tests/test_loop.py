@@ -424,6 +424,22 @@ class LoopTests(unittest.TestCase):
         self.assertEqual((directory / "PROGRESS.md").read_text(encoding="utf-8").count("Terminal #50: ready-for-qa"), 1)
 
     @slow
+    def test_full_spec_reaches_workers_as_real_newlines(self):
+        self.env["AFK_TEST_BODY"] = "## Acceptance criteria\n- Fetch displays the part.\n\n" + "Long tail. " * 400
+        directory, result = self.case("clean")
+        self.assertEqual(result.returncode, 0, result.stdout)
+        spec = directory / "50" / "spec.md"
+        self.assertTrue(spec.is_file())
+        text = spec.read_text(encoding="utf-8")
+        self.assertIn("Fetch displays the part", text)
+        self.assertTrue(text.rstrip().endswith("Long tail."))
+        for call in self.calls("devin"):
+            args = call["args"]
+            if "--prompt-file" in args:
+                job = json.loads(Path(args[args.index("--prompt-file") + 1]).with_name("job.json").read_text())
+                self.assertEqual(job["spec_file"], str((directory / str(job["ticket"]) / "spec.md").resolve()))
+
+    @slow
     def test_worker_config_permits_the_file_search_tool(self):
         directory, result = self.case("clean")
         self.assertEqual(result.returncode, 0, result.stdout)
