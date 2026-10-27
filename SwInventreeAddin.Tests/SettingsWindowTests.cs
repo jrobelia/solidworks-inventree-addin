@@ -779,7 +779,11 @@ namespace SwInventreeAddin.Tests
 
         // SameAs, not EqualTo: a FontFamily literal would equal the token by
         // value but be a different instance — only a resource reference
-        // carries the dictionary's own object. (The root element must use
+        // carries the dictionary's own object. FontSize is a double, so the
+        // value check cannot discriminate a literal "12" — ReadLocalValue
+        // exposes the deferred reference (a ResourceReferenceExpression;
+        // internal on net48, asserted via its public Expression base) a
+        // DynamicResource leaves behind. (The root element must use
         // DynamicResource: StaticResource cannot see Window.Resources.)
         [Test]
         public void Window_ChromeFonts_ComeFromDesignTokens()
@@ -790,6 +794,9 @@ namespace SwInventreeAddin.Tests
             {
                 Assert.That(window.FontFamily,
                             Is.SameAs(window.TryFindResource("FontBody")));
+                Assert.That(window.ReadLocalValue(Window.FontSizeProperty),
+                            Is.InstanceOf<Expression>(),
+                            "a literal FontSize would pass the value check — only the resource reference proves the token");
                 Assert.That(window.FontSize,
                             Is.EqualTo((double)window.TryFindResource("FontSizeBody")!));
             });
@@ -797,7 +804,8 @@ namespace SwInventreeAddin.Tests
 
         // The read-only path display is a value field: the documented
         // ValueFieldStyle carries read-only, the echo tooltip, and the
-        // surface fill — a local grey Background would outrank the style.
+        // surface fill — a local Background or ToolTip would outrank the
+        // style's own treatment.
         [Test]
         public void LocalPathBox_WearsTheReadOnlyValueFieldStyle()
         {
@@ -815,6 +823,9 @@ namespace SwInventreeAddin.Tests
                 Assert.That(box.ReadLocalValue(Control.BackgroundProperty),
                             Is.EqualTo(DependencyProperty.UnsetValue),
                             "a local fill outranks the style's own surface treatment");
+                Assert.That(box.ReadLocalValue(FrameworkElement.ToolTipProperty),
+                            Is.EqualTo(DependencyProperty.UnsetValue),
+                            "a local ToolTip outranks the style's empty-text suppression trigger");
             });
         }
 
@@ -861,13 +872,36 @@ namespace SwInventreeAddin.Tests
             Assert.That(dots, Is.Not.Null);
 
             double bodySize = (double)window.TryFindResource("FontSizeBody")!;
+            var subtle = GetBrush(window, "BrushSubtle");
             Assert.Multiple(() =>
             {
                 Assert.That(dots!.FontSize, Is.GreaterThan(bodySize),
                             "saved-key dots read larger than body text (QA on #263)");
                 Assert.That(dots.Text.Length, Is.GreaterThanOrEqualTo(24),
                             "the dot run must reach across the field, not stop at twelve");
+                Assert.That(dots.Foreground, Is.SameAs(subtle),
+                            "the placeholder keeps the subtle brush (item 5 preserve conjunct)");
+                Assert.That(dots.IsHitTestVisible, Is.False,
+                            "the overlay must let clicks reach the PasswordBox underneath");
             });
+        }
+
+        // Item 6's directive covers the "Server URL" label too: it takes the
+        // FieldLabelStyle default margin like its sibling labels — the window's
+        // last ad-hoc label margin is gone.
+        [Test]
+        public void ServerUrlLabel_TakesTheFieldLabelStyleDefaultMargin()
+        {
+            var window = CreateWindow();
+
+            var label = AllTextBlocks(window).FirstOrDefault(
+                t => t.Text == "Server URL" &&
+                     ReferenceEquals(t.Style, window.TryFindResource("FieldLabelStyle")));
+            Assert.That(label, Is.Not.Null,
+                        "the Server URL field carries a FieldLabelStyle label like every other field");
+            Assert.That(label!.ReadLocalValue(FrameworkElement.MarginProperty),
+                        Is.EqualTo(DependencyProperty.UnsetValue),
+                        "the label takes the style default 0,6,0,2 — no ad-hoc label margin");
         }
 
         [Test]

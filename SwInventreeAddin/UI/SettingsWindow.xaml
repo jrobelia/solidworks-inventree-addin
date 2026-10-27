@@ -148,7 +148,7 @@
                 <StackPanel Margin="0,0,4,0">
 
                     <StackPanel x:Name="UrlFieldPanel">
-                        <TextBlock Text="Server URL" Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,4" />
+                        <TextBlock Text="Server URL" Style="{StaticResource FieldLabelStyle}" />
                         <TextBox x:Name="UrlBox" Style="{StaticResource SWFieldStyle}" Height="28" />
                     </StackPanel>
 
