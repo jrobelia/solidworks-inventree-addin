@@ -1,4 +1,4 @@
-# Agent Instructions — SolidWorks InvenTree Add-In
+# Agent Instructions — InvenTree Link for SOLIDWORKS
 
 A C# WPF add-in for SolidWorks that bridges parts and assemblies to an InvenTree inventory server.
 

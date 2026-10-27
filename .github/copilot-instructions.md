@@ -1,4 +1,4 @@
-# Copilot Instructions — SolidWorks InvenTree Add-In
+# Copilot Instructions — InvenTree Link for SOLIDWORKS
 
 ## What This Project Is
 

@@ -1,4 +1,4 @@
-# SolidWorks InvenTree Add-In
+# InvenTree Link for SOLIDWORKS
 
 A SolidWorks add-in that bridges SolidWorks parts and assemblies with an InvenTree inventory server.
 
