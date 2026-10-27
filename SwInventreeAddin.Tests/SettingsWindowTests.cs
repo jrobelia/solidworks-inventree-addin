@@ -787,7 +787,7 @@ namespace SwInventreeAddin.Tests
         public void SectionStyles_Title_WearsSharedStyle(string titleText)
         {
             var window = CreateWindow();
-            var titleStyle = SectionStyle(window, "SectionTitleStyle");
+            var titleStyle = GetStyle(window, "SectionTitleStyle");
             var title = FindTextBlock(window, titleText);
 
             Assert.Multiple(() =>
@@ -806,7 +806,7 @@ namespace SwInventreeAddin.Tests
         public void SectionStyles_Intro_FollowsTitleWearingSharedStyle(string titleText)
         {
             var window = CreateWindow();
-            var introStyle = SectionStyle(window, "SectionIntroStyle");
+            var introStyle = GetStyle(window, "SectionIntroStyle");
             var intro = NextTextBlockSibling(FindTextBlock(window, titleText));
 
             Assert.That(intro, Is.Not.Null, $"no intro line under '{titleText}'");
@@ -836,13 +836,14 @@ namespace SwInventreeAddin.Tests
         public void SectionStyles_CredentialHelp_WearsSharedIntroStyle(string prefix)
         {
             var window = CreateWindow();
-            var introStyle = SectionStyle(window, "SectionIntroStyle");
-            var help = AllTextBlocks(window).First(b => b.Text.StartsWith(prefix));
+            var introStyle = GetStyle(window, "SectionIntroStyle");
+            var help = AllTextBlocks(window).FirstOrDefault(b => b.Text.StartsWith(prefix));
 
+            Assert.That(help, Is.Not.Null, $"no help line starting '{prefix}'");
             Assert.Multiple(() =>
             {
-                Assert.That(help.Style, Is.SameAs(introStyle), prefix);
-                Assert.That(help.Opacity, Is.EqualTo(1.0), prefix);
+                Assert.That(help!.Style, Is.SameAs(introStyle), prefix);
+                Assert.That(help!.Opacity, Is.EqualTo(1.0), prefix);
             });
         }
 
@@ -852,7 +853,7 @@ namespace SwInventreeAddin.Tests
         public void SectionStyles_FieldLabelStyle_OnlyOnFieldLabels()
         {
             var window = CreateWindow();
-            var labelStyle = SectionStyle(window, "FieldLabelStyle");
+            var labelStyle = GetStyle(window, "FieldLabelStyle");
 
             var labelled = AllTextBlocks(window)
                 .Where(b => ReferenceEquals(b.Style, labelStyle))
@@ -899,7 +900,7 @@ namespace SwInventreeAddin.Tests
             return null;
         }
 
-        private static Style SectionStyle(Window window, string key)
+        private static Style GetStyle(Window window, string key)
         {
             var style = window.TryFindResource(key) as Style;
             Assert.That(style, Is.Not.Null, $"DesignTokens.xaml must define {key}");
