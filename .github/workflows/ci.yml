@@ -31,6 +31,6 @@ jobs:
           Set-StrictMode -Version Latest
           .\Installer\Package.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (-not (Get-Item "Installer\SwInventreeAddin-*-Setup.exe" -ErrorAction SilentlyContinue)) {
+          if (-not (Get-Item "Installer\InvenTree-Link-*-Setup.exe" -ErrorAction SilentlyContinue)) {
             throw "Setup exe was not produced — check the ISCC output above"
           }

@@ -1,7 +1,7 @@
-; SwInventreeAddin Inno Setup script
+; InvenTree Link for SOLIDWORKS — Inno Setup script
 ;
 ; Build:  iscc /DAppVersion=2.1.0 Installer\Setup.iss
-; Output: Installer\SwInventreeAddin-<version>-Setup.exe
+; Output: Installer\InvenTree-Link-<version>-Setup.exe
 ;
 ; Replaces the zip + Install.bat + Install.ps1 flow with a standard Windows
 ; installer. Admin rights are still required — SolidWorks only discovers
@@ -16,7 +16,12 @@
   #define AppVersion "0.0.0-dev"
 #endif
 
-#define AppName "SwInventreeAddin"
+; AppName is the public brand shown by the wizard and Settings > Apps.
+; InstallName is the stable technical identifier: the install directory
+; and the legacy zip-uninstall key keep it so upgrades replace the
+; installed product in place instead of appearing beside it.
+#define AppName "InvenTree Link for SOLIDWORKS"
+#define InstallName "SwInventreeAddin"
 #define BuildDir "..\SwInventreeAddin\bin\Release\net48"
 #define RegAsm "{win}\Microsoft.NET\Framework64\v4.0.30319\RegAsm.exe"
 
@@ -26,8 +31,8 @@
 AppId={{7C3E9A2F-4B61-4D8F-A2E5-1F6C9B3D8E47}}
 AppName={#AppName}
 AppVersion={#AppVersion}
-AppPublisher={#AppName}
-DefaultDirName={autopf}\{#AppName}
+AppPublisher=Jon Robelia
+DefaultDirName={autopf}\{#InstallName}
 DisableProgramGroupPage=yes
 PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
@@ -48,14 +53,14 @@ WizardSmallImageFile=wizard-small-55x55.bmp,wizard-small-110x110.bmp
 LicenseFile=..\LICENSE
 UninstallDisplayIcon={app}\sw-inventree-logo.ico
 OutputDir=.
-OutputBaseFilename={#AppName}-{#AppVersion}-Setup
+OutputBaseFilename=InvenTree-Link-{#AppVersion}-Setup
 UninstallDisplayName={#AppName}
 
 [Registry]
 ; Zip installs wrote a hand-made Add/Remove Programs key whose UninstallString
 ; pointed at a bat copied into {app}. Left alone, upgraders see two same-named
 ; entries and running the old one unregisters the new install's DLLs.
-Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{#AppName}"; Flags: deletekey
+Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{#InstallName}"; Flags: deletekey
 
 [InstallDelete]
 ; Leftovers from zip installs: the copied bat uninstaller would unregister
@@ -95,7 +100,8 @@ begin
     'SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full', 'Release', Release)
     and (Release >= DotNet48MinRelease);
   if not Result then
-    MsgBox('SwInventreeAddin requires .NET Framework 4.8 or later.' + #13#10 +
+    MsgBox(ExpandConstant('{#AppName}') +
+           ' requires .NET Framework 4.8 or later.' + #13#10 +
            'Install it from Microsoft and run this installer again.',
            mbError, MB_OK);
 end;
@@ -136,7 +142,7 @@ begin
       SuppressibleMsgBox(
         'RegAsm could not register the add-in (exit code ' +
           IntToStr(ExitCode) + ').' + #13#10 +
-        'The InvenTree task pane will not appear in SolidWorks.' + #13#10 +
+        'The InvenTree Link task pane will not appear in SolidWorks.' + #13#10 +
         'Re-run this installer, or register by hand as admin:' + #13#10 +
         ExpandConstant('{#RegAsm}') + ' ' + RegAsmArgs('/codebase'),
         mbError, MB_OK, IDOK);

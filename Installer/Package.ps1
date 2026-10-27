@@ -1,5 +1,5 @@
 ﻿# Package.ps1  Run this (no admin needed) to build the installer exe.
-# Output: Installer\SwInventreeAddin-<version>-Setup.exe
+# Output: Installer\InvenTree-Link-<version>-Setup.exe
 # Version is derived from the nearest git tag (e.g. v1.0.0, or v1.0.0-3-gabcd123 if not on a tag).
 
 $repoRoot   = Split-Path $PSScriptRoot -Parent
@@ -20,7 +20,7 @@ Pop-Location
 $iscc = & "$PSScriptRoot\Resolve-ISCC.ps1"
 
 $versionNumber = $version.TrimStart('v')
-$exePath = "$repoRoot\Installer\SwInventreeAddin-$versionNumber-Setup.exe"
+$exePath = "$repoRoot\Installer\InvenTree-Link-$versionNumber-Setup.exe"
 $shaPath = "$exePath.sha256"
 if ($iscc) {
     Write-Host "Building Setup.exe with Inno Setup..." -ForegroundColor Cyan
