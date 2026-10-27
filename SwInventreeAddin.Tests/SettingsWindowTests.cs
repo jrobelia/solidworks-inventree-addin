@@ -740,11 +740,12 @@ namespace SwInventreeAddin.Tests
 
 
         // ── Section titles (#327) ────────────────────────────────────────────
-        // The three section headers carry the canonical CONTEXT.md names; the
-        // audit's mixed-casing shipped strings must be gone.
+        // The three section headers carry the wording decided during QA of the
+        // rename; the audit's mixed-casing shipped strings and the terse
+        // canonical forms must be gone.
 
         [Test]
-        public void SectionTitles_UseTheCanonicalNames()
+        public void SectionTitles_UseTheDecidedWording()
         {
             var window = CreateWindow();
 
@@ -752,12 +753,15 @@ namespace SwInventreeAddin.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(texts, Does.Contain("Server Connection"));
-                Assert.That(texts, Does.Contain("Property Mappings"));
-                Assert.That(texts, Does.Contain("BOM Keyword"));
+                Assert.That(texts, Does.Contain("InvenTree Server Connection"));
+                Assert.That(texts, Does.Contain("Property & Table Mappings"));
+                Assert.That(texts, Does.Contain("Keyword in the SOLIDWORKS BOM Table Name"));
                 Assert.That(texts, Does.Not.Contain("Inventree Server Connection"));
                 Assert.That(texts, Does.Not.Contain("Inventree to Solidworks Mappings"));
                 Assert.That(texts, Does.Not.Contain("SolidWorks BOM Table Name Keyword"));
+                Assert.That(texts, Does.Not.Contain("Server Connection"));
+                Assert.That(texts, Does.Not.Contain("Property Mappings"));
+                Assert.That(texts, Does.Not.Contain("BOM Keyword"));
             });
         }
 

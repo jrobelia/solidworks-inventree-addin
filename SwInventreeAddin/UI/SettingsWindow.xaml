@@ -29,7 +29,7 @@
 
             <!-- ── Server Connection section ──────────────────────────────── -->
 
-            <TextBlock Text="Server Connection"
+            <TextBlock Text="InvenTree Server Connection"
                        FontWeight="SemiBold"
                        Foreground="{StaticResource BrushForeground}" />
 
@@ -267,7 +267,7 @@
 
             <!-- ── Property Mappings section ──────────────────────────────── -->
 
-            <TextBlock Text="Property Mappings"
+            <TextBlock Text="Property &amp; Table Mappings"
                        FontWeight="SemiBold"
                        Foreground="{StaticResource BrushForeground}"
                        Margin="0,12,0,0" />
@@ -371,7 +371,7 @@
 
             <!-- ── BOM sync section ─────────────────────────────────────────- -->
 
-            <TextBlock Text="BOM Keyword"
+            <TextBlock Text="Keyword in the SOLIDWORKS BOM Table Name"
                        FontWeight="SemiBold"
                        Foreground="{StaticResource BrushForeground}"
                        Margin="0,12,0,0" />
