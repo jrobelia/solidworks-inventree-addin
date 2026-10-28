@@ -417,9 +417,11 @@ namespace SwInventreeAddin.AddIn
             }
         }
 
-        // FileSaveAsNotify2 is the post-notification: it fires after the path has
-        // changed, so the recapture inside UpdateDocument sees the new Document
-        // Token. FileSaveAsNotify (the pre-notification) would still see the old one.
+        // FileSaveAsNotify2 is the post-notification: it nominally fires after
+        // the path has changed, so the recapture inside UpdateDocument sees
+        // the new Document Token. FileSaveAsNotify (the pre-notification)
+        // would still see the old one; on versions where Notify2 fires early
+        // or not at all, FileSavePostNotify below is the backstop.
         private int OnDocFileSaveAs(string fileName)
         {
             try
@@ -450,7 +452,7 @@ namespace SwInventreeAddin.AddIn
             }
             catch (Exception ex)
             {
-                _logger?.LogError("OnAssemblyDocSavePost failed.", ex);
+                _logger?.LogError("OnDocSavePost failed.", ex);
                 return 0;
             }
         }
