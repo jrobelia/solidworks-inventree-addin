@@ -1,5 +1,5 @@
 {
-  "version": "2.20",
+  "version": "2.21",
   "children": [
     {
       "type": "frame",
@@ -12983,18 +12983,6 @@
                   "width": 4,
                   "height": 26,
                   "fill": "$color-accent-blue"
-                },
-                {
-                  "type": "text",
-                  "id": "d5OWS",
-                  "x": 12,
-                  "y": 6.5,
-                  "name": "StatusText",
-                  "fill": "#000000",
-                  "content": "Ready",
-                  "fontFamily": "Inter",
-                  "fontSize": 11,
-                  "fontWeight": "normal"
                 }
               ]
             },
