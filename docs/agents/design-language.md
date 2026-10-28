@@ -46,6 +46,7 @@ Tokens are defined in `SwInventreeAddin/UI/DesignTokens.xaml` — this doc says 
 - Icon pattern: label `TextBlock` followed by a Segoe MDL2 glyph `TextBlock` at `FontSize="13"`, `Margin="6,0,0,0"`. The glyph map lives in ADR-0009.
 - Button rows use a `Grid` with `*` / `8` / `Auto` columns — a status bar or stretchy content on the left, buttons on the right separated by 8px columns.
 - `CardToolbarButtonStyle` — a `SecondaryButtonStyle` carrying only the 24px/0-margin card-toolbar chrome (standard grey fill — buttons match other buttons). A card's action row (e.g. the Server Connection card toolbar) sits under a 1px `BrushBorder` divider and spans the card: change actions grouped left on this style, the destructive action anchored right.
+- `CardToolbarDangerButtonStyle` — the card-toolbar variant of the destructive role: `DangerButtonStyle` at the same 24px/0-margin chrome. A destructive action inside a card toolbar wears this, never `DangerButtonStyle` plus local overrides.
 
 ## Status — color means severity
 

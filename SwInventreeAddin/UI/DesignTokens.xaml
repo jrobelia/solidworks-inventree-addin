@@ -143,6 +143,15 @@
         </Style.Triggers>
     </Style>
 
+    <!-- Destructive action inside a card's action row (e.g. Remove API key on
+         the Server Connection card): the danger role at card-toolbar chrome
+         — 24px and no margin, matching CardToolbarButtonStyle. -->
+    <Style x:Key="CardToolbarDangerButtonStyle" TargetType="Button"
+           BasedOn="{StaticResource DangerButtonStyle}">
+        <Setter Property="Height" Value="24" />
+        <Setter Property="Margin" Value="0" />
+    </Style>
+
     <!-- ── TextBox styles ─────────────────────────────────────────────────── -->
 
     <Style x:Key="SWFieldStyle" TargetType="TextBox">
