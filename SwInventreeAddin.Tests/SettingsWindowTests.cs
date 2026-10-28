@@ -863,6 +863,9 @@ namespace SwInventreeAddin.Tests
                      ReferenceEquals(t.Style, window.TryFindResource("FieldLabelStyle")));
             Assert.That(label, Is.Not.Null,
                         "the BOM keyword field carries a FieldLabelStyle label like every other field");
+            Assert.That(label!.ReadLocalValue(FrameworkElement.MarginProperty),
+                        Is.EqualTo(DependencyProperty.UnsetValue),
+                        "the label takes the style default margin — no ad-hoc label margin");
             Assert.That(GetTextBox(window, "BomKeywordBox").Height, Is.EqualTo(28));
         }
 
