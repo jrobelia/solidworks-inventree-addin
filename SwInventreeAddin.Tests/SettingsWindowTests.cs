@@ -669,12 +669,14 @@ namespace SwInventreeAddin.Tests
         // The only click→render proof of the RemoveApiKey forward: the click
         // reaches _vm.RemoveApiKeyAsync and the outcome renders — the field
         // clears, message text, and card landing are VM rules tested there.
+        // The confirm seam is stubbed yes; its real dialog is proven below.
         [Test]
         public void RemoveApiKey_WhenClicked_ForwardsToTheViewModelAndRenders()
         {
             var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
             var applyService = new StubSettingsApplyService(configProvider);
             var window = CreateWindow(applyService: applyService, configProvider: configProvider);
+            window.ViewModel.ConfirmRemoveApiKey = () => true;
 
             Click(window, "RemoveApiKeyButton");
 
@@ -685,6 +687,103 @@ namespace SwInventreeAddin.Tests
                 Assert.That(GetStatusBarText(window, "ConnectionStatusBar"), Is.Not.Empty,
                             "the command's outcome renders on the connection status bar");
             });
+        }
+
+        // The wired confirm is a real MessageDialog owned by the Settings
+        // window itself — not the SolidWorks main window. The click blocks on
+        // the modal ShowDialog, so a timer inside the nested dispatcher loop
+        // finds the dialog by its native source, proves it centers on the
+        // Settings window's rect and stays off every monitor, then closes it
+        // — a decline, so removal must never run.
+        [Test, Timeout(15000)]
+        public void RemoveApiKey_Click_ConfirmDialogCentersOnTheSettingsWindow()
+        {
+            using var form = HiddenTestWindow.CreateOwnerForm();
+            form.Show();
+            SolidWorksWindowHandle.Set(form.Handle);
+
+            try
+            {
+                var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+                var applyService = new StubSettingsApplyService(configProvider);
+                var window = CreateWindow(applyService: applyService, configProvider: configProvider);
+                window.Show();
+                var windowHandle = new WindowInteropHelper(window).Handle;
+
+                MessageDialog? found = null;
+                bool offScreen = false;
+                string? failure = null;
+                var deadline = DateTime.UtcNow.AddSeconds(8);
+                var timer = new DispatcherTimer(DispatcherPriority.Background)
+                {
+                    Interval = TimeSpan.FromMilliseconds(50),
+                };
+                timer.Tick += (s, e) =>
+                {
+                    if (DateTime.UtcNow >= deadline)
+                    {
+                        timer.Stop();
+                        found?.Close();
+                        failure = found == null
+                            ? "no confirmation dialog appeared after clicking Remove API key"
+                            : "the confirmation dialog never centered on the Settings window";
+                        return;
+                    }
+
+                    try
+                    {
+                        var dialog = PresentationSource.CurrentSources
+                            .OfType<HwndSource>()
+                            .Select(source => source.RootVisual)
+                            .OfType<MessageDialog>()
+                            .FirstOrDefault();
+                        if (dialog == null) return;
+
+                        found = dialog;
+
+                        var ownerRect = HiddenTestWindow.GetRect(windowHandle);
+                        var dialogRect = HiddenTestWindow.GetRect(new WindowInteropHelper(dialog).Handle);
+                        int dx = Math.Abs(
+                            (dialogRect.Left + dialogRect.Width / 2) - (ownerRect.Left + ownerRect.Width / 2));
+                        int dy = Math.Abs(
+                            (dialogRect.Top + dialogRect.Height / 2) - (ownerRect.Top + ownerRect.Height / 2));
+                        if (dx >= 5 || dy >= 5) return;   // still parked — keep polling
+
+                        offScreen = !HiddenTestWindow.IsOnScreen(dialogRect);
+                        timer.Stop();
+                        dialog.Close();   // a decline — Cancel/No/X/Esc equivalent
+                    }
+                    catch
+                    {
+                        // the source list can mutate mid-enumeration — retry next tick
+                    }
+                };
+                timer.Start();
+
+                Click(window, "RemoveApiKeyButton");
+                timer.Stop();
+
+                if (failure != null) Assert.Fail(failure);
+                Assert.That(found, Is.Not.Null,
+                            "clicking Remove API key must open the confirmation dialog");
+
+                var dialogOwner = new WindowInteropHelper(found!).Owner;
+
+                Assert.Multiple(() =>
+                {
+                    Assert.That(dialogOwner, Is.EqualTo(windowHandle),
+                                "the dialog must be owned by the Settings window, not the SolidWorks window");
+                    Assert.That(offScreen, Is.True, "the confirm dialog must stay off every monitor");
+                    Assert.That(applyService.RemoveCallCount, Is.EqualTo(0),
+                                "closing the dialog declines — removal must not run");
+                    Assert.That(configProvider.GetServerConfig()!.ApiKey, Is.EqualTo("saved-key"),
+                                "a decline leaves the saved key untouched");
+                });
+            }
+            finally
+            {
+                SolidWorksWindowHandle.Set(IntPtr.Zero);
+            }
         }
 
         // ── Form structure ───────────────────────────────────────────────────
