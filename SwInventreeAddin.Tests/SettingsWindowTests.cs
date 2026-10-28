@@ -928,6 +928,8 @@ namespace SwInventreeAddin.Tests
                 Assert.That(button.ReadLocalValue(FrameworkElement.MarginProperty),
                             Is.EqualTo(DependencyProperty.UnsetValue));
             });
+        }
+
         // ── Section text styles (#328) ───────────────────────────────────────
         // One shared title treatment and one shared intro treatment per
         // section, defined once in DesignTokens.xaml — the audit found the
