@@ -33,9 +33,8 @@
             <!-- ── Server Connection section ──────────────────────────────── -->
             <!-- Banded section header — the Task Pane chrome (3px accent
                  stripe on the left rail + grey band), inset within the body
-                 padding. The band is the separator; section content indents
-                 12px off the rail while intros and the status bars keep the
-                 full body width. -->
+                 padding. The band is the separator; all section content
+                 spans the band's full body width. -->
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="3" />
@@ -60,7 +59,7 @@
                  Only the dot, title, and line values change between states —
                  never the structure. The API key is never shown here (ADR-0022). -->
             <Border x:Name="ConnectionCard"
-                    Margin="12,8,12,0"
+                    Margin="{StaticResource SectionSpacing}"
                     Padding="10,8"
                     Background="{StaticResource BrushCardSummary}"
                     BorderBrush="{StaticResource BrushBorder}"
@@ -162,7 +161,7 @@
             <ScrollViewer x:Name="CredentialFormScroll"
                           Visibility="Collapsed"
                           MaxHeight="340"
-                          Margin="12,8,12,0"
+                          Margin="{StaticResource SectionSpacing}"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Margin="0,0,4,0">
@@ -257,7 +256,7 @@
                  key); Apply/Save outcomes report on the footer action bar, and
                  the card above holds the persistent state. Test connection is
                  connection-scoped — it never saves. -->
-            <Grid x:Name="ConnectionActionRow" Margin="0,16,12,0">
+            <Grid x:Name="ConnectionActionRow" Margin="0,16,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="8" />
@@ -308,7 +307,7 @@
                  inside; Edit Mappings and the health bar stay outside. Path
                  fields indent under their radio's label. -->
             <Border x:Name="MappingEditGroup"
-                    Margin="12,8,12,0"
+                    Margin="{StaticResource SectionSpacing}"
                     Padding="10,8"
                     Background="White"
                     BorderBrush="{StaticResource BrushBorder}"
@@ -381,7 +380,7 @@
             </Border>
 
             <!-- Edit Mappings + mapping status bar -->
-            <Grid Margin="0,16,12,0">
+            <Grid Margin="0,16,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="8" />
@@ -427,17 +426,16 @@
                        Margin="{StaticResource RowSpacing}" />
 
             <!-- Bare label + field — the one edit region that stays unboxed
-                 (decided in #252 triage); it indents with the section content. -->
+                 (decided in #252 triage); it spans the band's full body width. -->
             <TextBlock Text="Keyword" Style="{StaticResource FieldLabelStyle}"
-                       Margin="12,6,12,2" />
-            <TextBox x:Name="BomKeywordBox" Style="{StaticResource SWFieldStyle}" Height="28"
-                     Margin="12,0,12,0" />
+                       Margin="0,6,0,2" />
+            <TextBox x:Name="BomKeywordBox" Style="{StaticResource SWFieldStyle}" Height="28" />
 
             <!-- Footer: dialog-level action status bar + Apply / Save / Cancel.
                  The action bar reports what Apply/Save did; connection-scoped
                  outcomes (Test connection, Remove API key) live up in the Server
                  Connection section's own status bar. -->
-            <Grid x:Name="DialogActionRow" Margin="0,20,12,0">
+            <Grid x:Name="DialogActionRow" Margin="0,20,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="8" />

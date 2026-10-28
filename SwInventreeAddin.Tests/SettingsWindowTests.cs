@@ -341,7 +341,7 @@ namespace SwInventreeAddin.Tests
         // destructive treatment.
 
         [Test]
-        public void CardToolbar_ChangeButtons_WearStandardChromeOnTheLightCard()
+        public void CardToolbar_ChangeButtons_WearStandardChromeOnTheSummaryCard()
         {
             var window = CreateWindow(
                 configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
@@ -963,7 +963,7 @@ namespace SwInventreeAddin.Tests
         {
             var window = CreateWindow();
             var introStyle = GetStyle(window, "SectionIntroStyle");
-            var intro = NextTextBlockSibling(FindTextBlock(window, titleText));
+            var intro = NextTextBlockInTreeOrder(FindTextBlock(window, titleText));
 
             Assert.That(intro, Is.Not.Null, $"no intro line under '{titleText}'");
             Assert.Multiple(() =>
@@ -980,7 +980,7 @@ namespace SwInventreeAddin.Tests
         public void SectionStyles_ServerConnectionIntro_ReadsLikeTheMock()
         {
             var window = CreateWindow();
-            var intro = NextTextBlockSibling(
+            var intro = NextTextBlockInTreeOrder(
                 FindTextBlock(window, "InvenTree Server Connection"));
 
             Assert.That(intro?.Text,
@@ -1023,8 +1023,8 @@ namespace SwInventreeAddin.Tests
         // ── Section containers (#330) ────────────────────────────────────────
         // Approved treatment C: banded section headers (the Task Pane chrome —
         // a BrushSectionHeader band with a 3px BrushAccentBlue stripe on the
-        // left rail) plus white boxed edit regions inside the sections that
-        // fence one. The band is the separator; the plain-title + Separator
+        // left rail) plus a white boxed edit region inside each section that
+        // has one. The band is the separator; the plain-title + Separator
         // rhythm is gone.
 
         [TestCase("InvenTree Server Connection")]
@@ -1070,7 +1070,7 @@ namespace SwInventreeAddin.Tests
         {
             var window = CreateWindow();
 
-            var stray = AllSeparators(window).FirstOrDefault(sep =>
+            var stray = Descendants<Separator>(window).FirstOrDefault(sep =>
                 !IsInside(window, sep, "ConnectionCardToolbar") &&
                 !IsInside(window, sep, "CredentialGroup"));
 
@@ -1163,7 +1163,7 @@ namespace SwInventreeAddin.Tests
         public void BomKeyword_StaysABareLabelAndFieldOutsideAnyBox()
         {
             var window = CreateWindow();
-            var label = AllTextBlocks(window).First(t => t.Text == "Keyword");
+            var label = FindTextBlock(window, "Keyword");
 
             Assert.Multiple(() =>
             {
@@ -1177,18 +1177,21 @@ namespace SwInventreeAddin.Tests
 
         // ── Helpers ──────────────────────────────────────────────────────────
 
-        private static IEnumerable<TextBlock> AllTextBlocks(DependencyObject root)
+        private static IEnumerable<T> Descendants<T>(DependencyObject root) where T : class
         {
             foreach (var child in LogicalTreeHelper.GetChildren(root))
             {
                 var node = child as DependencyObject;
                 if (node == null) continue;
-                if (node is TextBlock textBlock)
-                    yield return textBlock;
-                foreach (var descendant in AllTextBlocks(node))
+                if (node is T match)
+                    yield return match;
+                foreach (var descendant in Descendants<T>(node))
                     yield return descendant;
             }
         }
+
+        private static IEnumerable<TextBlock> AllTextBlocks(DependencyObject root) =>
+            Descendants<TextBlock>(root);
 
         private static TextBlock GetRadioContentLabel(Window window, string radioName)
         {
@@ -1203,18 +1206,6 @@ namespace SwInventreeAddin.Tests
         private static IEnumerable<string> AllTextBlockTexts(DependencyObject root) =>
             AllTextBlocks(root).Select(b => b.Text);
 
-        private static IEnumerable<Separator> AllSeparators(DependencyObject root)
-        {
-            foreach (var child in LogicalTreeHelper.GetChildren(root))
-            {
-                if (child is Separator separator)
-                    yield return separator;
-                if (child is DependencyObject node)
-                    foreach (var descendant in AllSeparators(node))
-                        yield return descendant;
-            }
-        }
-
         private static TextBlock FindTextBlock(Window window, string text)
         {
             var block = AllTextBlocks(window).FirstOrDefault(b => b.Text == text);
@@ -1224,14 +1215,14 @@ namespace SwInventreeAddin.Tests
 
         // A section title sits inside the banded header — its intro is the
         // next TextBlock in logical-tree order, wherever the title is wrapped.
-        private static TextBlock? NextTextBlockSibling(FrameworkElement element)
+        private static TextBlock? NextTextBlockInTreeOrder(TextBlock element)
         {
             DependencyObject root = element;
             while (LogicalTreeHelper.GetParent(root) is DependencyObject parent)
                 root = parent;
 
             var blocks = AllTextBlocks(root).ToList();
-            var index = blocks.IndexOf((TextBlock)element);
+            var index = blocks.IndexOf(element);
             return index >= 0 && index + 1 < blocks.Count ? blocks[index + 1] : null;
         }
 
