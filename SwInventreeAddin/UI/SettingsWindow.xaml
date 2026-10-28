@@ -299,9 +299,12 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
+                <!-- Focusable: the style parks non-focusable for display-only
+                     fields; this path is copied by hand into Explorer. -->
                 <TextBox x:Name="LocalPathBox"
                          Grid.Column="0"
                          Style="{StaticResource ValueFieldStyle}"
+                         Focusable="True"
                          Height="28" />
             </Grid>
 

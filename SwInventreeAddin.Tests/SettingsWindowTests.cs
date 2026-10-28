@@ -826,6 +826,9 @@ namespace SwInventreeAddin.Tests
                 Assert.That(box.ReadLocalValue(FrameworkElement.ToolTipProperty),
                             Is.EqualTo(DependencyProperty.UnsetValue),
                             "a local ToolTip outranks the style's empty-text suppression trigger");
+                Assert.That(box.Focusable, Is.True,
+                            "ValueFieldStyle parks non-focusable for display-only fields; " +
+                            "this path is copied by hand, so the element re-enables focus");
             });
         }
 
