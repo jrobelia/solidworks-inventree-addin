@@ -22,7 +22,8 @@ The starting reference is the toolkit AFK loop at commit `29445dd39ca7be0d05e85f
 | `test-inventree-plugin`, Docker, editable installs and live server | Isolated dotnet tests and existing WPF captures |
 | `pr` | Driver-generated body following local PR conventions, with acceptance evidence and complete review reports |
 | `retro`, gist and image/video uploading, older-gh attachment fallback | Deferred; local logs and artifacts remain available |
-| Automatic frontier queries, parallel implementation and stacked/batched merges | Deferred; explicit finite serial intake only |
+| Frontier discovery and brief triage sweep | Interactive preparation per SKILL.md `Frontier intake`; confirmed finite list passed to the serial driver |
+| Continuous frontier intake, parallel implementation and stacked/batched merges | Deferred; no automatic replenishment during a run |
 
 Shared skill dependencies are `tdd`, `codebase-design`, and `domain-voice`, each already present here. Human preparation uses `spec-playback`; completion hands off to `qa`. Workers do not call orchestration skills. The legacy standalone WPF harness contains host-build instructions that do not apply to this loop; use the isolated test output and off-screen capture catalog instead.
 
