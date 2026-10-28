@@ -328,6 +328,7 @@ namespace SwInventreeAddin.AddIn
                     _partDocEvents.ChangeCustomPropertyNotify += OnDocCustomPropertyChange;
                     _partDocEvents.DeleteCustomPropertyNotify += OnDocCustomPropertyDelete;
                     _partDocEvents.FileSaveAsNotify2 += OnDocFileSaveAs;
+                    _partDocEvents.FileSavePostNotify += OnDocSavePost;
                     _partDocEvents.RenamedDocumentNotify += OnDocRenamed;
                 }
                 else if (doc is AssemblyDoc asm)
@@ -337,7 +338,7 @@ namespace SwInventreeAddin.AddIn
                     _assemblyDocEvents.ChangeCustomPropertyNotify += OnDocCustomPropertyChange;
                     _assemblyDocEvents.DeleteCustomPropertyNotify += OnDocCustomPropertyDelete;
                     _assemblyDocEvents.FileSaveAsNotify2 += OnDocFileSaveAs;
-                    _assemblyDocEvents.FileSavePostNotify += OnAssemblyDocSavePost;
+                    _assemblyDocEvents.FileSavePostNotify += OnDocSavePost;
                     _assemblyDocEvents.RenamedDocumentNotify += OnDocRenamed;
                 }
             }
@@ -355,6 +356,7 @@ namespace SwInventreeAddin.AddIn
                 _partDocEvents.ChangeCustomPropertyNotify -= OnDocCustomPropertyChange;
                 _partDocEvents.DeleteCustomPropertyNotify -= OnDocCustomPropertyDelete;
                 _partDocEvents.FileSaveAsNotify2 -= OnDocFileSaveAs;
+                _partDocEvents.FileSavePostNotify -= OnDocSavePost;
                 _partDocEvents.RenamedDocumentNotify -= OnDocRenamed;
                 Marshal.ReleaseComObject(_partDocEvents);
                 _partDocEvents = null;
@@ -366,7 +368,7 @@ namespace SwInventreeAddin.AddIn
                 _assemblyDocEvents.ChangeCustomPropertyNotify -= OnDocCustomPropertyChange;
                 _assemblyDocEvents.DeleteCustomPropertyNotify -= OnDocCustomPropertyDelete;
                 _assemblyDocEvents.FileSaveAsNotify2 -= OnDocFileSaveAs;
-                _assemblyDocEvents.FileSavePostNotify -= OnAssemblyDocSavePost;
+                _assemblyDocEvents.FileSavePostNotify -= OnDocSavePost;
                 _assemblyDocEvents.RenamedDocumentNotify -= OnDocRenamed;
                 Marshal.ReleaseComObject(_assemblyDocEvents);
                 _assemblyDocEvents = null;
@@ -415,9 +417,11 @@ namespace SwInventreeAddin.AddIn
             }
         }
 
-        // FileSaveAsNotify2 is the post-notification: it fires after the path has
-        // changed, so the recapture inside UpdateDocument sees the new Document
-        // Token. FileSaveAsNotify (the pre-notification) would still see the old one.
+        // FileSaveAsNotify2 is the post-notification: it nominally fires after
+        // the path has changed, so the recapture inside UpdateDocument sees
+        // the new Document Token. FileSaveAsNotify (the pre-notification)
+        // would still see the old one; on versions where Notify2 fires early
+        // or not at all, FileSavePostNotify below is the backstop.
         private int OnDocFileSaveAs(string fileName)
         {
             try
@@ -432,13 +436,14 @@ namespace SwInventreeAddin.AddIn
             }
         }
 
-        // On assemblies FileSaveAsNotify2 is not a reliable post-save signal on
-        // some SolidWorks versions (observed on 2023 SP05): it fires before the
-        // path changes — or not at all — so the recapture still sees the old
-        // Document Token. FileSavePostNotify fires after every completed save:
-        // a rename recaptures the new token and drops the session, while a
-        // plain save recaptures an unchanged token, a no-op refresh.
-        private int OnAssemblyDocSavePost(int saveType, string fileName)
+        // FileSaveAsNotify2 is not a reliable post-save signal on some
+        // SolidWorks versions (observed on 2023 SP05 assemblies, and on parts
+        // in the field): it fires before the path changes — or not at all —
+        // so the recapture still sees the old Document Token.
+        // FileSavePostNotify fires after every completed save: a rename
+        // recaptures the new token and drops the session, while a plain save
+        // recaptures an unchanged token, a no-op refresh.
+        private int OnDocSavePost(int saveType, string fileName)
         {
             try
             {
@@ -447,7 +452,7 @@ namespace SwInventreeAddin.AddIn
             }
             catch (Exception ex)
             {
-                _logger?.LogError("OnAssemblyDocSavePost failed.", ex);
+                _logger?.LogError("OnDocSavePost failed.", ex);
                 return 0;
             }
         }
