@@ -335,9 +335,10 @@ namespace SwInventreeAddin.Tests
         // ── Card toolbar vs design ───────────────────────────────────────────
         // Design v2 (docs/design/settings-window-v2.png): the action row sits
         // under a thin divider, spreads across the card — change actions left,
-        // the destructive action right — the card is the light interactive
-        // surface, the change buttons wear standard chrome grey, and
-        // Remove API key carries the error-red destructive treatment.
+        // the destructive action right — the card is the grey summary
+        // surface (#330 — grey is summary, white is edit), the change buttons
+        // wear standard chrome grey, and Remove API key carries the error-red
+        // destructive treatment.
 
         [Test]
         public void CardToolbar_ChangeButtons_WearStandardChromeOnTheLightCard()
@@ -350,9 +351,9 @@ namespace SwInventreeAddin.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(((SolidColorBrush)card!.Background).Color,
-                            Is.EqualTo(Colors.White),
-                            "the card is the light interactive surface");
+                Assert.That(card!.Background,
+                            Is.SameAs(GetBrush(window, "BrushCardSummary")),
+                            "the card wears the grey summary fill");
                 Assert.That(GetButton(window, "ChangeServerButton").Background,
                             Is.SameAs(chrome),
                             "Change server wears the standard secondary chrome");
@@ -1016,7 +1017,162 @@ namespace SwInventreeAddin.Tests
                 .ToList();
 
             Assert.That(labelled, Is.EquivalentTo(
-                new[] { "Server URL", "Username", "Password", "API Key", "Keyword" }));
+                new[] { "Server URL", "Credential", "Username", "Password", "API Key", "Keyword" }));
+        }
+
+        // ── Section containers (#330) ────────────────────────────────────────
+        // Approved treatment C: banded section headers (the Task Pane chrome —
+        // a BrushSectionHeader band with a 3px BrushAccentBlue stripe on the
+        // left rail) plus white boxed edit regions inside the sections that
+        // fence one. The band is the separator; the plain-title + Separator
+        // rhythm is gone.
+
+        [TestCase("InvenTree Server Connection")]
+        [TestCase("Property & Table Mappings")]
+        [TestCase("Keyword in the SOLIDWORKS BOM Table Name")]
+        public void SectionHeaders_WearTheBandedTaskPaneChrome(string titleText)
+        {
+            var window = CreateWindow();
+            var title = FindTextBlock(window, titleText);
+
+            var band = LogicalTreeHelper.GetParent(title) as Border;
+            Assert.That(band, Is.Not.Null,
+                        $"'{titleText}' must sit inside the grey band");
+            var header = LogicalTreeHelper.GetParent(band!) as Grid;
+            Assert.That(header, Is.Not.Null,
+                        "the band sits in a stripe+band Grid");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(band!.Background,
+                            Is.SameAs(GetBrush(window, "BrushSectionHeader")),
+                            "the band is the chrome grey");
+                Assert.That(band.Padding, Is.EqualTo(new Thickness(6, 4, 6, 4)),
+                            "the band padding matches the Task Pane section header");
+                Assert.That(header!.ColumnDefinitions[0].Width.Value, Is.EqualTo(3),
+                            "a 3px column carries the accent stripe");
+                var stripe = header.Children.OfType<Border>()
+                    .FirstOrDefault(b =>
+                        ReferenceEquals(b.Background, GetBrush(window, "BrushAccentBlue")));
+                Assert.That(stripe, Is.Not.Null, "no accent stripe borders the band");
+                Assert.That(Grid.GetColumn(stripe!), Is.EqualTo(0),
+                            "the stripe is the left column, the band is the rest");
+                Assert.That(title.FontSize,
+                            Is.EqualTo((double)window.TryFindResource("FontSizeHeading")!),
+                            "band titles are heading size, like the Task Pane's");
+            });
+        }
+
+        // The band is the separator — a Separator may remain only inside the
+        // card toolbar (its own divider) and the credential box (the "or").
+        [Test]
+        public void SectionBreaks_HaveNoSeparatorLines()
+        {
+            var window = CreateWindow();
+
+            var stray = AllSeparators(window).FirstOrDefault(sep =>
+                !IsInside(window, sep, "ConnectionCardToolbar") &&
+                !IsInside(window, sep, "CredentialGroup"));
+
+            Assert.That(stray, Is.Null,
+                "only the card divider and the credential \"or\" divider may remain");
+        }
+
+        // Grey marks the summary surface, white marks edit surfaces — the card
+        // wears the named BrushCardSummary token, never a hardcoded fill.
+        [Test]
+        public void ConnectionCard_WearsTheCardSummaryToken()
+        {
+            var window = CreateWindow(
+                configProvider: new StubConfigProvider("https://inventree.example.com", "saved-key"));
+            var card = GetElement(window, "ConnectionCard") as Border;
+
+            var summary = window.TryFindResource("BrushCardSummary") as SolidColorBrush;
+            Assert.That(summary, Is.Not.Null,
+                        "DesignTokens.xaml must define BrushCardSummary");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(card!.Background, Is.SameAs(summary),
+                            "the summary card wears the named grey");
+                Assert.That(summary!.Color, Is.EqualTo(Color.FromRgb(0xF9, 0xF9, 0xF9)),
+                            "the signed-off summary grey is #f9f9f9");
+            });
+        }
+
+        // "Credential" is a field label outside the box it names — the same
+        // muted treatment as "Server URL", not a heading inside the border.
+        [Test]
+        public void CredentialLabel_SitsOutsideTheBoxAsAFieldLabel()
+        {
+            var window = CreateWindow();
+            var label = GetElement(window, "CredentialGroupLabel") as TextBlock;
+            var box = GetElement(window, "CredentialGroup");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(label!.Style, Is.SameAs(GetStyle(window, "FieldLabelStyle")),
+                            "the Credential label wears the field-label treatment");
+                Assert.That(IsInside(window, label!, "CredentialGroup"), Is.False,
+                            "the label sits outside the bordered group");
+                var parent = LogicalTreeHelper.GetParent(label!) as Panel;
+                Assert.That(parent, Is.Not.Null,
+                            "the label must be a sibling of the box it names");
+                Assert.That(parent!.Children.IndexOf(label!),
+                            Is.LessThan(parent.Children.IndexOf(box)),
+                            "the label leads into the box it names");
+            });
+        }
+
+        // The Local/Shared radios and their path fields are fenced in the
+        // bordered-group chrome; the Edit Mappings action row stays outside.
+        [Test]
+        public void MappingEditRegion_IsAWhiteBoxedGroup_ExcludingTheActionRow()
+        {
+            var window = CreateWindow();
+            var box = GetElement(window, "MappingEditGroup") as Border;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(box, Is.Not.Null,
+                            "the mapping edit region is fenced in a Border");
+                Assert.That(((SolidColorBrush)box!.Background).Color,
+                            Is.EqualTo(Colors.White),
+                            "the edit surface is canvas white");
+                Assert.That(box.BorderBrush,
+                            Is.SameAs(GetBrush(window, "BrushBorder")));
+                Assert.That(box.BorderThickness, Is.EqualTo(new Thickness(1)));
+                Assert.That(box.Padding, Is.EqualTo(new Thickness(10, 8, 10, 8)),
+                            "the bordered-group padding");
+
+                foreach (var name in new[]
+                         { "LocalRadio", "LocalPathBox", "SharedRadio", "SharedPathBox" })
+                    Assert.That(IsInside(window, name, "MappingEditGroup"),
+                                Is.True, name);
+
+                Assert.That(IsInside(window, "EditMappingsButton", "MappingEditGroup"),
+                            Is.False, "Edit Mappings sits on the action row below the box");
+                Assert.That(IsInside(window, "MappingStatusBar", "MappingEditGroup"),
+                            Is.False, "the mapping-health bar sits below the box");
+            });
+        }
+
+        // Decided in #252 triage: the BOM keyword stays a bare label + field —
+        // the one section edit region that does not get boxed.
+        [Test]
+        public void BomKeyword_StaysABareLabelAndFieldOutsideAnyBox()
+        {
+            var window = CreateWindow();
+            var label = AllTextBlocks(window).First(t => t.Text == "Keyword");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(HasBoxedAncestor(GetTextBox(window, "BomKeywordBox")),
+                            Is.False,
+                            "the keyword field must stay unboxed on the section canvas");
+                Assert.That(HasBoxedAncestor(label), Is.False,
+                            "the keyword label sits on the canvas beside its field");
+            });
         }
 
         // ── Helpers ──────────────────────────────────────────────────────────
@@ -1047,6 +1203,18 @@ namespace SwInventreeAddin.Tests
         private static IEnumerable<string> AllTextBlockTexts(DependencyObject root) =>
             AllTextBlocks(root).Select(b => b.Text);
 
+        private static IEnumerable<Separator> AllSeparators(DependencyObject root)
+        {
+            foreach (var child in LogicalTreeHelper.GetChildren(root))
+            {
+                if (child is Separator separator)
+                    yield return separator;
+                if (child is DependencyObject node)
+                    foreach (var descendant in AllSeparators(node))
+                        yield return descendant;
+            }
+        }
+
         private static TextBlock FindTextBlock(Window window, string text)
         {
             var block = AllTextBlocks(window).FirstOrDefault(b => b.Text == text);
@@ -1054,15 +1222,28 @@ namespace SwInventreeAddin.Tests
             return block!;
         }
 
+        // A section title sits inside the banded header — its intro is the
+        // next TextBlock in logical-tree order, wherever the title is wrapped.
         private static TextBlock? NextTextBlockSibling(FrameworkElement element)
         {
-            if (!(LogicalTreeHelper.GetParent(element) is Panel parent))
-                return null;
-            var children = parent.Children;
-            for (int i = children.IndexOf(element) + 1; i < children.Count; i++)
-                if (children[i] is TextBlock textBlock)
-                    return textBlock;
-            return null;
+            DependencyObject root = element;
+            while (LogicalTreeHelper.GetParent(root) is DependencyObject parent)
+                root = parent;
+
+            var blocks = AllTextBlocks(root).ToList();
+            var index = blocks.IndexOf((TextBlock)element);
+            return index >= 0 && index + 1 < blocks.Count ? blocks[index + 1] : null;
+        }
+
+        private static bool HasBoxedAncestor(FrameworkElement element)
+        {
+            for (var parent = LogicalTreeHelper.GetParent(element); parent != null;
+                 parent = LogicalTreeHelper.GetParent(parent))
+            {
+                if (parent is Border border && border.BorderThickness != new Thickness(0))
+                    return true;
+            }
+            return false;
         }
 
         private static Style GetStyle(Window window, string key)
@@ -1179,6 +1360,11 @@ namespace SwInventreeAddin.Tests
             var element = LogicalTreeHelper.FindLogicalNode(window, elementName) as DependencyObject;
             Assert.That(element, Is.Not.Null, $"Could not find element named '{elementName}'.");
 
+            return IsInside(window, element!, ancestorName);
+        }
+
+        private static bool IsInside(Window window, DependencyObject element, string ancestorName)
+        {
             var ancestor = LogicalTreeHelper.FindLogicalNode(window, ancestorName) as DependencyObject;
             Assert.That(ancestor, Is.Not.Null, $"Could not find element named '{ancestorName}'.");
 
