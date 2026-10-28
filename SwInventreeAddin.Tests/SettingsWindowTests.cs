@@ -928,12 +928,96 @@ namespace SwInventreeAddin.Tests
                 Assert.That(button.ReadLocalValue(FrameworkElement.MarginProperty),
                             Is.EqualTo(DependencyProperty.UnsetValue));
             });
+        // ── Section text styles (#328) ───────────────────────────────────────
+        // One shared title treatment and one shared intro treatment per
+        // section, defined once in DesignTokens.xaml — the audit found the
+        // same help/intro role rendered in three different styles (#252
+        // findings 7–8).
+
+        [TestCase("InvenTree Server Connection")]
+        [TestCase("Property & Table Mappings")]
+        [TestCase("Keyword in the SOLIDWORKS BOM Table Name")]
+        public void SectionStyles_Title_WearsSharedStyle(string titleText)
+        {
+            var window = CreateWindow();
+            var titleStyle = GetStyle(window, "SectionTitleStyle");
+            var title = FindTextBlock(window, titleText);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(title.Style, Is.SameAs(titleStyle),
+                            "the section title must wear SectionTitleStyle");
+                Assert.That(title.FontWeight, Is.EqualTo(FontWeights.SemiBold));
+                Assert.That(title.Foreground,
+                            Is.SameAs(GetBrush(window, "BrushForeground")));
+            });
+        }
+
+        [TestCase("InvenTree Server Connection")]
+        [TestCase("Property & Table Mappings")]
+        [TestCase("Keyword in the SOLIDWORKS BOM Table Name")]
+        public void SectionStyles_Intro_FollowsTitleWearingSharedStyle(string titleText)
+        {
+            var window = CreateWindow();
+            var introStyle = GetStyle(window, "SectionIntroStyle");
+            var intro = NextTextBlockSibling(FindTextBlock(window, titleText));
+
+            Assert.That(intro, Is.Not.Null, $"no intro line under '{titleText}'");
+            Assert.Multiple(() =>
+            {
+                Assert.That(intro!.Style, Is.SameAs(introStyle),
+                            "the section intro must wear SectionIntroStyle");
+                Assert.That(intro!.Text, Is.Not.Empty);
+            });
+        }
+
+        // The Server Connection intro is new with #328 — the other two
+        // sections already had one; the mock's line is the wording target.
+        [Test]
+        public void SectionStyles_ServerConnectionIntro_ReadsLikeTheMock()
+        {
+            var window = CreateWindow();
+            var intro = NextTextBlockSibling(
+                FindTextBlock(window, "InvenTree Server Connection"));
+
+            Assert.That(intro?.Text,
+                        Is.EqualTo("InvenTree server address and credentials."));
+        }
+
+        [TestCase("Used once to request an API token")]
+        [TestCase("If both are filled, the API key is used.")]
+        public void SectionStyles_CredentialHelp_WearsSharedIntroStyle(string prefix)
+        {
+            var window = CreateWindow();
+            var introStyle = GetStyle(window, "SectionIntroStyle");
+            var help = AllTextBlocks(window).FirstOrDefault(b => b.Text.StartsWith(prefix));
+
+            Assert.That(help, Is.Not.Null, $"no help line starting '{prefix}'");
+            Assert.Multiple(() =>
+            {
+                Assert.That(help!.Style, Is.SameAs(introStyle), prefix);
+                Assert.That(help!.Opacity, Is.EqualTo(1.0), prefix);
+            });
+        }
+
+        // FieldLabelStyle is a field-label style — paragraph intros and help
+        // text are not labels.
+        [Test]
+        public void SectionStyles_FieldLabelStyle_OnlyOnFieldLabels()
+        {
+            var window = CreateWindow();
+            var labelStyle = GetStyle(window, "FieldLabelStyle");
+
+            var labelled = AllTextBlocks(window)
+                .Where(b => ReferenceEquals(b.Style, labelStyle))
+                .Select(b => b.Text)
+                .ToList();
+
+            Assert.That(labelled, Is.EquivalentTo(
+                new[] { "Server URL", "Username", "Password", "API Key", "Keyword" }));
         }
 
         // ── Helpers ──────────────────────────────────────────────────────────
-
-        private static IEnumerable<string> AllTextBlockTexts(DependencyObject root) =>
-            AllTextBlocks(root).Select(t => t.Text);
 
         private static IEnumerable<TextBlock> AllTextBlocks(DependencyObject root)
         {
@@ -956,6 +1040,34 @@ namespace SwInventreeAddin.Tests
             Assert.That(label, Is.Not.Null,
                         $"{radioName} must carry its label as Content so clicking the text toggles it");
             return label!;
+        }
+
+        private static IEnumerable<string> AllTextBlockTexts(DependencyObject root) =>
+            AllTextBlocks(root).Select(b => b.Text);
+
+        private static TextBlock FindTextBlock(Window window, string text)
+        {
+            var block = AllTextBlocks(window).FirstOrDefault(b => b.Text == text);
+            Assert.That(block, Is.Not.Null, $"no TextBlock with text '{text}'");
+            return block!;
+        }
+
+        private static TextBlock? NextTextBlockSibling(FrameworkElement element)
+        {
+            if (!(LogicalTreeHelper.GetParent(element) is Panel parent))
+                return null;
+            var children = parent.Children;
+            for (int i = children.IndexOf(element) + 1; i < children.Count; i++)
+                if (children[i] is TextBlock textBlock)
+                    return textBlock;
+            return null;
+        }
+
+        private static Style GetStyle(Window window, string key)
+        {
+            var style = window.TryFindResource(key) as Style;
+            Assert.That(style, Is.Not.Null, $"DesignTokens.xaml must define {key}");
+            return style!;
         }
 
         private SettingsWindow CreateWindow(

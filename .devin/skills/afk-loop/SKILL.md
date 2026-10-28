@@ -3,7 +3,7 @@ name: afk-loop
 description: "Prepare the local SolidWorks add-in AFK ticket loop in this agent session, then emit the approved worker launch command for the user's terminal. Full CLI workers perform checks and independent reviews with resumable evidence and a human SolidWorks QA handoff; do not start workers from this session."
 disable-model-invocation: true
 triggers: ["user"]
-argument-hint: "<issue numbers> | --resume <run>"
+argument-hint: "[<issue numbers>] | --resume <run>"
 ---
 
 # AFK loop
@@ -12,7 +12,16 @@ One user-facing skill owns the launcher, driver, internal prompts, contracts and
 
 ## 1. Resolve and prepare
 
-Resolve a finite explicit issue list and confirmed base branch. Read this repo's AGENTS.md, tracker conventions and PR conventions. Default to one branch/PR per independent ticket; open blockers stay blocked. No automatic frontier, wave merge, prior-work adoption or branch cleanup is implemented.
+Resolve a finite issue list and confirmed base branch. A bare invocation first follows **Frontier intake** below; an explicit list skips discovery. Read this repo's AGENTS.md, tracker conventions and PR conventions. Default to one branch/PR per independent ticket; open blockers stay blocked. Discovery happens in this session; the driver still takes explicit tickets and has no frontier flag, continuous intake, wave merge, prior-work adoption or branch cleanup.
+
+### Frontier intake
+
+1. **Find the frontier.** Query all open `ready-for-agent` issues, following pagination. Read bodies, all comments, parent context, native blockers and body-level `Blocked by` references. Build the dependency graph: the frontier is the unblocked set, as defined in `.devin/skills/build-afk/REFERENCE.md` `## Inputs and merge topology`. Use that definition, not its wave, branching or merge behavior. Detect cycles and missing dependency context; report them as blocked. A sibling's draft PR does not satisfy an open blocker.
+2. **Screen readiness.** Report exclusions with reasons: `needs-info`, `ready-for-human` or `needs-triage` states (including conflicts with `ready-for-agent`), unresolved design/prototype gates, required writes to worker-protected paths, active ownership or prior implementation, and parent tickets whose work lives in children. Distinguish pending human QA from host actions required during implementation: host-pending criteria alone do not exclude a ticket. Inspect the actual obligation rather than matching words such as 'manual' in the body. Prior-work findings still require the disposition in step 1.
+3. **Brief triage sweep.** Check `needs-triage` and issues without a triage-state label, even if the frontier is full. Read `.agents/skills/triage/SKILL.md` and its brief reference for triage rules. Recommend candidates when they are small, relevant to the proposed batch, or the frontier leaves work budget room. Inspect full comments and relevant code before calling a candidate mechanical; reproduce reported bugs and check for existing implementations and prior rejection. Present **triage-and-include** candidates with a draft brief and playback; present unresolved candidates as **triage-and-park**, naming the missing decision and leaving them out of the run. Ask through the UI question tool which candidates, if any, to triage now. Empty or skipped selections authorize no tracker writes. Complete selected triage with its required confirmation and spec-playback gates; only fully specified, confirmed work receives `ready-for-agent`. Post approved briefs/playbacks and label changes in this session before preparation snapshots them. A parked draft does not earn the ready label. Then re-query the frontier.
+4. **Recommend work, not a ticket quota.** Show a relative size and reason per candidate: S (1 unit), mechanical; M (2), contained behavior change; L (4), multi-module work, new seam or broad audit. Include test/capture effort, uncertainty and each ticket's fixed gate/review overhead. Recommend about 8 units as an adjustable starting point, not a runtime promise or enforced cap. Four to six tickets is a heuristic; many small fixes or fewer large items can fit better. Prefer a shared feature/QA path, break ties by issue number, and show the proposed total plus deferred candidates. Propose fewer when that is all that is eligible; an empty frontier is a valid result, not a reason to invent work.
+
+**Done when:** the maintainer confirms a finite ordered batch and its work recommendation, selected triage writes are complete, and dependencies/readiness have been rechecked. Continue with pre-flight and preparation below. The launched run never replenishes this list; later discovery requires a new confirmation.
 
 Pre-flight at the canonical checkout before preparation:
 
@@ -40,7 +49,7 @@ Read contracts.md. Use the existing spec-playback skill to present what each tic
 
 Hold for confirmation. Then populate the existing approval file using the read/write tools, with the confirmed seam and full criteria mapping. Set confirmed only after the user's yes. Preserve snapshot hashes and base fields. Host rows remain human checks, not defects to repair.
 
-Publication and assignment are separate opt-ins. Keep allow_publish and allow_claim false unless the user explicitly authorizes those effects for this run. No permission to merge, close issues, label QA, discard work, or upload artifacts is implied.
+Publication and assignment are separate opt-ins. At this gate, use the UI question tool to ask 'Publish draft PRs and claim issues for this run?' with four choices: 'Publish and claim' (push branches, open draft PRs, assign issues), 'Publish only', 'Claim only', and 'Neither'. Put 'Publish and claim' first as the maintainer's usual choice, without pre-authorizing it. If the user already explicitly chose effects for this run, record that answer without asking again; a skipped question leaves both off. Record the answer in allow_publish and allow_claim and emit matching launch switches. No permission to merge, close issues, label QA, discard work, or upload artifacts is implied.
 
 **Done when:** playback, seams, acceptance mapping and consequential rulings are confirmed and recorded.
 
