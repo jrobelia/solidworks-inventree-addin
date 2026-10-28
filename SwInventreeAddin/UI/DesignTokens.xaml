@@ -222,6 +222,27 @@
         <Setter Property="Margin"      Value="0,4,0,4" />
     </Style>
 
+    <!-- ── Section text styles ────────────────────────────────────────────── -->
+
+    <!-- Section title: the SemiBold body-size line heading a window section -->
+    <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily"  Value="{StaticResource FontBody}" />
+        <Setter Property="FontSize"    Value="{StaticResource FontSizeBody}" />
+        <Setter Property="FontWeight"  Value="SemiBold" />
+        <Setter Property="Foreground"  Value="{StaticResource BrushForeground}" />
+    </Style>
+
+    <!-- Section intro / help: the one-line subtle paragraph under a section
+         title, and the wrapped help line under the field it explains. 11 is
+         deliberately a literal — the smaller-than-body size exists only
+         inside this token. -->
+    <Style x:Key="SectionIntroStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily"   Value="{StaticResource FontBody}" />
+        <Setter Property="FontSize"     Value="11" />
+        <Setter Property="Foreground"   Value="{StaticResource BrushSubtle}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
     <!-- ── Global tooltip style ───────────────────────────────────────────── -->
     <!--
         Appears above the control and wraps long status messages at a readable
