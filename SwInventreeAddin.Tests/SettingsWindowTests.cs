@@ -702,18 +702,25 @@ namespace SwInventreeAddin.Tests
             form.Show();
             SolidWorksWindowHandle.Set(form.Handle);
 
+            SettingsWindow? window = null;
             try
             {
                 var configProvider = new StubConfigProvider("https://inventree.example.com", "saved-key");
                 var applyService = new StubSettingsApplyService(configProvider);
-                var window = CreateWindow(applyService: applyService, configProvider: configProvider);
+                window = CreateWindow(applyService: applyService, configProvider: configProvider);
                 window.Show();
                 var windowHandle = new WindowInteropHelper(window).Handle;
 
+                // The dialog's Window does not exist until the click creates it, so
+                // a short find-poll discovers it from the native sources and hands
+                // off to the shared centering helper — which owns the 5px tolerance,
+                // off-screen gate, decline-close, and the never-centered failure.
+                // The ~4s find deadline covers only "dialog never appeared" so
+                // find + the helper's 8s stay inside [Timeout(15000)].
                 MessageDialog? found = null;
-                bool offScreen = false;
+                Task? wait = null;
                 string? failure = null;
-                var deadline = DateTime.UtcNow.AddSeconds(8);
+                var deadline = DateTime.UtcNow.AddSeconds(4);
                 var timer = new DispatcherTimer(DispatcherPriority.Background)
                 {
                     Interval = TimeSpan.FromMilliseconds(50),
@@ -723,10 +730,7 @@ namespace SwInventreeAddin.Tests
                     if (DateTime.UtcNow >= deadline)
                     {
                         timer.Stop();
-                        found?.Close();
-                        failure = found == null
-                            ? "no confirmation dialog appeared after clicking Remove API key"
-                            : "the confirmation dialog never centered on the Settings window";
+                        failure = "no confirmation dialog appeared after clicking Remove API key";
                         return;
                     }
 
@@ -740,18 +744,8 @@ namespace SwInventreeAddin.Tests
                         if (dialog == null) return;
 
                         found = dialog;
-
-                        var ownerRect = HiddenTestWindow.GetRect(windowHandle);
-                        var dialogRect = HiddenTestWindow.GetRect(new WindowInteropHelper(dialog).Handle);
-                        int dx = Math.Abs(
-                            (dialogRect.Left + dialogRect.Width / 2) - (ownerRect.Left + ownerRect.Width / 2));
-                        int dy = Math.Abs(
-                            (dialogRect.Top + dialogRect.Height / 2) - (ownerRect.Top + ownerRect.Height / 2));
-                        if (dx >= 5 || dy >= 5) return;   // still parked — keep polling
-
-                        offScreen = !HiddenTestWindow.IsOnScreen(dialogRect);
                         timer.Stop();
-                        dialog.Close();   // a decline — Cancel/No/X/Esc equivalent
+                        wait = HiddenTestWindow.WaitForCenteredOnOwnerAsync(found, windowHandle);
                     }
                     catch
                     {
@@ -767,13 +761,16 @@ namespace SwInventreeAddin.Tests
                 Assert.That(found, Is.Not.Null,
                             "clicking Remove API key must open the confirmation dialog");
 
+                // The helper faults with the last-observed rects if the dialog
+                // never centered or stayed on a monitor before its deadline.
+                wait!.GetAwaiter().GetResult();
+
                 var dialogOwner = new WindowInteropHelper(found!).Owner;
 
                 Assert.Multiple(() =>
                 {
                     Assert.That(dialogOwner, Is.EqualTo(windowHandle),
                                 "the dialog must be owned by the Settings window, not the SolidWorks window");
-                    Assert.That(offScreen, Is.True, "the confirm dialog must stay off every monitor");
                     Assert.That(applyService.RemoveCallCount, Is.EqualTo(0),
                                 "closing the dialog declines — removal must not run");
                     Assert.That(configProvider.GetServerConfig()!.ApiKey, Is.EqualTo("saved-key"),
@@ -782,6 +779,7 @@ namespace SwInventreeAddin.Tests
             }
             finally
             {
+                window?.Close();
                 SolidWorksWindowHandle.Set(IntPtr.Zero);
             }
         }
