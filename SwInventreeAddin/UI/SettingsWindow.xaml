@@ -31,13 +31,29 @@
         <StackPanel Margin="16,14,16,16">
 
             <!-- ── Server Connection section ──────────────────────────────── -->
-
-            <TextBlock Text="InvenTree Server Connection"
-                       Style="{StaticResource SectionTitleStyle}" />
+            <!-- Banded section header — the Task Pane chrome (3px accent
+                 stripe on the left rail + grey band), inset within the body
+                 padding. The band is the separator; all section content
+                 spans the band's full body width. -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0"
+                        Background="{StaticResource BrushAccentBlue}" />
+                <Border Grid.Column="1"
+                        Background="{StaticResource BrushSectionHeader}"
+                        Padding="6,4">
+                    <TextBlock Text="InvenTree Server Connection"
+                               Style="{StaticResource SectionTitleStyle}"
+                               FontSize="{StaticResource FontSizeHeading}" />
+                </Border>
+            </Grid>
 
             <TextBlock Text="InvenTree server address and credentials."
                        Style="{StaticResource SectionIntroStyle}"
-                       Margin="0,4,0,0" />
+                       Margin="{StaticResource RowSpacing}" />
 
             <!-- Status card: fixed three-line layout once anything is saved.
                  Only the dot, title, and line values change between states —
@@ -45,7 +61,7 @@
             <Border x:Name="ConnectionCard"
                     Margin="{StaticResource SectionSpacing}"
                     Padding="10,8"
-                    Background="White"
+                    Background="{StaticResource BrushCardSummary}"
                     BorderBrush="{StaticResource BrushBorder}"
                     BorderThickness="1"
                     Visibility="Collapsed">
@@ -156,11 +172,17 @@
                     </StackPanel>
 
                     <StackPanel x:Name="CredentialFieldsPanel">
-                        <!-- The credential choice sits in its own labelled box so
-                             the "or" divider reads as username+password OR API
+                        <!-- The credential choice sits in its own box so the
+                             "or" divider reads as username+password OR API
                              key — the Server URL is never part of the choice.
-                             Canvas white, not the card grey: grey marks the
-                             summary card above; this box is the edit surface. -->
+                             The "Credential" label leads the box from outside,
+                             in the same muted field-label treatment as
+                             "Server URL". Canvas white, not the card grey:
+                             grey marks the summary card above; this box is
+                             the edit surface. -->
+                        <TextBlock x:Name="CredentialGroupLabel"
+                                   Text="Credential"
+                                   Style="{StaticResource FieldLabelStyle}" />
                         <Border x:Name="CredentialGroup"
                                 Margin="{StaticResource SectionSpacing}"
                                 Padding="10,8"
@@ -168,11 +190,6 @@
                                 BorderBrush="{StaticResource BrushBorder}"
                                 BorderThickness="1">
                             <StackPanel>
-                                <TextBlock x:Name="CredentialGroupLabel"
-                                           Text="Credential"
-                                           FontWeight="SemiBold"
-                                           Foreground="{StaticResource BrushForeground}" />
-
                                 <TextBlock Text="Username" Style="{StaticResource FieldLabelStyle}" />
                                 <TextBox x:Name="UsernameBox" Style="{StaticResource SWFieldStyle}" Height="28" />
 
@@ -264,82 +281,103 @@
                 </Button>
             </Grid>
 
-            <!-- ── Separator ────────────────────────────────────────────────── -->
-            <Separator Background="{StaticResource BrushBorder}" Margin="0,16,0,0" />
-
             <!-- ── Property Mappings section ──────────────────────────────── -->
-
-            <TextBlock Text="Property &amp; Table Mappings"
-                       Style="{StaticResource SectionTitleStyle}"
-                       Margin="0,12,0,0" />
+            <Grid Margin="0,16,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0"
+                        Background="{StaticResource BrushAccentBlue}" />
+                <Border Grid.Column="1"
+                        Background="{StaticResource BrushSectionHeader}"
+                        Padding="6,4">
+                    <TextBlock Text="Property &amp; Table Mappings"
+                               Style="{StaticResource SectionTitleStyle}"
+                               FontSize="{StaticResource FontSizeHeading}" />
+                </Border>
+            </Grid>
 
             <TextBlock Text="Map InvenTree Part fields to SolidWorks custom property names and InvenTree line-item fields with assembly BOM table headers. A shared team file can be used to keep everyone in sync."
                        Style="{StaticResource SectionIntroStyle}"
-                       Margin="{StaticResource SectionSpacing}" />
+                       Margin="{StaticResource RowSpacing}" />
 
-            <!-- Labels sit in each radio's Content so clicking the text
-                 toggles the radio; both wear the same foreground. -->
-            <RadioButton x:Name="LocalRadio"
-                         GroupName="MappingSource"
-                         IsChecked="True"
-                         VerticalAlignment="Center"
-                         Margin="0,12,0,4"
-                         Checked="LocalRadio_Checked">
-                <TextBlock Text="Local mapping file"
-                           Margin="6,0,0,0"
-                           VerticalAlignment="Center"
-                           Foreground="{StaticResource BrushForeground}" />
-            </RadioButton>
+            <!-- The mapping file source is a boxed edit region, like the
+                 credential group — radios, path fields, and Browse fence
+                 inside; Edit Mappings and the health bar stay outside. Path
+                 fields indent under their radio's label. -->
+            <Border x:Name="MappingEditGroup"
+                    Margin="{StaticResource SectionSpacing}"
+                    Padding="10,8"
+                    Background="White"
+                    BorderBrush="{StaticResource BrushBorder}"
+                    BorderThickness="1">
+                <StackPanel>
+                    <!-- Labels sit in each radio's Content so clicking the text
+                         toggles the radio; both wear the same foreground. -->
+                    <RadioButton x:Name="LocalRadio"
+                                 GroupName="MappingSource"
+                                 IsChecked="True"
+                                 VerticalAlignment="Center"
+                                 Margin="0,0,0,4"
+                                 Checked="LocalRadio_Checked">
+                        <TextBlock Text="Local mapping file"
+                                   Margin="6,0,0,0"
+                                   VerticalAlignment="Center"
+                                   Foreground="{StaticResource BrushForeground}" />
+                    </RadioButton>
 
-            <!-- Local file path (read-only) -->
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <!-- Focusable: the style parks non-focusable for display-only
-                     fields; this path is copied by hand into Explorer. -->
-                <TextBox x:Name="LocalPathBox"
-                         Grid.Column="0"
-                         Style="{StaticResource ValueFieldStyle}"
-                         Focusable="True"
-                         Height="28" />
-            </Grid>
+                    <!-- Local file path (read-only) -->
+                    <Grid Margin="20,0,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <!-- Focusable: the style parks non-focusable for display-only
+                             fields; this path is copied by hand into Explorer. -->
+                        <TextBox x:Name="LocalPathBox"
+                                 Grid.Column="0"
+                                 Style="{StaticResource ValueFieldStyle}"
+                                 Focusable="True"
+                                 Height="28" />
+                    </Grid>
 
-            <RadioButton x:Name="SharedRadio"
-                         GroupName="MappingSource"
-                         VerticalAlignment="Center"
-                         Margin="0,12,0,4"
-                         Checked="SharedRadio_Checked">
-                <TextBlock Text="Shared mapping file (optional)"
-                           Margin="6,0,0,0"
-                           VerticalAlignment="Center"
-                           Foreground="{StaticResource BrushForeground}" />
-            </RadioButton>
+                    <RadioButton x:Name="SharedRadio"
+                                 GroupName="MappingSource"
+                                 VerticalAlignment="Center"
+                                 Margin="0,12,0,4"
+                                 Checked="SharedRadio_Checked">
+                        <TextBlock Text="Shared mapping file (optional)"
+                                   Margin="6,0,0,0"
+                                   VerticalAlignment="Center"
+                                   Foreground="{StaticResource BrushForeground}" />
+                    </RadioButton>
 
-            <!-- Shared file path + Browse button -->
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="8" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <TextBox x:Name="SharedPathBox"
-                         Grid.Column="0"
-                         Style="{StaticResource SWFieldStyle}"
-                         Height="28" />
-                <Button Grid.Column="2"
-                        Style="{StaticResource SecondaryButtonStyle}"
-                        Height="28" MinWidth="120"
-                        Width="{Binding ElementName=EditMappingsButton, Path=ActualWidth, FallbackValue=150}"
-                        Margin="0"
-                        Click="Browse_Click">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Browse&#x2026;" VerticalAlignment="Center" />
-                        <TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" FontSize="13"
-                                   VerticalAlignment="Center" Margin="6,0,0,0" />
-                    </StackPanel>
-                </Button>
-            </Grid>
+                    <!-- Shared file path + Browse button -->
+                    <Grid Margin="20,0,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="SharedPathBox"
+                                 Grid.Column="0"
+                                 Style="{StaticResource SWFieldStyle}"
+                                 Height="28" />
+                        <Button Grid.Column="2"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Height="28" MinWidth="120"
+                                Width="{Binding ElementName=EditMappingsButton, Path=ActualWidth, FallbackValue=150}"
+                                Margin="0"
+                                Click="Browse_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Browse&#x2026;" VerticalAlignment="Center" />
+                                <TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                           VerticalAlignment="Center" Margin="6,0,0,0" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </StackPanel>
+            </Border>
 
             <!-- Edit Mappings + mapping status bar -->
             <Grid Margin="0,16,0,0">
@@ -366,18 +404,29 @@
                 </Button>
             </Grid>
 
-            <!-- ── Separator ────────────────────────────────────────────────── -->
-            <Separator Background="{StaticResource BrushBorder}" Margin="0,16,0,0" />
-
-            <!-- ── BOM sync section ─────────────────────────────────────────- -->
-
-            <TextBlock Text="Keyword in the SOLIDWORKS BOM Table Name"
-                       Style="{StaticResource SectionTitleStyle}"
-                       Margin="0,12,0,0" />
+            <!-- ── BOM keyword section ────────────────────────────────────── -->
+            <Grid Margin="0,16,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0"
+                        Background="{StaticResource BrushAccentBlue}" />
+                <Border Grid.Column="1"
+                        Background="{StaticResource BrushSectionHeader}"
+                        Padding="6,4">
+                    <TextBlock Text="Keyword in the SOLIDWORKS BOM Table Name"
+                               Style="{StaticResource SectionTitleStyle}"
+                               FontSize="{StaticResource FontSizeHeading}" />
+                </Border>
+            </Grid>
 
             <TextBlock Text="Name fragment the add-in BOM Compare function uses to find the SolidWorks BOM table for InvenTree sync."
                        Style="{StaticResource SectionIntroStyle}"
-                       Margin="{StaticResource SectionSpacing}" />
+                       Margin="{StaticResource RowSpacing}" />
+
+            <!-- Bare label + field — the one edit region that stays unboxed
+                 (decided in #252 triage); it spans the band's full body width. -->
             <TextBlock Text="Keyword" Style="{StaticResource FieldLabelStyle}" />
             <TextBox x:Name="BomKeywordBox" Style="{StaticResource SWFieldStyle}" Height="28" />
 

@@ -21,15 +21,15 @@ Tokens are defined in `SwInventreeAddin/UI/DesignTokens.xaml` — this doc says 
 
 - `FontBody` is Segoe UI; `FontSizeBody` is 12; `FontSizeHeading` is 13.
 - Primary text uses `BrushForeground`; help text uses `BrushSubtle` in a wrapped `TextBlock` directly under the field it explains.
-- Section titles use `SectionTitleStyle` (SemiBold body text); each section's one-line intro and per-field help text use `SectionIntroStyle` (11px `BrushSubtle`, wrapped).
+- Section titles use `SectionTitleStyle` (SemiBold body text); inside a banded section header the same style is bumped to `FontSizeHeading`. Each section's one-line intro and per-field help text use `SectionIntroStyle` (11px `BrushSubtle`, wrapped).
 - Field labels use `FieldLabelStyle`; comparison-grid column headers use `ColumnHeaderStyle`.
 
 ## Sections and containers
 
 - **Task Pane section header** — a grey band (`BrushSectionHeader`, `Padding="6,4"`) with a 3px `BrushAccentBlue` stripe down its left edge and a SemiBold `FontSizeHeading` title.
-- **Settings section header** — a `SectionTitleStyle` line (plain SemiBold `BrushForeground`) followed by a one-line `SectionIntroStyle` intro; sections are separated by `Separator` + `BrushBorder` (`Margin="0,14,0,0"`).
-- **Card** — a `Border` with `BrushBorder` 1px, `Padding="10,8"`, `Margin="0,8,0,0"`, headed by a SemiBold label, on the white canvas color — the *summary* surface for a saved-state digest like the Server Connection status card. A card that carries an action row takes the white interactive surface (design v2): buttons stay standard chrome, the surface lightens — contrast comes from light card vs grey buttons, never a one-off button fill.
-- **Bordered group** — same chrome (`BrushBorder` 1px, `Padding="10,8"`, `Margin="0,8,0,0"`, SemiBold label) but `Background="White"` — the canvas color. Use it to fence one logical *choice or edit region* (the credential group — username+password OR API key). White keeps it distinct from a grey summary card when the two stack, and matches the field-fill convention: interactive surfaces are white, chrome is grey.
+- **Settings section header** — the same banded header as the Task Pane (grey band + 3px blue left stripe + `SectionTitleStyle` title at `FontSizeHeading`), inset within the window's body padding. The band is the separator — no `Separator` elements between sections — and a one-line `SectionIntroStyle` intro follows it. Whitespace stays between the window's top accent stripe and the first band. All section content — intros, edit surfaces, status bars, and action rows — spans the band's full body width.
+- **Card** — a `Border` with `BrushBorder` 1px, `Padding="10,8"`, `Margin="0,8,0,0"`, headed by a SemiBold label, on `BrushCardSummary` (#f9f9f9) — the grey *summary* surface for a saved-state digest like the Server Connection status card. Grey is summary, white is edit. A card that carries an action row keeps standard chrome buttons — contrast comes from the light summary fill vs grey buttons, never a one-off button fill.
+- **Bordered group** — same chrome (`BrushBorder` 1px, `Padding="10,8"`, `Margin="0,8,0,0"`) on `Background="White"` — the canvas color. It fences one logical *choice or edit region* (the credential group — username+password OR API key; the mapping file radios + paths). The group's label sits **outside** the box in `FieldLabelStyle` — "Credential" leads its box the way "Server URL" leads its field. White keeps the edit surface distinct from a grey summary card when the two stack, and matches the field-fill convention: interactive surfaces are white, chrome and summary are grey.
 
 ## Fields and input
 
@@ -65,5 +65,6 @@ Every status surface displays **Status Entries** — text + severity + persisten
 
 ## Known drift
 
+- History: Settings section headers drifted to plain `SectionTitleStyle` lines + `Separator` breaks, which this doc had recorded as convention; #330 restored the .pen file's banded header and moved each section's edit region into bordered groups. The summary card also left white for `BrushCardSummary`.
 - `TaskPaneView.xaml` carries hardcoded greys — `#FFF0F0F0` status bar background, `#FFD0D0D0` border, `#FFD7D7D7` separator — that duplicate `BrushSectionHeader` / `BrushGridLine` values. Use the token in new work; treat the literals as drift to clean up when the file is touched anyway.
 - `TaskPaneView.xaml` also defines a local `StatusTextBoxStyle` that predates the shared `StatusBarTextStyle`. New status bars use `StatusBarControl`.
