@@ -541,6 +541,17 @@ namespace SwInventreeAddin.UI
         /// </summary>
         public void ClearSecrets() => RunOnUiThread(() => Password = string.Empty);
 
+        // ── Confirmation seams ──────────────────────────────────────────────
+
+        /// <summary>
+        /// Called before the saved API key is dropped — the Settings window
+        /// wires this to a <see cref="MessageDialog"/> prompt so the unit
+        /// suite can stub the answer. Return true to remove the key; false
+        /// leaves it untouched and writes no status entry. Default denies —
+        /// a host that never wires the dialog must not proceed.
+        /// </summary>
+        public Func<bool> ConfirmRemoveApiKey { get; set; } = () => false;
+
         // ── Orchestration commands ──────────────────────────────────────────
         // Apply/Test/Remove: the window's async-void click handlers only
         // forward to these. Service, probe, and mapping failures surface only
@@ -718,12 +729,16 @@ namespace SwInventreeAddin.UI
         /// <summary>
         /// Clears only the saved API key through the apply service so the
         /// mutation surfaces as a <see cref="SettingsApplyException"/> with a
-        /// consistent prefix. The saved URL, Property Mapping path, and BOM
-        /// keyword survive; the card lands on Authentication required with the
-        /// form open.
+        /// consistent prefix. Asks <see cref="ConfirmRemoveApiKey"/> first —
+        /// a decline returns before anything runs and writes no status entry.
+        /// The saved URL, Property Mapping path, and BOM keyword survive; the
+        /// card lands on Authentication required with the form open.
         /// </summary>
         public async Task RemoveApiKeyAsync()
         {
+            if (!ConfirmRemoveApiKey())
+                return;
+
             try
             {
                 await _settingsApplyService.RemoveApiKeyAsync().ConfigureAwait(false);

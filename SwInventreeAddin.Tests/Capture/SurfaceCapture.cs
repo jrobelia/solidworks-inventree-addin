@@ -112,6 +112,17 @@ namespace SwInventreeAddin.Tests.Capture
                         System.Windows.Forms.MessageBoxButtons.YesNo,
                         System.Windows.Forms.MessageBoxIcon.Question),
                     SolidWorksWindowHandle.Get())),
+            // #382: the Remove API key confirm — keep the text in step with
+            // the SettingsWindow wiring.
+            new Entry("MessageDialog", "remove-api-key-warning",
+                () => new MessageDialog(
+                    new MessageDialogViewModel(
+                        "Remove API Key",
+                        "Remove the saved API key?\r\n\r\n"
+                        + "The server address stays saved — the credential must be entered again to connect.",
+                        System.Windows.Forms.MessageBoxButtons.YesNo,
+                        System.Windows.Forms.MessageBoxIcon.Warning),
+                    SolidWorksWindowHandle.Get())),
             new Entry("BomTableMissingDialog", "default",
                 () => new BomTableMissingDialog("inventree", SolidWorksWindowHandle.Get())),
         };
