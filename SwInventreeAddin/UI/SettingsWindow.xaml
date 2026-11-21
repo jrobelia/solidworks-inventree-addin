@@ -421,7 +421,7 @@
                 </Border>
             </Grid>
 
-            <TextBlock Text="Name fragment the add-in BOM Compare function uses to find the SolidWorks BOM table for InvenTree sync."
+            <TextBlock Text="BOM table in the SolidWorks feature tree used to compare against the InvenTree BOM for a given assembly."
                        Style="{StaticResource SectionIntroStyle}"
                        Margin="{StaticResource RowSpacing}" />
 
