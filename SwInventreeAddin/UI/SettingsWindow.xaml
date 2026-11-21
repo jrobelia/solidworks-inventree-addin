@@ -415,7 +415,7 @@
                 <Border Grid.Column="1"
                         Background="{StaticResource BrushSectionHeader}"
                         Padding="6,4">
-                    <TextBlock Text="Keyword in the SOLIDWORKS BOM Table Name"
+                    <TextBlock Text="SOLIDWORKS BOM Table"
                                Style="{StaticResource SectionTitleStyle}"
                                FontSize="{StaticResource FontSizeHeading}" />
                 </Border>
@@ -426,9 +426,14 @@
                        Margin="{StaticResource RowSpacing}" />
 
             <!-- Bare label + field — the one edit region that stays unboxed
-                 (decided in #252 triage); it spans the band's full body width. -->
-            <TextBlock Text="Keyword" Style="{StaticResource FieldLabelStyle}" />
-            <TextBox x:Name="BomKeywordBox" Style="{StaticResource SWFieldStyle}" Height="28" />
+                 (decided in #252 triage); it spans the band's full body width.
+                 The pair sits in a group with SectionSpacing above it so the
+                 lone label reads with its field, not as a stray subtitle
+                 under the intro. -->
+            <StackPanel Margin="{StaticResource SectionSpacing}">
+                <TextBlock Text="Table Name Keyword" Style="{StaticResource FieldLabelStyle}" />
+                <TextBox x:Name="BomKeywordBox" Style="{StaticResource SWFieldStyle}" Height="28" />
+            </StackPanel>
 
             <!-- Footer: dialog-level action status bar + Apply / Save / Cancel.
                  The action bar reports what Apply/Save did; connection-scoped

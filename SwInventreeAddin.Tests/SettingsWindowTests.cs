@@ -766,7 +766,7 @@ namespace SwInventreeAddin.Tests
             {
                 Assert.That(texts, Does.Contain("InvenTree Server Connection"));
                 Assert.That(texts, Does.Contain("Property & Table Mappings"));
-                Assert.That(texts, Does.Contain("Keyword in the SOLIDWORKS BOM Table Name"));
+                Assert.That(texts, Does.Contain("SOLIDWORKS BOM Table"));
                 Assert.That(texts, Does.Not.Contain("Inventree Server Connection"));
                 Assert.That(texts, Does.Not.Contain("Inventree to Solidworks Mappings"));
                 Assert.That(texts, Does.Not.Contain("SolidWorks BOM Table Name Keyword"));
@@ -859,7 +859,7 @@ namespace SwInventreeAddin.Tests
             var window = CreateWindow();
 
             var label = AllTextBlocks(window).FirstOrDefault(
-                t => t.Text == "Keyword" &&
+                t => t.Text == "Table Name Keyword" &&
                      ReferenceEquals(t.Style, window.TryFindResource("FieldLabelStyle")));
             Assert.That(label, Is.Not.Null,
                         "the BOM keyword field carries a FieldLabelStyle label like every other field");
@@ -942,7 +942,7 @@ namespace SwInventreeAddin.Tests
 
         [TestCase("InvenTree Server Connection")]
         [TestCase("Property & Table Mappings")]
-        [TestCase("Keyword in the SOLIDWORKS BOM Table Name")]
+        [TestCase("SOLIDWORKS BOM Table")]
         public void SectionStyles_Title_WearsSharedStyle(string titleText)
         {
             var window = CreateWindow();
@@ -961,7 +961,7 @@ namespace SwInventreeAddin.Tests
 
         [TestCase("InvenTree Server Connection")]
         [TestCase("Property & Table Mappings")]
-        [TestCase("Keyword in the SOLIDWORKS BOM Table Name")]
+        [TestCase("SOLIDWORKS BOM Table")]
         public void SectionStyles_Intro_FollowsTitleWearingSharedStyle(string titleText)
         {
             var window = CreateWindow();
@@ -1020,7 +1020,7 @@ namespace SwInventreeAddin.Tests
                 .ToList();
 
             Assert.That(labelled, Is.EquivalentTo(
-                new[] { "Server URL", "Credential", "Username", "Password", "API Key", "Keyword" }));
+                new[] { "Server URL", "Credential", "Username", "Password", "API Key", "Table Name Keyword" }));
         }
 
         // ── Section containers (#330) ────────────────────────────────────────
@@ -1032,7 +1032,7 @@ namespace SwInventreeAddin.Tests
 
         [TestCase("InvenTree Server Connection")]
         [TestCase("Property & Table Mappings")]
-        [TestCase("Keyword in the SOLIDWORKS BOM Table Name")]
+        [TestCase("SOLIDWORKS BOM Table")]
         public void SectionHeaders_WearTheBandedTaskPaneChrome(string titleText)
         {
             var window = CreateWindow();
@@ -1166,7 +1166,7 @@ namespace SwInventreeAddin.Tests
         public void BomKeyword_StaysABareLabelAndFieldOutsideAnyBox()
         {
             var window = CreateWindow();
-            var label = FindTextBlock(window, "Keyword");
+            var label = FindTextBlock(window, "Table Name Keyword");
 
             Assert.Multiple(() =>
             {
