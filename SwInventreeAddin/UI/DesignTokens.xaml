@@ -10,6 +10,9 @@
     <Color x:Key="ColorAccentBlue">#FF0070C0</Color>
     <!-- Cream for InvenTree read-only fields -->
     <Color x:Key="ColorInventreeField">#FFFFFEF0</Color>
+    <!-- Near-white grey for summary surfaces — the Settings status card.
+         Grey marks the summary; white stays the edit surface. -->
+    <Color x:Key="ColorCardSummary">#FFF9F9F9</Color>
     <!-- Status severities -->
     <Color x:Key="ColorStatusSuccess">#FF4CAF50</Color>
     <Color x:Key="ColorStatusWarning">#FFFFC107</Color>
@@ -22,6 +25,7 @@
     <SolidColorBrush x:Key="BrushSectionHeader"  Color="{StaticResource ColorSectionHeader}" />
     <SolidColorBrush x:Key="BrushAccentBlue"     Color="{StaticResource ColorAccentBlue}" />
     <SolidColorBrush x:Key="BrushInventreeField" Color="{StaticResource ColorInventreeField}" />
+    <SolidColorBrush x:Key="BrushCardSummary"   Color="{StaticResource ColorCardSummary}" />
     <SolidColorBrush x:Key="BrushStatusSuccess"  Color="{StaticResource ColorStatusSuccess}" />
     <SolidColorBrush x:Key="BrushStatusWarning"  Color="{StaticResource ColorStatusWarning}" />
     <SolidColorBrush x:Key="BrushStatusError"    Color="{StaticResource ColorStatusError}" />
