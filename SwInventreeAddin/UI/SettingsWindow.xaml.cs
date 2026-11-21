@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Interop;
 using System.Windows.Media;
 using Microsoft.Win32;
 using SwInventreeAddin;
@@ -26,6 +27,10 @@ namespace SwInventreeAddin.UI
     {
         private readonly SettingsViewModel _vm;
         private readonly IVersionInfo _versionInfo;
+
+        // This window's own HWND — pop-ups it spawns are owned by and centered
+        // over it, not the SolidWorks main window.
+        private IntPtr WindowHandle => new WindowInteropHelper(this).Handle;
 
         /// <summary>
         /// The probe fired on open when a full config is saved — owned by the
@@ -89,6 +94,15 @@ namespace SwInventreeAddin.UI
             SharedRadio.Checked += (_, __) => _vm.UseSharedMapping = true;
 
             WindowCentering.Attach(this, SolidWorksWindowHandle.Get());
+
+            _vm.ConfirmRemoveApiKey = () =>
+                MessageDialog.ShowYesNo(
+                    WindowHandle,
+                    "Remove the saved API key?"
+                    + System.Environment.NewLine + System.Environment.NewLine
+                    + "The server address stays saved — the credential must be entered again to connect.",
+                    "Remove API Key",
+                    System.Windows.Forms.MessageBoxIcon.Warning) == MessageDialogResult.Yes;
 
             // Seed the fields from the VM's drafts — the pushes are no-ops.
             UrlBox.Text = _vm.Url;

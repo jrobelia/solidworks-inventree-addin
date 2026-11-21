@@ -1750,6 +1750,7 @@ namespace SwInventreeAddin.Tests
             var provider = new StubConfigProvider("https://inventree.example.com", "saved-key");
             var applyService = new StubSettingsApplyService(provider);
             var vm = CreateVm(provider, applyService);
+            vm.ConfirmRemoveApiKey = () => true;
             vm.Username = "engineer";
             vm.Password = "s3cret";
             vm.ApiKeyDraft = "inv-new";
@@ -1781,6 +1782,7 @@ namespace SwInventreeAddin.Tests
                     "Failed to remove the API key: stub delete failure"),
             };
             var vm = CreateVm(applyService: applyService);
+            vm.ConfirmRemoveApiKey = () => true;
             await vm.OpenProbeTask!;
 
             await vm.RemoveApiKeyAsync();
@@ -1793,6 +1795,74 @@ namespace SwInventreeAddin.Tests
                 Assert.That(vm.HasSavedApiKey, Is.True, "nothing was cleared");
                 Assert.That(vm.StatusCard.Title, Is.EqualTo("Connected"),
                     "the configured card is untouched");
+            });
+        }
+
+        // ── Remove API key confirmation (#382) ─────────────────────────
+        // The confirm seam gates entry: a decline — Cancel, No, X or Esc —
+        // leaves the saved key and writes no status entry; the unwired
+        // default denies, same as the Task Pane Confirm* seams.
+
+        [Test]
+        public async Task RemoveApiKeyAsync_WhenConfirmDeclines_LeavesTheKeyAndWritesNoStatus()
+        {
+            var provider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var applyService = new StubSettingsApplyService(provider);
+            var vm = CreateVm(provider, applyService);
+            int confirmCalls = 0;
+            vm.ConfirmRemoveApiKey = () => { confirmCalls++; return false; };
+
+            await vm.RemoveApiKeyAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(confirmCalls, Is.EqualTo(1),
+                            "the command asks before anything runs");
+                Assert.That(applyService.RemoveCallCount, Is.EqualTo(0),
+                            "a decline never reaches the service");
+                Assert.That(vm.HasSavedApiKey, Is.True, "the saved key is untouched");
+                Assert.That(vm.ConnectionStatusText, Is.Empty,
+                            "a decline writes no status entry");
+                Assert.That(vm.ConnectionStatusSeverity, Is.EqualTo(StatusSeverity.None));
+            });
+        }
+
+        [Test]
+        public async Task RemoveApiKeyAsync_WhenConfirmed_RemovesOnceAndReports()
+        {
+            var provider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var applyService = new StubSettingsApplyService(provider);
+            var vm = CreateVm(provider, applyService);
+            int confirmCalls = 0;
+            vm.ConfirmRemoveApiKey = () => { confirmCalls++; return true; };
+
+            await vm.RemoveApiKeyAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(confirmCalls, Is.EqualTo(1));
+                Assert.That(applyService.RemoveCallCount, Is.EqualTo(1));
+                Assert.That(vm.HasSavedApiKey, Is.False);
+                Assert.That(vm.ConnectionStatusText,
+                            Is.EqualTo("Credential removed. Server address kept."));
+                Assert.That(vm.ConnectionStatusSeverity, Is.EqualTo(StatusSeverity.Success));
+            });
+        }
+
+        [Test]
+        public async Task RemoveApiKeyAsync_WithoutWiredConfirm_DeniesByDefault()
+        {
+            var provider = new StubConfigProvider("https://inventree.example.com", "saved-key");
+            var applyService = new StubSettingsApplyService(provider);
+            var vm = CreateVm(provider, applyService);
+
+            await vm.RemoveApiKeyAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(applyService.RemoveCallCount, Is.EqualTo(0),
+                            "a host that never wires the prompt must not proceed");
+                Assert.That(vm.HasSavedApiKey, Is.True);
             });
         }
 
