@@ -310,6 +310,13 @@ namespace SwInventreeAddin.UI
             && _client != null && Fetched != null
             && _mappingResult?.CanUseForPartSync == true;
 
+        /// <summary>
+        /// Status line under the BOM Comparison header. The compare runs in its
+        /// own window and loads nothing into the pane, so the session holds no
+        /// loaded-BOM fact to project — a constant default until one exists.
+        /// </summary>
+        public string BomStatusText => "No BOM loaded.";
+
         /// <summary>The InvenTree PK of the currently fetched part. Zero when none fetched.</summary>
         public int CurrentInvenTreePk => Fetched?.Pk ?? 0;
 

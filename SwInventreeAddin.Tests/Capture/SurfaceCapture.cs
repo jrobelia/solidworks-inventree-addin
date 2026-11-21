@@ -86,6 +86,13 @@ namespace SwInventreeAddin.Tests.Capture
             new Entry("TaskPaneView", "mapping-error", () => CreateTaskPaneWindow(true)),
             new Entry("TaskPaneView", "assembly",
                 () => CreateTaskPaneWindow(false, DocumentType.Assembly, height: 1160)),
+            new Entry("TaskPaneView", "populated",
+                () => CreateTaskPaneWindow(false, withSuppressedError: false, height: 1000)),
+            // #376 gate render: an unlinked document leaves Create enabled —
+            // the state that actually shows the button's treatment.
+            new Entry("TaskPaneView", "unlinked",
+                () => CreateTaskPaneWindow(false, fetch: false,
+                    createPartValidator: new StubCreatePartValidationErrorService(), height: 260)),
             new Entry("TaskPaneView", "connection-failed",
                 () => CreateTaskPaneWindowWithConnectionFailure()),
             // #334 audit surfaces — one representative state per shipped window.
@@ -168,7 +175,12 @@ namespace SwInventreeAddin.Tests.Capture
         }
 
         private static Window CreateTaskPaneWindow(
-            bool mappingError, DocumentType documentType = DocumentType.Part, double height = 720)
+            bool mappingError,
+            DocumentType documentType = DocumentType.Part,
+            double height = 720,
+            bool fetch = true,
+            bool withSuppressedError = true,
+            ICreatePartValidationErrorService? createPartValidator = null)
         {
             var mapping = new StubPropertyMappingProvider();
             var properties = new StubDocumentPropertyService
@@ -176,18 +188,24 @@ namespace SwInventreeAddin.Tests.Capture
                 DocumentTypeToReturn = documentType,
             };
             var part = new InvenTree.InventreePart { Pk = 42, Ipn = "CAPTURE", Name = "Captured part" };
-            properties.Seed(mapping.Config.IpnProperty!, part.Ipn);
+            if (fetch)
+                properties.Seed(mapping.Config.IpnProperty!, part.Ipn);
             var client = new StubInventreeClient { PartToReturn = part };
             if (mappingError)
                 mapping.Health = MappingHealth.Invalid;
-            var pair = VmFactory.Create(client, properties, mapping, dispatcher: new StubHostStaDispatcher());
-            if (!mappingError)
+            var pair = VmFactory.Create(client, properties, mapping,
+                createPartValidator: createPartValidator,
+                dispatcher: new StubHostStaDispatcher());
+            if (!mappingError && fetch)
             {
                 pair.ViewModel.FetchPartAsync().GetAwaiter().GetResult();
-                client.ThrowOnUpdate = new InvalidOperationException("InvenTree could not accept Name.");
-                pair.ViewModel.PushNameToInvenTreeAsync().GetAwaiter().GetResult();
-                client.ThrowOnUpdate = null;
-                pair.ViewModel.PushNotesToInvenTreeAsync().GetAwaiter().GetResult();
+                if (withSuppressedError)
+                {
+                    client.ThrowOnUpdate = new InvalidOperationException("InvenTree could not accept Name.");
+                    pair.ViewModel.PushNameToInvenTreeAsync().GetAwaiter().GetResult();
+                    client.ThrowOnUpdate = null;
+                    pair.ViewModel.PushNotesToInvenTreeAsync().GetAwaiter().GetResult();
+                }
             }
 
             return WrapTaskPaneView(pair, height);

@@ -13,6 +13,15 @@
     <!-- Near-white grey for summary surfaces — the Settings status card.
          Grey marks the summary; white stays the edit surface. -->
     <Color x:Key="ColorCardSummary">#FFF9F9F9</Color>
+    <!-- Status-strip surface fill (the .pen statusBar colour) -->
+    <Color x:Key="ColorStatusBar">#FFF0F0F0</Color>
+    <!-- Thumbnail placeholder surface and its centred glyph -->
+    <Color x:Key="ColorImagePlaceholder">#FFE0E0E0</Color>
+    <Color x:Key="ColorImagePlaceholderGlyph">#FF888888</Color>
+    <!-- Comparison-grid equality indicators: = match green / ≠ mismatch amber.
+         Not severities — the .pen draws these literal values for match states. -->
+    <Color x:Key="ColorMatch">#FF2E7D32</Color>
+    <Color x:Key="ColorMismatch">#FFF9A825</Color>
     <!-- Status severities -->
     <Color x:Key="ColorStatusSuccess">#FF4CAF50</Color>
     <Color x:Key="ColorStatusWarning">#FFFFC107</Color>
@@ -22,19 +31,24 @@
     <Color x:Key="ColorStatusNotTested">#FF9E9E9E</Color>
 
     <!-- Brushes -->
-    <SolidColorBrush x:Key="BrushSectionHeader"  Color="{StaticResource ColorSectionHeader}" />
-    <SolidColorBrush x:Key="BrushAccentBlue"     Color="{StaticResource ColorAccentBlue}" />
-    <SolidColorBrush x:Key="BrushInventreeField" Color="{StaticResource ColorInventreeField}" />
-    <SolidColorBrush x:Key="BrushCardSummary"   Color="{StaticResource ColorCardSummary}" />
-    <SolidColorBrush x:Key="BrushStatusSuccess"  Color="{StaticResource ColorStatusSuccess}" />
-    <SolidColorBrush x:Key="BrushStatusWarning"  Color="{StaticResource ColorStatusWarning}" />
-    <SolidColorBrush x:Key="BrushStatusError"    Color="{StaticResource ColorStatusError}" />
-    <SolidColorBrush x:Key="BrushStatusNone"     Color="{StaticResource ColorStatusNone}" />
-    <SolidColorBrush x:Key="BrushStatusNotTested" Color="{StaticResource ColorStatusNotTested}" />
-    <SolidColorBrush x:Key="BrushForeground"     Color="#FF1A1A1A" />
-    <SolidColorBrush x:Key="BrushSubtle"         Color="#FF707070" />
-    <SolidColorBrush x:Key="BrushBorder"         Color="#FFAAAAAA" />
-    <SolidColorBrush x:Key="BrushGridLine"       Color="#FFD0D0D0" />
+    <SolidColorBrush x:Key="BrushSectionHeader"         Color="{StaticResource ColorSectionHeader}" />
+    <SolidColorBrush x:Key="BrushAccentBlue"            Color="{StaticResource ColorAccentBlue}" />
+    <SolidColorBrush x:Key="BrushInventreeField"        Color="{StaticResource ColorInventreeField}" />
+    <SolidColorBrush x:Key="BrushCardSummary"           Color="{StaticResource ColorCardSummary}" />
+    <SolidColorBrush x:Key="BrushStatusSuccess"         Color="{StaticResource ColorStatusSuccess}" />
+    <SolidColorBrush x:Key="BrushStatusWarning"         Color="{StaticResource ColorStatusWarning}" />
+    <SolidColorBrush x:Key="BrushStatusError"           Color="{StaticResource ColorStatusError}" />
+    <SolidColorBrush x:Key="BrushStatusNone"            Color="{StaticResource ColorStatusNone}" />
+    <SolidColorBrush x:Key="BrushStatusNotTested"       Color="{StaticResource ColorStatusNotTested}" />
+    <SolidColorBrush x:Key="BrushForeground"            Color="#FF1A1A1A" />
+    <SolidColorBrush x:Key="BrushSubtle"                Color="#FF707070" />
+    <SolidColorBrush x:Key="BrushBorder"                Color="#FFAAAAAA" />
+    <SolidColorBrush x:Key="BrushGridLine"              Color="#FFD0D0D0" />
+    <SolidColorBrush x:Key="BrushStatusBar"             Color="{StaticResource ColorStatusBar}" />
+    <SolidColorBrush x:Key="BrushImagePlaceholder"      Color="{StaticResource ColorImagePlaceholder}" />
+    <SolidColorBrush x:Key="BrushImagePlaceholderGlyph" Color="{StaticResource ColorImagePlaceholderGlyph}" />
+    <SolidColorBrush x:Key="BrushMatch"                 Color="{StaticResource ColorMatch}" />
+    <SolidColorBrush x:Key="BrushMismatch"              Color="{StaticResource ColorMismatch}" />
 
     <!-- ── Typography ─────────────────────────────────────────────────────── -->
 
