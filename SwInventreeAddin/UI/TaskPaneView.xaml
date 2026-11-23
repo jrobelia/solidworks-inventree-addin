@@ -13,24 +13,13 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="DesignTokens.xaml" />
             </ResourceDictionary.MergedDictionaries>
-            <!-- Status text: read-only label-like TextBox so users can select and copy messages,
-                 with a tooltip showing the full text. TextBox does not support TextTrimming on .NET Framework 4.8;
-                 the tooltip and horizontal scroll-via-selection cover long status messages. -->
-            <Style x:Key="StatusTextBoxStyle" TargetType="TextBox">
-                <Setter Property="IsReadOnly"                Value="True" />
-                <Setter Property="IsReadOnlyCaretVisible"     Value="False" />
-                <Setter Property="BorderThickness"            Value="0" />
-                <Setter Property="Background"                 Value="Transparent" />
-                <Setter Property="FocusVisualStyle"           Value="{x:Null}" />
-                <Setter Property="Padding"                    Value="0" />
-                <Setter Property="VerticalContentAlignment"   Value="Center" />
-                <Setter Property="FontFamily"                 Value="{StaticResource FontBody}" />
-                <Setter Property="FontSize"                   Value="{StaticResource FontSizeBody}" />
-                <Setter Property="Foreground"                 Value="{StaticResource BrushForeground}" />
-                <Setter Property="Margin"                     Value="4,0,4,0" />
-                <Setter Property="ToolTip"                    Value="{Binding StatusToolTip}" />
+            <!-- Status text: the shared StatusBarTextStyle plus this pane's
+                 tooltip — the tooltip echoes the full status text and an empty
+                 strip shows no tooltip rectangle. -->
+            <Style x:Key="StatusTextBoxStyle" TargetType="TextBox"
+                   BasedOn="{StaticResource StatusBarTextStyle}">
+                <Setter Property="ToolTip" Value="{Binding StatusToolTip}" />
                 <Style.Triggers>
-                    <!-- An empty strip shows no tooltip rectangle. -->
                     <Trigger Property="Text" Value="">
                         <Setter Property="ToolTip" Value="{x:Null}" />
                     </Trigger>
@@ -54,8 +43,8 @@
 
         <!-- ── Status bar ──────────────────────────────────────────────── -->
         <Border DockPanel.Dock="Bottom" Height="32"
-                Background="#FFF0F0F0"
-                BorderBrush="#FFD0D0D0" BorderThickness="0,1,0,0">
+                Background="{StaticResource BrushStatusBar}"
+                BorderBrush="{StaticResource BrushGridLine}" BorderThickness="0,1,0,0">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="4" />
@@ -122,7 +111,7 @@
                             IsEnabled="{Binding FetchEnabled}"
                             Click="Fetch_Click">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Load Properties from InvenTree" VerticalAlignment="Center" />
+                            <TextBlock Text="Load from InvenTree" VerticalAlignment="Center" />
                             <TextBlock Text="&#xE896;" FontFamily="Segoe MDL2 Assets" FontSize="13"
                                        VerticalAlignment="Center" Margin="6,0,0,0" />
                         </StackPanel>
@@ -144,7 +133,7 @@
 
                 <!-- Separator -->
                 <Separator Margin="0,8,0,0"
-                           Background="#FFD7D7D7" />
+                           Background="{StaticResource BrushSectionHeader}" />
 
                 <!-- ── Properties comparison grid ─────────────────────── -->
                 <StackPanel Visibility="{Binding PropertiesSectionVisible,
@@ -233,13 +222,13 @@
                             </Border.Style>
                             <Grid>
                                 <!-- Grey placeholder box (always visible) -->
-                                <Border Background="#FFE0E0E0" CornerRadius="4" />
+                                <Border Background="{StaticResource BrushImagePlaceholder}" CornerRadius="4" />
                                 <!-- No-image icon (only when no thumbnail is available) -->
                                 <TextBlock Text="&#x1F5BC;"
                                            FontSize="36"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"
-                                           Foreground="#FF888888"
+                                           Foreground="{StaticResource BrushImagePlaceholderGlyph}"
                                            Visibility="{Binding ThumbnailPlaceholderVisible, Converter={StaticResource BoolToVis}}" />
                                 <!-- Actual thumbnail paints over placeholder when loaded -->
                                 <Image Source="{Binding ThumbnailBytes, Converter={StaticResource ThumbConverter}}"
@@ -294,11 +283,11 @@
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding NameMatch}" Value="True">
                                             <Setter Property="Text" Value="=" />
-                                            <Setter Property="Foreground" Value="#FF2E7D32" />
+                                            <Setter Property="Foreground" Value="{StaticResource BrushMatch}" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding NameMatch}" Value="False">
                                             <Setter Property="Text" Value="&#x2260;" />
-                                            <Setter Property="Foreground" Value="#FFF9A825" />
+                                            <Setter Property="Foreground" Value="{StaticResource BrushMismatch}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -363,11 +352,11 @@
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding DescriptionMatch}" Value="True">
                                             <Setter Property="Text" Value="=" />
-                                            <Setter Property="Foreground" Value="#FF2E7D32" />
+                                            <Setter Property="Foreground" Value="{StaticResource BrushMatch}" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding DescriptionMatch}" Value="False">
                                             <Setter Property="Text" Value="&#x2260;" />
-                                            <Setter Property="Foreground" Value="#FFF9A825" />
+                                            <Setter Property="Foreground" Value="{StaticResource BrushMismatch}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -436,11 +425,11 @@
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding NotesMatch}" Value="True">
                                             <Setter Property="Text" Value="=" />
-                                            <Setter Property="Foreground" Value="#FF2E7D32" />
+                                            <Setter Property="Foreground" Value="{StaticResource BrushMatch}" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding NotesMatch}" Value="False">
                                             <Setter Property="Text" Value="&#x2260;" />
-                                            <Setter Property="Foreground" Value="#FFF9A825" />
+                                            <Setter Property="Foreground" Value="{StaticResource BrushMismatch}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -504,11 +493,11 @@
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding RevisionMatch}" Value="True">
                                             <Setter Property="Text" Value="=" />
-                                            <Setter Property="Foreground" Value="#FF2E7D32" />
+                                            <Setter Property="Foreground" Value="{StaticResource BrushMatch}" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding RevisionMatch}" Value="False">
                                             <Setter Property="Text" Value="&#x2260;" />
-                                            <Setter Property="Foreground" Value="#FFF9A825" />
+                                            <Setter Property="Foreground" Value="{StaticResource BrushMismatch}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -571,11 +560,11 @@
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding PkMatch}" Value="True">
                                             <Setter Property="Text" Value="=" />
-                                            <Setter Property="Foreground" Value="#FF2E7D32" />
+                                            <Setter Property="Foreground" Value="{StaticResource BrushMatch}" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding PkMatch}" Value="False">
                                             <Setter Property="Text" Value="&#x2260;" />
-                                            <Setter Property="Foreground" Value="#FFF9A825" />
+                                            <Setter Property="Foreground" Value="{StaticResource BrushMismatch}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -625,10 +614,11 @@
 
                     <Button Style="{StaticResource PrimaryButtonStyle}"
                             HorizontalAlignment="Stretch"
+                            Margin="{StaticResource SectionSpacing}"
                             IsEnabled="{Binding BomButtonEnabled}"
                             Click="CompareBom_Click">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Compare BOM Table with InvenTree" VerticalAlignment="Center" />
+                            <TextBlock Text="Compare BOM" VerticalAlignment="Center" />
                             <TextBlock Text="&#xE8C8;" FontFamily="Segoe MDL2 Assets" FontSize="13"
                                        VerticalAlignment="Center" Margin="6,0,0,0" />
                         </StackPanel>

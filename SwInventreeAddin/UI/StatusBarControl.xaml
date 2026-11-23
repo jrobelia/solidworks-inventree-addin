@@ -6,7 +6,7 @@
          DynamicResource resolves against the host window's DesignTokens — a
          UserControl's StaticResource cannot see the host's Window.Resources. -->
     <Border Height="32"
-            Background="#FFF0F0F0"
+            Background="{DynamicResource BrushStatusBar}"
             BorderBrush="{DynamicResource BrushBorder}"
             BorderThickness="0,1,0,0">
         <Grid>
