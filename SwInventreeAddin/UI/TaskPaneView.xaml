@@ -612,15 +612,9 @@
                         </Border>
                     </Grid>
 
-                    <TextBlock Text="Assembly only."
-                               Style="{StaticResource SectionIntroStyle}"
-                               Margin="0,4,0,0" />
-                    <TextBlock Text="{Binding BomStatusText, Mode=OneWay}"
-                               Foreground="{StaticResource BrushSubtle}"
-                               Margin="0,2,0,0" />
-
-                    <Button Style="{StaticResource SecondaryButtonStyle}"
+                    <Button Style="{StaticResource PrimaryButtonStyle}"
                             HorizontalAlignment="Stretch"
+                            Margin="{StaticResource SectionSpacing}"
                             IsEnabled="{Binding BomButtonEnabled}"
                             Click="CompareBom_Click">
                         <StackPanel Orientation="Horizontal">
