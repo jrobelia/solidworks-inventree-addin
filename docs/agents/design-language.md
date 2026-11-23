@@ -66,5 +66,4 @@ Every status surface displays **Status Entries** — text + severity + persisten
 ## Known drift
 
 - History: Settings section headers drifted to plain `SectionTitleStyle` lines + `Separator` breaks, which this doc had recorded as convention; #330 restored the .pen file's banded header and moved each section's edit region into bordered groups. The summary card also left white for `BrushCardSummary`.
-- `TaskPaneView.xaml` carries hardcoded greys — `#FFF0F0F0` status bar background, `#FFD0D0D0` border, `#FFD7D7D7` separator — that duplicate `BrushSectionHeader` / `BrushGridLine` values. Use the token in new work; treat the literals as drift to clean up when the file is touched anyway.
-- `TaskPaneView.xaml` also defines a local `StatusTextBoxStyle` that predates the shared `StatusBarTextStyle`. New status bars use `StatusBarControl`.
+- Task Pane BOM Comparison section ships without the .pen mock's "Assembly only." hint and "No BOM loaded." status line — maintainer ruled them mock annotation during QA on #390 (the section is already assembly-only, and the status was a constant with no session fact behind it). "Compare BOM" also keeps the accent primary style where the mock draws section-header grey — a maintainer pick like the grey Create-button deviation.
