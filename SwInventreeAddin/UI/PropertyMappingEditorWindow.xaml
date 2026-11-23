@@ -2,6 +2,7 @@
     x:Class="SwInventreeAddin.UI.PropertyMappingEditorWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="clr-namespace:SwInventreeAddin.UI"
     Title="Property Field Mappings"
     Width="480"
     SizeToContent="Height"
@@ -30,6 +31,7 @@
                                     <TextBlock x:Name="Placeholder"
                                                Text="{TemplateBinding Tag}"
                                                Foreground="{StaticResource BrushSubtle}"
+                                               FontStyle="Italic"
                                                VerticalAlignment="Center"
                                                IsHitTestVisible="False"
                                                Visibility="Collapsed"
@@ -63,17 +65,29 @@
 
         <StackPanel Margin="16,14,16,16">
 
-            <!-- Property Mappings title -->
-            <TextBlock Text="Property Mappings"
-                       FontWeight="SemiBold"
-                       Foreground="{StaticResource BrushForeground}"
-                       Margin="0,0,0,4" />
+            <!-- Banded section header — the same chrome the Settings window's
+                 sections use (3px accent stripe + grey band), inset within the
+                 body padding. -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0"
+                        Background="{StaticResource BrushAccentBlue}" />
+                <Border Grid.Column="1"
+                        Background="{StaticResource BrushSectionHeader}"
+                        Padding="6,4">
+                    <TextBlock Text="Property Field Mappings"
+                               Style="{StaticResource SectionTitleStyle}"
+                               FontSize="{StaticResource FontSizeHeading}" />
+                </Border>
+            </Grid>
 
-            <!-- Subtitle -->
+            <!-- Section intro -->
             <TextBlock Text="Map InvenTree part properties to your SolidWorks custom property names."
-                       Style="{StaticResource FieldLabelStyle}"
-                       Margin="0,0,0,8"
-                       TextWrapping="Wrap" />
+                       Style="{StaticResource SectionIntroStyle}"
+                       Margin="0,4,0,8" />
 
             <!-- Column headers -->
             <Grid Margin="0,0,0,4">
@@ -82,11 +96,9 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="InvenTree Part Property"
-                           Style="{StaticResource ColumnHeaderStyle}"
-                           HorizontalAlignment="Left" />
-                <TextBlock Grid.Column="1" Text="SolidWorks Document Property"
-                           Style="{StaticResource ColumnHeaderStyle}"
-                           HorizontalAlignment="Left" />
+                           Style="{StaticResource SubtleColumnHeaderStyle}" />
+                <TextBlock Grid.Column="1" Text="SolidWorks Custom Property"
+                           Style="{StaticResource SubtleColumnHeaderStyle}" />
             </Grid>
 
             <!-- IPN row -->
@@ -197,18 +209,26 @@
                          />
             </Grid>
 
-            <!-- ── Separator ─────────────────────────────────────────────────── -->
-            <Separator Background="{StaticResource BrushBorder}" Margin="0,8,0,0" />
+            <!-- ── BOM Column Aliases section ────────────────────────────────── -->
+            <Grid Margin="0,16,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0"
+                        Background="{StaticResource BrushAccentBlue}" />
+                <Border Grid.Column="1"
+                        Background="{StaticResource BrushSectionHeader}"
+                        Padding="6,4">
+                    <TextBlock Text="BOM Column Aliases"
+                               Style="{StaticResource SectionTitleStyle}"
+                               FontSize="{StaticResource FontSizeHeading}" />
+                </Border>
+            </Grid>
 
-            <!-- BOM Column Alias section -->
-            <TextBlock Text="BOM Column Aliases"
-                       FontWeight="SemiBold"
-                       Foreground="{StaticResource BrushForeground}"
-                       Margin="0,8,0,4" />
             <TextBlock Text="Enter comma-separated SolidWorks BOM table column headers for each InvenTree field for assembly BOM comparison."
-                       Style="{StaticResource FieldLabelStyle}"
-                       TextWrapping="Wrap"
-                       Margin="0,0,0,4" />
+                       Style="{StaticResource SectionIntroStyle}"
+                       Margin="0,4,0,8" />
 
             <!-- BOM Column headers -->
             <Grid Margin="0,0,0,4">
@@ -217,11 +237,9 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="InvenTree BOM Field"
-                           Style="{StaticResource ColumnHeaderStyle}"
-                           HorizontalAlignment="Left" />
+                           Style="{StaticResource SubtleColumnHeaderStyle}" />
                 <TextBlock Grid.Column="1" Text="SolidWorks BOM Column"
-                           Style="{StaticResource ColumnHeaderStyle}"
-                           HorizontalAlignment="Left" />
+                           Style="{StaticResource SubtleColumnHeaderStyle}" />
             </Grid>
 
             <Grid Margin="0,2,0,0">
@@ -310,27 +328,9 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <Border x:Name="StatusBar"
-                        Grid.Column="0"
-                        Height="32"
-                        Background="#FFF0F0F0"
-                        BorderBrush="{StaticResource BrushBorder}"
-                        BorderThickness="0,1,0,0"
-                        VerticalAlignment="Center">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="4" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Border x:Name="StatusStripe" Grid.Column="0"
-                                Background="{StaticResource BrushStatusNone}" />
-                        <TextBox x:Name="StatusText"
-                                 Grid.Column="1"
-                                 Text="{Binding StatusMessage, Mode=OneWay}"
-                                 ToolTip="{Binding StatusMessage, Mode=OneWay}"
-                                 Style="{StaticResource StatusBarTextStyle}" />
-                    </Grid>
-                </Border>
+                <ui:StatusBarControl x:Name="StatusBar"
+                                     Grid.Column="0"
+                                     VerticalAlignment="Center" />
 
                 <Button x:Name="SaveButton"
                         Grid.Column="2"

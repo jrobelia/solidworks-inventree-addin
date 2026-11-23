@@ -98,6 +98,16 @@ namespace SwInventreeAddin.Tests.Capture
             // #334 audit surfaces — one representative state per shipped window.
             new Entry("PropertyMappingEditorWindow", "default",
                 () => new PropertyMappingEditorWindow(new StubPropertyMappingProvider())),
+            // #377 gate render: an empty mapping leaves every field on its
+            // italic placeholder — the treatment the finding targets.
+            new Entry("PropertyMappingEditorWindow", "placeholders",
+                () => new PropertyMappingEditorWindow(new StubPropertyMappingProvider
+                {
+                    Config = new PropertyMappingConfig
+                    {
+                        SchemaVersion = PropertyMappingConfig.CurrentSchemaVersion,
+                    },
+                })),
             new Entry("PushRevisionConfirmDialog", "default",
                 () => new PushRevisionConfirmDialog(
                     "Push revision \"B\" of CAP-100 (Bracket, Front) to InvenTree?\r\n\r\n" +

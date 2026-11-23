@@ -249,6 +249,18 @@
         <Setter Property="Margin"      Value="0,4,0,4" />
     </Style>
 
+    <!-- Subtle column header: the muted 11px SemiBold label the .pen mapping
+         editor draws over each editable column pair. 11 stays a literal like
+         SectionIntroStyle's — the size exists only inside these tokens. -->
+    <Style x:Key="SubtleColumnHeaderStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily"  Value="{StaticResource FontBody}" />
+        <Setter Property="FontSize"    Value="11" />
+        <Setter Property="FontWeight"  Value="SemiBold" />
+        <Setter Property="Foreground"  Value="{StaticResource BrushSubtle}" />
+        <Setter Property="HorizontalAlignment" Value="Left" />
+        <Setter Property="Margin"      Value="0,4,0,4" />
+    </Style>
+
     <!-- ── Section text styles ────────────────────────────────────────────── -->
 
     <!-- Section title: the SemiBold body-size line heading a window section -->
