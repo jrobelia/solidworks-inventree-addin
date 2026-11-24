@@ -111,7 +111,8 @@ namespace SwInventreeAddin.Tests.Capture
             new Entry("PushRevisionConfirmDialog", "default",
                 () => new PushRevisionConfirmDialog(
                     "Push revision \"B\" of CAP-100 (Bracket, Front) to InvenTree?\r\n\r\n" +
-                    "The InvenTree revision will be updated to \"B\".")),
+                    "The InvenTree revision will be updated to \"B\".",
+                    "Push Revision")),
             new Entry("BomCompareWindow", "loaded", CreateBomCompareWindow),
             new Entry("CreatePartWindow", "categories-loaded", CreateCreatePartWindow),
             new Entry("ImageCropWindow", "default", () =>
