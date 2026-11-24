@@ -22,7 +22,7 @@ Tokens are defined in `SwInventreeAddin/UI/DesignTokens.xaml` — this doc says 
 - `FontBody` is Segoe UI; `FontSizeBody` is 12; `FontSizeHeading` is 13.
 - Primary text uses `BrushForeground`; help text uses `BrushSubtle` in a wrapped `TextBlock` directly under the field it explains.
 - Section titles use `SectionTitleStyle` (SemiBold body text); inside a banded section header the same style is bumped to `FontSizeHeading`. Each section's one-line intro and per-field help text use `SectionIntroStyle` (11px `BrushSubtle`, wrapped).
-- Field labels use `FieldLabelStyle`; comparison-grid column headers use `ColumnHeaderStyle`.
+- Field labels use `FieldLabelStyle`; comparison-grid column headers use `ColumnHeaderStyle`; muted headers over editable column pairs use `SubtleColumnHeaderStyle` (11px SemiBold `BrushSubtle`, left-aligned).
 
 ## Sections and containers
 
@@ -67,3 +67,4 @@ Every status surface displays **Status Entries** — text + severity + persisten
 
 - History: Settings section headers drifted to plain `SectionTitleStyle` lines + `Separator` breaks, which this doc had recorded as convention; #330 restored the .pen file's banded header and moved each section's edit region into bordered groups. The summary card also left white for `BrushCardSummary`.
 - Task Pane BOM Comparison section ships without the .pen mock's "Assembly only." hint and "No BOM loaded." status line — maintainer ruled them mock annotation during QA on #390 (the section is already assembly-only, and the status was a constant with no session fact behind it). "Compare BOM" also keeps the accent primary style where the mock draws section-header grey — a maintainer pick like the grey Create-button deviation.
+- `PropertyMappingEditorWindow`'s right column header ships as "SolidWorks Custom Property" — the .pen mock's verbatim label (and SolidWorks' own "Custom Properties" name). Maintainer ruling on #377: the mock's shipped-string text wins over GLOSSARY.md's "custom property" avoid-term here; "SolidWorks Document Property" stays canonical for identifiers and prose.

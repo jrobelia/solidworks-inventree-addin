@@ -4,7 +4,6 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
-using System.Windows.Media;
 using SwInventreeAddin.Config;
 
 namespace SwInventreeAddin.UI
@@ -39,11 +38,12 @@ namespace SwInventreeAddin.UI
 
             _viewModel.PropertyChanged += (_, e) =>
             {
-                if (e.PropertyName == nameof(MappingEditorViewModel.StatusSeverity))
-                    RefreshStatusStripe();
+                if (e.PropertyName == nameof(MappingEditorViewModel.StatusMessage)
+                    || e.PropertyName == nameof(MappingEditorViewModel.StatusSeverity))
+                    RefreshStatus();
             };
 
-            RefreshStatusStripe();
+            RefreshStatus();
         }
 
         // ── Save ───────────────────────────────────────────────────────────────
@@ -64,19 +64,11 @@ namespace SwInventreeAddin.UI
 
         // ── UI refresh ─────────────────────────────────────────────────────────
 
-        private void RefreshStatusStripe()
+        private void RefreshStatus()
         {
-            if (StatusStripe == null) return;
+            if (StatusBar == null) return;
 
-            var brushKey = _viewModel.StatusSeverity switch
-            {
-                StatusSeverity.Success => "BrushStatusSuccess",
-                StatusSeverity.Warning => "BrushStatusWarning",
-                StatusSeverity.Error => "BrushStatusError",
-                _ => "BrushStatusNone",
-            };
-
-            StatusStripe.Background = (Brush)FindResource(brushKey);
+            StatusBar.SetStatus(_viewModel.StatusMessage, _viewModel.StatusSeverity);
         }
 
     }
