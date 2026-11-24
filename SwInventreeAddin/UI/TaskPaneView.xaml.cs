@@ -112,6 +112,7 @@ namespace SwInventreeAddin.UI
         {
             var dlg = new PushRevisionConfirmDialog(
                 "Push the SolidWorks description to InvenTree? This will overwrite the description currently stored in InvenTree.",
+                "Push Description",
                 imageCheckedByDefault: false);
 
             if (dlg.ShowDialog() != true) return;
@@ -126,6 +127,7 @@ namespace SwInventreeAddin.UI
         {
             var dlg = new PushRevisionConfirmDialog(
                 "Push the SolidWorks revision to InvenTree? This will overwrite the revision currently stored in InvenTree.",
+                "Push Revision",
                 imageCheckedByDefault: true);
 
             if (dlg.ShowDialog() != true) return;
@@ -140,6 +142,7 @@ namespace SwInventreeAddin.UI
         {
             var dlg = new PushRevisionConfirmDialog(
                 "Push the SolidWorks name/description to InvenTree? This will overwrite the name currently stored in InvenTree.",
+                "Push Name",
                 imageCheckedByDefault: false);
 
             if (dlg.ShowDialog() != true) return;
@@ -154,6 +157,7 @@ namespace SwInventreeAddin.UI
         {
             var dlg = new PushRevisionConfirmDialog(
                 "Push the SolidWorks notes to InvenTree? This will overwrite the notes currently stored in InvenTree.",
+                "Push Notes",
                 imageCheckedByDefault: false);
 
             if (dlg.ShowDialog() != true) return;
