@@ -39,24 +39,24 @@
                  triangle on the sorted column (the InvenTree core pattern).
                  Non-sortable columns get no glyph. -->
             <Style x:Key="BomSortGlyphStyle" TargetType="Path">
-                <Setter Property="Width" Value="8"/>
-                <Setter Property="Height" Value="9"/>
-                <Setter Property="Stretch" Value="Fill"/>
+                <!-- No Width/Height/Stretch: any stretch scales the geometry's
+                     bounding box to the slot, inflating the small triangles. -->
                 <Setter Property="Fill" Value="{StaticResource BrushSubtle}"/>
-                <Setter Property="Data" Value="M1,3.5 L4,0.5 L7,3.5 Z M1,5.5 L4,8.5 L7,5.5 Z"/>
+                <Setter Property="Data" Value="M0,3.5 L3.5,0 L7,3.5 Z M0,5 L3.5,8.5 L7,5 Z"/>
                 <Setter Property="VerticalAlignment" Value="Center"/>
                 <Setter Property="Margin" Value="4,0,0,0"/>
                 <Setter Property="SnapsToDevicePixels" Value="True"/>
                 <Style.Triggers>
+                    <!-- The direction triangles keep the idle pair's size and
+                         colour — only the count changes, so the sorted column
+                         reads as a state of the same glyph, not a new icon. -->
                     <DataTrigger Binding="{Binding Path=SortDirection, RelativeSource={RelativeSource AncestorType={x:Type DataGridColumnHeader}}}"
                                  Value="Ascending">
-                        <Setter Property="Data" Value="M0,7.5 L4,1.5 L8,7.5 Z"/>
-                        <Setter Property="Fill" Value="{StaticResource BrushForeground}"/>
+                        <Setter Property="Data" Value="M0,3.5 L3.5,0 L7,3.5 Z"/>
                     </DataTrigger>
                     <DataTrigger Binding="{Binding Path=SortDirection, RelativeSource={RelativeSource AncestorType={x:Type DataGridColumnHeader}}}"
                                  Value="Descending">
-                        <Setter Property="Data" Value="M0,1.5 L4,7.5 L8,1.5 Z"/>
-                        <Setter Property="Fill" Value="{StaticResource BrushForeground}"/>
+                        <Setter Property="Data" Value="M0,0 L3.5,3.5 L7,0 Z"/>
                     </DataTrigger>
                     <DataTrigger Binding="{Binding Path=Column.CanUserSort, RelativeSource={RelativeSource AncestorType={x:Type DataGridColumnHeader}}}"
                                  Value="False">
