@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -114,6 +116,20 @@ namespace SwInventreeAddin.Tests.Capture
                     "The InvenTree revision will be updated to \"B\".",
                     "Push Revision")),
             new Entry("BomCompareWindow", "loaded", CreateBomCompareWindow),
+            // Sort glyphs on the column headers — the sorted column shows a
+            // direction triangle. Only the header's sort direction is set:
+            // driving a real data sort mid first-layout fights the render
+            // plumbing, and sorting itself is verified in the QA walk.
+            new Entry("BomCompareWindow", "sorted-ipn", () =>
+            {
+                var window = CreateBomCompareWindow();
+                window.Loaded += (_, __) =>
+                {
+                    var grid = (DataGrid)LogicalTreeHelper.FindLogicalNode(window, "BomGrid")!;
+                    grid.Columns[2].SortDirection = ListSortDirection.Ascending;
+                };
+                return window;
+            }),
             new Entry("CreatePartWindow", "categories-loaded", CreateCreatePartWindow),
             new Entry("ImageCropWindow", "default", () =>
             {

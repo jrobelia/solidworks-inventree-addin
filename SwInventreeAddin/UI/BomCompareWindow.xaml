@@ -27,7 +27,52 @@
                 <Setter Property="Padding" Value="6,4,4,4"/>
                 <Setter Property="BorderThickness" Value="0,0,1,1"/>
                 <Setter Property="BorderBrush" Value="{StaticResource BrushBorder}"/>
+                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                <!-- DynamicResource: a StaticResource here travels through the
+                     column → header style transfer as an uninflated deferred
+                     reference and fails to cast to DataTemplate. -->
+                <Setter Property="ContentTemplate" Value="{DynamicResource BomHeaderContentTemplate}"/>
             </Style>
+
+            <!-- The sort glyph that rides the right edge of every sortable
+                 header — a subtle triangle pair when idle, a single direction
+                 triangle on the sorted column (the InvenTree core pattern).
+                 Non-sortable columns get no glyph. -->
+            <Style x:Key="BomSortGlyphStyle" TargetType="Path">
+                <Setter Property="Width" Value="8"/>
+                <Setter Property="Height" Value="9"/>
+                <Setter Property="Stretch" Value="Fill"/>
+                <Setter Property="Fill" Value="{StaticResource BrushSubtle}"/>
+                <Setter Property="Data" Value="M1,3.5 L4,0.5 L7,3.5 Z M1,5.5 L4,8.5 L7,5.5 Z"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="Margin" Value="4,0,0,0"/>
+                <Setter Property="SnapsToDevicePixels" Value="True"/>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding Path=SortDirection, RelativeSource={RelativeSource AncestorType={x:Type DataGridColumnHeader}}}"
+                                 Value="Ascending">
+                        <Setter Property="Data" Value="M0,7.5 L4,1.5 L8,7.5 Z"/>
+                        <Setter Property="Fill" Value="{StaticResource BrushForeground}"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding Path=SortDirection, RelativeSource={RelativeSource AncestorType={x:Type DataGridColumnHeader}}}"
+                                 Value="Descending">
+                        <Setter Property="Data" Value="M0,1.5 L4,7.5 L8,1.5 Z"/>
+                        <Setter Property="Fill" Value="{StaticResource BrushForeground}"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding Path=Column.CanUserSort, RelativeSource={RelativeSource AncestorType={x:Type DataGridColumnHeader}}}"
+                                 Value="False">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+            <!-- The glyph overlays the header text area instead of docking —
+                 reserving its width would clip the narrow fixed columns
+                 ("SW Qty", "Substitute Parts") further. -->
+            <DataTemplate x:Key="BomHeaderContentTemplate">
+                <Grid>
+                    <TextBlock Text="{Binding}"/>
+                    <Path HorizontalAlignment="Right" Style="{StaticResource BomSortGlyphStyle}"/>
+                </Grid>
+            </DataTemplate>
 
             <!-- Shared cell chrome — selection highlight suppressed; the row
                  colour does the work and the checkbox shows selection. Named so
@@ -344,7 +389,7 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="SW Qty" Width="55" IsReadOnly="True" SortMemberPath="SwQty">
+                            <DataGridTemplateColumn Header="SW Qty" Width="64" IsReadOnly="True" SortMemberPath="SwQty">
                                 <DataGridTemplateColumn.HeaderStyle>
                                     <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource BomHeaderStyle}">
                                         <Setter Property="Background" Value="{StaticResource BrushBomColSw}"/>
@@ -418,7 +463,7 @@
                                     </Style>
                                 </DataGridTextColumn.CellStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="Inv Qty"  Binding="{Binding ItQty}"       Width="55"  IsReadOnly="True"
+                            <DataGridTextColumn Header="Inv Qty"  Binding="{Binding ItQty}"       Width="64"  IsReadOnly="True"
                                                 ElementStyle="{StaticResource BomQtyTextStyle}">
                                 <DataGridTextColumn.HeaderStyle>
                                     <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource BomHeaderStyle}">
