@@ -66,9 +66,31 @@ namespace SwInventreeAddin.UI
         public bool QtyConflict => State == BomDiffState.Conflict && SwQty != ItQty;
         public bool ReferenceConflict => State == BomDiffState.Conflict && SwReference != ItReference;
         public bool NoteConflict => State == BomDiffState.Conflict && SwNote != ItNote;
-        public bool IsProblemState => State == BomDiffState.NoIpn
-                                   || State == BomDiffState.IpnNotFound
-                                   || State == BomDiffState.Ambiguous;
+        // GuidanceText's non-empty arms are the single source for the
+        // problem-state set — the XAML, the attention count, and the sort
+        // order all read it through here.
+        public bool IsProblemState => GuidanceText.Length > 0;
+
+        // The .pen problem rows replace their data cells with a one-line
+        // explanation. Ambiguous has two causes the mock draws as one row —
+        // an IPN that resolves to several InvenTree parts, and a quantity
+        // cell that failed to parse — so the message picks by SwLine.
+        public string GuidanceText => State switch
+        {
+            BomDiffState.NoIpn =>
+                "Part has no IPN assigned in SolidWorks — edit custom property",
+            BomDiffState.IpnNotFound =>
+                "IPN not found in InvenTree — create the part first",
+            BomDiffState.Ambiguous => DiffLine.SwLine?.UnparsedQuantity != null
+                ? "Quantity could not be parsed — fix the BOM quantity value"
+                : "IPN matches multiple InvenTree parts — resolve duplicates in InvenTree",
+            _ => string.Empty,
+        };
+
+        // True when the row carries an IPN worth printing. The grid uses it to
+        // place the guidance line: it starts in the IPN cell on a No-IPN row
+        // and in the first data cell when the IPN stays visible.
+        public bool HasDisplayIpn => !string.IsNullOrEmpty(DisplayIpn);
 
         public BomDiffLineViewModel(BomDiffLine diffLine)
         {
@@ -189,7 +211,7 @@ namespace SwInventreeAddin.UI
                     var diff = BomDiffEngine.Diff(swLines, itLines, lookup);
                     RebindLines(diff);
                     loaded = diff.Count;
-                    StatusText = string.Empty;
+                    StatusText = BuildStateSummary();
                     if (!string.IsNullOrEmpty(_sortColumn)) ApplySort();
                 });
                 _logger.LogInformation($"BOM Compare load completed: {loaded} lines.");
@@ -368,6 +390,26 @@ namespace SwInventreeAddin.UI
             foreach (var (ipn, parts) in results)
                 result[ipn] = parts;
             return result;
+        }
+
+        // The .pen footer's post-load line: counts per BOM Diff State, with the
+        // problem rows folded into one "need attention" figure.
+        private string BuildStateSummary()
+        {
+            var parts = new List<string>();
+            int matched = Lines.Count(l => l.State == BomDiffState.Match);
+            int conflicts = Lines.Count(l => l.State == BomDiffState.Conflict);
+            int newLines = Lines.Count(l => l.State == BomDiffState.New);
+            int itOnly = Lines.Count(l => l.State == BomDiffState.InvenTreeOnly);
+            int attention = Lines.Count(l => l.IsProblemState);
+
+            if (matched > 0) parts.Add($"{matched} matched");
+            if (conflicts > 0) parts.Add($"{conflicts} {(conflicts == 1 ? "conflict" : "conflicts")}");
+            if (newLines > 0) parts.Add($"{newLines} new");
+            if (itOnly > 0) parts.Add($"{itOnly} InvenTree-only");
+            if (attention > 0) parts.Add($"{attention} need attention");
+
+            return string.Join(" · ", parts);
         }
 
         private void RebindLines(IReadOnlyList<BomDiffLine> diff)

@@ -218,6 +218,191 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.Lines[0].StateLabel, Is.EqualTo("Inv Only"));
         }
 
+        // ── GuidanceText ──────────────────────────────────────────────────────
+
+        [Test]
+        public async Task LoadAsync_NoIpnRow_ShowsEditPropertyGuidance()
+        {
+            _bomService.LinesToReturn.Add(new SwBomLine { Quantity = 2, Reference = "MISC-HDW" });
+            _client.BomLinesToReturn = new List<InventreeBomLine>();
+
+            var vm = CreateVm();
+            await vm.LoadAsync();
+
+            Assert.That(vm.Lines[0].State, Is.EqualTo(BomDiffState.NoIpn));
+            Assert.That(vm.Lines[0].GuidanceText,
+                Is.EqualTo("Part has no IPN assigned in SolidWorks — edit custom property"));
+        }
+
+        [Test]
+        public async Task LoadAsync_IpnNotFoundRow_ShowsCreatePartGuidance()
+        {
+            _bomService.LinesToReturn.Add(new SwBomLine { Ipn = "SW-404", Quantity = 1 });
+            _client.BomLinesToReturn = new List<InventreeBomLine>();
+
+            var vm = CreateVm();
+            await vm.LoadAsync();
+
+            Assert.That(vm.Lines[0].State, Is.EqualTo(BomDiffState.IpnNotFound));
+            Assert.That(vm.Lines[0].GuidanceText,
+                Is.EqualTo("IPN not found in InvenTree — create the part first"));
+        }
+
+        [Test]
+        public async Task LoadAsync_AmbiguousIpnRow_ShowsResolveDuplicatesGuidance()
+        {
+            _bomService.LinesToReturn.Add(new SwBomLine { Ipn = "DUP", Quantity = 1 });
+            _client.PartsByIpnToReturn = new List<InventreePart>
+            {
+                new InventreePart { Pk = 1, Ipn = "DUP" },
+                new InventreePart { Pk = 2, Ipn = "DUP" },
+            };
+            _client.BomLinesToReturn = new List<InventreeBomLine>();
+
+            var vm = CreateVm();
+            await vm.LoadAsync();
+
+            Assert.That(vm.Lines[0].State, Is.EqualTo(BomDiffState.Ambiguous));
+            Assert.That(vm.Lines[0].GuidanceText,
+                Is.EqualTo("IPN matches multiple InvenTree parts — resolve duplicates in InvenTree"));
+        }
+
+        [Test]
+        public async Task LoadAsync_UnparsedQuantityRow_ShowsFixQuantityGuidance()
+        {
+            _bomService.LinesToReturn.Add(new SwBomLine
+            {
+                Ipn = "A",
+                SubPartPk = 10,
+                UnparsedQuantity = "cut to length"
+            });
+            _client.BomLinesToReturn = new List<InventreeBomLine>
+            {
+                new InventreeBomLine { Pk = 1, SubPartPk = 10, Quantity = 0 }
+            };
+
+            var vm = CreateVm();
+            await vm.LoadAsync();
+
+            Assert.That(vm.Lines[0].State, Is.EqualTo(BomDiffState.Ambiguous));
+            Assert.That(vm.Lines[0].GuidanceText,
+                Is.EqualTo("Quantity could not be parsed — fix the BOM quantity value"));
+        }
+
+        [Test]
+        public async Task LoadAsync_MatchRow_GuidanceTextIsEmpty()
+        {
+            _bomService.LinesToReturn.Add(new SwBomLine { Ipn = "A", SubPartPk = 10, Quantity = 1 });
+            _client.BomLinesToReturn = new List<InventreeBomLine>
+                { new InventreeBomLine { Pk = 1, SubPartPk = 10, Quantity = 1 } };
+
+            var vm = CreateVm();
+            await vm.LoadAsync();
+
+            Assert.That(vm.Lines[0].GuidanceText, Is.EqualTo(string.Empty));
+        }
+
+        // ── HasDisplayIpn ─────────────────────────────────────────────────────
+
+        [Test]
+        public async Task LoadAsync_NoIpnRow_HasDisplayIpnIsFalse()
+        {
+            _bomService.LinesToReturn.Add(new SwBomLine { Quantity = 2, Reference = "MISC-HDW" });
+            _client.BomLinesToReturn = new List<InventreeBomLine>();
+
+            var vm = CreateVm();
+            await vm.LoadAsync();
+
+            Assert.That(vm.Lines[0].HasDisplayIpn, Is.False);
+        }
+
+        [Test]
+        public async Task LoadAsync_IpnNotFoundRow_HasDisplayIpnIsTrue()
+        {
+            _bomService.LinesToReturn.Add(new SwBomLine { Ipn = "SW-404", Quantity = 1 });
+            _client.BomLinesToReturn = new List<InventreeBomLine>();
+
+            var vm = CreateVm();
+            await vm.LoadAsync();
+
+            Assert.That(vm.Lines[0].HasDisplayIpn, Is.True);
+        }
+
+        // ── Load status summary ───────────────────────────────────────────────
+
+        [Test]
+        public async Task LoadAsync_PopulatesStatusTextWithStateSummary()
+        {
+            // One row per BOM Diff State — the same spread the .pen mock's
+            // status line counts: "1 matched · 1 conflict · 1 new ·
+            // 1 InvenTree-only · 3 need attention".
+            _bomService.LinesToReturn.Add(new SwBomLine { Ipn = "A", SubPartPk = 101, Quantity = 2, Reference = "BRK" });
+            _bomService.LinesToReturn.Add(new SwBomLine { Ipn = "B", SubPartPk = 102, Quantity = 4, Reference = "CAP" });
+            _bomService.LinesToReturn.Add(new SwBomLine { Ipn = "C", SubPartPk = 103, Quantity = 1, Reference = "RES" });
+            _bomService.LinesToReturn.Add(new SwBomLine { Quantity = 2, Reference = "MISC" });
+            _bomService.LinesToReturn.Add(new SwBomLine { Ipn = "D", Quantity = 1, Reference = "GHOST" });
+            _bomService.LinesToReturn.Add(new SwBomLine { Ipn = "E", SubPartPk = 105, UnparsedQuantity = "abc", Reference = "QTY" });
+            _client.BomLinesToReturn = new List<InventreeBomLine>
+            {
+                new InventreeBomLine { Pk = 11, SubPartPk = 101, Quantity = 2, Reference = "BRK" },
+                new InventreeBomLine { Pk = 12, SubPartPk = 102, Quantity = 1, Reference = "CAP" },
+                new InventreeBomLine { Pk = 13, SubPartPk = 104, Quantity = 1, Reference = "EXTRA" },
+                new InventreeBomLine { Pk = 14, SubPartPk = 105, Quantity = 3, Reference = "QTY" },
+            };
+
+            var vm = CreateVm();
+            await vm.LoadAsync();
+
+            Assert.That(vm.StatusText,
+                Is.EqualTo("1 matched · 1 conflict · 1 new · 1 InvenTree-only · 3 need attention"));
+        }
+
+        [Test]
+        public async Task LoadAsync_AllMatch_StatusTextCountsMatchesOnly()
+        {
+            _bomService.LinesToReturn.Add(new SwBomLine { Ipn = "A", SubPartPk = 10, Quantity = 1 });
+            _bomService.LinesToReturn.Add(new SwBomLine { Ipn = "B", SubPartPk = 20, Quantity = 1 });
+            _client.BomLinesToReturn = new List<InventreeBomLine>
+            {
+                new InventreeBomLine { Pk = 1, SubPartPk = 10, Quantity = 1 },
+                new InventreeBomLine { Pk = 2, SubPartPk = 20, Quantity = 1 },
+            };
+
+            var vm = CreateVm();
+            await vm.LoadAsync();
+
+            Assert.That(vm.StatusText, Is.EqualTo("2 matched"));
+        }
+
+        [Test]
+        public async Task LoadAsync_ConflictRows_PluralizesSummary()
+        {
+            _bomService.LinesToReturn.Add(new SwBomLine { Ipn = "A", SubPartPk = 10, Quantity = 4 });
+            _bomService.LinesToReturn.Add(new SwBomLine { Ipn = "B", SubPartPk = 20, Quantity = 3 });
+            _client.BomLinesToReturn = new List<InventreeBomLine>
+            {
+                new InventreeBomLine { Pk = 1, SubPartPk = 10, Quantity = 1 },
+                new InventreeBomLine { Pk = 2, SubPartPk = 20, Quantity = 1 },
+            };
+
+            var vm = CreateVm();
+            await vm.LoadAsync();
+
+            Assert.That(vm.StatusText, Is.EqualTo("2 conflicts"));
+        }
+
+        [Test]
+        public async Task LoadAsync_NoLines_StatusTextStaysEmpty()
+        {
+            _bomService.LinesToReturn = new List<SwBomLine>();
+            _client.BomLinesToReturn = new List<InventreeBomLine>();
+
+            var vm = CreateVm();
+            await vm.LoadAsync();
+
+            Assert.That(vm.StatusText, Is.EqualTo(string.Empty));
+        }
+
         // ── ApplyAsync ────────────────────────────────────────────────────────
 
         [Test]

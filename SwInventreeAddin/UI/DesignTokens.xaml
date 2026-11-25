@@ -30,6 +30,29 @@
     <!-- Hollow-dot outline for the Settings status card's Not tested state -->
     <Color x:Key="ColorStatusNotTested">#FF9E9E9E</Color>
 
+    <!-- BOM Compare grid palette — the .pen mock's literal values, promoted
+         while the window was touched (#379). State-label colours that share
+         an existing token (match green, subtle grey, accent blue) reuse it.
+         The conflict orange serves both the Conflict and Ambiguous state
+         labels and the mock's differing-cell text. -->
+    <Color x:Key="ColorBomStateConflict">#FFE65100</Color>
+    <Color x:Key="ColorBomStateNotFound">#FFC62828</Color>
+    <!-- Row tints per BOM Diff State (InvenTreeOnly rows reuse the
+         BrushInventreeField cream — same value, same meaning). -->
+    <Color x:Key="ColorBomRowNew">#FFF0FFF0</Color>
+    <Color x:Key="ColorBomRowConflict">#FFFFFDE7</Color>
+    <Color x:Key="ColorBomRowNoIpn">#FFF5F5F5</Color>
+    <Color x:Key="ColorBomRowNotFound">#FFFFF0EE</Color>
+    <Color x:Key="ColorBomRowAmbiguous">#FFFFF8EE</Color>
+    <!-- Differing-cell emphasis: the mock's soft-orange fill -->
+    <Color x:Key="ColorBomConflictCell">#FFFFF3E0</Color>
+    <!-- Group band and column-header fills -->
+    <Color x:Key="ColorBomHeader">#FFF0F0F0</Color>
+    <Color x:Key="ColorBomGroupSw">#FFC8E6FF</Color>
+    <Color x:Key="ColorBomGroupIt">#FFFFF9C4</Color>
+    <Color x:Key="ColorBomColSw">#FFE3F2FF</Color>
+    <Color x:Key="ColorBomColIt">#FFFFFDE7</Color>
+
     <!-- Brushes -->
     <SolidColorBrush x:Key="BrushSectionHeader"         Color="{StaticResource ColorSectionHeader}" />
     <SolidColorBrush x:Key="BrushAccentBlue"            Color="{StaticResource ColorAccentBlue}" />
@@ -49,6 +72,19 @@
     <SolidColorBrush x:Key="BrushImagePlaceholderGlyph" Color="{StaticResource ColorImagePlaceholderGlyph}" />
     <SolidColorBrush x:Key="BrushMatch"                 Color="{StaticResource ColorMatch}" />
     <SolidColorBrush x:Key="BrushMismatch"              Color="{StaticResource ColorMismatch}" />
+    <SolidColorBrush x:Key="BrushBomStateConflict"      Color="{StaticResource ColorBomStateConflict}" />
+    <SolidColorBrush x:Key="BrushBomStateNotFound"      Color="{StaticResource ColorBomStateNotFound}" />
+    <SolidColorBrush x:Key="BrushBomRowNew"             Color="{StaticResource ColorBomRowNew}" />
+    <SolidColorBrush x:Key="BrushBomRowConflict"        Color="{StaticResource ColorBomRowConflict}" />
+    <SolidColorBrush x:Key="BrushBomRowNoIpn"           Color="{StaticResource ColorBomRowNoIpn}" />
+    <SolidColorBrush x:Key="BrushBomRowNotFound"        Color="{StaticResource ColorBomRowNotFound}" />
+    <SolidColorBrush x:Key="BrushBomRowAmbiguous"       Color="{StaticResource ColorBomRowAmbiguous}" />
+    <SolidColorBrush x:Key="BrushBomConflictCell"       Color="{StaticResource ColorBomConflictCell}" />
+    <SolidColorBrush x:Key="BrushBomHeader"             Color="{StaticResource ColorBomHeader}" />
+    <SolidColorBrush x:Key="BrushBomGroupSw"            Color="{StaticResource ColorBomGroupSw}" />
+    <SolidColorBrush x:Key="BrushBomGroupIt"            Color="{StaticResource ColorBomGroupIt}" />
+    <SolidColorBrush x:Key="BrushBomColSw"              Color="{StaticResource ColorBomColSw}" />
+    <SolidColorBrush x:Key="BrushBomColIt"              Color="{StaticResource ColorBomColIt}" />
 
     <!-- ── Typography ─────────────────────────────────────────────────────── -->
 

@@ -27,6 +27,156 @@
                 <Setter Property="Padding" Value="6,4,4,4"/>
                 <Setter Property="BorderThickness" Value="0,0,1,1"/>
                 <Setter Property="BorderBrush" Value="{StaticResource BrushBorder}"/>
+                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                <!-- DynamicResource: a StaticResource here travels through the
+                     column → header style transfer as an uninflated deferred
+                     reference and fails to cast to DataTemplate. -->
+                <Setter Property="ContentTemplate" Value="{DynamicResource BomHeaderContentTemplate}"/>
+            </Style>
+
+            <!-- The sort glyph that rides the right edge of every sortable
+                 header — a subtle triangle pair when idle, a single direction
+                 triangle on the sorted column (the InvenTree core pattern).
+                 Non-sortable columns get no glyph. -->
+            <Style x:Key="BomSortGlyphStyle" TargetType="Path">
+                <!-- No Width/Height/Stretch: any stretch scales the geometry's
+                     bounding box to the slot, inflating the small triangles. -->
+                <Setter Property="Fill" Value="{StaticResource BrushSubtle}"/>
+                <Setter Property="Data" Value="M0,3.5 L3.5,0 L7,3.5 Z M0,5 L3.5,8.5 L7,5 Z"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="Margin" Value="4,0,0,0"/>
+                <Setter Property="SnapsToDevicePixels" Value="True"/>
+                <Style.Triggers>
+                    <!-- The direction triangles keep the idle pair's size and
+                         colour — only the count changes, so the sorted column
+                         reads as a state of the same glyph, not a new icon. -->
+                    <DataTrigger Binding="{Binding Path=SortDirection, RelativeSource={RelativeSource AncestorType={x:Type DataGridColumnHeader}}}"
+                                 Value="Ascending">
+                        <Setter Property="Data" Value="M0,3.5 L3.5,0 L7,3.5 Z"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding Path=SortDirection, RelativeSource={RelativeSource AncestorType={x:Type DataGridColumnHeader}}}"
+                                 Value="Descending">
+                        <Setter Property="Data" Value="M0,0 L3.5,3.5 L7,0 Z"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding Path=Column.CanUserSort, RelativeSource={RelativeSource AncestorType={x:Type DataGridColumnHeader}}}"
+                                 Value="False">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+            <!-- The glyph overlays the header text area instead of docking —
+                 reserving its width would clip the narrow fixed columns
+                 ("SW Qty", "Substitute Parts") further. -->
+            <DataTemplate x:Key="BomHeaderContentTemplate">
+                <Grid>
+                    <TextBlock Text="{Binding}"/>
+                    <Path HorizontalAlignment="Right" Style="{StaticResource BomSortGlyphStyle}"/>
+                </Grid>
+            </DataTemplate>
+
+            <!-- Shared cell chrome — selection highlight suppressed; the row
+                 colour does the work and the checkbox shows selection. Named so
+                 per-column CellStyle blocks can build on it for the differing-
+                 cell tint. -->
+            <Style x:Key="BomCellStyle" TargetType="DataGridCell">
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                <Style.Triggers>
+                    <Trigger Property="IsSelected" Value="True">
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="BorderBrush"  Value="Transparent"/>
+                        <Setter Property="Foreground"   Value="{StaticResource BrushForeground}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- State column: the mock's colored Semibold 11px label per
+                 BOM Diff State. -->
+            <Style x:Key="BomStateLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource BomCellTextStyle}">
+                <Setter Property="FontSize" Value="11"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding State}" Value="Match">
+                        <Setter Property="Foreground" Value="{StaticResource BrushMatch}"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding State}" Value="Conflict">
+                        <Setter Property="Foreground" Value="{StaticResource BrushBomStateConflict}"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding State}" Value="New">
+                        <Setter Property="Foreground" Value="{StaticResource BrushAccentBlue}"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding State}" Value="InvenTreeOnly">
+                        <Setter Property="Foreground" Value="{StaticResource BrushSubtle}"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding State}" Value="NoIpn">
+                        <Setter Property="Foreground" Value="{StaticResource BrushSubtle}"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding State}" Value="IpnNotFound">
+                        <Setter Property="Foreground" Value="{StaticResource BrushBomStateNotFound}"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding State}" Value="Ambiguous">
+                        <Setter Property="Foreground" Value="{StaticResource BrushBomStateConflict}"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- The surviving IPN on a problem row keeps the state colour. -->
+            <Style x:Key="BomProblemIpnStyle" TargetType="TextBlock" BasedOn="{StaticResource BomCellTextStyle}">
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding State}" Value="IpnNotFound">
+                        <Setter Property="Foreground" Value="{StaticResource BrushBomStateNotFound}"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding State}" Value="Ambiguous">
+                        <Setter Property="Foreground" Value="{StaticResource BrushBomStateConflict}"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- Problem-row guidance: the mock's 11px subtle line that spans
+                 the data cells. Sits in a Canvas so it can overflow the cell
+                 it starts in. -->
+            <Style x:Key="BomGuidanceStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="11"/>
+                <Setter Property="Foreground" Value="{StaticResource BrushSubtle}"/>
+                <Setter Property="Margin" Value="6,0,0,0"/>
+            </Style>
+
+            <!-- Problem rows show only their state label, IPN and guidance —
+                 the guidance line carries the "what to do", so the data cells
+                 stay empty like the mock's spanning message. -->
+            <Style x:Key="BomHiddenOnProblemStyle" TargetType="TextBlock" BasedOn="{StaticResource BomCellTextStyle}">
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsProblemState}" Value="True">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- Data cells: hidden on problem rows; a differing value on a
+                 Conflict row takes the mock's emphasis — Semibold state orange. -->
+            <Style x:Key="BomQtyTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BomHiddenOnProblemStyle}">
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding QtyConflict}" Value="True">
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="Foreground" Value="{StaticResource BrushBomStateConflict}"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+            <Style x:Key="BomRefTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BomHiddenOnProblemStyle}">
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding ReferenceConflict}" Value="True">
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="Foreground" Value="{StaticResource BrushBomStateConflict}"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+            <Style x:Key="BomNoteTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BomHiddenOnProblemStyle}">
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding NoteConflict}" Value="True">
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="Foreground" Value="{StaticResource BrushBomStateConflict}"/>
+                    </DataTrigger>
+                </Style.Triggers>
             </Style>
         </ResourceDictionary>
     </Window.Resources>
@@ -42,32 +192,49 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
+            <!-- Banded section header — the .pen dialogTitleBar treatment
+                 (3px accent stripe + grey band), same chrome the Task Pane
+                 and Settings section headers use. -->
+            <Grid Grid.Row="0" Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0"
+                        Background="{StaticResource BrushAccentBlue}"/>
+                <Border Grid.Column="1"
+                        Background="{StaticResource BrushSectionHeader}"
+                        Padding="6,4">
+                    <TextBlock Text="BOM Comparison"
+                               Style="{StaticResource SectionTitleStyle}"
+                               FontSize="{StaticResource FontSizeHeading}"/>
+                </Border>
+            </Grid>
+
             <!-- Assembly label -->
-            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,4">
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,4">
                 <TextBlock x:Name="AssemblyIpn"
-                           FontWeight="Bold" FontSize="14"
-                           Foreground="{StaticResource BrushForeground}"/>
+                           Style="{StaticResource SectionTitleStyle}"/>
                 <TextBlock x:Name="AssemblyName"
-                           FontSize="13"
-                           Foreground="#FF666666"
+                           Style="{StaticResource SectionIntroStyle}"
                            VerticalAlignment="Bottom"
                            Margin="8,0,0,1"/>
             </StackPanel>
 
             <!-- BOM table info row -->
-            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,6">
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,6">
                 <TextBlock x:Name="BomTableName"
-                           FontSize="11"
-                           Foreground="#FF666666"
+                           Style="{StaticResource SectionIntroStyle}"
                            VerticalAlignment="Center"/>
             </StackPanel>
 
             <!-- Bulk-select toolbar -->
-            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,6">
+            <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,6">
                 <Button Content="Select All"
                         Click="SelectAll_Click"
                         Width="90" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,4,0"/>
@@ -83,7 +250,7 @@
             </StackPanel>
 
             <!-- Whole-table frame — one border encloses the group header band and the DataGrid -->
-            <Border Grid.Row="3"
+            <Border Grid.Row="4"
                     BorderBrush="{StaticResource BrushBorder}" BorderThickness="1"
                     Margin="0,0,0,8"
                     SnapsToDevicePixels="True">
@@ -100,13 +267,13 @@
                             <ColumnDefinition x:Name="GhColSw"   Width="165"/>
                             <ColumnDefinition x:Name="GhColIt"   Width="1"/>
                         </Grid.ColumnDefinitions>
-                        <Border Grid.Column="0" Background="#F0F0F0"
+                        <Border Grid.Column="0" Background="{StaticResource BrushBomHeader}"
                                 BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,0,1,0"/>
-                        <Border Grid.Column="1" Background="#C8E6FF">
+                        <Border Grid.Column="1" Background="{StaticResource BrushBomGroupSw}">
                             <TextBlock Text="SolidWorks" FontWeight="SemiBold" FontSize="11"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
-                        <Border Grid.Column="2" Background="#FFF9C4"
+                        <Border Grid.Column="2" Background="{StaticResource BrushBomGroupIt}"
                                 BorderBrush="{StaticResource BrushBorder}" BorderThickness="1,0,0,0">
                             <TextBlock Text="InvenTree" FontWeight="SemiBold" FontSize="11"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -135,22 +302,22 @@
                             <Style TargetType="DataGridRow">
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding State}" Value="New">
-                                        <Setter Property="Background" Value="#F0FFF0"/>
+                                        <Setter Property="Background" Value="{StaticResource BrushBomRowNew}"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding State}" Value="Conflict">
-                                        <Setter Property="Background" Value="#FFFDE7"/>
+                                        <Setter Property="Background" Value="{StaticResource BrushBomRowConflict}"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding State}" Value="InvenTreeOnly">
-                                        <Setter Property="Background" Value="#FFFFFEF0"/>
+                                        <Setter Property="Background" Value="{StaticResource BrushInventreeField}"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding State}" Value="NoIpn">
-                                        <Setter Property="Background" Value="#F5F5F5"/>
+                                        <Setter Property="Background" Value="{StaticResource BrushBomRowNoIpn}"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding State}" Value="IpnNotFound">
-                                        <Setter Property="Background" Value="#FFF0EE"/>
+                                        <Setter Property="Background" Value="{StaticResource BrushBomRowNotFound}"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding State}" Value="Ambiguous">
-                                        <Setter Property="Background" Value="#FFF8EE"/>
+                                        <Setter Property="Background" Value="{StaticResource BrushBomRowAmbiguous}"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -158,23 +325,13 @@
                         <!-- Suppress the default blue/grey cell selection highlight.
                              Row colour comes from RowStyle above; checkbox shows selection. -->
                         <DataGrid.CellStyle>
-                            <Style TargetType="DataGridCell">
-                                <Setter Property="BorderThickness" Value="0"/>
-                                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
-                                <Style.Triggers>
-                                    <Trigger Property="IsSelected" Value="True">
-                                        <Setter Property="Background" Value="Transparent"/>
-                                        <Setter Property="BorderBrush"  Value="Transparent"/>
-                                        <Setter Property="Foreground"   Value="{StaticResource BrushForeground}"/>
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
+                            <Style TargetType="DataGridCell" BasedOn="{StaticResource BomCellStyle}"/>
                         </DataGrid.CellStyle>
                         <DataGrid.Columns>
                             <DataGridTemplateColumn Header="" Width="28" CanUserSort="False">
                                 <DataGridTemplateColumn.HeaderStyle>
                                     <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource BomHeaderStyle}">
-                                        <Setter Property="Background" Value="#F0F0F0"/>
+                                        <Setter Property="Background" Value="{StaticResource BrushBomHeader}"/>
                                     </Style>
                                 </DataGridTemplateColumn.HeaderStyle>
                                 <DataGridTemplateColumn.CellTemplate>
@@ -190,128 +347,178 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
                             <DataGridTextColumn Header="State"   Binding="{Binding StateLabel}"  Width="80"  IsReadOnly="True"
-                                                ElementStyle="{StaticResource BomCellTextStyle}">
+                                                ElementStyle="{StaticResource BomStateLabelStyle}">
                                 <DataGridTextColumn.HeaderStyle>
                                     <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource BomHeaderStyle}">
-                                        <Setter Property="Background" Value="#F0F0F0"/>
+                                        <Setter Property="Background" Value="{StaticResource BrushBomHeader}"/>
                                     </Style>
                                 </DataGridTextColumn.HeaderStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="IPN"     Binding="{Binding DisplayIpn}"  Width="100" IsReadOnly="True"
-                                                ElementStyle="{StaticResource BomCellTextStyle}">
-                                <DataGridTextColumn.HeaderStyle>
+                            <DataGridTemplateColumn Header="IPN" Width="100" IsReadOnly="True" SortMemberPath="DisplayIpn">
+                                <DataGridTemplateColumn.HeaderStyle>
                                     <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource BomHeaderStyle}">
-                                        <Setter Property="Background" Value="#F0F0F0"/>
+                                        <Setter Property="Background" Value="{StaticResource BrushBomHeader}"/>
                                     </Style>
-                                </DataGridTextColumn.HeaderStyle>
-                            </DataGridTextColumn>
-                            <DataGridTextColumn Header="SW Qty"  Binding="{Binding SwQty}"       Width="55"  IsReadOnly="True">
-                                <DataGridTextColumn.HeaderStyle>
+                                </DataGridTemplateColumn.HeaderStyle>
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Grid>
+                                            <TextBlock x:Name="IpnText"
+                                                       Text="{Binding DisplayIpn}"
+                                                       Style="{StaticResource BomProblemIpnStyle}"/>
+                                            <!-- No-IPN rows have no IPN to print, so the guidance
+                                                 line starts in this cell — the Canvas does not
+                                                 constrain it, and it paints across the empty
+                                                 data cells like the mock's spanning message. -->
+                                            <Canvas x:Name="Guidance" IsHitTestVisible="False"
+                                                    Visibility="Collapsed">
+                                                <TextBlock Text="{Binding GuidanceText}"
+                                                           Style="{StaticResource BomGuidanceStyle}"/>
+                                            </Canvas>
+                                        </Grid>
+                                        <DataTemplate.Triggers>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding IsProblemState}" Value="True"/>
+                                                    <Condition Binding="{Binding HasDisplayIpn}" Value="False"/>
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter TargetName="IpnText" Property="Visibility" Value="Collapsed"/>
+                                                <Setter TargetName="Guidance" Property="Visibility" Value="Visible"/>
+                                            </MultiDataTrigger>
+                                        </DataTemplate.Triggers>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="SW Qty" Width="64" IsReadOnly="True" SortMemberPath="SwQty">
+                                <DataGridTemplateColumn.HeaderStyle>
                                     <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource BomHeaderStyle}">
-                                        <Setter Property="Background" Value="#E3F2FF"/>
+                                        <Setter Property="Background" Value="{StaticResource BrushBomColSw}"/>
                                     </Style>
-                                </DataGridTextColumn.HeaderStyle>
-                                <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock" BasedOn="{StaticResource BomCellTextStyle}">
+                                </DataGridTemplateColumn.HeaderStyle>
+                                <DataGridTemplateColumn.CellStyle>
+                                    <Style TargetType="DataGridCell" BasedOn="{StaticResource BomCellStyle}">
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding QtyConflict}" Value="True">
-                                                <Setter Property="FontWeight" Value="Bold"/>
-                                                <Setter Property="Foreground" Value="#B45309"/>
+                                                <Setter Property="Background" Value="{StaticResource BrushBomConflictCell}"/>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
-                                </DataGridTextColumn.ElementStyle>
-                            </DataGridTextColumn>
-                            <DataGridTextColumn Header="SW Ref." Binding="{Binding SwReference}" Width="*"   IsReadOnly="True">
+                                </DataGridTemplateColumn.CellStyle>
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Grid>
+                                            <TextBlock Text="{Binding SwQty}"
+                                                       Style="{StaticResource BomQtyTextStyle}"/>
+                                            <!-- Problem rows that still show an IPN carry the
+                                                 guidance line from here to the row's end. -->
+                                            <Canvas x:Name="Guidance" IsHitTestVisible="False"
+                                                    Visibility="Collapsed">
+                                                <TextBlock Text="{Binding GuidanceText}"
+                                                           Style="{StaticResource BomGuidanceStyle}"/>
+                                            </Canvas>
+                                        </Grid>
+                                        <DataTemplate.Triggers>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding IsProblemState}" Value="True"/>
+                                                    <Condition Binding="{Binding HasDisplayIpn}" Value="True"/>
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter TargetName="Guidance" Property="Visibility" Value="Visible"/>
+                                            </MultiDataTrigger>
+                                        </DataTemplate.Triggers>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="SW Ref." Binding="{Binding SwReference}" Width="*"   IsReadOnly="True"
+                                                ElementStyle="{StaticResource BomRefTextStyle}">
                                 <DataGridTextColumn.HeaderStyle>
                                     <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource BomHeaderStyle}">
-                                        <Setter Property="Background" Value="#E3F2FF"/>
+                                        <Setter Property="Background" Value="{StaticResource BrushBomColSw}"/>
                                     </Style>
                                 </DataGridTextColumn.HeaderStyle>
-                                <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock" BasedOn="{StaticResource BomCellTextStyle}">
+                                <DataGridTextColumn.CellStyle>
+                                    <Style TargetType="DataGridCell" BasedOn="{StaticResource BomCellStyle}">
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding ReferenceConflict}" Value="True">
-                                                <Setter Property="FontWeight" Value="Bold"/>
-                                                <Setter Property="Foreground" Value="#B45309"/>
+                                                <Setter Property="Background" Value="{StaticResource BrushBomConflictCell}"/>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
-                                </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn.CellStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="SW Note" Binding="{Binding SwNote}"      Width="*"   IsReadOnly="True">
+                            <DataGridTextColumn Header="SW Note" Binding="{Binding SwNote}"      Width="*"   IsReadOnly="True"
+                                                ElementStyle="{StaticResource BomNoteTextStyle}">
                                 <DataGridTextColumn.HeaderStyle>
                                     <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource BomHeaderStyle}">
-                                        <Setter Property="Background" Value="#E3F2FF"/>
+                                        <Setter Property="Background" Value="{StaticResource BrushBomColSw}"/>
                                     </Style>
                                 </DataGridTextColumn.HeaderStyle>
-                                <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock" BasedOn="{StaticResource BomCellTextStyle}">
+                                <DataGridTextColumn.CellStyle>
+                                    <Style TargetType="DataGridCell" BasedOn="{StaticResource BomCellStyle}">
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding NoteConflict}" Value="True">
-                                                <Setter Property="FontWeight" Value="Bold"/>
-                                                <Setter Property="Foreground" Value="#B45309"/>
+                                                <Setter Property="Background" Value="{StaticResource BrushBomConflictCell}"/>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
-                                </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn.CellStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="Inv Qty"  Binding="{Binding ItQty}"       Width="55"  IsReadOnly="True">
+                            <DataGridTextColumn Header="Inv Qty"  Binding="{Binding ItQty}"       Width="64"  IsReadOnly="True"
+                                                ElementStyle="{StaticResource BomQtyTextStyle}">
                                 <DataGridTextColumn.HeaderStyle>
                                     <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource BomHeaderStyle}">
-                                        <Setter Property="Background" Value="#FFFDE7"/>
+                                        <Setter Property="Background" Value="{StaticResource BrushBomColIt}"/>
                                     </Style>
                                 </DataGridTextColumn.HeaderStyle>
-                                <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock" BasedOn="{StaticResource BomCellTextStyle}">
+                                <DataGridTextColumn.CellStyle>
+                                    <Style TargetType="DataGridCell" BasedOn="{StaticResource BomCellStyle}">
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding QtyConflict}" Value="True">
-                                                <Setter Property="FontWeight" Value="Bold"/>
-                                                <Setter Property="Foreground" Value="#B45309"/>
+                                                <Setter Property="Background" Value="{StaticResource BrushBomConflictCell}"/>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
-                                </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn.CellStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="Inv Ref." Binding="{Binding ItReference}" Width="*"   IsReadOnly="True">
+                            <DataGridTextColumn Header="Inv Ref." Binding="{Binding ItReference}" Width="*"   IsReadOnly="True"
+                                                ElementStyle="{StaticResource BomRefTextStyle}">
                                 <DataGridTextColumn.HeaderStyle>
                                     <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource BomHeaderStyle}">
-                                        <Setter Property="Background" Value="#FFFDE7"/>
+                                        <Setter Property="Background" Value="{StaticResource BrushBomColIt}"/>
                                     </Style>
                                 </DataGridTextColumn.HeaderStyle>
-                                <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock" BasedOn="{StaticResource BomCellTextStyle}">
+                                <DataGridTextColumn.CellStyle>
+                                    <Style TargetType="DataGridCell" BasedOn="{StaticResource BomCellStyle}">
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding ReferenceConflict}" Value="True">
-                                                <Setter Property="FontWeight" Value="Bold"/>
-                                                <Setter Property="Foreground" Value="#B45309"/>
+                                                <Setter Property="Background" Value="{StaticResource BrushBomConflictCell}"/>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
-                                </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn.CellStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="Inv Note" Binding="{Binding ItNote}"      Width="*"   IsReadOnly="True">
+                            <DataGridTextColumn Header="Inv Note" Binding="{Binding ItNote}"      Width="*"   IsReadOnly="True"
+                                                ElementStyle="{StaticResource BomNoteTextStyle}">
                                 <DataGridTextColumn.HeaderStyle>
                                     <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource BomHeaderStyle}">
-                                        <Setter Property="Background" Value="#FFFDE7"/>
+                                        <Setter Property="Background" Value="{StaticResource BrushBomColIt}"/>
                                     </Style>
                                 </DataGridTextColumn.HeaderStyle>
-                                <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock" BasedOn="{StaticResource BomCellTextStyle}">
+                                <DataGridTextColumn.CellStyle>
+                                    <Style TargetType="DataGridCell" BasedOn="{StaticResource BomCellStyle}">
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding NoteConflict}" Value="True">
-                                                <Setter Property="FontWeight" Value="Bold"/>
-                                                <Setter Property="Foreground" Value="#B45309"/>
+                                                <Setter Property="Background" Value="{StaticResource BrushBomConflictCell}"/>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
-                                </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn.CellStyle>
                             </DataGridTextColumn>
                             <DataGridTextColumn Header="Substitute Parts" Binding="{Binding HasSubstitutesLabel}" Width="96" IsReadOnly="True"
-                                                ElementStyle="{StaticResource BomCellTextStyle}">
+                                                ElementStyle="{StaticResource BomHiddenOnProblemStyle}">
                                 <DataGridTextColumn.HeaderStyle>
                                     <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource BomHeaderStyle}">
-                                        <Setter Property="Background" Value="#FFFDE7"/>
+                                        <Setter Property="Background" Value="{StaticResource BrushBomColIt}"/>
                                         <Setter Property="BorderThickness" Value="0,0,0,1"/>
                                     </Style>
                                 </DataGridTextColumn.HeaderStyle>
@@ -331,7 +538,7 @@
             </Border>
 
             <!-- Footer -->
-            <Border Grid.Row="4" BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,1,0,0" Padding="0,6,0,0">
+            <Border Grid.Row="5" BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,1,0,0" Padding="0,6,0,0">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -340,7 +547,8 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="0"
                                Text="{Binding StatusText}"
-                               Style="{StaticResource FieldLabelStyle}"
+                               FontSize="11"
+                               Foreground="{StaticResource BrushForeground}"
                                VerticalAlignment="Center"/>
                     <Button Grid.Column="1"
                             IsEnabled="{Binding PushEnabled}"
