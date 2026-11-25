@@ -309,7 +309,7 @@
                                     </Style>
                                 </DataGridTextColumn.HeaderStyle>
                             </DataGridTextColumn>
-                            <DataGridTemplateColumn Header="IPN" Width="100" CanUserSort="False" IsReadOnly="True">
+                            <DataGridTemplateColumn Header="IPN" Width="100" IsReadOnly="True" SortMemberPath="DisplayIpn">
                                 <DataGridTemplateColumn.HeaderStyle>
                                     <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource BomHeaderStyle}">
                                         <Setter Property="Background" Value="{StaticResource BrushBomHeader}"/>
@@ -344,7 +344,7 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="SW Qty" Width="55" CanUserSort="False" IsReadOnly="True">
+                            <DataGridTemplateColumn Header="SW Qty" Width="55" IsReadOnly="True" SortMemberPath="SwQty">
                                 <DataGridTemplateColumn.HeaderStyle>
                                     <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource BomHeaderStyle}">
                                         <Setter Property="Background" Value="{StaticResource BrushBomColSw}"/>
@@ -362,8 +362,7 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <Grid>
-                                            <TextBlock x:Name="QtyText"
-                                                       Text="{Binding SwQty}"
+                                            <TextBlock Text="{Binding SwQty}"
                                                        Style="{StaticResource BomQtyTextStyle}"/>
                                             <!-- Problem rows that still show an IPN carry the
                                                  guidance line from here to the row's end. -->

@@ -66,9 +66,10 @@ namespace SwInventreeAddin.UI
         public bool QtyConflict => State == BomDiffState.Conflict && SwQty != ItQty;
         public bool ReferenceConflict => State == BomDiffState.Conflict && SwReference != ItReference;
         public bool NoteConflict => State == BomDiffState.Conflict && SwNote != ItNote;
-        public bool IsProblemState => State == BomDiffState.NoIpn
-                                   || State == BomDiffState.IpnNotFound
-                                   || State == BomDiffState.Ambiguous;
+        // GuidanceText's non-empty arms are the single source for the
+        // problem-state set — the XAML, the attention count, and the sort
+        // order all read it through here.
+        public bool IsProblemState => GuidanceText.Length > 0;
 
         // The .pen problem rows replace their data cells with a one-line
         // explanation. Ambiguous has two causes the mock draws as one row —
