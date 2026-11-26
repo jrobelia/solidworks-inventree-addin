@@ -144,12 +144,7 @@ namespace SwInventreeAddin.Tests
 
             foreach (var title in new[] { "Property Field Mappings", "BOM Column Aliases" })
             {
-                var header = FindLogicalChildren<TextBlock>(window)
-                    .FirstOrDefault(tb => tb.Text == title);
-                Assert.That(header, Is.Not.Null, $"Could not find header '{title}'.");
-                Assert.That((header!.Parent as Border)?.Background,
-                            Is.SameAs(window.FindResource("BrushSectionHeader")),
-                            $"'{title}' must sit in a banded section header");
+                LogicalTreeTestHelper.AssertBandedHeader(window, title);
             }
         }
 
@@ -158,7 +153,7 @@ namespace SwInventreeAddin.Tests
         {
             var window = new PropertyMappingEditorWindow(new StubPropertyMappingProvider());
 
-            Assert.That(FindLogicalChildren<Separator>(window).Any(), Is.False);
+            Assert.That(LogicalTreeTestHelper.FindLogicalChildren<Separator>(window).Any(), Is.False);
         }
 
         [Test]
@@ -168,7 +163,7 @@ namespace SwInventreeAddin.Tests
             var style = window.TryFindResource("SubtleColumnHeaderStyle");
             Assert.That(style, Is.Not.Null, "SubtleColumnHeaderStyle token is missing.");
 
-            var headers = FindLogicalChildren<TextBlock>(window)
+            var headers = LogicalTreeTestHelper.FindLogicalChildren<TextBlock>(window)
                 .Where(tb => ReferenceEquals(tb.Style, style))
                 .Select(tb => tb.Text)
                 .ToList();
@@ -205,19 +200,7 @@ namespace SwInventreeAddin.Tests
 
         private static System.Collections.Generic.IEnumerable<TextBox> FindTextBoxes(DependencyObject parent)
         {
-            return FindLogicalChildren<TextBox>(parent);
-        }
-
-        private static System.Collections.Generic.IEnumerable<T> FindLogicalChildren<T>(DependencyObject parent) where T : DependencyObject
-        {
-            foreach (var child in LogicalTreeHelper.GetChildren(parent).OfType<DependencyObject>())
-            {
-                if (child is T typed)
-                    yield return typed;
-
-                foreach (var descendant in FindLogicalChildren<T>(child))
-                    yield return descendant;
-            }
+            return LogicalTreeTestHelper.FindLogicalChildren<TextBox>(parent);
         }
     }
 }

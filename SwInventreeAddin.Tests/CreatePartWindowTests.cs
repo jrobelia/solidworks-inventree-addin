@@ -19,12 +19,7 @@ namespace SwInventreeAddin.Tests
         {
             var window = CreateWindow();
 
-            var header = FindLogicalChildren<TextBlock>(window)
-                .FirstOrDefault(tb => tb.Text == "Create InvenTree Part");
-
-            Assert.That(header, Is.Not.Null, "Create Part banded header is missing.");
-            Assert.That((header!.Parent as Border)?.Background,
-                Is.SameAs(window.FindResource("BrushSectionHeader")));
+            LogicalTreeTestHelper.AssertBandedHeader(window, "Create InvenTree Part");
         }
 
         [Test]
@@ -47,7 +42,7 @@ namespace SwInventreeAddin.Tests
 
             foreach (var labelText in new[] { "Part Name", "IPN (optional)", "Category", "InvenTree Flags" })
             {
-                var label = FindLogicalChildren<TextBlock>(window)
+                var label = LogicalTreeTestHelper.FindLogicalChildren<TextBlock>(window)
                     .FirstOrDefault(tb => tb.Text == labelText);
                 Assert.That(label, Is.Not.Null, $"Could not find label '{labelText}'.");
                 Assert.That(label!.Style, Is.SameAs(style), $"'{labelText}' must use FieldLabelStyle.");
@@ -59,7 +54,7 @@ namespace SwInventreeAddin.Tests
         {
             var window = CreateWindow();
 
-            var placeholder = FindLogicalChildren<TextBlock>(window)
+            var placeholder = LogicalTreeTestHelper.FindLogicalChildren<TextBlock>(window)
                 .FirstOrDefault(tb => tb.Text == "(leave blank for auto-assign)");
 
             Assert.That(placeholder, Is.Not.Null, "Approved IPN placeholder wording is missing.");
@@ -93,7 +88,7 @@ namespace SwInventreeAddin.Tests
             var client = new StubInventreeClient { ThrowOnGetCategories = true };
             var window = CreateWindow(client);
 
-            var statusBar = FindLogicalChildren<StatusBarControl>(window).SingleOrDefault();
+            var statusBar = LogicalTreeTestHelper.FindLogicalChildren<StatusBarControl>(window).SingleOrDefault();
 
             Assert.That(statusBar, Is.Not.Null, "Create Part must use the shared status strip.");
             Assert.That(statusBar!.StatusText.Text, Does.StartWith("Error loading categories:"));
@@ -115,19 +110,6 @@ namespace SwInventreeAddin.Tests
             var window = new CreatePartWindow();
             window.Initialise(vm);
             return window;
-        }
-
-        private static System.Collections.Generic.IEnumerable<T> FindLogicalChildren<T>(DependencyObject parent)
-            where T : DependencyObject
-        {
-            foreach (var child in LogicalTreeHelper.GetChildren(parent).OfType<DependencyObject>())
-            {
-                if (child is T typed)
-                    yield return typed;
-
-                foreach (var descendant in FindLogicalChildren<T>(child))
-                    yield return descendant;
-            }
         }
     }
 }
