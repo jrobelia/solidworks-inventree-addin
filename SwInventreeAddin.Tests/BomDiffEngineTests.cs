@@ -317,5 +317,25 @@ namespace SwInventreeAddin.Tests
             Assert.That(result[0].SubPartPk, Is.EqualTo(102));
         }
 
+
+        [Test]
+        public void Diff_DuplicateIpnUnreadableBlankRevision_DoesNotMatchBlankCandidate()
+        {
+            var sw = new SwBomLine { Ipn = "OA-00777", Revision = "", RevisionUnreadable = true };
+            var lookup = new Dictionary<string, IReadOnlyList<InventreePart>>
+            {
+                ["OA-00777"] = new List<InventreePart>
+                {
+                    new InventreePart { Pk = 101, Revision = "A" },
+                    new InventreePart { Pk = 102, Revision = "" }
+                }
+            };
+
+            var result = BomDiffEngine.Diff(new[] { sw }, new InventreeBomLine[0], lookup);
+
+            Assert.That(result[0].State, Is.EqualTo(BomDiffState.Ambiguous),
+                "An unreadable SolidWorks Revision is not a true blank Revision");
+        }
+
     }
 }

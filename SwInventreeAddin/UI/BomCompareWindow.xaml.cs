@@ -31,7 +31,7 @@ namespace SwInventreeAddin.UI
 
             DataContext = _vm;
             AssemblyIpn.Text = assemblyIpn;
-            AssemblyRevision.Text = assemblyRevision ?? string.Empty;
+            AssemblyRevision.Text = assemblyRevision;
             AssemblyRevision.Visibility = string.IsNullOrEmpty(assemblyRevision)
                 ? Visibility.Collapsed
                 : Visibility.Visible;

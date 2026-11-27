@@ -61,7 +61,7 @@ namespace SwInventreeAddin.UI
             DiffLine.SwLine != null
             && DiffLine.ItLine != null
             && !(SwRevision.Length == 0 && ItRevision.Length == 0)
-            && !string.Equals(SwRevision.Trim(), ItRevision.Trim(), StringComparison.OrdinalIgnoreCase);
+            && !BomDiffEngine.SameRevision(SwRevision, ItRevision);
         public string ItQty => DiffLine.ItLine != null ? DiffLine.ItLine.Quantity.ToString("G29") : string.Empty;
         public string ItReference => DiffLine.ItLine?.Reference ?? string.Empty;
         public string ItNote => DiffLine.ItLine?.Note ?? string.Empty;
@@ -94,10 +94,6 @@ namespace SwInventreeAddin.UI
                 : "IPN matches multiple InvenTree parts — set InvenTree Part PK or a unique Revision",
             _ => string.Empty,
         };
-
-        // True when the row carries an IPN worth printing. The grid uses it to
-        // place the guidance line: it starts in the IPN cell on a No-IPN row
-        // and in the first data cell when the IPN stays visible.
 
         public BomDiffLineViewModel(BomDiffLine diffLine)
         {

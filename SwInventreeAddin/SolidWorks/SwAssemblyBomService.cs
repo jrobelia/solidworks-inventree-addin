@@ -65,6 +65,7 @@ namespace SwInventreeAddin.SolidWorks
                         line.UnparsedQuantity = qtyText;   // malformed/blank — diff must flag Ambiguous, never push 0
                 }
 
+                bool revisionExpected = !string.IsNullOrEmpty(mapping.RevisionProperty);
                 try
                 {
                     var components = (object[])bomTable.GetComponents2(row, "");
@@ -88,17 +89,17 @@ namespace SwInventreeAddin.SolidWorks
                         }
                         else
                         {
-                            line.RevisionUnreadable = !string.IsNullOrEmpty(mapping.RevisionProperty);
+                            line.RevisionUnreadable = revisionExpected;
                         }
                     }
                     else
                     {
-                        line.RevisionUnreadable = !string.IsNullOrEmpty(mapping.RevisionProperty);
+                        line.RevisionUnreadable = revisionExpected;
                     }
                 }
                 catch (Exception ex)
                 {
-                    line.RevisionUnreadable = !string.IsNullOrEmpty(mapping.RevisionProperty);
+                    line.RevisionUnreadable = revisionExpected;
                     _logger.LogError("GetBomLines: COM error reading component properties.", ex);
                 }
 

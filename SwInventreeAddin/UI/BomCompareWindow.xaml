@@ -262,7 +262,6 @@
                            Style="{StaticResource SectionTitleStyle}"/>
                 <TextBlock x:Name="AssemblyRevision"
                            Style="{StaticResource SectionTitleStyle}"
-                           FontSize="12"
                            VerticalAlignment="Bottom"
                            Margin="4,0,4,1"/>
                 <TextBlock x:Name="AssemblyName"

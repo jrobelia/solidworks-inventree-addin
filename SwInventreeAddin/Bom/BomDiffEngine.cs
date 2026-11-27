@@ -7,6 +7,10 @@ namespace SwInventreeAddin.Bom
 {
     public static class BomDiffEngine
     {
+
+        internal static bool SameRevision(string left, string right) =>
+            string.Equals(left.Trim(), right.Trim(), StringComparison.OrdinalIgnoreCase);
+
         public static IReadOnlyList<BomDiffLine> Diff(
             IEnumerable<SwBomLine> swLines,
             IEnumerable<InventreeBomLine> itLines,
@@ -39,7 +43,7 @@ namespace SwInventreeAddin.Bom
                     if (parts.Count > 1)
                     {
                         var revisionMatches = parts
-                            .Where(p => string.Equals((sw.Revision ?? string.Empty).Trim(), (p.Revision ?? string.Empty).Trim(), StringComparison.OrdinalIgnoreCase))
+                            .Where(p => !sw.RevisionUnreadable && SameRevision(sw.Revision, p.Revision))
                             .ToList();
                         if (revisionMatches.Count != 1)
                         {
