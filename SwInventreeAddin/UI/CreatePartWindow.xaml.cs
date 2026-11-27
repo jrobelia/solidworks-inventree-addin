@@ -1,7 +1,6 @@
 using System;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 using SwInventreeAddin.InvenTree;
 
 namespace SwInventreeAddin.UI
@@ -38,22 +37,12 @@ namespace SwInventreeAddin.UI
             // Close the dialog with a success result as soon as the part is created.
             vm.PartCreated += OnPartCreated;
 
-            // Mirror status changes onto the status bar tooltip and stripe colour.
+            // Mirror status changes onto the shared status strip.
             vm.PropertyChanged += (_, e) =>
             {
-                if (e.PropertyName == nameof(CreatePartViewModel.StatusText))
-                    StatusTextBox.ToolTip = string.IsNullOrEmpty(vm.StatusText) ? null : vm.StatusText;
-
-                if (e.PropertyName == nameof(CreatePartViewModel.StatusSeverity))
-                {
-                    StatusStripe.Background = (Brush)FindResource(vm.StatusSeverity switch
-                    {
-                        StatusSeverity.Success => "BrushStatusSuccess",
-                        StatusSeverity.Warning => "BrushStatusWarning",
-                        StatusSeverity.Error => "BrushStatusError",
-                        _ => "BrushStatusNone",
-                    });
-                }
+                if (e.PropertyName == nameof(CreatePartViewModel.StatusText)
+                    || e.PropertyName == nameof(CreatePartViewModel.StatusSeverity))
+                    StatusBar.SetStatus(vm.StatusText, vm.StatusSeverity);
             };
 
             // Kick off the initial category load.
