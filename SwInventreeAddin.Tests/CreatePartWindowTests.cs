@@ -83,6 +83,17 @@ namespace SwInventreeAddin.Tests
         }
 
         [Test]
+        public void SelectedCategoryRow_CreatePart_NamesCategoryLabel()
+        {
+            var window = CreateWindow();
+
+            var label = LogicalTreeTestHelper.FindLogicalChildren<TextBlock>(window)
+                .FirstOrDefault(tb => tb.Text == "Selected Category: ");
+
+            Assert.That(label, Is.Not.Null, "The selected-category summary must name the Category value.");
+        }
+
+        [Test]
         public void StatusStrip_CreatePart_UsesSharedStatusBarControl()
         {
             var client = new StubInventreeClient { ThrowOnGetCategories = true };
