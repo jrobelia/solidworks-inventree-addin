@@ -271,7 +271,11 @@ namespace SwInventreeAddin.InvenTree
             foreach (var line in lines.Where(l => l.SubPartPk > 0))
             {
                 var part = detailTasks[line.SubPartPk].Result;
-                if (part != null) line.SubPartIpn = part.Ipn;
+                if (part != null)
+                {
+                    line.SubPartIpn = part.Ipn;
+                    line.SubPartRevision = part.Revision;
+                }
             }
 
             return lines;

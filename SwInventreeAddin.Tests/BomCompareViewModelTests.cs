@@ -135,6 +135,132 @@ namespace SwInventreeAddin.Tests
             Assert.That(vm.Lines[0].CanCheck, Is.True);
         }
 
+
+        [Test]
+        public async Task LoadAsync_RowExposesRevisionsAndDifference()
+        {
+            _bomService.LinesToReturn.Add(new SwBomLine
+            {
+                Ipn = "A",
+                SubPartPk = 10,
+                Quantity = 1,
+                Revision = "A"
+            });
+            _client.BomLinesToReturn = new List<InventreeBomLine>
+            {
+                new InventreeBomLine { Pk = 1, SubPartPk = 10, Quantity = 1, SubPartRevision = "C" }
+            };
+
+            var vm = CreateVm();
+            await vm.LoadAsync();
+
+            Assert.That(vm.Lines[0].SwRevision, Is.EqualTo("A"));
+            Assert.That(vm.Lines[0].ItRevision, Is.EqualTo("C"));
+            Assert.That(vm.Lines[0].RevisionDifference, Is.True);
+            Assert.That(vm.Lines[0].State, Is.EqualTo(BomDiffState.Match),
+                "Revision difference stays display-only after identity resolution");
+        }
+
+
+
+        [Test]
+        public async Task LoadAsync_RevisionDifference_UsesExactTextNotOrderingEquivalence()
+        {
+            _bomService.LinesToReturn.Add(new SwBomLine
+            {
+                Ipn = "A",
+                SubPartPk = 10,
+                Quantity = 1,
+                Revision = "1"
+            });
+            _client.BomLinesToReturn = new List<InventreeBomLine>
+            {
+                new InventreeBomLine { Pk = 1, SubPartPk = 10, Quantity = 1, SubPartRevision = "01" }
+            };
+
+            var vm = CreateVm();
+            await vm.LoadAsync();
+
+            Assert.That(vm.Lines[0].RevisionDifference, Is.True);
+        }
+
+
+        [Test]
+        public async Task LoadAsync_BlankRevisionsOnBothSides_NoRevisionDifference()
+        {
+            _bomService.LinesToReturn.Add(new SwBomLine { Ipn = "A", SubPartPk = 10, Quantity = 1 });
+            _client.BomLinesToReturn = new List<InventreeBomLine>
+            {
+                new InventreeBomLine { Pk = 1, SubPartPk = 10, Quantity = 1 }
+            };
+
+            var vm = CreateVm();
+            await vm.LoadAsync();
+
+            Assert.That(vm.Lines[0].RevisionDifference, Is.False);
+        }
+
+        [Test]
+        public async Task LoadAsync_BlankRevisionOnOneSide_CountsAsDifference()
+        {
+            _bomService.LinesToReturn.Add(new SwBomLine { Ipn = "A", SubPartPk = 10, Quantity = 1 });
+            _client.BomLinesToReturn = new List<InventreeBomLine>
+            {
+                new InventreeBomLine { Pk = 1, SubPartPk = 10, Quantity = 1, SubPartRevision = "A" }
+            };
+
+            var vm = CreateVm();
+            await vm.LoadAsync();
+
+            Assert.That(vm.Lines[0].RevisionDifference, Is.True);
+        }
+
+        [Test]
+        public async Task LoadAsync_OneSidedRows_LeaveOppositeRevisionBlank()
+        {
+            _bomService.LinesToReturn.Add(new SwBomLine
+            {
+                Ipn = "NEW",
+                SubPartPk = 10,
+                Quantity = 1,
+                Revision = "A"
+            });
+            _client.BomLinesToReturn = new List<InventreeBomLine>
+            {
+                new InventreeBomLine { Pk = 1, SubPartPk = 20, Quantity = 1, SubPartRevision = "C" }
+            };
+
+            var vm = CreateVm();
+            await vm.LoadAsync();
+
+            var newRow = vm.Lines.Single(l => l.State == BomDiffState.New);
+            var itOnlyRow = vm.Lines.Single(l => l.State == BomDiffState.InvenTreeOnly);
+            Assert.That(newRow.ItRevision, Is.EqualTo(string.Empty));
+            Assert.That(itOnlyRow.SwRevision, Is.EqualTo(string.Empty));
+        }
+
+        [Test]
+        public async Task LoadAsync_UnreadableSwRevision_ExposesBlankAndUnreadableFlag()
+        {
+            _bomService.LinesToReturn.Add(new SwBomLine
+            {
+                Ipn = "A",
+                SubPartPk = 10,
+                Quantity = 1,
+                RevisionUnreadable = true
+            });
+            _client.BomLinesToReturn = new List<InventreeBomLine>
+            {
+                new InventreeBomLine { Pk = 1, SubPartPk = 10, Quantity = 1, SubPartRevision = "B" }
+            };
+
+            var vm = CreateVm();
+            await vm.LoadAsync();
+
+            Assert.That(vm.Lines[0].SwRevision, Is.EqualTo(string.Empty));
+            Assert.That(vm.Lines[0].SwRevisionUnreadable, Is.True);
+        }
+
         [Test]
         public async Task LoadAsync_ItOnlyRow_SwColumnsEmpty()
         {
@@ -264,7 +390,7 @@ namespace SwInventreeAddin.Tests
 
             Assert.That(vm.Lines[0].State, Is.EqualTo(BomDiffState.Ambiguous));
             Assert.That(vm.Lines[0].GuidanceText,
-                Is.EqualTo("IPN matches multiple InvenTree parts — resolve duplicates in InvenTree"));
+                Is.EqualTo("IPN matches multiple InvenTree parts — set InvenTree Part PK or a unique Revision"));
         }
 
         [Test]
@@ -300,32 +426,6 @@ namespace SwInventreeAddin.Tests
             await vm.LoadAsync();
 
             Assert.That(vm.Lines[0].GuidanceText, Is.EqualTo(string.Empty));
-        }
-
-        // ── HasDisplayIpn ─────────────────────────────────────────────────────
-
-        [Test]
-        public async Task LoadAsync_NoIpnRow_HasDisplayIpnIsFalse()
-        {
-            _bomService.LinesToReturn.Add(new SwBomLine { Quantity = 2, Reference = "MISC-HDW" });
-            _client.BomLinesToReturn = new List<InventreeBomLine>();
-
-            var vm = CreateVm();
-            await vm.LoadAsync();
-
-            Assert.That(vm.Lines[0].HasDisplayIpn, Is.False);
-        }
-
-        [Test]
-        public async Task LoadAsync_IpnNotFoundRow_HasDisplayIpnIsTrue()
-        {
-            _bomService.LinesToReturn.Add(new SwBomLine { Ipn = "SW-404", Quantity = 1 });
-            _client.BomLinesToReturn = new List<InventreeBomLine>();
-
-            var vm = CreateVm();
-            await vm.LoadAsync();
-
-            Assert.That(vm.Lines[0].HasDisplayIpn, Is.True);
         }
 
         // ── Load status summary ───────────────────────────────────────────────
@@ -513,6 +613,40 @@ namespace SwInventreeAddin.Tests
             await vm.PushAsync();
 
             Assert.That(vm.Lines, Is.Not.Null);
+        }
+
+
+        [Test]
+        public async Task PushAsync_NewRow_PopulatesSharedIpnAndRevisionFromRefetchedServerData()
+        {
+            var serverLines = new List<InventreeBomLine>();
+            _bomService.LinesToReturn.Add(new SwBomLine
+            {
+                Ipn = "SW-OLD",
+                SubPartPk = 10,
+                Quantity = 1,
+                Revision = "A"
+            });
+            _client.BomLinesToReturn = serverLines;
+
+            var vm = CreateVm();
+            await vm.LoadAsync();
+            serverLines.Add(new InventreeBomLine
+            {
+                Pk = 1,
+                SubPartPk = 10,
+                SubPartIpn = "SERVER-IPN",
+                SubPartRevision = "C",
+                Quantity = 1
+            });
+
+            vm.ConfirmPush = (_, __) => true;
+            vm.Lines[0].IsChecked = true;
+            await vm.PushAsync();
+
+            Assert.That(vm.Lines[0].DisplayIpn, Is.EqualTo("SERVER-IPN"));
+            Assert.That(vm.Lines[0].ItRevision, Is.EqualTo("C"));
+            Assert.That(vm.Lines[0].DiffLine.ItLine!.Pk, Is.EqualTo(1));
         }
 
         [Test]

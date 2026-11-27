@@ -250,27 +250,27 @@ namespace SwInventreeAddin.Tests.Capture
                 {
                     // One row per diff state so every row colour in the mock
                     // renders in a single capture.
-                    new SwBomLine { SubPartPk = 101, Ipn = "SW-001", Quantity = 2, Reference = "BRK-101" },
-                    new SwBomLine { SubPartPk = 102, Ipn = "SW-002", Quantity = 4, Reference = "CAP-10uF" },
-                    new SwBomLine { SubPartPk = 103, Ipn = "SW-003", Quantity = 1, Reference = "RES-1k", Note = "new line" },
+                    new SwBomLine { SubPartPk = 101, Ipn = "SW-001", Quantity = 2, Reference = "BRK-101", Revision = "A" },
+                    new SwBomLine { SubPartPk = 102, Ipn = "SW-002", Quantity = 4, Reference = "CAP-10uF", Revision = "B" },
+                    new SwBomLine { SubPartPk = 103, Ipn = "SW-003", Quantity = 1, Reference = "RES-1k", Note = "new line", Revision = "A" },
                     new SwBomLine { Quantity = 2, Reference = "MISC-HDW" },
-                    new SwBomLine { Ipn = "SW-404", Quantity = 1, Reference = "GHOST" },
-                    new SwBomLine { SubPartPk = 105, Ipn = "SW-005", UnparsedQuantity = "abc", Reference = "QTY?" },
+                    new SwBomLine { Ipn = "SW-404", Quantity = 1, Reference = "GHOST", RevisionUnreadable = true },
+                    new SwBomLine { SubPartPk = 105, Ipn = "SW-005", UnparsedQuantity = "abc", Reference = "QTY?", Revision = "D" },
                 },
             };
             var client = new StubInventreeClient
             {
                 BomLinesToReturn = new List<InventreeBomLine>
                 {
-                    new InventreeBomLine { Pk = 11, SubPartPk = 101, SubPartIpn = "SW-001", Quantity = 2, Reference = "BRK-101" },
-                    new InventreeBomLine { Pk = 12, SubPartPk = 102, SubPartIpn = "SW-002", Quantity = 1, Reference = "CAP-10uF", Consumable = true },
-                    new InventreeBomLine { Pk = 13, SubPartPk = 104, SubPartIpn = "IT-900", Quantity = 1, Reference = "EXTRA", Optional = true },
-                    new InventreeBomLine { Pk = 14, SubPartPk = 105, SubPartIpn = "SW-005", Quantity = 3, Reference = "QTY?" },
+                    new InventreeBomLine { Pk = 11, SubPartPk = 101, SubPartIpn = "SW-001", SubPartRevision = "A", Quantity = 2, Reference = "BRK-101" },
+                    new InventreeBomLine { Pk = 12, SubPartPk = 102, SubPartIpn = "SW-002", SubPartRevision = "C", Quantity = 1, Reference = "CAP-10uF", Consumable = true },
+                    new InventreeBomLine { Pk = 13, SubPartPk = 104, SubPartIpn = "IT-900", SubPartRevision = "E", Quantity = 1, Reference = "EXTRA", Optional = true },
+                    new InventreeBomLine { Pk = 14, SubPartPk = 105, SubPartIpn = "SW-005", SubPartRevision = "D", Quantity = 3, Reference = "QTY?" },
                 },
             };
             var vm = new BomCompareViewModel(
                 client, bomService, PropertyMappingConfig.WithDefaults(), 42);
-            var window = new BomCompareWindow(vm, "ASM-100", "Bracket Assembly", "BOM1")
+            var window = new BomCompareWindow(vm, "ASM-100", "Bracket Assembly", "BOM1", "B")
             {
                 // An activated window parked fully off-screen gets snapped back
                 // onto a monitor once a message pump runs — keep this one

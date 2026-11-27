@@ -15,7 +15,7 @@ namespace SwInventreeAddin.UI
         private IntPtr WindowHandle => new WindowInteropHelper(this).Handle;
 
         public BomCompareWindow(BomCompareViewModel vm, string assemblyIpn, string partName = "",
-                                 string bomTableName = "")
+                                 string bomTableName = "", string assemblyRevision = "")
         {
             InitializeComponent();
             _vm = vm;
@@ -31,6 +31,10 @@ namespace SwInventreeAddin.UI
 
             DataContext = _vm;
             AssemblyIpn.Text = assemblyIpn;
+            AssemblyRevision.Text = assemblyRevision ?? string.Empty;
+            AssemblyRevision.Visibility = string.IsNullOrEmpty(assemblyRevision)
+                ? Visibility.Collapsed
+                : Visibility.Visible;
             AssemblyName.Text = partName;
 
             BomTableName.Text = string.IsNullOrEmpty(bomTableName) ? "" : $"BOM Table: {bomTableName}";
@@ -98,15 +102,15 @@ namespace SwInventreeAddin.UI
         }
 
         // Synchronise the group-header overlay widths with the DataGrid's actual column widths.
-        // Columns: 0-2 = left zone (grey), 3-5 = SolidWorks (blue), 6-9 = InvenTree (yellow).
+        // Columns: 0-2 = left zone (grey), 3-6 = SolidWorks (blue), 7-11 = InvenTree (yellow).
         private void BomGrid_LayoutUpdated(object sender, EventArgs e)
         {
             var cols = BomGrid.Columns;
-            if (cols.Count < 10) return;
+            if (cols.Count < 12) return;
 
             double left = cols[0].ActualWidth + cols[1].ActualWidth + cols[2].ActualWidth;
-            double sw = cols[3].ActualWidth + cols[4].ActualWidth + cols[5].ActualWidth;
-            double it = cols[6].ActualWidth + cols[7].ActualWidth + cols[8].ActualWidth + cols[9].ActualWidth;
+            double sw = cols[3].ActualWidth + cols[4].ActualWidth + cols[5].ActualWidth + cols[6].ActualWidth;
+            double it = cols[7].ActualWidth + cols[8].ActualWidth + cols[9].ActualWidth + cols[10].ActualWidth + cols[11].ActualWidth;
 
             if (left <= 0 || sw <= 0 || it <= 0) return;
 

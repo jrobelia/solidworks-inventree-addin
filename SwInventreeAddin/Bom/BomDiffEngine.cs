@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using SwInventreeAddin.InvenTree;
 
 namespace SwInventreeAddin.Bom
@@ -36,15 +38,25 @@ namespace SwInventreeAddin.Bom
                     }
                     if (parts.Count > 1)
                     {
-                        result.Add(new BomDiffLine
+                        var revisionMatches = parts
+                            .Where(p => string.Equals((sw.Revision ?? string.Empty).Trim(), (p.Revision ?? string.Empty).Trim(), StringComparison.OrdinalIgnoreCase))
+                            .ToList();
+                        if (revisionMatches.Count != 1)
                         {
-                            State = BomDiffState.Ambiguous,
-                            SwLine = sw,
-                            DisplayIpn = sw.Ipn
-                        });
-                        continue;
+                            result.Add(new BomDiffLine
+                            {
+                                State = BomDiffState.Ambiguous,
+                                SwLine = sw,
+                                DisplayIpn = sw.Ipn
+                            });
+                            continue;
+                        }
+                        key = revisionMatches[0].Pk;
                     }
-                    key = parts[0].Pk;
+                    else
+                    {
+                        key = parts[0].Pk;
+                    }
                 }
                 else
                 {
