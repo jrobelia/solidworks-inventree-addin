@@ -5,6 +5,7 @@ namespace SwInventreeAddin.Bom
         public int Pk { get; set; }
         public int SubPartPk { get; set; }
         public string SubPartIpn { get; set; } = string.Empty;  // fetched for display
+        public string SubPartRevision { get; set; } = string.Empty;  // fetched for display
         public decimal Quantity { get; set; }
         public string Reference { get; set; } = string.Empty;
         public string Note { get; set; } = string.Empty;

@@ -65,22 +65,43 @@ namespace SwInventreeAddin.SolidWorks
                         line.UnparsedQuantity = qtyText;   // malformed/blank — diff must flag Ambiguous, never push 0
                 }
 
+                bool revisionExpected = !string.IsNullOrEmpty(mapping.RevisionProperty);
                 try
                 {
                     var components = (object[])bomTable.GetComponents2(row, "");
                     if (components?.Length > 0 && components[0] is IComponent2 comp)
                     {
                         var model = comp.GetModelDoc2() as IModelDoc2;
-                        if (model != null && !string.IsNullOrEmpty(mapping.PkProperty))
+                        if (model != null)
                         {
                             var mgr = (ICustomPropertyManager)model.Extension.CustomPropertyManager[""];
-                            mgr.Get4(mapping.PkProperty!, false, out _, out var resolved);
-                            if (int.TryParse(resolved, out var pk) && pk > 0)
-                                line.SubPartPk = pk;
+                            if (!string.IsNullOrEmpty(mapping.PkProperty))
+                            {
+                                mgr.Get4(mapping.PkProperty!, false, out _, out var resolved);
+                                if (int.TryParse(resolved, out var pk) && pk > 0)
+                                    line.SubPartPk = pk;
+                            }
+                            if (!string.IsNullOrEmpty(mapping.RevisionProperty))
+                            {
+                                mgr.Get4(mapping.RevisionProperty!, false, out _, out var resolvedRevision);
+                                line.Revision = (resolvedRevision ?? string.Empty).Trim();
+                            }
+                        }
+                        else
+                        {
+                            line.RevisionUnreadable = revisionExpected;
                         }
                     }
+                    else
+                    {
+                        line.RevisionUnreadable = revisionExpected;
+                    }
                 }
-                catch (Exception ex) { _logger.LogError("GetBomLines: COM error reading SubPartPk.", ex); }
+                catch (Exception ex)
+                {
+                    line.RevisionUnreadable = revisionExpected;
+                    _logger.LogError("GetBomLines: COM error reading component properties.", ex);
+                }
 
                 lines.Add(line);
             }

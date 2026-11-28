@@ -82,6 +82,28 @@ namespace SwInventreeAddin.Tests
             Assert.That(lines[0].Validated, Is.True);
         }
 
+
+        [Test]
+        public async Task GetBomAsync_PopulatesSubPartIpnAndRevisionFromPartDetail()
+        {
+            var listJson = @"{ ""count"": 1, ""results"": [
+                { ""pk"": 1, ""sub_part"": 10, ""quantity"": 2.0, ""reference"": ""100"",
+                  ""note"": """", ""consumable"": false, ""optional"": false,
+                  ""validated"": true, ""substitutes"": [] }
+            ] }";
+            var detailJson = @"{ ""pk"": 10, ""IPN"": ""PART-00130"", ""name"": ""Part"",
+                ""revision"": ""C"", ""notes"": """", ""description"": """",
+                ""in_stock"": 0, ""ordering"": 0, ""active"": true }";
+            var client = CreateClient(new SequentialStub(
+                (HttpStatusCode.OK, listJson),
+                (HttpStatusCode.OK, detailJson)));
+
+            var lines = await client.GetBomAsync(42);
+
+            Assert.That(lines[0].SubPartIpn, Is.EqualTo("PART-00130"));
+            Assert.That(lines[0].SubPartRevision, Is.EqualTo("C"));
+        }
+
         [Test]
         public async Task GetBomAsync_PopulatesHasSubstitutes_WhenArrayNonEmpty()
         {

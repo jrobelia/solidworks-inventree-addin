@@ -15,5 +15,7 @@ namespace SwInventreeAddin.Bom
         /// </summary>
         public string? UnparsedQuantity { get; set; }
         public string Note { get; set; } = string.Empty;
+        public string Revision { get; set; } = string.Empty;
+        public bool RevisionUnreadable { get; set; }
     }
 }

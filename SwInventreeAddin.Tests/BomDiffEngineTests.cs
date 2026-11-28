@@ -9,14 +9,15 @@ namespace SwInventreeAddin.Tests
     public class BomDiffEngineTests
     {
         private static SwBomLine SwLine(string ipn, decimal qty = 1, int pk = 0,
-            string reference = "", string note = "") =>
+            string reference = "", string note = "", string revision = "") =>
             new SwBomLine
             {
                 Ipn = ipn,
                 Quantity = qty,
                 SubPartPk = pk,
                 Reference = reference,
-                Note = note
+                Note = note,
+                Revision = revision
             };
 
         private static InventreeBomLine ItLine(int subPartPk, decimal qty = 1,
@@ -120,6 +121,28 @@ namespace SwInventreeAddin.Tests
             Assert.That(result[0].State, Is.EqualTo(BomDiffState.Ambiguous));
         }
 
+
+        [Test]
+        public void Diff_DuplicateIpnWithUniqueRevisionMatch_UsesMatchingPart()
+        {
+            var lookups = new Dictionary<string, IReadOnlyList<InventreePart>>
+            {
+                ["DUP"] = new List<InventreePart>
+                {
+                    new InventreePart { Pk = 1, Ipn = "DUP", Revision = "A" },
+                    new InventreePart { Pk = 2, Ipn = "DUP", Revision = "B" },
+                }
+            };
+
+            var result = BomDiffEngine.Diff(
+                new[] { SwLine("DUP", pk: 0, revision: "B") },
+                new[] { ItLine(2, qty: 1) },
+                lookups);
+
+            Assert.That(result[0].State, Is.EqualTo(BomDiffState.Match));
+            Assert.That(result[0].SubPartPk, Is.EqualTo(2));
+        }
+
         [Test]
         public void Diff_MultipleAmbiguousRows_AllReported()
         {
@@ -196,5 +219,123 @@ namespace SwInventreeAddin.Tests
             Assert.That(result[0].SwLine, Is.Null);
             Assert.That(result[0].ItLine, Is.Not.Null);
         }
+
+        [Test]
+        public void Diff_DuplicateIpn_RevisionOrderingEquivalenceIsNotIdentityMatch()
+        {
+            var sw = new SwBomLine { Ipn = "OA-00777", Revision = "1" };
+            var lookup = new Dictionary<string, IReadOnlyList<InventreePart>>
+            {
+                ["OA-00777"] = new List<InventreePart>
+                {
+                    new InventreePart { Pk = 101, Revision = "01" },
+                    new InventreePart { Pk = 102, Revision = "" }
+                }
+            };
+
+            var result = BomDiffEngine.Diff(new[] { sw }, new InventreeBomLine[0], lookup);
+
+            Assert.That(result[0].State, Is.EqualTo(BomDiffState.Ambiguous),
+                "Identity resolution uses exact Revision text, not revision ordering equivalence");
+        }
+
+
+        [Test]
+        public void Diff_DuplicateIpnWithUniqueBlankRevisionMatch_UsesMatchingPart()
+        {
+            var sw = new SwBomLine { Ipn = "OA-00777", Revision = "" };
+            var lookup = new Dictionary<string, IReadOnlyList<InventreePart>>
+            {
+                ["OA-00777"] = new List<InventreePart>
+                {
+                    new InventreePart { Pk = 101, Revision = "A" },
+                    new InventreePart { Pk = 102, Revision = "" }
+                }
+            };
+
+            var result = BomDiffEngine.Diff(new[] { sw }, new InventreeBomLine[0], lookup);
+
+            Assert.That(result[0].State, Is.EqualTo(BomDiffState.New));
+            Assert.That(result[0].SubPartPk, Is.EqualTo(102));
+        }
+
+        [Test]
+        public void Diff_DuplicateIpnWithNoRevisionMatch_IsAmbiguous()
+        {
+            var sw = new SwBomLine { Ipn = "OA-00777", Revision = "B" };
+            var lookup = new Dictionary<string, IReadOnlyList<InventreePart>>
+            {
+                ["OA-00777"] = new List<InventreePart>
+                {
+                    new InventreePart { Pk = 101, Revision = "A" },
+                    new InventreePart { Pk = 102, Revision = "C" }
+                }
+            };
+
+            var result = BomDiffEngine.Diff(new[] { sw }, new InventreeBomLine[0], lookup);
+
+            Assert.That(result[0].State, Is.EqualTo(BomDiffState.Ambiguous));
+        }
+
+        [Test]
+        public void Diff_DuplicateIpnWithSeveralRevisionMatches_IsAmbiguous()
+        {
+            var sw = new SwBomLine { Ipn = "OA-00777", Revision = "B" };
+            var lookup = new Dictionary<string, IReadOnlyList<InventreePart>>
+            {
+                ["OA-00777"] = new List<InventreePart>
+                {
+                    new InventreePart { Pk = 101, Revision = "B" },
+                    new InventreePart { Pk = 102, Revision = "b" }
+                }
+            };
+
+            var result = BomDiffEngine.Diff(new[] { sw }, new InventreeBomLine[0], lookup);
+
+            Assert.That(result[0].State, Is.EqualTo(BomDiffState.Ambiguous));
+        }
+
+        [Test]
+        public void Diff_PkWinsBeforeDuplicateIpnRevisionResolution()
+        {
+            var sw = new SwBomLine { Ipn = "OA-00777", SubPartPk = 102, Quantity = 1, Revision = "A" };
+            var lookup = new Dictionary<string, IReadOnlyList<InventreePart>>
+            {
+                ["OA-00777"] = new List<InventreePart>
+                {
+                    new InventreePart { Pk = 101, Revision = "A" },
+                    new InventreePart { Pk = 102, Revision = "B" }
+                }
+            };
+
+            var result = BomDiffEngine.Diff(
+                new[] { sw },
+                new[] { ItLine(102, qty: 1) },
+                lookup);
+
+            Assert.That(result[0].State, Is.EqualTo(BomDiffState.Match));
+            Assert.That(result[0].SubPartPk, Is.EqualTo(102));
+        }
+
+
+        [Test]
+        public void Diff_DuplicateIpnUnreadableBlankRevision_DoesNotMatchBlankCandidate()
+        {
+            var sw = new SwBomLine { Ipn = "OA-00777", Revision = "", RevisionUnreadable = true };
+            var lookup = new Dictionary<string, IReadOnlyList<InventreePart>>
+            {
+                ["OA-00777"] = new List<InventreePart>
+                {
+                    new InventreePart { Pk = 101, Revision = "A" },
+                    new InventreePart { Pk = 102, Revision = "" }
+                }
+            };
+
+            var result = BomDiffEngine.Diff(new[] { sw }, new InventreeBomLine[0], lookup);
+
+            Assert.That(result[0].State, Is.EqualTo(BomDiffState.Ambiguous),
+                "An unreadable SolidWorks Revision is not a true blank Revision");
+        }
+
     }
 }

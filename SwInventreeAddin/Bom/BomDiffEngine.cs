@@ -1,10 +1,16 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using SwInventreeAddin.InvenTree;
 
 namespace SwInventreeAddin.Bom
 {
     public static class BomDiffEngine
     {
+
+        internal static bool SameRevision(string left, string right) =>
+            string.Equals(left.Trim(), right.Trim(), StringComparison.OrdinalIgnoreCase);
+
         public static IReadOnlyList<BomDiffLine> Diff(
             IEnumerable<SwBomLine> swLines,
             IEnumerable<InventreeBomLine> itLines,
@@ -36,15 +42,25 @@ namespace SwInventreeAddin.Bom
                     }
                     if (parts.Count > 1)
                     {
-                        result.Add(new BomDiffLine
+                        var revisionMatches = parts
+                            .Where(p => !sw.RevisionUnreadable && SameRevision(sw.Revision, p.Revision))
+                            .ToList();
+                        if (revisionMatches.Count != 1)
                         {
-                            State = BomDiffState.Ambiguous,
-                            SwLine = sw,
-                            DisplayIpn = sw.Ipn
-                        });
-                        continue;
+                            result.Add(new BomDiffLine
+                            {
+                                State = BomDiffState.Ambiguous,
+                                SwLine = sw,
+                                DisplayIpn = sw.Ipn
+                            });
+                            continue;
+                        }
+                        key = revisionMatches[0].Pk;
                     }
-                    key = parts[0].Pk;
+                    else
+                    {
+                        key = parts[0].Pk;
+                    }
                 }
                 else
                 {

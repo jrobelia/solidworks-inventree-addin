@@ -178,7 +178,7 @@ namespace SwInventreeAddin.UI
 
                 var tableName = _vm.GetBomTableName() ?? string.Empty;
                 var window = new BomCompareWindow(bomVm, _vm.PartNumber, _vm.NamePreview,
-                                                   tableName);
+                                                   tableName, _vm.RevisionPreview);
                 try
                 {
                     window.ShowDialog();

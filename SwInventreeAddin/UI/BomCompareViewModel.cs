@@ -54,6 +54,14 @@ namespace SwInventreeAddin.UI
             : string.Empty;
         public string SwReference => DiffLine.SwLine?.Reference ?? string.Empty;
         public string SwNote => DiffLine.SwLine?.Note ?? string.Empty;
+        public string SwRevision => DiffLine.SwLine?.Revision ?? string.Empty;
+        public bool SwRevisionUnreadable => DiffLine.SwLine?.RevisionUnreadable ?? false;
+        public string ItRevision => DiffLine.ItLine?.SubPartRevision ?? string.Empty;
+        public bool RevisionDifference =>
+            DiffLine.SwLine != null
+            && DiffLine.ItLine != null
+            && !(SwRevision.Length == 0 && ItRevision.Length == 0)
+            && !BomDiffEngine.SameRevision(SwRevision, ItRevision);
         public string ItQty => DiffLine.ItLine != null ? DiffLine.ItLine.Quantity.ToString("G29") : string.Empty;
         public string ItReference => DiffLine.ItLine?.Reference ?? string.Empty;
         public string ItNote => DiffLine.ItLine?.Note ?? string.Empty;
@@ -83,14 +91,9 @@ namespace SwInventreeAddin.UI
                 "IPN not found in InvenTree — create the part first",
             BomDiffState.Ambiguous => DiffLine.SwLine?.UnparsedQuantity != null
                 ? "Quantity could not be parsed — fix the BOM quantity value"
-                : "IPN matches multiple InvenTree parts — resolve duplicates in InvenTree",
+                : "IPN matches multiple InvenTree parts — set InvenTree Part PK or a unique Revision",
             _ => string.Empty,
         };
-
-        // True when the row carries an IPN worth printing. The grid uses it to
-        // place the guidance line: it starts in the IPN cell on a No-IPN row
-        // and in the first data cell when the IPN stays visible.
-        public bool HasDisplayIpn => !string.IsNullOrEmpty(DisplayIpn);
 
         public BomDiffLineViewModel(BomDiffLine diffLine)
         {
@@ -310,14 +313,35 @@ namespace SwInventreeAddin.UI
                 }
             }
 
-            // Update pushed rows in-place — no full reload needed.
+            IReadOnlyList<InventreeBomLine>? refreshedLines = null;
+            if (succeededVms.Count > 0)
+            {
+                try
+                {
+                    refreshedLines = await _client.GetBomAsync(_assemblyPk).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("BOM Compare post-push refresh failed; falling back to pushed values.", ex);
+                }
+            }
+
+            // Update pushed rows in-place, preferring the server BOM pulled after Push.
             RunOnUiThread(() =>
             {
                 foreach (var vm in succeededVms)
                 {
                     var sw = vm.DiffLine.SwLine!;
+                    int expectedLinePk = vm.DiffLine.ItLine?.Pk ?? vm.DiffLine.NewBomLinePk;
+                    var serverLine = refreshedLines?.FirstOrDefault(l => l.Pk == expectedLinePk);
 
-                    if (vm.DiffLine.ItLine == null)
+                    if (serverLine != null)
+                    {
+                        vm.DiffLine.ItLine = serverLine;
+                        if (!string.IsNullOrEmpty(serverLine.SubPartIpn))
+                            vm.DiffLine.DisplayIpn = serverLine.SubPartIpn;
+                    }
+                    else if (vm.DiffLine.ItLine == null)
                     {
                         // New line: create a stub ItLine from the values we just pushed.
                         vm.DiffLine.ItLine = new InventreeBomLine
@@ -437,9 +461,11 @@ namespace SwInventreeAddin.UI
             {
                 "State" => l => l.StateLabel,
                 "IPN" => l => l.DisplayIpn,
+                "SwRevision" => l => l.SwRevision,
                 "SwQty" => l => l.SwQty,
                 "SwRef" => l => l.SwReference,
                 "SwNote" => l => l.SwNote,
+                "ItRevision" => l => l.ItRevision,
                 "ItQty" => l => l.ItQty,
                 "ItRef" => l => l.ItReference,
                 "ItNote" => l => l.ItNote,
