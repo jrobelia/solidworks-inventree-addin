@@ -259,11 +259,12 @@
             <!-- Assembly label -->
             <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,4">
                 <TextBlock x:Name="AssemblyIpn"
-                           Style="{StaticResource SectionTitleStyle}"/>
+                           Style="{StaticResource SectionTitleStyle}"
+                           Margin="0,0,4,0"/>
                 <TextBlock x:Name="AssemblyRevision"
                            Style="{StaticResource SectionTitleStyle}"
                            VerticalAlignment="Bottom"
-                           Margin="4,0,4,1"/>
+                           Margin="0,0,4,1"/>
                 <TextBlock x:Name="AssemblyName"
                            Style="{StaticResource SectionIntroStyle}"
                            VerticalAlignment="Bottom"

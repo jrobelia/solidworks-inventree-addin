@@ -49,6 +49,20 @@ namespace SwInventreeAddin.Tests
             Assert.That(window.AssemblyRevision.Text, Does.Not.Contain("Rev"));
         }
 
+
+        [Test]
+        public void Constructor_NoAssemblyRevision_KeepsIpnNameSeparation()
+        {
+            var client = new StubInventreeClient();
+            var bomService = new StubAssemblyBomService();
+            var mapping = PropertyMappingConfig.WithDefaults();
+            var vm = new BomCompareViewModel(client, bomService, mapping, 1, "inventree");
+            var window = new BomCompareWindow(vm, "TEST-001", "Test Assembly");
+
+            Assert.That(window.AssemblyRevision.Visibility, Is.EqualTo(Visibility.Collapsed));
+            Assert.That(window.AssemblyIpn.Margin.Right, Is.GreaterThan(0));
+        }
+
         [Test]
         public void Columns_MatchConfirmedIssue403Order()
         {
